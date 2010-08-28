@@ -63,8 +63,8 @@ object Wolkenpumpe /* extends TxnModel[ NuagesUpdate ]*/ {
       var s : Server = null
       val booting = Server.boot
       booting.addListener {
-         case BootingServer.Preparing( srv ) =>
-         case BootingServer.Running( srv ) => {
+//         case ServerConnection.Preparing( srv ) =>
+         case ServerConnection.Running( srv ) => {
             s = srv
             srv.dumpOSC(1)
             ProcDemiurg.addServer( srv )
