@@ -61,8 +61,7 @@ object Wolkenpumpe /* extends TxnModel[ NuagesUpdate ]*/ {
 
    def test {
       var s : Server = null
-      val booting = Server.boot
-      booting.addListener {
+      val booting = Server.boot() {
 //         case ServerConnection.Preparing( srv ) =>
          case ServerConnection.Running( srv ) => {
             s = srv
@@ -150,7 +149,7 @@ object Wolkenpumpe /* extends TxnModel[ NuagesUpdate ]*/ {
             booting.abort
          }
       }})
-      booting.start
+//      booting.start
    }
 
    /**
