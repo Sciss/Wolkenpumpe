@@ -900,8 +900,7 @@ with ProcFactoryProvider {
 //                      audioBusesConnected: ISet[ ProcEdge ],
 //                      audioBusesDisconnected: ISet[ ProcEdge ])
    private def procUpdate( u: Proc.Update ) {
-println( "" + new java.util.Date() + " procUpdate: " + u )
-//      if( verbose ) println( "procUpdate : " + u )
+      if( verbose ) println( "" + new java.util.Date() + " procUpdate: " + u )
       val p = u.proc
       procMap.get( p ).foreach( vProc => {
 //         u.playing.foreach( state => topProcPlaying( p, state ))
