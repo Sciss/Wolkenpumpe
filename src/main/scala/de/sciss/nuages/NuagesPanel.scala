@@ -172,7 +172,7 @@ object NuagesPanel {
       import VisualData._
 
 //      var playing = false
-      private var stateVar = Proc.State( false )
+      @volatile private var stateVar = Proc.State( false )
       @volatile private var disposeAfterFade = false
 
       private val playArea = new Area()
@@ -938,7 +938,7 @@ with ProcFactoryProvider {
 //   }
 
    private def topoUpdate( u: ProcWorld.Update ) {
-println( "" + new java.util.Date() + " topoUpdate : " + u )
+      if( verbose ) println( "" + new java.util.Date() + " topoUpdate : " + u )
       vis.synchronized {
          ProcTxn.atomic { implicit t =>
             u.procsRemoved foreach { p =>
