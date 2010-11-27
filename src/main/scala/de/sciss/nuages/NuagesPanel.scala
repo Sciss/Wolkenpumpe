@@ -51,6 +51,7 @@ import event.{ ActionEvent, ActionListener, MouseEvent }
 import geom._
 import prefuse.visual.{NodeItem, AggregateItem, VisualItem}
 import java.util.TimerTask
+import de.sciss.synth
 
 /**
  *    @version 0.11, 21-Jul-10
@@ -64,7 +65,7 @@ object NuagesPanel {
    val COL_NUAGES             = "nuages"
 }
 
-class NuagesPanel( server: Server ) extends JPanel
+class NuagesPanel( server: Server, meters: Boolean ) extends JPanel
 with ProcFactoryProvider {
    panel =>
    
@@ -88,6 +89,7 @@ with ProcFactoryProvider {
    private val ACTION_COLOR         = "color"
 //   private val ACTION_EDGECOLOR     = "edgecolor"
    private val ACTION_COLOR_ANIM    = "layout-anim"
+   private val LAYOUT_TIME          = 50
    private val FADE_TIME            = 333
 //   private val COL_LABEL            = "name"
 //   private val GROUP_PROC           = "proc"
@@ -117,6 +119,7 @@ with ProcFactoryProvider {
 //   }
    private var procMap              = Map.empty[ Proc, VisualProc ]
    private var edgeMap              = Map.empty[ ProcEdge, Edge ]
+   private var meterMap             = Map.empty[ Proc, VisualProc ]
 //   private var pendingProcs         = Set.empty[ Proc ]
 
 //   private val topoListener : Model.Listener = {
@@ -127,6 +130,8 @@ with ProcFactoryProvider {
 //   }
 
    var transition: Double => Transition = (_) => Instant
+
+   var meterFactory : ProcFactory = null
    
    private object topoListener extends ProcWorld.Listener {
       def updated( u: ProcWorld.Update ) { defer( topoUpdate( u ))}
@@ -200,7 +205,7 @@ with ProcFactoryProvider {
 
 //      vis.putAction( ACTION_EDGECOLOR, actionEdgeColor ) // para drag 'n drop
 
-      val actionLayout = new ActionList( Activity.INFINITY, 50 )
+      val actionLayout = new ActionList( Activity.INFINITY, LAYOUT_TIME )
       actionLayout.add( lay )
       actionLayout.add( new PrefuseAggregateLayout( AGGR_PROC ))
       actionLayout.add( new RepaintAction() )
@@ -248,7 +253,35 @@ with ProcFactoryProvider {
 
       vis.run( ACTION_COLOR )
 
-      ProcTxn.atomic { implicit t => world.addListener( topoListener )}
+      ProcTxn.atomic { implicit t =>
+         import DSL._
+         if( meters ) meterFactory = diff( "$meter" ) {
+            import synth._
+            import ugen._
+
+//            val pMeter = pControl( "midx", ParamSpec( 0, 0xFFFF ), 0 )
+
+            graph { sig =>
+               val meterTr    = Impulse.kr( 1000.0 / LAYOUT_TIME ) // "$m_tr".tr
+//               val meterIdx   = pMeter.kr // "$m_idx".kr
+//               val trigA      = Trig1.ar( meterTr, SampleDur.ir )
+               val peak       = Peak.kr( sig, meterTr /* trigA */ ).outputs
+               val peakM      = peak.tail.foldLeft[ GE ]( peak.head )( _ max _ ) \ 0
+//               val rms        = (Mix( Lag.ar( sig.squared, 0.1 )) / sig.numOutputs) \ 0
+               val me         = Proc.local
+               // warning: currently a bug in SendReply? if values are audio-rate,
+               // trigger needs to be audio-rate, too
+               meterTr.react( peakM /* :: rms :: Nil */ ) { vals =>
+                  defer( meterMap.get( me ).foreach { visOut =>
+                     visOut.meterUpdate( vals( 0 ).toFloat /* , vals( 1 ).toFloat */)
+                  })
+               }
+//               trigA.react( peakM :: rms :: Nil ) { x => println( "JO" )}
+               0.0
+            }
+         }
+         world.addListener( topoListener )
+      }
    }
 
    // ---- ProcFactoryProvider ----
@@ -279,7 +312,7 @@ with ProcFactoryProvider {
       vis.run( ACTION_COLOR )
    }
 
-   private def topAddProc( p: Proc ) {
+   private def topAddProc( p: Proc )( implicit t: ProcTxn ) {
       val pNode   = g.addNode()
       val vi      = vis.getVisualItem( GROUP_GRAPH, pNode )
       val locO    = locHintMap.get( p )
@@ -304,6 +337,8 @@ with ProcFactoryProvider {
          (pParamNode, pParamEdge, vi)
       }
 
+      var meterBusOption : Option[ ProcAudioOutput ] = None
+
       lazy val vProc: VisualProc = {
          val vParams: Map[ String, VisualParam ] = p.params.collect({
             case pFloat: ProcParamFloat => {
@@ -321,6 +356,7 @@ with ProcFactoryProvider {
                val pBus = p.audioInput( pParamBus.name )
                val vBus = VisualAudioInput( panel, pBus, pParamNode, pParamEdge )
                vi.set( COL_NUAGES, vBus )
+//               if( meters && (vBus.name == "in") && meterBusOption.isEmpty ) meterBusOption = Some( pBus )
                vBus.name -> vBus
             }
             case pParamBus: ProcParamAudioOutput => {
@@ -329,10 +365,22 @@ with ProcFactoryProvider {
                val pBus = p.audioOutput( pParamBus.name )
                val vBus = VisualAudioOutput( panel, pBus, pParamNode, pParamEdge )
                vi.set( COL_NUAGES, vBus )
+               if( meters && vBus.name == "out" ) meterBusOption = Some( pBus )
                vBus.name -> vBus
             }
          })( breakOut )
-         val res = VisualProc( panel, p, pNode, aggr, vParams )
+
+         val pMeter = meterBusOption.map { bus =>
+            import DSL._
+            val res = meterFactory.make
+//                  meterMap += res -> vBus
+            bus ~> res
+            if( p.isPlaying ) res.play
+            res
+         }
+
+         val res = VisualProc( panel, p, pNode, aggr, vParams, pMeter )
+         pMeter.foreach { pm => meterMap += pm -> res }
 //         res.playing = u.playing == Some( true )
 //         res.state =
          res
@@ -381,7 +429,12 @@ with ProcFactoryProvider {
 //         if( u.state != Proc.STATE_UNDEFINED ) topProcState( vProc, u.state )
          if( u.state.valid ) {
             if( verbose ) println( "procUpdate : u.state = " + u.state )
+            val wasPlaying = vProc.state.playing
             vProc.state = u.state
+            if( !wasPlaying && u.state.playing ) {
+//               val pms = vProc.params.collect { case (_, VisualAudioOutput( _, _, _, _, Some( pMeter ))) => pMeter }
+               vProc.meter.foreach { pm => ProcTxn.atomic { implicit t => pm.play }}
+            }
          }
          if( u.controls.nonEmpty )               topControlsChanged( u.controls )
 //         if( u.mappings.nonEmpty )               topMappingsChanged( u.mappings )
@@ -398,11 +451,11 @@ with ProcFactoryProvider {
       if( verbose ) println( "" + new java.util.Date() + " topoUpdate : " + u )
       vis.synchronized {
          ProcTxn.atomic { implicit t =>
-            u.procsRemoved foreach { p =>
+            u.procsRemoved.filterNot( _.name.startsWith( "$" )) foreach { p =>
                p.removeListener( procListener )
                procMap.get( p ).map( topRemoveProc( _ ))
             }
-            u.procsAdded foreach { p =>
+            u.procsAdded.filterNot( _.name.startsWith( "$" )) foreach { p =>
                topAddProc( p )
                p.addListener( procListener )
             }

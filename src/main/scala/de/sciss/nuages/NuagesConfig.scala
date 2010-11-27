@@ -9,5 +9,6 @@ case class NuagesConfig(
    server: Server,
    masterBus: Option[ AudioBus ],
    soloBus: Option[ AudioBus ],
-   recordPath: Option[ String ]
+   recordPath: Option[ String ],
+   meters: Boolean = false
 )

@@ -46,7 +46,7 @@ class NuagesFrame( val config: NuagesConfig )
 extends JFrame( "Wolkenpumpe") with ProcDemiurg.Listener {
    frame =>
 
-   val panel               = new NuagesPanel( config.server )
+   val panel               = new NuagesPanel( config.server, config.meters )
    private val pfPanel     = Box.createVerticalBox
    val transition          = new NuagesTransitionPanel( panel )
    private val models: Map[ ProcAnatomy, FactoryView ] = Map(
@@ -116,14 +116,14 @@ extends JFrame( "Wolkenpumpe") with ProcDemiurg.Listener {
 
    def updated( u: ProcDemiurg.Update ) { defer {
       if( u.factoriesRemoved.nonEmpty ) {
-         val byAnatomy = u.factoriesRemoved.groupBy( _.anatomy )
+         val byAnatomy = u.factoriesRemoved.filterNot( _.name.startsWith( "$" )).groupBy( _.anatomy )
          byAnatomy foreach { tup =>
             val (ana, facts) = tup
             models.get( ana ).foreach( _.model.remove( facts.toSeq: _* ))
          }
       }
       if( u.factoriesAdded.nonEmpty ) {
-         val byAnatomy = u.factoriesAdded.groupBy( _.anatomy ) 
+         val byAnatomy = u.factoriesAdded.filterNot( _.name.startsWith( "$" )).groupBy( _.anatomy ) 
          byAnatomy foreach { tup =>
             val (ana, facts) = tup
             models.get( ana ).foreach( _.model.add( facts.toSeq: _* ))

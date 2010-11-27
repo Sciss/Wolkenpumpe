@@ -70,7 +70,7 @@ object Wolkenpumpe /* extends TxnModel[ NuagesUpdate ]*/ {
             val recordPath = "/tmp"
             val masterBus  = new AudioBus( srv, 0, 2 )
             val soloBus    = Bus.audio( srv, 2 )
-            val config = NuagesConfig( srv, Some( masterBus ), Some( soloBus ), Some( recordPath ))
+            val config = NuagesConfig( srv, Some( masterBus ), Some( soloBus ), Some( recordPath ), true )
             val f = new NuagesFrame( config )
             f.setDefaultCloseOperation( WindowConstants.EXIT_ON_CLOSE )
             f.setSize( 640, 480 )

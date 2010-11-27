@@ -33,11 +33,12 @@ import java.awt.event.MouseEvent
 import prefuse.util.ColorLib
 import prefuse.data.{Edge, Node => PNode, Graph}
 import prefuse.visual.{AggregateItem, VisualItem}
-import de.sciss.synth.proc.{Instant, ControlValue, ProcControl, ProcAudioInput, ProcAudioOutput, ControlBusMapping, ProcDiff, ProcFilter, ProcTxn, Proc}
 import java.awt.geom.{Line2D, Arc2D, Area, Point2D, Ellipse2D, GeneralPath, Rectangle2D}
 import collection.mutable.{ Set => MSet }
+import de.sciss.synth
+import synth.proc.{ProcAudioBus, Instant, ControlValue, ProcControl, ProcAudioInput, ProcAudioOutput, ControlBusMapping, ProcDiff, ProcFilter, ProcTxn, Proc}
 
-object VisualData {
+private[nuages] object VisualData {
    val diam  = 50
    private val eps   = 1.0e-2
 
@@ -54,7 +55,7 @@ object VisualData {
 //      val stateColors   = Array( colrStopped, colrPlaying, colrStopped, colrBypassed )
 }
 
-trait VisualData {
+private[nuages] trait VisualData {
    import VisualData._
 
 //      var valid   = false // needs validation first!
@@ -140,11 +141,30 @@ trait VisualData {
    protected def renderDetail( g: Graphics2D, vi: VisualItem )
 }
 
-case class VisualProc( main: NuagesPanel, proc: Proc, pNode: PNode, aggr: AggregateItem,
-                       params: Map[ String, VisualParam ]) extends VisualData {
+object VisualProc {
+   private val logPeakCorr		= 20.0 / math.log( 10 )
+   private val logRMSCorr		= 10.0 / math.log( 10 )
+
+   private def hsbFade( w1: Float, rgbMin: Int, rgbMax: Int ) : Color = {
+      val hsbTop = new Array[ Float ]( 3 )
+      val hsbBot = new Array[ Float ]( 3 )
+      Color.RGBtoHSB( (rgbMax >> 16) & 0xFF, (rgbMax >> 8) & 0xFF, rgbMax & 0xFF, hsbTop )
+      Color.RGBtoHSB( (rgbMin >> 16) & 0xFF, (rgbMin >> 8) & 0xFF, rgbMin & 0xFF, hsbBot );
+      val w2 = 1f - w1
+      Color.getHSBColor( hsbTop( 0 ) * w1 + hsbBot( 0 ) * w2,
+           hsbTop( 1 ) * w1 + hsbBot( 1 ) * w2,
+           hsbTop( 2 ) * w1 + hsbBot( 2 ) * w2 )
+   }
+
+   private val colrPeak       = Array.tabulate( 91 )( ang => hsbFade( ang / 91f, 0x02FF02, 0xFF6B6B ))
+}
+
+private[nuages] case class VisualProc( main: NuagesPanel, proc: Proc, pNode: PNode, aggr: AggregateItem,
+                       params: Map[ String, VisualParam ], meter: Option[ Proc ]) extends VisualData {
    vproc =>
 
    import VisualData._
+   import VisualProc._
 
 //      var playing = false
    @volatile private var stateVar = Proc.State( false )
@@ -152,6 +172,15 @@ case class VisualProc( main: NuagesPanel, proc: Proc, pNode: PNode, aggr: Aggreg
 
    private val playArea = new Area()
 
+   private var peak        = 0f
+//   private var rms         = 0f
+   private var peakToPaint	= -160f
+//   private var rmsToPaint	= -160f
+   private var peakNorm    = 0f
+//   private var rmsNorm     = 0f
+   private var lastUpdate  = System.currentTimeMillis()
+   private val peakArea    = new Area()
+   
    def name : String = proc.name
 
    def isAlive = stateVar.valid && !disposeAfterFade
@@ -159,6 +188,50 @@ case class VisualProc( main: NuagesPanel, proc: Proc, pNode: PNode, aggr: Aggreg
    def state_=( value: Proc.State ) {
       stateVar = value
       if( disposeAfterFade && !value.fading ) disposeProc
+   }
+
+   private def paintToNorm( paint: Float ) : Float = {
+      if( paint >= -30f ) {
+         if( paint >= -20f ) {
+            math.min( 1f, paint * 0.025f + 1.0f ) // 50 ... 100 %
+         } else {
+            paint * 0.02f + 0.9f  // 30 ... 50 %
+         }
+      } else if( paint >= -50f ) {
+         if( paint >= -40f ) {
+            paint * 0.015f + 0.75f	// 15 ... 30 %
+         } else {
+            paint * 0.01f + 0.55f	// 5 ... 15%
+         }
+      } else if( paint >= -60f ) {
+         paint * 0.005f + 0.3f	// 0 ... 5 %
+      } else -1f
+   }
+
+   def meterUpdate( newPeak0: Float /*, newRMS0: Float */ ) {
+      val time = System.currentTimeMillis
+      val newPeak = (math.log( newPeak0 ) * logPeakCorr).toFloat
+      if( newPeak >= peak ) {
+         peak = newPeak
+      } else {
+         // 20 dB in 1500 ms bzw. 40 dB in 2500 ms
+         peak = math.max( newPeak, peak - (time - lastUpdate) * (if( peak > -20f ) 0.013333333333333f else 0.016f) )
+      }
+      peakToPaint	= math.max( peakToPaint, peak )
+      peakNorm 	= paintToNorm( peakToPaint )
+
+//      val newRMS = (math.log( newRMS0 ) * logRMSCorr).toFloat
+//      if( newRMS > rms ) {
+//         rms	= newRMS
+//      } else {
+//         rms = math.max( newRMS, rms - (time - lastUpdate) * (if( rms > -20f ) 0.013333333333333f else 0.016f) )
+//      }
+//      rmsToPaint	= Math.max( rmsToPaint, rms )
+//      rmsNorm		= paintToNorm( rmsToPaint )
+
+      lastUpdate		= time
+
+//      result		= peakNorm >= 0f;
    }
 
    override def itemPressed( vi: VisualItem, e: MouseEvent, pt: Point2D ) : Boolean = {
@@ -170,17 +243,13 @@ case class VisualProc( main: NuagesPanel, proc: Proc, pNode: PNode, aggr: Aggreg
       if( playArea.contains( xt, yt )) {
          ProcTxn.atomic { implicit t =>
             t.withTransition( main.transition( t.time )) {
-//println( "AQUI : state = " + state )
                if( stateVar.playing ) {
                   if( proc.anatomy == ProcFilter ) {
-//println( "--> BYPASSED = " + !state.bypassed )
                      if( stateVar.bypassed ) proc.engage else proc.bypass
                   } else {
-//println( "--> STOP" )
                      proc.stop
                   }
                } else {
-//println( "--> PLAY" )
                   proc.play
                }
             }
@@ -190,7 +259,6 @@ case class VisualProc( main: NuagesPanel, proc: Proc, pNode: PNode, aggr: Aggreg
          val instant = !stateVar.playing || stateVar.bypassed || (main.transition( 0 ) == Instant)
          proc.anatomy match {
             case ProcFilter => {
-//println( "INSTANT = " + instant + "; PLAYING? " + stateVar.playing + "; BYPASSED? " + stateVar.bypassed )
                ProcTxn.atomic { implicit t =>
                   if( instant ) disposeFilter else {
                      t.afterCommit { _ => disposeAfterFade = true }
@@ -224,7 +292,7 @@ case class VisualProc( main: NuagesPanel, proc: Proc, pNode: PNode, aggr: Aggreg
    }
 
    private def disposeProc {
-println( "DISPOSE " + proc )
+//println( "DISPOSE " + proc )
       ProcTxn.atomic { implicit t =>
          proc.anatomy match {
             case ProcFilter => disposeFilter
@@ -268,6 +336,13 @@ println( "DISPOSE " + proc )
       playArea.add( new Area( playArc ))
       playArea.subtract( new Area( innerE ))
       gp.append( playArea, false )
+
+      if( meter.isDefined ) {
+         val meterArc = new Arc2D.Double( 0, 0, r.getWidth(), r.getHeight(), -45, 90, Arc2D.PIE )
+         val meterArea = new Area( meterArc )
+         meterArea.subtract( new Area( innerE ))
+         gp.append( meterArea, false )
+      }
    }
 
    protected def renderDetail( g: Graphics2D, vi: VisualItem ) {
@@ -277,6 +352,19 @@ println( "DISPOSE " + proc )
             } else colrStopped
          )
          g.fill( playArea )
+         
+         if( meter.isDefined ) {
+            val angExtent  = (math.max( 0f, peakNorm ) * 90).toInt
+            val pValArc    = new Arc2D.Double( 0, 0, r.getWidth(), r.getHeight(), -45, angExtent, Arc2D.PIE )
+            peakArea.reset()
+            peakArea.add( new Area( pValArc ))
+            peakArea.subtract( new Area( innerE ))
+
+            g.setColor( colrPeak( angExtent ))
+            g.fill( peakArea )
+            peakToPaint	= -160f
+//      rmsToPaint	= -160f
+         }
       }
 //         g.setColor( ColorLib.getColor( vi.getStrokeColor ))
       g.setColor( if( disposeAfterFade ) Color.red else Color.white )
@@ -288,15 +376,19 @@ println( "DISPOSE " + proc )
 }
 
 
-trait VisualParam extends VisualData {
+private[nuages] trait VisualParam extends VisualData {
 //      def param: ProcParam[ _ ]
    def pNode: PNode
    def pEdge: Edge
 }
 
+private[nuages] trait VisualBusParam extends VisualParam {
+   def bus: ProcAudioBus
+}
+
 //   private[nuages] case class VisualBus( param: ProcParamAudioBus, pNode: PNode, pEdge: Edge )
 private[nuages] case class VisualAudioInput( main: NuagesPanel, bus: ProcAudioInput, pNode: PNode, pEdge: Edge )
-extends VisualParam {
+extends VisualBusParam {
    import VisualData._
 
    def name : String = bus.name
@@ -310,7 +402,7 @@ extends VisualParam {
 }
 
 private[nuages] case class VisualAudioOutput( main: NuagesPanel, bus: ProcAudioOutput, pNode: PNode, pEdge: Edge )
-extends VisualParam {
+extends VisualBusParam {
    import VisualData._
 
    def name : String = bus.name
