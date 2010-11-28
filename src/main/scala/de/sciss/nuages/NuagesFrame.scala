@@ -37,16 +37,16 @@ import de.sciss.synth.proc._
 import de.sciss.synth.ugen._
 import plaf.basic.{BasicSliderUI, BasicPanelUI}
 import javax.swing.event.{ChangeListener, ChangeEvent, ListSelectionListener, ListSelectionEvent}
-import java.awt.{EventQueue, Component, Container, Color, BorderLayout}
+import java.awt.{GridBagConstraints, GridBagLayout, EventQueue, Component, Container, Color, BorderLayout}
 
 /**
- *    @version 0.12, 18-Jul-10
+ *    @version 0.12, 28-Nov-10
  */
 class NuagesFrame( val config: NuagesConfig )
 extends JFrame( "Wolkenpumpe") with ProcDemiurg.Listener {
    frame =>
 
-   val panel               = new NuagesPanel( config.server, config.meters )
+   val panel               = new NuagesPanel( config )
    private val pfPanel     = Box.createVerticalBox
    val transition          = new NuagesTransitionPanel( panel )
    private val models: Map[ ProcAnatomy, FactoryView ] = Map(
@@ -80,38 +80,47 @@ extends JFrame( "Wolkenpumpe") with ProcDemiurg.Listener {
 
       setDefaultCloseOperation( WindowConstants.DISPOSE_ON_CLOSE )
 
-      config.masterBus foreach { abus =>
-         val specSlider       = ParamSpec( 0, 0x10000 )
-         val specAmp          = ParamSpec( 0.01, 10.0, ExpWarp )
-         val initVal          = specSlider.map( specAmp.unmap( 1.0 )).toInt
-         val ggMasterVolume   = new JSlider( SwingConstants.VERTICAL, specSlider.lo.toInt, specSlider.hi.toInt, initVal )
-         ggMasterVolume.setUI( new BasicSliderUI( ggMasterVolume ))
-         ggMasterVolume.setBackground( Color.black )
-         ggMasterVolume.setForeground( Color.white )
-         ggMasterVolume.addChangeListener( new ChangeListener {
-            def stateChanged( e: ChangeEvent ) {
-               val amp = specAmp.map( specSlider.unmap( ggMasterVolume.getValue ))
-               grpMaster.set( "amp" -> amp )
-            }
-         })
-         ggEastBox.add( ggMasterVolume, BorderLayout.EAST )
-      }
+      val gridLay       = new GridBagLayout() 
+      val ggFaderBox    = new JPanel( gridLay )
+      ggEastBox.add( ggFaderBox, BorderLayout.EAST )
 
-      initAudio
+      val gridCon       = new GridBagConstraints()
+      gridCon.fill      = GridBagConstraints.BOTH
+      gridCon.weightx   = 1.0
+      gridCon.gridwidth = GridBagConstraints.REMAINDER
+
+      def mkFader( busOption: Option[ AudioBus ], name: String, ctrlSpec: ParamSpec, ctrlInit: Double, weighty: Double ) =
+         busOption foreach { bus =>
+            val ctrlName   = ("v_" + name)
+            val slidSpec   = ParamSpec( 0, 0x10000 )
+            val slidInit   = slidSpec.map( ctrlSpec.unmap( ctrlInit )).toInt
+            val slid       = new JSlider( SwingConstants.VERTICAL, slidSpec.lo.toInt, slidSpec.hi.toInt, slidInit )
+            slid.setUI( new BasicSliderUI( slid ))
+            slid.setBackground( Color.black )
+            slid.setForeground( Color.white )
+            slid.addChangeListener( new ChangeListener {
+               def stateChanged( e: ChangeEvent ) {
+                  val ctrlVal = ctrlSpec.map( slidSpec.unmap( slid.getValue ))
+                  grpMaster.set( ctrlName -> ctrlVal )
+               }
+            })
+            gridCon.weighty = weighty
+            gridLay.setConstraints( slid, gridCon )
+            ggFaderBox.add( slid )
+
+            val df = SynthDef( "nuages-" + name ) {
+               val idx  = "bus".kr
+               val amp  = ctrlName.kr( ctrlInit )
+               val sig  = In.ar( idx, bus.numChannels )
+               ReplaceOut.ar( idx, Limiter.ar( sig * amp, (-0.2).dbamp ))
+            }
+            df.play( grpMaster, List( "bus" -> bus.index ))
+         }
+
+      mkFader( config.masterBus, "master", ParamSpec( 0.01, 10.0, ExpWarp ), 1.0, 0.75 )
+      mkFader( config.soloBus,   "solo",   ParamSpec( 0.1,  10.0, ExpWarp ), 0.5, 0.25 )
 
       ProcTxn.atomic { implicit t => ProcDemiurg.addListener( frame )}
-   }
-
-   private def initAudio {
-      config.masterBus foreach { abus =>
-         val df = SynthDef( "nuages-master" ) {
-            val bus  = "bus".kr
-            val amp  = "amp".kr( 1 )
-            val sig  = In.ar( bus, abus.numChannels )
-            ReplaceOut.ar( bus, Limiter.ar( sig * amp, (-0.2).dbamp ))
-         }
-         df.play( grpMaster, List( "bus" -> abus.index ))
-      }
    }
 
    def updated( u: ProcDemiurg.Update ) { defer {

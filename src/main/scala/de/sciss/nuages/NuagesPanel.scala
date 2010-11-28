@@ -54,7 +54,7 @@ import java.util.TimerTask
 import de.sciss.synth
 
 /**
- *    @version 0.11, 21-Jul-10
+ *    @version 0.11, 28-Nov-10
  */
 object NuagesPanel {
    var verbose = false
@@ -65,7 +65,7 @@ object NuagesPanel {
    val COL_NUAGES             = "nuages"
 }
 
-class NuagesPanel( server: Server, meters: Boolean ) extends JPanel
+class NuagesPanel( config: NuagesConfig ) extends JPanel
 with ProcFactoryProvider {
    panel =>
    
@@ -74,13 +74,15 @@ with ProcFactoryProvider {
    import Proc._
 
    val vis     = new Visualization()
-   val world   = ProcDemiurg.worlds( server )
+   val world   = ProcDemiurg.worlds( config.server )
    val display = new Display( vis ) {
 //      override protected def setRenderingHints( g: Graphics2D ) {
 //         super.setRenderingHints( g )
 //         g.setRenderingHint( RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON )
 //      }
    }
+
+   private var soloFactory : Option[ ProcFactory ] = None
 
    private val AGGR_PROC            = "aggr"
 //   private val GROUP_PAUSED         = "paused"
@@ -131,7 +133,7 @@ with ProcFactoryProvider {
 
    var transition: Double => Transition = (_) => Instant
 
-   var meterFactory : ProcFactory = null
+   var meterFactory : Option[ ProcFactory ] = None
    
    private object topoListener extends ProcWorld.Listener {
       def updated( u: ProcWorld.Update ) { defer( topoUpdate( u ))}
@@ -185,7 +187,7 @@ with ProcFactoryProvider {
       val actionTextColor = new ColorAction( GROUP_NODES, VisualItem.TEXTCOLOR, ColorLib.rgb( 255, 255, 255 ))
 
       val actionEdgeColor  = new ColorAction( GROUP_EDGES, VisualItem.STROKECOLOR, ColorLib.rgb( 255, 255, 255 ))
-      val actionAggrFill   = new ColorAction( AGGR_PROC, VisualItem.FILLCOLOR, ColorLib.rgb( 127, 127, 127 ))
+      val actionAggrFill   = new ColorAction( AGGR_PROC, VisualItem.FILLCOLOR, ColorLib.rgb( 80, 80, 80 ))
       val actionAggrStroke = new ColorAction( AGGR_PROC, VisualItem.STROKECOLOR, ColorLib.rgb( 255, 255, 255 ))
 //      val fontAction       = new FontAction( GROUP_NODES, font )
 
@@ -255,9 +257,9 @@ with ProcFactoryProvider {
 
       ProcTxn.atomic { implicit t =>
          import DSL._
-         if( meters ) meterFactory = diff( "$meter" ) {
-            import synth._
-            import ugen._
+         import synth._
+         import ugen._
+         if( config.meters ) meterFactory = Some( diff( "$meter" ) {
 
 //            val pMeter = pControl( "midx", ParamSpec( 0, 0xFFFF ), 0 )
 
@@ -279,7 +281,31 @@ with ProcFactoryProvider {
 //               trigA.react( peakM :: rms :: Nil ) { x => println( "JO" )}
                0.0
             }
+         })
+         soloFactory = config.soloBus.map { bus => diff( "$solo" ) {
+//            val pAmp = pControl( "amp", ParamSpec( (-20).dbamp, 20.dbamp, ExpWarp ), 1 )
+
+            graph { sig =>
+               val numIn   = sig.numOutputs
+               val numOut  = bus.numChannels
+               val sigOut  = Array.fill[ GE ]( numOut )( 0.0f )
+               val sca     = (numOut - 1).toFloat / (numIn - 1)
+               sig.outputs.zipWithIndex.foreach { tup =>
+                  val (sigIn, inCh) = tup
+                  val outCh         = inCh * sca
+                  val fr            = outCh % 1f
+                  val outChI        = outCh.toInt
+                  if( fr == 0f ) {
+                     sigOut( outChI ) += sigIn
+                  } else {
+                     sigOut( outChI )     += sigIn * (1 - fr).sqrt
+                     sigOut( outChI + 1 ) += sigIn * fr.sqrt
+                  }
+               }
+               Out.ar( bus.index, sigOut.toSeq /* * pAmp.kr */ )
+            }}
          }
+
          world.addListener( topoListener )
       }
    }
@@ -365,21 +391,22 @@ with ProcFactoryProvider {
                val pBus = p.audioOutput( pParamBus.name )
                val vBus = VisualAudioOutput( panel, pBus, pParamNode, pParamEdge )
                vi.set( COL_NUAGES, vBus )
-               if( meters && vBus.name == "out" ) meterBusOption = Some( pBus )
+               if( vBus.name == "out" ) meterBusOption = Some( pBus )
                vBus.name -> vBus
             }
          })( breakOut )
 
-         val pMeter = meterBusOption.map { bus =>
-            import DSL._
-            val res = meterFactory.make
-//                  meterMap += res -> vBus
-            bus ~> res
-            if( p.isPlaying ) res.play
-            res
+         val pMeter = meterFactory.flatMap { fact =>
+            meterBusOption.map { bus =>
+               import DSL._
+               val res = fact.make
+               bus ~> res
+               if( p.isPlaying ) res.play
+               res
+            }
          }
 
-         val res = VisualProc( panel, p, pNode, aggr, vParams, pMeter )
+         val res = VisualProc( panel, p, pNode, aggr, vParams, pMeter, soloFactory.isDefined )
          pMeter.foreach { pm => meterMap += pm -> res }
 //         res.playing = u.playing == Some( true )
 //         res.state =
@@ -393,6 +420,31 @@ with ProcFactoryProvider {
 
 //      if( u.mappings.nonEmpty ) topMappingsChangedI( u.mappings )
 //      if( u.audioBusesConnected.nonEmpty ) topAddEdgesI( u.audioBusesConnected )
+   }
+
+   private var soloInfo : Option[ (VisualProc, Proc) ] = None
+
+   def setSolo( vp: VisualProc, onOff: Boolean ) {
+      import DSL._
+      if( !EventQueue.isDispatchThread ) error( "Must be called in event thread" )
+      soloFactory.foreach { fact => ProcTxn.atomic { implicit t =>
+         soloInfo.foreach { tup =>
+            val (soloVP, soloP) = tup
+            if( soloP.state.valid ) {
+               soloVP.proc ~/> soloP
+               soloP.dispose
+            }
+            soloVP.soloed = false
+            soloInfo = None
+         }
+         if( onOff ) {
+            val soloP = fact.make
+            vp.proc ~> soloP
+            soloP.play
+            soloInfo = Some( vp -> soloP )
+         }
+         vp.soloed = onOff
+      }}
    }
 
    private def topAddEdges( edges: Set[ ProcEdge ]) {

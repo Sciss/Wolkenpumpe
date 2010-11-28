@@ -45,6 +45,7 @@ private[nuages] object VisualData {
    val colrPlaying   = new Color( 0x00, 0xC0, 0x00 )
    val colrStopped   = new Color( 0x80, 0x80, 0x80 )
    val colrBypassed  = new Color( 0xFF, 0xC0, 0x00 )
+   val colrSoloed    = new Color( 0xFF, 0xFF, 0x00 )
    val colrMapped    = new Color( 210, 60, 60 )
    val colrManual    = new Color( 60, 60, 240 )
    val colrGliding   = new Color( 135, 60, 150 )
@@ -160,7 +161,8 @@ object VisualProc {
 }
 
 private[nuages] case class VisualProc( main: NuagesPanel, proc: Proc, pNode: PNode, aggr: AggregateItem,
-                       params: Map[ String, VisualParam ], meter: Option[ Proc ]) extends VisualData {
+                       params: Map[ String, VisualParam ], meter: Option[ Proc ], solo: Boolean )
+extends VisualData {
    vproc =>
 
    import VisualData._
@@ -171,6 +173,7 @@ private[nuages] case class VisualProc( main: NuagesPanel, proc: Proc, pNode: PNo
    @volatile private var disposeAfterFade = false
 
    private val playArea = new Area()
+   private val soloArea = new Area()
 
    private var peak        = 0f
 //   private var rms         = 0f
@@ -179,8 +182,9 @@ private[nuages] case class VisualProc( main: NuagesPanel, proc: Proc, pNode: PNo
    private var peakNorm    = 0f
 //   private var rmsNorm     = 0f
    private var lastUpdate  = System.currentTimeMillis()
-   private val peakArea    = new Area()
-   
+
+   var soloed = false
+
    def name : String = proc.name
 
    def isAlive = stateVar.valid && !disposeAfterFade
@@ -255,6 +259,10 @@ private[nuages] case class VisualProc( main: NuagesPanel, proc: Proc, pNode: PNo
             }
          }
          true
+      } else if( solo && soloArea.contains( xt, yt )) {
+         main.setSolo( vproc, !soloed )
+         true
+//         println( "SOLO" )
       } else if( outerE.contains( xt, yt ) & e.isAltDown() ) {
          val instant = !stateVar.playing || stateVar.bypassed || (main.transition( 0 ) == Instant)
          proc.anatomy match {
@@ -331,15 +339,23 @@ private[nuages] case class VisualProc( main: NuagesPanel, proc: Proc, pNode: PNo
    }
 
    protected def boundsResized {
-      val playArc = new Arc2D.Double( 0, 0, r.getWidth(), r.getHeight(), 135, 90, Arc2D.PIE )
+      val arc = new Arc2D.Double( 0, 0, r.getWidth(), r.getHeight(), 135, 90, Arc2D.PIE )
       playArea.reset()
-      playArea.add( new Area( playArc ))
+      playArea.add( new Area( arc ))
       playArea.subtract( new Area( innerE ))
       gp.append( playArea, false )
 
+      if( solo ) {
+         arc.setAngleStart( 45 )
+         soloArea.reset()
+         soloArea.add( new Area( arc ))
+         soloArea.subtract( new Area( innerE ))
+         gp.append( soloArea, false )
+      }
+
       if( meter.isDefined ) {
-         val meterArc = new Arc2D.Double( 0, 0, r.getWidth(), r.getHeight(), -45, 90, Arc2D.PIE )
-         val meterArea = new Area( meterArc )
+         arc.setAngleStart( -45 )
+         val meterArea = new Area( arc )
          meterArea.subtract( new Area( innerE ))
          gp.append( meterArea, false )
       }
@@ -352,12 +368,16 @@ private[nuages] case class VisualProc( main: NuagesPanel, proc: Proc, pNode: PNo
             } else colrStopped
          )
          g.fill( playArea )
+
+         if( solo ) {
+            g.setColor( if( soloed ) colrSoloed else colrStopped )
+            g.fill( soloArea )
+         }
          
          if( meter.isDefined ) {
             val angExtent  = (math.max( 0f, peakNorm ) * 90).toInt
             val pValArc    = new Arc2D.Double( 0, 0, r.getWidth(), r.getHeight(), -45, angExtent, Arc2D.PIE )
-            peakArea.reset()
-            peakArea.add( new Area( pValArc ))
+            val peakArea   = new Area( pValArc )
             peakArea.subtract( new Area( innerE ))
 
             g.setColor( colrPeak( angExtent ))
