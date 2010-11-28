@@ -68,10 +68,10 @@ object Wolkenpumpe /* extends TxnModel[ NuagesUpdate ]*/ {
 //            srv.dumpOSC(1)
             ProcDemiurg.addServer( srv )
             val recordPath = "/tmp"
-            val masterBus  = new AudioBus( srv, 0, 2 )
-            val soloBus    = Bus.audio( srv, 2 )
+//            val masterBus  = new AudioBus( srv, 0, 2 )
+//            val soloBus    = Bus.audio( srv, 2 )
 //            val soloBus    = new AudioBus( srv, 6, 2 )
-            val config = NuagesConfig( srv, Some( masterBus ), Some( soloBus ), Some( recordPath ), true )
+            val config = NuagesConfig( srv, Some( Vector( 0, 1 )), Some( Vector( 2, 3 )), Some( recordPath ), true )
             val f = new NuagesFrame( config )
             f.setDefaultCloseOperation( WindowConstants.EXIT_ON_CLOSE )
             f.setSize( 640, 480 )
@@ -135,11 +135,11 @@ object Wolkenpumpe /* extends TxnModel[ NuagesUpdate ]*/ {
 
                diff( "Out" ) {
                    val pamp  = pAudio( "amp", ParamSpec( 0.01, 10, ExpWarp ), 1 )
-                   val pout  = pAudioOut( "out", Some( RichBus.wrap( masterBus )))
+                   val pout  = pAudioOut( "out", None ) // Some( RichBus.wrap( masterBus ))
 
                    graph { in =>
                       val sig = in * pamp.ar
-                      Out.ar( masterBus.index, sig )
+//                      Out.ar( masterBus.index, sig )
                       pout.ar( sig )
                    }
                }

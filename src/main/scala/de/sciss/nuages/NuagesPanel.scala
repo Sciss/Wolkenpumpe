@@ -40,7 +40,6 @@ import prefuse.activity.Activity
 import prefuse.util.ColorLib
 import prefuse.visual.sort.TreeDepthItemSorter
 import prefuse.visual.expression.InGroupPredicate
-import de.sciss.synth.{Model, Server}
 import prefuse.data.{Edge, Node => PNode, Graph}
 import prefuse.controls._
 import de.sciss.synth.proc._
@@ -52,6 +51,8 @@ import geom._
 import prefuse.visual.{NodeItem, AggregateItem, VisualItem}
 import java.util.TimerTask
 import de.sciss.synth
+import synth.ugen.Out
+import synth.{Group, AudioBus, Bus, UGenIn, GE, Model, Server}
 
 /**
  *    @version 0.11, 28-Nov-10
@@ -63,6 +64,9 @@ object NuagesPanel {
    private val GROUP_NODES    = "graph.nodes"
    private val GROUP_EDGES    = "graph.edges"
    val COL_NUAGES             = "nuages"
+
+   val masterAmpSpec          = ParamSpec( 0.01, 10.0, ExpWarp ) -> 1.0
+   val soloAmpSpec            = ParamSpec( 0.1,  10.0, ExpWarp ) -> 0.5
 }
 
 class NuagesPanel( config: NuagesConfig ) extends JPanel
@@ -133,8 +137,12 @@ with ProcFactoryProvider {
 
    var transition: Double => Transition = (_) => Instant
 
-   var meterFactory : Option[ ProcFactory ] = None
-   
+   private var meterFactory : Option[ ProcFactory ] = None
+   private var masterFactory : Option[ ProcFactory ] = None
+   private var masterProc : Option[ Proc ] = None
+   private var masterBusVar : Option[ AudioBus ] = None
+   def masterBus : Option[ AudioBus ] = masterBusVar
+
    private object topoListener extends ProcWorld.Listener {
       def updated( u: ProcWorld.Update ) { defer( topoUpdate( u ))}
    }
@@ -259,35 +267,67 @@ with ProcFactoryProvider {
          import DSL._
          import synth._
          import ugen._
+
+         def meterGraph( sig: GE ) {
+            val meterTr    = Impulse.kr( 1000.0 / LAYOUT_TIME )
+            val peak       = Peak.kr( sig, meterTr ).outputs
+            val peakM      = peak.tail.foldLeft[ GE ]( peak.head )( _ max _ ) \ 0
+            val me         = Proc.local
+            // warning: currently a bug in SendReply? if values are audio-rate,
+            // trigger needs to be audio-rate, too
+            meterTr.react( peakM /* :: rms :: Nil */ ) { vals =>
+               defer( meterMap.get( me ).foreach { visOut =>
+                  visOut.meterUpdate( vals( 0 ).toFloat )
+               })
+            }
+         }
+
          if( config.meters ) meterFactory = Some( diff( "$meter" ) {
-
-//            val pMeter = pControl( "midx", ParamSpec( 0, 0xFFFF ), 0 )
-
             graph { sig =>
-               val meterTr    = Impulse.kr( 1000.0 / LAYOUT_TIME ) // "$m_tr".tr
-//               val meterIdx   = pMeter.kr // "$m_idx".kr
-//               val trigA      = Trig1.ar( meterTr, SampleDur.ir )
-               val peak       = Peak.kr( sig, meterTr /* trigA */ ).outputs
-               val peakM      = peak.tail.foldLeft[ GE ]( peak.head )( _ max _ ) \ 0
-//               val rms        = (Mix( Lag.ar( sig.squared, 0.1 )) / sig.numOutputs) \ 0
-               val me         = Proc.local
-               // warning: currently a bug in SendReply? if values are audio-rate,
-               // trigger needs to be audio-rate, too
-               meterTr.react( peakM /* :: rms :: Nil */ ) { vals =>
-                  defer( meterMap.get( me ).foreach { visOut =>
-                     visOut.meterUpdate( vals( 0 ).toFloat /* , vals( 1 ).toFloat */)
-                  })
-               }
-//               trigA.react( peakM :: rms :: Nil ) { x => println( "JO" )}
+               meterGraph( sig )
                0.0
             }
          })
-         soloFactory = config.soloBus.map { bus => diff( "$solo" ) {
-//            val pAmp = pControl( "amp", ParamSpec( (-20).dbamp, 20.dbamp, ExpWarp ), 1 )
+
+         config.masterChannels.foreach { chans =>
+            val pMaster = (diff( "$master" ) {
+               val pAmp = pControl( "amp", masterAmpSpec._1, masterAmpSpec._2 )
+               val pIn  = pAudioIn( "in", None )
+               graph { sig => efficientOuts( sig * pAmp.kr, chans ); 0.0 }
+            }).make
+            pMaster.control( "amp" ).v = masterAmpSpec._2
+            // XXX bus should be freed in panel disposal
+            val b = Bus.audio( config.server, chans.size ) 
+            pMaster.audioInput( "in" ).bus = Some( RichBus.wrap( b ))
+            val g = RichGroup( Group( config.server ))
+            g.play( RichGroup.default( config.server ), addToTail )
+            pMaster.group  = g
+            pMaster.play
+            masterProc     = Some( pMaster )
+            masterBusVar   = Some( b )
+
+//            masterFactory = Some( filter( "$diff" ) {
+//               graph { sig =>
+//                  require( sig.numOutputs == chans.size )
+//                  if( config.meters ) meterGraph( sig )
+//                  sig
+//               }
+//            })
+            masterFactory = Some( diff( "$diff" ) {
+               graph { sig =>
+                  require( sig.numOutputs == b.numChannels )
+                  if( config.meters ) meterGraph( sig )
+                  Out.ar( b.index, sig )
+               }
+            })
+         }
+
+         soloFactory = config.soloChannels.map { chans => diff( "$solo" ) {
+            val pAmp = pControl( "amp", soloAmpSpec._1, soloAmpSpec._2 )
 
             graph { sig =>
                val numIn   = sig.numOutputs
-               val numOut  = bus.numChannels
+               val numOut  = chans.size
                val sigOut  = Array.fill[ GE ]( numOut )( 0.0f )
                val sca     = (numOut - 1).toFloat / (numIn - 1)
                sig.outputs.zipWithIndex.foreach { tup =>
@@ -302,7 +342,9 @@ with ProcFactoryProvider {
                      sigOut( outChI + 1 ) += sigIn * fr.sqrt
                   }
                }
-               Out.ar( bus.index, sigOut.toSeq /* * pAmp.kr */ )
+               efficientOuts( sigOut.toSeq * pAmp.kr, chans )
+               0.0
+//               Out.ar( bus.index, sigOut.toSeq /* * pAmp.kr */ )
             }}
          }
 
@@ -320,13 +362,44 @@ with ProcFactoryProvider {
       locHintMap += p -> loc
    }
 
+   private def efficientOuts( sig: GE, chans: IIdxSeq[ Int ]) {
+      require( sig.numOutputs == chans.size )
+
+      import synth._
+      import ugen._
+      
+      def funky( seq: IIdxSeq[ (Int, UGenIn) ]) {
+         seq.headOption.foreach { tup =>
+            val (idx, e1)  = tup
+            var cnt = -1
+            val (ja, nein) = seq.span { tup =>
+               val (idx2, _) = tup
+               cnt += 1
+               idx2 == idx + cnt
+            }
+            Out.ar( idx, ja.map( _._2 ))
+            funky( nein )
+         }
+      }
+
+      funky( chans.zip( sig.outputs ).sortBy( _._1 ))
+   }
+
    private def defer( code: => Unit ) {
       EventQueue.invokeLater( new Runnable { def run = code })
    }
    
    def dispose {
-      ProcTxn.atomic { implicit t => world.removeListener( topoListener )}
       stopAnimation
+
+      ProcTxn.atomic { implicit t =>
+         world.removeListener( topoListener )
+         masterProc.foreach { pMaster =>
+            pMaster.dispose
+            pMaster.group.free( true )
+         }
+         masterBus.foreach( _.free )
+      }
    }
 
    private def stopAnimation {
@@ -396,17 +469,29 @@ with ProcFactoryProvider {
             }
          })( breakOut )
 
-         val pMeter = meterFactory.flatMap { fact =>
-            meterBusOption.map { bus =>
-               import DSL._
-               val res = fact.make
-               bus ~> res
-               if( p.isPlaying ) res.play
-               res
+         val pMeter = meterBusOption.flatMap { bus =>
+            import DSL._
+//println( "mf " + masterFactory.isDefined + " / mp " + masterProc.isDefined + " / ana " + (p.anatomy == ProcDiff) )
+            (masterFactory, masterProc) match {
+               case (Some( fact ), Some( pMaster )) if( p.anatomy == ProcDiff ) =>
+                  val res = fact.make
+                  // do _not_ connect to master, as currently with dispose of p
+                  // the pMaster would be disposed, too!!!
+                  bus ~> res // ~> pMaster
+                  if( p.isPlaying ) res.play
+//println( "master for " + p.name )
+                  Some( res )
+               case _ => meterFactory.map { fact =>
+                  val res = fact.make
+                  bus ~> res
+                  if( p.isPlaying ) res.play
+//println( "meter for " + p.name )
+                  res
+               }
             }
          }
 
-         val res = VisualProc( panel, p, pNode, aggr, vParams, pMeter, soloFactory.isDefined )
+         val res = VisualProc( panel, p, pNode, aggr, vParams, pMeter, meterFactory.isDefined, soloFactory.isDefined )
          pMeter.foreach { pm => meterMap += pm -> res }
 //         res.playing = u.playing == Some( true )
 //         res.state =
@@ -422,6 +507,7 @@ with ProcFactoryProvider {
 //      if( u.audioBusesConnected.nonEmpty ) topAddEdgesI( u.audioBusesConnected )
    }
 
+   private var soloVolume = soloAmpSpec._2 // 0.5
    private var soloInfo : Option[ (VisualProc, Proc) ] = None
 
    def setSolo( vp: VisualProc, onOff: Boolean ) {
@@ -439,12 +525,29 @@ with ProcFactoryProvider {
          }
          if( onOff ) {
             val soloP = fact.make
+            soloP.control( "amp" ).v = soloVolume
             vp.proc ~> soloP
             soloP.play
             soloInfo = Some( vp -> soloP )
          }
          vp.soloed = onOff
       }}
+   }
+
+   def setMasterVolume( v: Double )( implicit t: ProcTxn ) {
+      if( !EventQueue.isDispatchThread ) error( "Must be called in event thread" )
+//      masterProc.foreach( _.control( "amp" ).v = v )
+      masterProc.foreach { pMaster =>
+//         println( "MASTER VOL = " + v )
+         pMaster.control( "amp" ).v = v
+      }
+   }
+
+   def setSoloVolume( v: Double )( implicit t: ProcTxn ) {
+      if( !EventQueue.isDispatchThread ) error( "Must be called in event thread" )
+      if( v == soloVolume ) return
+      soloVolume = v
+      soloInfo.foreach( _._2.control( "amp" ).v = v )
    }
 
    private def topAddEdges( edges: Set[ ProcEdge ]) {
@@ -485,7 +588,7 @@ with ProcFactoryProvider {
             vProc.state = u.state
             if( !wasPlaying && u.state.playing ) {
 //               val pms = vProc.params.collect { case (_, VisualAudioOutput( _, _, _, _, Some( pMeter ))) => pMeter }
-               vProc.meter.foreach { pm => ProcTxn.atomic { implicit t => pm.play }}
+               vProc.pMeter.foreach { pm => ProcTxn.atomic { implicit t => if( !pm.isPlaying ) pm.play }}
             }
          }
          if( u.controls.nonEmpty )               topControlsChanged( u.controls )

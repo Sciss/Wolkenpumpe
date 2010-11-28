@@ -161,7 +161,7 @@ object VisualProc {
 }
 
 private[nuages] case class VisualProc( main: NuagesPanel, proc: Proc, pNode: PNode, aggr: AggregateItem,
-                       params: Map[ String, VisualParam ], meter: Option[ Proc ], solo: Boolean )
+                       params: Map[ String, VisualParam ], pMeter: Option[ Proc ], meter: Boolean, solo: Boolean )
 extends VisualData {
    vproc =>
 
@@ -353,7 +353,7 @@ extends VisualData {
          gp.append( soloArea, false )
       }
 
-      if( meter.isDefined ) {
+      if( meter ) {
          arc.setAngleStart( -45 )
          val meterArea = new Area( arc )
          meterArea.subtract( new Area( innerE ))
@@ -374,7 +374,7 @@ extends VisualData {
             g.fill( soloArea )
          }
          
-         if( meter.isDefined ) {
+         if( meter ) {
             val angExtent  = (math.max( 0f, peakNorm ) * 90).toInt
             val pValArc    = new Arc2D.Double( 0, 0, r.getWidth(), r.getHeight(), -45, angExtent, Arc2D.PIE )
             val peakArea   = new Area( pValArc )

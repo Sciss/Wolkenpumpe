@@ -29,15 +29,13 @@
 package de.sciss.nuages
 
 import javax.swing._
-import de.sciss.synth.{Server, Model}
-import java.awt.geom.Point2D
-import collection.mutable.ListBuffer
 import de.sciss.synth._
 import de.sciss.synth.proc._
 import de.sciss.synth.ugen._
 import plaf.basic.{BasicSliderUI, BasicPanelUI}
 import javax.swing.event.{ChangeListener, ChangeEvent, ListSelectionListener, ListSelectionEvent}
 import java.awt.{GridBagConstraints, GridBagLayout, EventQueue, Component, Container, Color, BorderLayout}
+import collection.immutable.{IndexedSeq => IIdxSeq}
 
 /**
  *    @version 0.12, 28-Nov-10
@@ -60,7 +58,7 @@ extends JFrame( "Wolkenpumpe") with ProcDemiurg.Listener {
       },
       ProcDiff    -> createProcFactoryView( pfPanel, 4 )( panel.diffFactory = _ ))
 
-   val grpMaster = Group.tail( config.server )
+//   val grpMaster = Group.tail( config.server )
    
    // ---- constructor ----
    {
@@ -89,38 +87,32 @@ extends JFrame( "Wolkenpumpe") with ProcDemiurg.Listener {
       gridCon.weightx   = 1.0
       gridCon.gridwidth = GridBagConstraints.REMAINDER
 
-      def mkFader( busOption: Option[ AudioBus ], name: String, ctrlSpec: ParamSpec, ctrlInit: Double, weighty: Double ) =
-         busOption foreach { bus =>
-            val ctrlName   = ("v_" + name)
-            val slidSpec   = ParamSpec( 0, 0x10000 )
-            val slidInit   = slidSpec.map( ctrlSpec.unmap( ctrlInit )).toInt
-            val slid       = new JSlider( SwingConstants.VERTICAL, slidSpec.lo.toInt, slidSpec.hi.toInt, slidInit )
-            slid.setUI( new BasicSliderUI( slid ))
-            slid.setBackground( Color.black )
-            slid.setForeground( Color.white )
-            slid.addChangeListener( new ChangeListener {
-               def stateChanged( e: ChangeEvent ) {
-                  val ctrlVal = ctrlSpec.map( slidSpec.unmap( slid.getValue ))
-                  grpMaster.set( ctrlName -> ctrlVal )
-               }
-            })
-            gridCon.weighty = weighty
-            gridLay.setConstraints( slid, gridCon )
-            ggFaderBox.add( slid )
-
-            val df = SynthDef( "nuages-" + name ) {
-               val idx  = "bus".kr
-               val amp  = ctrlName.kr( ctrlInit )
-               val sig  = In.ar( idx, bus.numChannels )
-               ReplaceOut.ar( idx, Limiter.ar( sig * amp, (-0.2).dbamp ))
+      def mkFader( ctrlSpecT: (ParamSpec, Double), weighty: Double )( fun: (Double, ProcTxn) => Unit ) {
+         val (ctrlSpec, ctrlInit) = ctrlSpecT
+         val slidSpec   = ParamSpec( 0, 0x10000 )
+         val slidInit   = slidSpec.map( ctrlSpec.unmap( ctrlInit )).toInt
+         val slid       = new JSlider( SwingConstants.VERTICAL, slidSpec.lo.toInt, slidSpec.hi.toInt, slidInit )
+         slid.setUI( new BasicSliderUI( slid ))
+         slid.setBackground( Color.black )
+         slid.setForeground( Color.white )
+         slid.addChangeListener( new ChangeListener {
+            def stateChanged( e: ChangeEvent ) {
+               val ctrlVal = ctrlSpec.map( slidSpec.unmap( slid.getValue ))
+//               grpMaster.set( ctrlName -> ctrlVal )
+               ProcTxn.atomic { t => fun( ctrlVal, t )}
             }
-            df.play( grpMaster, List( "bus" -> bus.index ))
-         }
+         })
+         gridCon.weighty = weighty
+         gridLay.setConstraints( slid, gridCon )
+         ggFaderBox.add( slid )
+      }
 
-      mkFader( config.masterBus, "master", ParamSpec( 0.01, 10.0, ExpWarp ), 1.0, 0.75 )
-      mkFader( config.soloBus,   "solo",   ParamSpec( 0.1,  10.0, ExpWarp ), 0.5, 0.25 )
-
-      ProcTxn.atomic { implicit t => ProcDemiurg.addListener( frame )}
+      if( config.masterChannels.isDefined ) mkFader( NuagesPanel.masterAmpSpec, 0.75 )( panel.setMasterVolume( _ )( _ ))
+      if( config.soloChannels.isDefined )   mkFader( NuagesPanel.soloAmpSpec, 0.25 )( panel.setSoloVolume( _ )( _ ))
+      
+      ProcTxn.atomic { implicit t =>
+         ProcDemiurg.addListener( frame )
+      }
    }
 
    def updated( u: ProcDemiurg.Update ) { defer {
