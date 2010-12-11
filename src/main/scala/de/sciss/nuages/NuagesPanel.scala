@@ -293,7 +293,8 @@ with ProcFactoryProvider {
             val pMaster = (diff( "$master" ) {
                val pAmp = pControl( "amp", masterAmpSpec._1, masterAmpSpec._2 )
                val pIn  = pAudioIn( "in", None )
-               graph { sig => efficientOuts( sig * pAmp.kr, chans ); 0.0 }
+//               graph { sig => efficientOuts( sig * pAmp.kr, chans ); 0.0 }
+               graph { sig => efficientOuts( Limiter.ar( sig * pAmp.kr, (-0.2).dbamp ), chans ); 0.0 }
             }).make
             pMaster.control( "amp" ).v = masterAmpSpec._2
             // XXX bus should be freed in panel disposal
