@@ -123,9 +123,9 @@ with ProcFactoryProvider {
 //      vis.addFocusGroup( GROUP_PROC )
 //      vis.getGroup( GROUP_PROC )
 //   }
-   private var procMap              = Map.empty[ Proc, VisualProc ]
-   private var edgeMap              = Map.empty[ ProcEdge, Edge ]
-   private var meterMap             = Map.empty[ Proc, VisualProc ]
+   /* private */ var procMap              = Map.empty[ Proc, VisualProc ]
+   /* private */ var edgeMap              = Map.empty[ ProcEdge, Edge ]
+   /* private */ var meterMap             = Map.empty[ Proc, VisualProc ]
 //   private var pendingProcs         = Set.empty[ Proc ]
 
 //   private val topoListener : Model.Listener = {
@@ -472,7 +472,7 @@ with ProcFactoryProvider {
 
          val pMeter = meterBusOption.flatMap { bus =>
             import DSL._
-//println( "mf " + masterFactory.isDefined + " / mp " + masterProc.isDefined + " / ana " + (p.anatomy == ProcDiff) )
+//println( "mf " + masterFactory.isDefined + " / mp " + masterProc.isDefined + " / ana " + (p.anatomy == ProcDiff) + " / bus " + bus )
             (masterFactory, masterProc) match {
                case (Some( fact ), Some( pMaster )) if( p.anatomy == ProcDiff ) =>
                   val res = fact.make
@@ -480,13 +480,13 @@ with ProcFactoryProvider {
                   // the pMaster would be disposed, too!!!
                   bus ~> res // ~> pMaster
                   if( p.isPlaying ) res.play
-//println( "master for " + p.name )
+//println( "master for " + p.name + " (" + p.isPlaying + ")" )
                   Some( res )
                case _ => meterFactory.map { fact =>
                   val res = fact.make
                   bus ~> res
                   if( p.isPlaying ) res.play
-//println( "meter for " + p.name )
+//println( "meter for " + p.name + " (" + p.isPlaying + ")" )
                   res
                }
             }
@@ -606,6 +606,7 @@ with ProcFactoryProvider {
    private def topoUpdate( u: ProcWorld.Update ) {
       if( verbose ) println( "" + new java.util.Date() + " topoUpdate : " + u )
       vis.synchronized {
+         stopAnimation
          ProcTxn.atomic { implicit t =>
             u.procsRemoved.filterNot( _.name.startsWith( "$" )) foreach { p =>
                p.removeListener( procListener )
