@@ -34,7 +34,7 @@ import prefuse.util.ColorLib
 import prefuse.data.{Edge, Node => PNode, Graph}
 import prefuse.visual.{AggregateItem, VisualItem}
 import java.awt.geom.{Line2D, Arc2D, Area, Point2D, Ellipse2D, GeneralPath, Rectangle2D}
-import collection.mutable.{ Set => MSet }
+import collection.immutable.{Set => ISet}
 import de.sciss.synth
 import synth.proc.{ProcAudioBus, Instant, ControlValue, ProcControl, ProcAudioInput, ProcAudioOutput, ControlBusMapping, ProcDiff, ProcFilter, ProcTxn, Proc}
 
@@ -183,7 +183,7 @@ extends VisualData {
 //   private var rmsNorm     = 0f
    private var lastUpdate  = System.currentTimeMillis()
 
-   var soloed = false
+   @volatile var soloed = false
 
    def name : String = proc.name
 
@@ -291,14 +291,6 @@ extends VisualData {
       } else false
    }
 
-   private def addToDisposal( toDispose: MSet[ Proc ], p: Proc )( implicit tx: ProcTxn ) {
-      if( toDispose.contains( p )) return
-      toDispose += p
-      val more = (p.audioInputs.flatMap( _.edges.map( _.sourceVertex )) ++
-                  p.audioOutputs.flatMap( _.edges.map( _.targetVertex )))
-      more.foreach( addToDisposal( toDispose, _ )) // XXX tail rec
-   }
-
    private def disposeProc {
 //println( "DISPOSE " + proc )
       ProcTxn.atomic { implicit t =>
@@ -327,8 +319,15 @@ extends VisualData {
    }
 
    private def disposeGenDiff( implicit tx: ProcTxn ) {
-      val toDispose = MSet.empty[ Proc ]
-      addToDisposal( toDispose, proc )
+      var toDispose = ISet.empty[ Proc ]
+      def addToDisposal( p: Proc ) {
+         if( toDispose.contains( p )) return
+         toDispose += p
+         val more = (p.audioInputs.flatMap( _.edges.map( _.sourceVertex )) ++
+                     p.audioOutputs.flatMap( _.edges.map( _.targetVertex )))
+         more.foreach( addToDisposal( _ )) // XXX tail rec
+      }
+      addToDisposal( proc )
       toDispose.foreach( p => {
          val ines = p.audioInputs.flatMap( _.edges ).toSeq // XXX
          val outes= p.audioOutputs.flatMap( _.edges ).toSeq // XXX

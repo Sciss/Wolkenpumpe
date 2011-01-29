@@ -144,7 +144,7 @@ with ProcFactoryProvider {
    def masterBus : Option[ AudioBus ] = masterBusVar
 
    private object topoListener extends ProcWorld.Listener {
-      def updated( u: ProcWorld.Update ) { defer( topoUpdate( u ))}
+      def updated( u: ProcWorld.Update ) = topoUpdate( u ) // { defer( topoUpdate( u ))}
    }
 
    private object procListener extends Proc.Listener {
@@ -412,7 +412,7 @@ with ProcFactoryProvider {
       vis.run( ACTION_COLOR )
    }
 
-   private def topAddProc( p: Proc )( implicit t: ProcTxn ) {
+   private def topAddProc( p: Proc, pMeter: Option[ Proc ]) {
       val pNode   = g.addNode()
       val vi      = vis.getVisualItem( GROUP_GRAPH, pNode )
       val locO    = locHintMap.get( p )
@@ -437,7 +437,7 @@ with ProcFactoryProvider {
          (pParamNode, pParamEdge, vi)
       }
 
-      var meterBusOption : Option[ ProcAudioOutput ] = None
+//      var meterBusOption : Option[ ProcAudioOutput ] = None
 
       lazy val vProc: VisualProc = {
          val vParams: Map[ String, VisualParam ] = p.params.collect({
@@ -445,8 +445,6 @@ with ProcFactoryProvider {
                val (pParamNode, pParamEdge, vi) = createNode
                val pControl   = p.control( pFloat.name )
                val vControl   = VisualControl( pControl, pParamNode, pParamEdge )( vProc )
-//               val mVal       = u.controls( pControl )
-//               vControl.value = pFloat.spec.unmap( pFloat.spec.clip( mVal ))
                vi.set( COL_NUAGES, vControl )
                vControl.name -> vControl
             }
@@ -465,32 +463,32 @@ with ProcFactoryProvider {
                val pBus = p.audioOutput( pParamBus.name )
                val vBus = VisualAudioOutput( panel, pBus, pParamNode, pParamEdge )
                vi.set( COL_NUAGES, vBus )
-               if( vBus.name == "out" ) meterBusOption = Some( pBus )
+//               if( vBus.name == "out" ) meterBusOption = Some( pBus )
                vBus.name -> vBus
             }
          })( breakOut )
 
-         val pMeter = meterBusOption.flatMap { bus =>
-            import DSL._
-//println( "mf " + masterFactory.isDefined + " / mp " + masterProc.isDefined + " / ana " + (p.anatomy == ProcDiff) + " / bus " + bus )
-            (masterFactory, masterProc) match {
-               case (Some( fact ), Some( pMaster )) if( p.anatomy == ProcDiff ) =>
-                  val res = fact.make
-                  // do _not_ connect to master, as currently with dispose of p
-                  // the pMaster would be disposed, too!!!
-                  bus ~> res // ~> pMaster
-                  if( p.isPlaying ) res.play
-//println( "master for " + p.name + " (" + p.isPlaying + ")" )
-                  Some( res )
-               case _ => meterFactory.map { fact =>
-                  val res = fact.make
-                  bus ~> res
-                  if( p.isPlaying ) res.play
-//println( "meter for " + p.name + " (" + p.isPlaying + ")" )
-                  res
-               }
-            }
-         }
+//         val pMeter = meterBusOption.flatMap { bus =>
+//            import DSL._
+////println( "mf " + masterFactory.isDefined + " / mp " + masterProc.isDefined + " / ana " + (p.anatomy == ProcDiff) + " / bus " + bus )
+//            (masterFactory, masterProc) match {
+//               case (Some( fact ), Some( pMaster )) if( p.anatomy == ProcDiff ) =>
+//                  val res = fact.make
+//                  // do _not_ connect to master, as currently with dispose of p
+//                  // the pMaster would be disposed, too!!!
+//                  bus ~> res // ~> pMaster
+//                  if( p.isPlaying ) res.play
+////println( "master for " + p.name + " (" + p.isPlaying + ")" )
+//                  Some( res )
+//               case _ => meterFactory.map { fact =>
+//                  val res = fact.make
+//                  bus ~> res
+//                  if( p.isPlaying ) res.play
+////println( "meter for " + p.name + " (" + p.isPlaying + ")" )
+//                  res
+//               }
+//            }
+//         }
 
          val res = VisualProc( panel, p, pNode, aggr, vParams, pMeter, meterFactory.isDefined, soloFactory.isDefined )
          pMeter.foreach { pm => meterMap += pm -> res }
@@ -508,35 +506,38 @@ with ProcFactoryProvider {
 //      if( u.audioBusesConnected.nonEmpty ) topAddEdgesI( u.audioBusesConnected )
    }
 
-   private var soloVolume = soloAmpSpec._2 // 0.5
-   private var soloInfo : Option[ (VisualProc, Proc) ] = None
+   private val soloVolume = Ref( soloAmpSpec._2 ) // 0.5
+   private val soloInfo = Ref( Option.empty[ (VisualProc, Proc) ])
 
    def setSolo( vp: VisualProc, onOff: Boolean ) {
       import DSL._
       if( !EventQueue.isDispatchThread ) error( "Must be called in event thread" )
       soloFactory.foreach { fact => ProcTxn.atomic { implicit t =>
-         soloInfo.foreach { tup =>
+         val info       = soloInfo.swap( None )
+         val sameProc   = Some( vp ) == info.map( _._1 )
+         if( sameProc && onOff ) return
+
+          info.foreach { tup =>
             val (soloVP, soloP) = tup
             if( soloP.state.valid ) {
                soloVP.proc ~/> soloP
                soloP.dispose
             }
-            soloVP.soloed = false
-            soloInfo = None
+            if( !sameProc ) t.afterCommit { _ => soloVP.soloed = false }
          }
          if( onOff ) {
             val soloP = fact.make
-            soloP.control( "amp" ).v = soloVolume
+            soloP.control( "amp" ).v = soloVolume()
             vp.proc ~> soloP
             soloP.play
-            soloInfo = Some( vp -> soloP )
+            soloInfo.set( Some( vp -> soloP ))
          }
-         vp.soloed = onOff
+         t.afterCommit { _ => vp.soloed = onOff }
       }}
    }
 
    def setMasterVolume( v: Double )( implicit t: ProcTxn ) {
-      if( !EventQueue.isDispatchThread ) error( "Must be called in event thread" )
+      if( !EventQueue.isDispatchThread ) error( "Must be called in event thread" ) // XXX why actually?
 //      masterProc.foreach( _.control( "amp" ).v = v )
       masterProc.foreach { pMaster =>
 //         println( "MASTER VOL = " + v )
@@ -545,10 +546,10 @@ with ProcFactoryProvider {
    }
 
    def setSoloVolume( v: Double )( implicit t: ProcTxn ) {
-      if( !EventQueue.isDispatchThread ) error( "Must be called in event thread" )
-      if( v == soloVolume ) return
-      soloVolume = v
-      soloInfo.foreach( _._2.control( "amp" ).v = v )
+      if( !EventQueue.isDispatchThread ) error( "Must be called in event thread" ) // XXX why actually?
+      val oldV = soloVolume.swap( v )
+      if( v == oldV ) return
+      soloInfo().foreach( _._2.control( "amp" ).v = v )
    }
 
    private def topAddEdges( edges: Set[ ProcEdge ]) {
@@ -603,21 +604,65 @@ with ProcFactoryProvider {
       })
    }
 
+//   private def topoUpdate( u: ProcWorld.Update ) {
+//      if( verbose ) println( "" + new java.util.Date() + " topoUpdate : " + u )
+//      vis.synchronized {
+//         stopAnimation
+//         ProcTxn.atomic { implicit t =>   // KKK
+//            u.procsRemoved.filterNot( _.name.startsWith( "$" )) foreach { p =>
+//               p.removeListener( procListener )
+//               procMap.get( p ).map( topRemoveProc( _ ))
+//            }
+//            u.procsAdded.filterNot( _.name.startsWith( "$" )) foreach { p =>
+//               topAddProc( p )
+//               p.addListener( procListener )
+//            }
+//         }
+//         startAnimation
+//      }
+//   }
+
    private def topoUpdate( u: ProcWorld.Update ) {
-      if( verbose ) println( "" + new java.util.Date() + " topoUpdate : " + u )
-      vis.synchronized {
-         stopAnimation
-         ProcTxn.atomic { implicit t =>
-            u.procsRemoved.filterNot( _.name.startsWith( "$" )) foreach { p =>
-               p.removeListener( procListener )
-               procMap.get( p ).map( topRemoveProc( _ ))
+      ProcTxn.atomic { implicit t =>
+         val toRemove = u.procsRemoved.filterNot( _.name.startsWith( "$" ))
+         toRemove.foreach( _.removeListener( procListener ))
+         val toAdd = u.procsAdded.filterNot( _.name.startsWith( "$" ))
+         toAdd.foreach( _.addListener( procListener ))
+         val toAddWithMeter = toAdd.map { p =>
+            val pMeter = (p.params.collect {
+               case pParamBus: ProcParamAudioOutput if( pParamBus.name == "out" ) => p.audioOutput( pParamBus.name )
+            }).headOption.flatMap { bus =>
+               import DSL._
+               (masterFactory, masterProc) match {
+                  case (Some( fact ), Some( pMaster )) if( p.anatomy == ProcDiff ) =>
+                     val res = fact.make
+                     // do _not_ connect to master, as currently with dispose of p
+                     // the pMaster would be disposed, too!!!
+                     bus ~> res // ~> pMaster
+                     if( p.isPlaying ) res.play
+//println( "master for " + p.name + " (" + p.isPlaying + ")" )
+                     Some( res )
+                  case _ => meterFactory.map { fact =>
+                     val res = fact.make
+                     bus ~> res
+                     if( p.isPlaying ) res.play
+//println( "meter for " + p.name + " (" + p.isPlaying + ")" )
+                     res
+                  }
+               }
             }
-            u.procsAdded.filterNot( _.name.startsWith( "$" )) foreach { p =>
-               topAddProc( p )
-               p.addListener( procListener )
-            }
+            (p, pMeter)
          }
-         startAnimation
+
+         t.afterCommit( _ => defer {
+            if( verbose ) println( "" + new java.util.Date() + " topoUpdate : " + u )
+            vis.synchronized {
+               stopAnimation
+               toRemove.foreach { p => procMap.get( p ).foreach( topRemoveProc( _ ))}
+               toAddWithMeter.foreach( tup => topAddProc( tup._1, tup._2 ))
+               startAnimation
+            }
+         })
       }
    }
 
