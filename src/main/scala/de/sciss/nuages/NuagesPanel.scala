@@ -625,7 +625,12 @@ with ProcFactoryProvider {
    private def topoUpdate( u: ProcWorld.Update ) {
       ProcTxn.atomic { implicit t =>
          val toRemove = u.procsRemoved.filterNot( _.name.startsWith( "$" ))
-         toRemove.foreach( _.removeListener( procListener ))
+         toRemove.foreach { p =>
+            p.removeListener( procListener )
+            procMap.get( p ).flatMap( _.pMeter ).foreach { pm =>
+               if( pm.state.valid ) pm.dispose
+            }
+         }
          val toAdd = u.procsAdded.filterNot( _.name.startsWith( "$" ))
          toAdd.foreach( _.addListener( procListener ))
          val toAddWithMeter = toAdd.map { p =>
