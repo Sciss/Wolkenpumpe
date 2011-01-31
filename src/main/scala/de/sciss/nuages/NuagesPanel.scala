@@ -537,7 +537,7 @@ with ProcFactoryProvider {
    }
 
    def setMasterVolume( v: Double )( implicit t: ProcTxn ) {
-      if( !EventQueue.isDispatchThread ) error( "Must be called in event thread" ) // XXX why actually?
+//      if( !EventQueue.isDispatchThread ) error( "Must be called in event thread" ) // XXX why actually?
 //      masterProc.foreach( _.control( "amp" ).v = v )
       masterProc.foreach { pMaster =>
 //         println( "MASTER VOL = " + v )
@@ -546,7 +546,7 @@ with ProcFactoryProvider {
    }
 
    def setSoloVolume( v: Double )( implicit t: ProcTxn ) {
-      if( !EventQueue.isDispatchThread ) error( "Must be called in event thread" ) // XXX why actually?
+//      if( !EventQueue.isDispatchThread ) error( "Must be called in event thread" ) // XXX why actually?
       val oldV = soloVolume.swap( v )
       if( v == oldV ) return
       soloInfo().foreach( _._2.control( "amp" ).v = v )
