@@ -2,7 +2,7 @@
  *  NuagesPanel.scala
  *  (Wolkenpumpe)
  *
- *  Copyright (c) 2008-2010 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2008-2011 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -158,7 +158,19 @@ with ProcFactoryProvider {
 //      case AudioBusesDisconnected( edges @ _* ) => defer( topRemoveEdges( edges: _* ))
 //      case MappingsChanged( controls @ _* )     => defer( topMappingsChanged( controls: _* ))
 //   }
-   
+
+   // ---- ProcFactoryProvider ----
+   var genFactory    = Option.empty[ ProcFactory ]
+   var filterFactory = Option.empty[ ProcFactory ]
+   var diffFactory   = Option.empty[ ProcFactory ]
+   var collector     = Option.empty[ Proc ]
+   private var locHintMap = Map.empty[ Proc, Point2D ]
+   def setLocationHint( p: Proc, loc: Point2D ) {
+//      println( "loc for " + p + " is " + loc )
+      locHintMap += p -> loc
+   }
+
+
    // ---- constructor ----
    {
 //      vis.setValue( GROUP_NODES, null, VisualItem.SHAPE, new java.lang.Integer( Constants.SHAPE_ELLIPSE ))
@@ -289,8 +301,14 @@ with ProcFactoryProvider {
             }
          })
 
+         if( config.collector ) {
+            val p = (filter( "_+" )( graph( x => x ))).make
+            collector = Some( p )
+         }
+
          config.masterChannels.foreach { chans =>
-            val pMaster = (diff( "$master" ) {
+            val name    = if( config.collector ) "_master" else "$master"
+            val pMaster = (diff( name ) {
                val pAmp = pControl( "amp", masterAmpSpec._1, masterAmpSpec._2 )
                val pIn  = pAudioIn( "in", None )
 //               graph { sig => efficientOuts( sig * pAmp.kr, chans ); 0.0 }
@@ -307,6 +325,8 @@ with ProcFactoryProvider {
             masterProc     = Some( pMaster )
             masterBusVar   = Some( b )
 
+            collector.foreach( _ ~> pMaster )
+
 //            masterFactory = Some( filter( "$diff" ) {
 //               graph { sig =>
 //                  require( sig.numOutputs == chans.size )
@@ -322,6 +342,8 @@ with ProcFactoryProvider {
                }
             })
          }
+
+         collector.foreach( _.play )
 
          soloFactory = config.soloChannels.map { chans => diff( "$solo" ) {
             val pAmp = pControl( "amp", soloAmpSpec._1, soloAmpSpec._2 )
@@ -351,16 +373,6 @@ with ProcFactoryProvider {
 
          world.addListener( topoListener )
       }
-   }
-
-   // ---- ProcFactoryProvider ----
-   var genFactory:    Option[ ProcFactory ] = None
-   var filterFactory: Option[ ProcFactory ] = None
-   var diffFactory:   Option[ ProcFactory ] = None
-   private var locHintMap = Map.empty[ Proc, Point2D ]
-   def setLocationHint( p: Proc, loc: Point2D ) {
-//      println( "loc for " + p + " is " + loc )
-      locHintMap += p -> loc
    }
 
    private def efficientOuts( sig: GE, chans: IIdxSeq[ Int ]) {

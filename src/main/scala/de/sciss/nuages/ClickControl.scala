@@ -2,7 +2,7 @@
  *  ClickControl.scala
  *  (Wolkenpumpe)
  *
- *  Copyright (c) 2008-2010 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2008-2011 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -54,6 +54,7 @@ trait ProcFactoryProvider {
    def genFactory:      Option[ ProcFactory ]
    def filterFactory:   Option[ ProcFactory ]
    def diffFactory:     Option[ ProcFactory ]
+   def collector:       Option[ Proc ]
    def setLocationHint( p: Proc, loc: Point2D )
 }
 
@@ -82,6 +83,10 @@ class ClickControl( main: NuagesPanel ) extends ControlAdapter {
          val gen  = genF.make
          val diff = diffF.make
          gen ~> diff
+         if( diff.anatomy == ProcFilter ) { // this is the case for config.collector == true
+            main.collector.foreach( diff ~> _ )
+         }
+
          tx.beforeCommit { _ =>
             val genPt  = new Point2D.Double( pt.getX, pt.getY - 30 )
             val diffPt = new Point2D.Double( pt.getX, pt.getY + 30 )

@@ -2,7 +2,7 @@
  *  NuagesFrame.scala
  *  (Wolkenpumpe)
  *
- *  Copyright (c) 2008-2010 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2008-2011 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -115,17 +115,24 @@ extends JFrame( "Wolkenpumpe") with ProcDemiurg.Listener {
       }
    }
 
+   private def groupByAnatomy( set: Set[ ProcFactory ]) : Map[ ProcAnatomy, Set[ ProcFactory ]] = {
+      val filtered   = set.filterNot( _.name.startsWith( "$" ))
+      val byAnatomy0 = filtered.groupBy( _.anatomy )
+      if( config.collector ) {
+         val (diff, flt) = byAnatomy0( ProcFilter ).partition( _.name.startsWith( "O-" ))
+         byAnatomy0 + (ProcDiff -> diff) + (ProcFilter -> flt)
+      } else byAnatomy0
+   }
+
    def updated( u: ProcDemiurg.Update ) { defer {
       if( u.factoriesRemoved.nonEmpty ) {
-         val byAnatomy = u.factoriesRemoved.filterNot( _.name.startsWith( "$" )).groupBy( _.anatomy )
-         byAnatomy foreach { tup =>
+         groupByAnatomy( u.factoriesRemoved ) foreach { tup =>
             val (ana, facts) = tup
             models.get( ana ).foreach( _.model.remove( facts.toSeq: _* ))
          }
       }
       if( u.factoriesAdded.nonEmpty ) {
-         val byAnatomy = u.factoriesAdded.filterNot( _.name.startsWith( "$" )).groupBy( _.anatomy ) 
-         byAnatomy foreach { tup =>
+         groupByAnatomy( u.factoriesAdded ) foreach { tup =>
             val (ana, facts) = tup
             models.get( ana ).foreach( _.model.add( facts.toSeq: _* ))
          }
