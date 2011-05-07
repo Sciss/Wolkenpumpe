@@ -302,11 +302,14 @@ with ProcFactoryProvider {
          })
 
          if( config.collector ) {
+            if( verbose ) Console.print( "Creating collector...")
             val p = (filter( "_+" )( graph( x => x ))).make
             collector = Some( p )
+            if( verbose ) println( " ok" )
          }
 
          config.masterChannels.foreach { chans =>
+            if( verbose ) Console.print( "Creating master...")
             val name    = if( config.collector ) "_master" else "$master"
             val pMaster = (diff( name ) {
                val pAmp = pControl( "amp", masterAmpSpec._1, masterAmpSpec._2 )
@@ -316,16 +319,22 @@ with ProcFactoryProvider {
             }).make
             pMaster.control( "amp" ).v = masterAmpSpec._2
             // XXX bus should be freed in panel disposal
-            val b = Bus.audio( config.server, chans.size ) 
-            pMaster.audioInput( "in" ).bus = Some( RichBus.wrap( b ))
+
+            val b = Bus.audio( config.server, chans.size )
+            collector match {
+               case Some( pColl ) =>
+                  pColl.audioInput( "in" ).bus = Some( RichBus.wrap( b ))
+                  pColl ~> pMaster
+               case None =>
+                  pMaster.audioInput( "in" ).bus = Some( RichBus.wrap( b ))
+            }
+
             val g = RichGroup( Group( config.server ))
             g.play( RichGroup.default( config.server ), addToTail )
             pMaster.group  = g
             pMaster.play
             masterProc     = Some( pMaster )
             masterBusVar   = Some( b )
-
-            collector.foreach( _ ~> pMaster )
 
 //            masterFactory = Some( filter( "$diff" ) {
 //               graph { sig =>
@@ -341,9 +350,13 @@ with ProcFactoryProvider {
                   Out.ar( b.index, sig )
                }
             })
+            if( verbose ) println( " ok" )
          }
 
-         collector.foreach( _.play )
+//         collector.foreach { p =>
+//            if( verbose ) print( "Starting collector...")
+//            p.play
+//         }
 
          soloFactory = config.soloChannels.map { chans => diff( "$solo" ) {
             val pAmp = pControl( "amp", soloAmpSpec._1, soloAmpSpec._2 )
@@ -404,6 +417,8 @@ with ProcFactoryProvider {
    
    def dispose {
       stopAnimation
+
+      if( config.collector ) println( "WARNING! NuagesPanel.dispose -- doesn't handle the collector yet" )
 
       ProcTxn.atomic { implicit t =>
          world.removeListener( topoListener )

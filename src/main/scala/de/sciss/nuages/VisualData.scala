@@ -36,7 +36,7 @@ import prefuse.visual.{AggregateItem, VisualItem}
 import java.awt.geom.{Line2D, Arc2D, Area, Point2D, Ellipse2D, GeneralPath, Rectangle2D}
 import collection.immutable.{Set => ISet}
 import de.sciss.synth
-import synth.proc.{ProcAudioBus, Instant, ControlValue, ProcControl, ProcAudioInput, ProcAudioOutput, ControlBusMapping, ProcDiff, ProcFilter, ProcTxn, Proc}
+import synth.proc.{Glide, XFade, DSL, ProcAudioBus, Instant, ControlValue, ProcControl, ProcAudioInput, ProcAudioOutput, ControlBusMapping, ProcDiff, ProcFilter, ProcTxn, Proc}
 
 private[nuages] object VisualData {
    val diam  = 50
@@ -187,11 +187,14 @@ extends VisualData {
 
    def name : String = proc.name
 
+   private val isCollectorInput = main.collector.isDefined && (proc.anatomy == ProcFilter) && (proc.name.startsWith( "O-" ))
+   private val isSynthetic = proc.name.startsWith( "_" )
+
    def isAlive = stateVar.valid && !disposeAfterFade
    def state = stateVar
    def state_=( value: Proc.State ) {
       stateVar = value
-      if( disposeAfterFade && !value.fading ) disposeProc
+      if( disposeAfterFade && !value.fading && !isCollectorInput ) disposeProc
    }
 
    private def paintToNorm( paint: Float ) : Float = {
@@ -241,6 +244,7 @@ extends VisualData {
    override def itemPressed( vi: VisualItem, e: MouseEvent, pt: Point2D ) : Boolean = {
       if( !isAlive ) return false
       if( super.itemPressed( vi, e, pt )) return true
+      if( isSynthetic ) return false
 
       val xt = pt.getX() - r.getX()
       val yt = pt.getY() - r.getY()
@@ -268,9 +272,13 @@ extends VisualData {
          proc.anatomy match {
             case ProcFilter => {
                ProcTxn.atomic { implicit t =>
-                  if( instant ) disposeFilter else {
-                     t.afterCommit { _ => disposeAfterFade = true }
-                     t.withTransition( main.transition( t.time )) { proc.bypass }
+                  if( isCollectorInput ) {
+                     disposeCollectorInput( proc )
+                  } else {
+                     if( instant ) disposeFilter else {
+                        t.afterCommit { _ => disposeAfterFade = true }
+                        t.withTransition( main.transition( t.time )) { proc.bypass }
+                     }
                   }
                }
             }
@@ -289,6 +297,46 @@ extends VisualData {
          }
          true
       } else false
+   }
+
+   /*
+    * Removes and disposes subtree (without fading)
+    */
+   private def disposeSubTree( p: Proc )( implicit tx: ProcTxn ) {
+      p.audioOutputs.flatMap( _.edges ).foreach( e => e.out ~/> e.in )
+      val srcs: Set[ Proc ] = p.audioInputs.flatMap( _.edges ).map( e => {
+         val pSrc = e.sourceVertex
+         if( pSrc.isPlaying ) pSrc.stop
+         e.out ~/> e.in
+         pSrc
+      })( collection.breakOut )
+      p.dispose
+      srcs.foreach( disposeSubTree( _ ))
+   }
+
+   private def disposeCollectorInput( p: Proc )( implicit tx: ProcTxn ) {
+      import DSL._
+
+      val trans = main.transition( tx.time ) match {
+         case XFade( start, dur ) => Glide( start, dur )
+         case n => n
+      }
+
+      val instant    = !stateVar.playing || stateVar.bypassed || trans == Instant
+      def dispo( implicit tx: ProcTxn ) {
+         disposeSubTree( p )
+//            postFun( tx )
+      }
+
+      if( !instant ) {
+         tx.withTransition( trans ) {
+            val ctrl = p.control( "amp" )
+            ctrl.v = ctrl.spec.lo
+         }
+         ProcessHelper.whenGlideDone( p, "amp" )( dispo( _ ))
+      } else {
+         dispo
+      }
    }
 
    private def disposeProc {
