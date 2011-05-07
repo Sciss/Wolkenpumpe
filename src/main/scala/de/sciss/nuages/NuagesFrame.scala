@@ -116,10 +116,11 @@ extends JFrame( "Wolkenpumpe") with ProcDemiurg.Listener {
    }
 
    private def groupByAnatomy( set: Set[ ProcFactory ]) : Map[ ProcAnatomy, Set[ ProcFactory ]] = {
-      val filtered   = set.filterNot( _.name.startsWith( "$" ))
+      val filtered   = set.filterNot( f => { val c = f.name.charAt( 0 ); c == '$' || c == '_' })
       val byAnatomy0 = filtered.groupBy( _.anatomy )
       if( config.collector ) {
-         val (diff, flt) = byAnatomy0( ProcFilter ).partition( _.name.startsWith( "O-" ))
+         val (diff0, flt) = byAnatomy0.getOrElse( ProcFilter, Set.empty[ ProcFactory ]).partition( _.name.startsWith( "O-" ))
+         val diff = diff0 ++ byAnatomy0.getOrElse( ProcDiff, Set.empty[ ProcFactory ])
          byAnatomy0 + (ProcDiff -> diff) + (ProcFilter -> flt)
       } else byAnatomy0
    }
