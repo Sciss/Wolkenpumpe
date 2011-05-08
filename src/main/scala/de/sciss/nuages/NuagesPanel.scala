@@ -323,11 +323,15 @@ with ProcFactoryProvider {
             val b = Bus.audio( config.server, chans.size )
             collector match {
                case Some( pColl ) =>
-                  pColl.audioInput( "in" ).bus = Some( RichBus.wrap( b ))
+//                  val pDummy = (gen( "_" )( graph( Silent.ar( chans.size )))).make
+//                  pDummy ~>
+                  val b2 = Bus.audio( config.server, chans.size )
+                  pColl.audioInput( "in" ).bus = Some( RichBus.wrap( b2 ))
                   pColl ~> pMaster
+                  pColl.play
                case None =>
-                  pMaster.audioInput( "in" ).bus = Some( RichBus.wrap( b ))
             }
+            pMaster.audioInput( "in" ).bus = Some( RichBus.wrap( b ))
 
             val g = RichGroup( Group( config.server ))
             g.play( RichGroup.default( config.server ), addToTail )
