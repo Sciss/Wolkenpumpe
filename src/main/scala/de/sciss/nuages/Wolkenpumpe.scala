@@ -41,7 +41,7 @@ import javax.swing.WindowConstants
  */
 object Wolkenpumpe /* extends TxnModel[ NuagesUpdate ]*/ {
    val name          = "Wolkenpumpe"
-   val version       = 0.24
+   val version       = 0.25
    val copyright     = "(C)opyright 2004-2011 Hanns Holger Rutz"
    def versionString = (version + 0.001).toString.substring( 0, 4 )
 
