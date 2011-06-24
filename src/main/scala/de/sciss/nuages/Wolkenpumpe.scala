@@ -92,7 +92,7 @@ object Wolkenpumpe /* extends TxnModel[ NuagesUpdate ]*/ {
                   val pfreq = pAudio( "freq", ParamSpec( -1, 1 ), 0.7 )
                   val pmix  = pAudio( "mix", ParamSpec( 0, 1 ), 1 )
 
-                  graph { in =>
+                  graph { in: In =>
                      val normFreq   = pfreq.ar
                      val lowFreqN	= Lag.ar( Clip.ar( normFreq, -1, 0 ))
                      val highFreqN  = Lag.ar( Clip.ar( normFreq,  0, 1 ))
@@ -113,7 +113,7 @@ object Wolkenpumpe /* extends TxnModel[ NuagesUpdate ]*/ {
                   val pspeed  = pAudio( "speed", ParamSpec( 0.125, 2.3511, ExpWarp ), 0.5 )
                   val pmix    = pAudio( "mix", ParamSpec( 0, 1 ), 1 )
 
-                  graph { in =>
+                  graph { in: In =>
                      val speed	   = Lag.ar( pspeed.ar, 0.1 )
                      val numFrames  = sampleRate.toInt
                      val numChannels= in.numOutputs
@@ -137,7 +137,7 @@ object Wolkenpumpe /* extends TxnModel[ NuagesUpdate ]*/ {
                    val pamp  = pAudio( "amp", ParamSpec( 0.01, 10, ExpWarp ), 1 )
                    val pout  = pAudioOut( "out", None ) // Some( RichBus.wrap( masterBus ))
 
-                   graph { in =>
+                   graph { in: In =>
                       val sig = in * pamp.ar
 //                      Out.ar( masterBus.index, sig )
                       pout.ar( sig )

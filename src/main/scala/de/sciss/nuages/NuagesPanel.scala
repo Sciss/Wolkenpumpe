@@ -280,10 +280,11 @@ with ProcFactoryProvider {
          import synth._
          import ugen._
 
-         def meterGraph( sig: GE ) {
+         def meterGraph( sig: In ) {
             val meterTr    = Impulse.kr( 1000.0 / LAYOUT_TIME )
-            val peak       = Peak.kr( sig, meterTr ).outputs
-            val peakM      = peak.tail.foldLeft[ GE ]( peak.head )( _ max _ ) \ 0
+            val peak       = Peak.kr( sig, meterTr ) // .outputs
+//            val peakM      = peak.tail.foldLeft[ GE ]( peak.head )( _ max _ ) \ 0
+            val peakM      = Reduce.max( peak )
             val me         = Proc.local
             // warning: currently a bug in SendReply? if values are audio-rate,
             // trigger needs to be audio-rate, too
@@ -295,7 +296,7 @@ with ProcFactoryProvider {
          }
 
          if( config.meters ) meterFactory = Some( diff( "$meter" ) {
-            graph { sig =>
+            graph { sig: In =>
                meterGraph( sig )
                0.0
             }
@@ -303,7 +304,7 @@ with ProcFactoryProvider {
 
          if( config.collector ) {
             if( verbose ) Console.print( "Creating collector...")
-            val p = (filter( "_+" )( graph( x => x ))).make
+            val p = (filter( "_+" )( graph( (x: In) => x ))).make
             collector = Some( p )
             if( verbose ) println( " ok" )
          }
@@ -315,7 +316,7 @@ with ProcFactoryProvider {
                val pAmp = pControl( "amp", masterAmpSpec._1, masterAmpSpec._2 )
                val pIn  = pAudioIn( "in", None )
 //               graph { sig => efficientOuts( sig * pAmp.kr, chans ); 0.0 }
-               graph { sig => efficientOuts( Limiter.ar( sig * pAmp.kr, (-0.2).dbamp ), chans ); 0.0 }
+               graph { (sig: In) => efficientOuts( Limiter.ar( sig * pAmp.kr, (-0.2).dbamp ), chans ); 0.0 }
             }).make
             pMaster.control( "amp" ).v = masterAmpSpec._2
             // XXX bus should be freed in panel disposal
@@ -348,7 +349,7 @@ with ProcFactoryProvider {
 //               }
 //            })
             masterFactory = Some( diff( "$diff" ) {
-               graph { sig =>
+               graph { (sig: In) =>
                   require( sig.numOutputs == b.numChannels )
                   if( config.meters ) meterGraph( sig )
                   Out.ar( b.index, sig )
@@ -365,7 +366,7 @@ with ProcFactoryProvider {
          soloFactory = config.soloChannels.map { chans => diff( "$solo" ) {
             val pAmp = pControl( "amp", soloAmpSpec._1, soloAmpSpec._2 )
 
-            graph { sig =>
+            graph { sig: In =>
                val numIn   = sig.numOutputs
                val numOut  = chans.size
                val sigOut  = Array.fill[ GE ]( numOut )( 0.0f )
