@@ -53,6 +53,7 @@ import java.util.TimerTask
 import de.sciss.synth
 import synth.ugen.Out
 import synth.{Group, AudioBus, Bus, UGenIn, GE, Model, Server}
+import sys.error
 
 /**
  *    @version 0.11, 28-Nov-10

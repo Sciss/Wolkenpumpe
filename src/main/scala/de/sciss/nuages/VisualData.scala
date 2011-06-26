@@ -37,6 +37,7 @@ import java.awt.geom.{Line2D, Arc2D, Area, Point2D, Ellipse2D, GeneralPath, Rect
 import collection.immutable.{Set => ISet}
 import de.sciss.synth
 import synth.proc.{Glide, XFade, DSL, ProcAudioBus, Instant, ControlValue, ProcControl, ProcAudioInput, ProcAudioOutput, ControlBusMapping, ProcDiff, ProcFilter, ProcTxn, Proc}
+import de.sciss.sonogram.IntensityColorScheme
 
 private[nuages] object VisualData {
    val diam  = 50
@@ -146,18 +147,19 @@ object VisualProc {
    private val logPeakCorr		= 20.0 / math.log( 10 )
    private val logRMSCorr		= 10.0 / math.log( 10 )
 
-   private def hsbFade( w1: Float, rgbMin: Int, rgbMax: Int ) : Color = {
-      val hsbTop = new Array[ Float ]( 3 )
-      val hsbBot = new Array[ Float ]( 3 )
-      Color.RGBtoHSB( (rgbMax >> 16) & 0xFF, (rgbMax >> 8) & 0xFF, rgbMax & 0xFF, hsbTop )
-      Color.RGBtoHSB( (rgbMin >> 16) & 0xFF, (rgbMin >> 8) & 0xFF, rgbMin & 0xFF, hsbBot );
-      val w2 = 1f - w1
-      Color.getHSBColor( hsbTop( 0 ) * w1 + hsbBot( 0 ) * w2,
-           hsbTop( 1 ) * w1 + hsbBot( 1 ) * w2,
-           hsbTop( 2 ) * w1 + hsbBot( 2 ) * w2 )
-   }
-
-   private val colrPeak       = Array.tabulate( 91 )( ang => hsbFade( ang / 91f, 0x02FF02, 0xFF6B6B ))
+//   private def hsbFade( w1: Float, rgbMin: Int, rgbMax: Int ) : Color = {
+//      val hsbTop = new Array[ Float ]( 3 )
+//      val hsbBot = new Array[ Float ]( 3 )
+//      Color.RGBtoHSB( (rgbMax >> 16) & 0xFF, (rgbMax >> 8) & 0xFF, rgbMax & 0xFF, hsbTop )
+//      Color.RGBtoHSB( (rgbMin >> 16) & 0xFF, (rgbMin >> 8) & 0xFF, rgbMin & 0xFF, hsbBot );
+//      val w2 = 1f - w1
+//      Color.getHSBColor( hsbTop( 0 ) * w1 + hsbBot( 0 ) * w2,
+//           hsbTop( 1 ) * w1 + hsbBot( 1 ) * w2,
+//           hsbTop( 2 ) * w1 + hsbBot( 2 ) * w2 )
+//   }
+//
+//   private val colrPeak       = Array.tabulate( 91 )( ang => hsbFade( ang / 91f, 0x02FF02, 0xFF6B6B ))
+   private val colrPeak       = Array.tabulate( 91 )( ang => IntensityColorScheme.getColor( ang / 90f ))
 }
 
 private[nuages] case class VisualProc( main: NuagesPanel, proc: Proc, pNode: PNode, aggr: AggregateItem,
@@ -252,7 +254,7 @@ extends VisualData {
          ProcTxn.atomic { implicit t =>
             t.withTransition( main.transition( t.time )) {
                if( stateVar.playing ) {
-                  if( proc.anatomy == ProcFilter ) {
+                  if( proc.anatomy == ProcFilter && !isCollectorInput ) {
                      if( stateVar.bypassed ) proc.engage else proc.bypass
                   } else {
                      proc.stop
