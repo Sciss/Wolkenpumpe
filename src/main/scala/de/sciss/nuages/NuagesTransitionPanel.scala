@@ -71,23 +71,20 @@ class NuagesTransitionPanel( main: NuagesPanel ) extends JPanel {
       addButton( ggTypeInstant )
       addButton( ggTypeGlide )
       addButton( ggTypeXFade )
-      models   = new JavaConversions.JEnumerationWrapper( bg.getElements() ).toArray.map( _.getModel() )
+      models   = new JavaConversions.JEnumerationWrapper( bg.getElements ).toArray.map( _.getModel )
       panel.setLayout( new BoxLayout( panel, BoxLayout.Y_AXIS ))
       panel.add( box )
       ggSlider.setUI( new BasicSliderUI( ggSlider ))
       ggSlider.setBackground( Color.black )
       ggSlider.setForeground( Color.white )
-//      val dim           = ggSlider.getPreferredSize()
-//      dim.width         = 64
-//      ggSlider.setPreferredSize( dim )
       panel.add( ggSlider )
 
-      def dispatchTransition {
-         main.transition = if( ggTypeInstant.isSelected() ) {
+      def dispatchTransition() {
+         main.transition = if( ggTypeInstant.isSelected ) {
             (_) => Instant
          } else {
             val fdt = specTime.map( specSlider.unmap( ggSlider.getValue() ))
-            if( ggTypeXFade.isSelected() ) {
+            if( ggTypeXFade.isSelected ) {
                XFade( _, fdt )
             } else {
                Glide( _, fdt )
@@ -97,12 +94,12 @@ class NuagesTransitionPanel( main: NuagesPanel ) extends JPanel {
 
       ggSlider.addChangeListener( new ChangeListener {
          def stateChanged( e: ChangeEvent ) {
-            if( !ggTypeInstant.isSelected() ) dispatchTransition
+            if( !ggTypeInstant.isSelected ) dispatchTransition()
          }
       })
       val actionListener = new ActionListener {
          def actionPerformed( e: ActionEvent ) {
-            dispatchTransition
+            dispatchTransition()
          }
       }
       ggTypeInstant.addActionListener( actionListener )

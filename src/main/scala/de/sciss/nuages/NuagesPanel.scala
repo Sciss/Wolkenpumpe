@@ -28,7 +28,6 @@
 
 package de.sciss.nuages
 
-import javax.swing.JPanel
 import collection.breakOut
 import collection.mutable.{ Set => MSet }
 import collection.immutable.{ IndexedSeq => IIdxSeq, IntMap }
@@ -46,14 +45,16 @@ import de.sciss.synth.proc._
 import prefuse.render._
 import prefuse.action.assignment.{FontAction, ColorAction}
 import java.awt._
-import event.{ ActionEvent, ActionListener, MouseEvent }
-import geom._
+import java.awt.event.{ComponentAdapter, ComponentEvent, ComponentListener, ActionEvent, ActionListener, MouseEvent}
+import java.awt.geom._
 import prefuse.visual.{NodeItem, AggregateItem, VisualItem}
 import java.util.TimerTask
 import de.sciss.synth
 import synth.ugen.Out
 import synth.{Group, AudioBus, Bus, UGenIn, GE, Model, Server}
 import sys.error
+import javax.swing.{JComponent, JPanel}
+import javax.swing.event.{AncestorEvent, AncestorListener}
 
 object NuagesPanel {
    var verbose = false
@@ -67,30 +68,30 @@ object NuagesPanel {
    val soloAmpSpec            = ParamSpec( 0.1,  10.0, ExpWarp ) -> 0.5
 }
 
-class NuagesPanel( config: NuagesConfig ) extends JPanel
+class NuagesPanel( val config: NuagesConfig ) extends JPanel
 with ProcFactoryProvider {
    panel =>
    
    import NuagesPanel._
    import ProcWorld._
-   import Proc._
+//   import Proc._
 
    val vis     = new Visualization()
    val world   = ProcDemiurg.worlds( config.server )
-   val display = new Display( vis ) {
-   }
+   val display = new Display( vis )
 
    private var soloFactory : Option[ ProcFactory ] = None
 
    private val AGGR_PROC            = "aggr"
    private val ACTION_LAYOUT        = "layout"
-   private val ACTION_LAYOUT_ANIM   = "layout-anim"
+//   private val ACTION_LAYOUT_ANIM   = "layout-anim"
    private val ACTION_COLOR         = "color"
-   private val ACTION_COLOR_ANIM    = "layout-anim"
+//   private val ACTION_COLOR_ANIM    = "layout-anim"
    private val LAYOUT_TIME          = 50
-   private val FADE_TIME            = 333
+//   private val FADE_TIME            = 333
 
    val g = new Graph
+   val actions = new NuagesActions( this )
 
    val vg   = {
       val res = vis.addGraph( GROUP_GRAPH, g )
@@ -123,6 +124,7 @@ with ProcFactoryProvider {
    }
 
    // ---- ProcFactoryProvider ----
+   val factoryManager = new ProcFactoryViewManager( config )
    var genFactory    = Option.empty[ ProcFactory ]
    var filterFactory = Option.empty[ ProcFactory ]
    var diffFactory   = Option.empty[ ProcFactory ]
@@ -132,6 +134,7 @@ with ProcFactoryProvider {
       locHintMap += p -> loc
    }
 
+   private var overlay = Option.empty[ JComponent ]
 
    // ---- constructor ----
    {
@@ -271,6 +274,8 @@ with ProcFactoryProvider {
                   Out.ar( b.index, sig )
                }
             })
+
+            factoryManager.startListening
             if( verbose ) println( " ok" )
          }
 
@@ -329,13 +334,36 @@ with ProcFactoryProvider {
    private def defer( code: => Unit ) {
       EventQueue.invokeLater( new Runnable { def run = code })
    }
-   
+
+   def showOverlayPanel( p: JComponent, pt: Point ) : Boolean = {
+      if( overlay.isDefined ) return false
+      val x = math.max( 0, math.min( pt.getX.toInt, getWidth - p.getWidth ))
+      val y = math.min( math.max( 0, pt.getY.toInt ), getHeight - p.getHeight ) // make sure bottom is visible
+      p.setLocation( x, y )
+//println( "aqui " + p.getX + ", " + p.getY + ", " + p.getWidth + ", " + p.getHeight )
+      add( p, 0 )
+      revalidate(); repaint()
+      p.addAncestorListener( new AncestorListener {
+         def ancestorAdded( e: AncestorEvent ) {}
+         def ancestorRemoved( e: AncestorEvent ) {
+            p.removeAncestorListener( this )
+            if( Some( p ) == overlay ) overlay = None
+         }
+         def ancestorMoved( e: AncestorEvent ) {}
+      })
+      overlay = Some( p )
+      true
+   }
+
+   def isOverlayShowing : Boolean = overlay.isDefined
+
    def dispose() {
       stopAnimation()
 
       if( config.collector ) println( "WARNING! NuagesPanel.dispose -- doesn't handle the collector yet" )
 
       ProcTxn.atomic { implicit t =>
+         factoryManager.stopListening
          world.removeListener( topoListener )
          masterProc.foreach { pMaster =>
             pMaster.dispose

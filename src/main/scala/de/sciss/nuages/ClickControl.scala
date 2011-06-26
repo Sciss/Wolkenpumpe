@@ -62,61 +62,48 @@ class ClickControl( main: NuagesPanel ) extends ControlAdapter {
    import NuagesPanel._
 
    override def mousePressed( e: MouseEvent ) {
-      if( e.isMetaDown() ) {
+      if( e.isMetaDown ) {
          zoomToFit( e )
-      } else if( e.getClickCount() == 2 ) insertProc( e )
-   }
-
-   private def insertProc( e: MouseEvent ) {
-      (main.genFactory, main.diffFactory) match {
-         case (Some( genF ), Some( diffF )) => {
-            val d          = getDisplay( e )
-            val displayPt  = d.getAbsoluteCoordinate( e.getPoint(), null )
-            createProc( genF, diffF, displayPt )
-         }
-         case _ =>
+      } else if( e.getClickCount == 2 ) {
+//         val d          = getDisplay( e )
+//         val displayPt  = d.getAbsoluteCoordinate( e.getPoint, null )
+         main.actions.showCreateGenDialog( e.getPoint )
+//         insertProc( e )
       }
    }
 
-   private def createProc( genF: ProcFactory, diffF: ProcFactory, pt: Point2D ) {
-      ProcTxn.atomic { implicit tx =>
-         val gen  = genF.make
-         val diff = diffF.make
-         gen ~> diff
-         if( diff.anatomy == ProcFilter ) { // this is the case for config.collector == true
-            main.collector.foreach( diff ~> _ )
-         }
-
-         tx.beforeCommit { _ =>
-            val genPt  = new Point2D.Double( pt.getX, pt.getY - 30 )
-            val diffPt = new Point2D.Double( pt.getX, pt.getY + 30 )
-            main.setLocationHint( gen, genPt )
-            main.setLocationHint( diff, diffPt )
-         }
-      }
-   }
+//   private def insertProc( e: MouseEvent ) {
+//      (main.genFactory, main.diffFactory) match {
+//         case (Some( genF ), Some( diffF )) => {
+//            val d          = getDisplay( e )
+//            val displayPt  = d.getAbsoluteCoordinate( e.getPoint, null )
+//            createProc( genF, diffF, displayPt )
+//         }
+//         case _ =>
+//      }
+//   }
 
    override def itemPressed( vi: VisualItem, e: MouseEvent ) {
-      if( e.isAltDown() ) return
-      if( e.isMetaDown() ) {
-         zoom( e, vi.getBounds() )
-      } else if( e.getClickCount() == 2 ) doubleClick( vi, e )
+      if( e.isAltDown ) return
+      if( e.isMetaDown ) {
+         zoom( e, vi.getBounds )
+      } else if( e.getClickCount == 2 ) doubleClick( vi, e )
 //      if( e.isAltDown() ) altClick( vi, e )
    }
 
    private def zoomToFit( e: MouseEvent ) {
       val d       = getDisplay( e )
-      val vis     = d.getVisualization()
+      val vis     = d.getVisualization
       val bounds  = vis.getBounds( NuagesPanel.GROUP_GRAPH )
       zoom( e, bounds )
    }
 
    private def zoom( e: MouseEvent, bounds: Rectangle2D ) {
       val d = getDisplay( e )
-      if( d.isTranformInProgress() ) return
+      if( d.isTranformInProgress ) return
       val margin     = 50   // XXX could be customized
       val duration   = 1000 // XXX could be customized
-      GraphicsLib.expand( bounds, margin + (1 / d.getScale()).toInt )
+      GraphicsLib.expand( bounds, margin + (1 / d.getScale).toInt )
       DisplayLib.fitViewToBounds( d, bounds, duration )
    }
 
@@ -133,7 +120,7 @@ class ClickControl( main: NuagesPanel ) extends ControlAdapter {
                      (srcData, tgtData) match {
                         case (vOut: VisualAudioOutput, vIn: VisualAudioInput) => main.filterFactory foreach { filterF =>
                            val d          = getDisplay( e )
-                           val displayPt  = d.getAbsoluteCoordinate( e.getPoint(), null )
+                           val displayPt  = d.getAbsoluteCoordinate( e.getPoint, null )
                            nSrc.setFixed( false ) // XXX woops.... we have to clean up the mess of ConnectControl
                            nTgt.setFixed( false )
                            createFilter( vOut.bus, vIn.bus, filterF, displayPt )
@@ -165,5 +152,5 @@ class ClickControl( main: NuagesPanel ) extends ControlAdapter {
       }
    }
 
-   @inline private def getDisplay( e: MouseEvent ) = e.getComponent().asInstanceOf[ Display ]
+   @inline private def getDisplay( e: MouseEvent ) = e.getComponent.asInstanceOf[ Display ]
 }
