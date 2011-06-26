@@ -56,7 +56,7 @@ extends JFrame( "Wolkenpumpe") with ProcDemiurg.Listener {
          if( selO.isDefined ) models( ProcGen ).list.clearSelection()
          panel.filterFactory = selO
       },
-      ProcDiff    -> createProcFactoryView( pfPanel, 4 )( panel.diffFactory = _ ))
+      ProcDiff    -> createProcFactoryView( pfPanel, 4 )( panel.diffFactory = _ ));
 
 //   val grpMaster = Group.tail( config.server )
    
@@ -151,8 +151,8 @@ extends JFrame( "Wolkenpumpe") with ProcDemiurg.Listener {
       ggList.setSelectionMode( ListSelectionModel.SINGLE_SELECTION )
       ggList.addListSelectionListener( new ListSelectionListener {
          def valueChanged( e: ListSelectionEvent ) {
-            if( e.getValueIsAdjusting() ) return
-            val pf0 = ggList.getSelectedValue()
+            if( e.getValueIsAdjusting ) return
+            val pf0 = ggList.getSelectedValue
             val pf = if( pf0 != null ) Some( pf0.asInstanceOf[ ProcFactory ]) else None
 //            ggPanel.factory = pf
             fun( pf )
@@ -168,14 +168,14 @@ extends JFrame( "Wolkenpumpe") with ProcDemiurg.Listener {
 
    private case class FactoryView( list: JList, model: ProcFactoryListModel )
 
-   override def dispose {
+   override def dispose() {
       ProcTxn.atomic { implicit t => ProcDemiurg.removeListener( frame )}
       panel.dispose
-      super.dispose
+      super.dispose()
    }
 
    private def defer( thunk: => Unit ) {
-      EventQueue.invokeLater( new Runnable { def run = thunk })
+      EventQueue.invokeLater( new Runnable { def run() = thunk })
    }
 
    private object ProcFactoryCellRenderer extends DefaultListCellRenderer {

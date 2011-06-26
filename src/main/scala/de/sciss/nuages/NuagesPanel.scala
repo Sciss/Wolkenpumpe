@@ -271,8 +271,10 @@ with ProcFactoryProvider {
       display.setForeground( Color.WHITE )
       display.setBackground( Color.BLACK )
 
-      setLayout( new BorderLayout() )
-      add( display, BorderLayout.CENTER )
+//      setLayout( new BorderLayout() )
+//      add( display, BorderLayout.CENTER )
+      setLayout( Layout )
+      add( display )
 
       vis.run( ACTION_COLOR )
 
@@ -807,5 +809,17 @@ with ProcFactoryProvider {
             // damageReport XXX
          })
       })
+   }
+
+   private object Layout extends LayoutManager {
+      def layoutContainer( parent: Container ) {
+         display.setBounds( new Rectangle( 0, 0, parent.getWidth, parent.getHeight ))
+      }
+
+      def minimumLayoutSize( parent: Container ) : Dimension = display.getMinimumSize
+      def preferredLayoutSize( parent: Container ) : Dimension = display.getPreferredSize
+
+      def removeLayoutComponent( comp: Component ) {}
+      def addLayoutComponent( name: String, comp: Component ) {}
    }
 }
