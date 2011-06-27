@@ -74,9 +74,9 @@ class NuagesActions( nuages: NuagesPanel ) {
 
    private def createAbortBar( p: JPanel )( createAction: => Unit ) : Box = {
       val b = Box.createHorizontalBox()
-      b.add( new BasicButton( "Create" )( createAction ))
+      b.add( BasicButton( "Create" )( createAction ))
       hSpace( b )
-      b.add( new BasicButton( "Abort" )( close( p )))
+      b.add( BasicButton( "Abort" )( close( p )))
       p.add( b )
       b
    }

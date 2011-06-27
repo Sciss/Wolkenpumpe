@@ -50,25 +50,33 @@ class NuagesTransitionPanel( main: NuagesPanel ) extends JPanel {
 
    // ---- constructor ----
    {
-      val font       = Wolkenpumpe.condensedFont.deriveFont( 15f ) // WARNING: use float argument
-      val uiToggle   = new SimpleToggleButtonUI
-//      val box        = Box.createHorizontalBox()
+//      val font       = Wolkenpumpe.condensedFont.deriveFont( 15f ) // WARNING: use float argument
 
       def addButton( b: AbstractButton ) {
-         b.setUI( uiToggle )
-         b.setFont( font )
-         b.setBackground( Color.black )
-         b.setForeground( Color.white )
          bg.add( b )
 //         box.add( b )
          panel.add( b )
       }
 
+      def dispatchTransition( inst: Boolean, gl: Boolean, xf: Boolean ) {
+         main.transition = if( inst ) {
+            (_) => Instant
+         } else {
+            val fdt = specTime.map( specSlider.unmap( ggSlider.getValue() ))
+            if( xf ) {
+               XFade( _, fdt )
+            } else {
+               Glide( _, fdt )
+            }
+         }
+      }
+
+
       setUI( new BasicPanelUI() )
       setBackground( Color.black )
-      val ggTypeInstant = new JToggleButton( "In" )
-      val ggTypeGlide   = new JToggleButton( "Gl" )
-      val ggTypeXFade   = new JToggleButton( "X" )
+      val ggTypeInstant = BasicToggleButton( "In" )( if( _ ) dispatchTransition( true, false, false ))
+      val ggTypeGlide   = BasicToggleButton( "Gl" )( if( _ ) dispatchTransition( false, true, false ))
+      val ggTypeXFade   = BasicToggleButton( "X" )(  if( _ ) dispatchTransition( false, false, true ))
       addButton( ggTypeInstant )
       addButton( ggTypeGlide )
       addButton( ggTypeXFade )
@@ -81,32 +89,21 @@ class NuagesTransitionPanel( main: NuagesPanel ) extends JPanel {
       ggSlider.setForeground( Color.white )
       panel.add( ggSlider )
 
-      def dispatchTransition() {
-         main.transition = if( ggTypeInstant.isSelected ) {
-            (_) => Instant
-         } else {
-            val fdt = specTime.map( specSlider.unmap( ggSlider.getValue() ))
-            if( ggTypeXFade.isSelected ) {
-               XFade( _, fdt )
-            } else {
-               Glide( _, fdt )
-            }
-         }
-      }
-
       ggSlider.addChangeListener( new ChangeListener {
          def stateChanged( e: ChangeEvent ) {
-            if( !ggTypeInstant.isSelected ) dispatchTransition()
+            if( !ggTypeInstant.isSelected ) {
+               dispatchTransition( ggTypeInstant.isSelected, ggTypeGlide.isSelected, ggTypeXFade.isSelected )
+            }
          }
       })
-      val actionListener = new ActionListener {
-         def actionPerformed( e: ActionEvent ) {
-            dispatchTransition()
-         }
-      }
-      ggTypeInstant.addActionListener( actionListener )
-      ggTypeGlide.addActionListener( actionListener )
-      ggTypeXFade.addActionListener( actionListener )
+//      val actionListener = new ActionListener {
+//         def actionPerformed( e: ActionEvent ) {
+//            dispatchTransition()
+//         }
+//      }
+//      ggTypeInstant.addActionListener( actionListener )
+//      ggTypeGlide.addActionListener( actionListener )
+//      ggTypeXFade.addActionListener( actionListener )
    }
 
    def setTransition( idx: Int, tNorm: Double ) {
