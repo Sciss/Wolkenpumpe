@@ -30,66 +30,102 @@ package de.sciss.nuages
 
 import java.awt.Point
 import java.awt.geom.Point2D
-import javax.swing.{JButton, Box, BorderFactory, BoxLayout}
 import javax.swing.plaf.basic.BasicButtonUI
 import java.awt.event.{ActionEvent, ActionListener}
-import de.sciss.synth.proc.{DSL, ProcDiff, ProcGen, ProcFactory, ProcTxn, ProcFilter}
+import prefuse.visual.NodeItem
+import javax.swing.{JComponent, JPanel, JButton, Box, BorderFactory, BoxLayout}
+import de.sciss.synth.proc.{ProcAudioInput, ProcAudioOutput, ProcAnatomy, DSL, ProcDiff, ProcGen, ProcFactory, ProcTxn, ProcFilter}
 
 class NuagesActions( nuages: NuagesPanel ) {
-   private lazy val createGenDialog = {
+   private val font = Wolkenpumpe.condensedFont.deriveFont( 15f ) // WARNING: use float argument
+   private var fltDialogDoneAction: ProcFactory => ProcTxn => Unit = f => t => ()
+
+   private def createOverlayPanel = {
       val p = new OverlayPanel
       p.setLayout( new BoxLayout( p, BoxLayout.Y_AXIS ))
       p.setBorder( BorderFactory.createEmptyBorder( 12, 12, 12, 12 ))
+      p
+   }
+
+   private def createFactoryView( ana: ProcAnatomy ) = {
       val fm = nuages.factoryManager
-      val genView = fm.view( ProcGen )
-      genView.visibleRowCount = math.max( 4, math.min( 12, genView.numRows ))
-      p.add( genView )
+      val v = fm.view( ana )
+      v.visibleRowCount = math.max( 4, math.min( 12, v.numRows ))
+      v
+   }
+
+   private def vSpace( p: JComponent ) {
       p.add( Box.createVerticalStrut( 4 ))
-      val diffView = fm.view( ProcDiff )
-      diffView.visibleRowCount = math.max( 4, math.min( 12, diffView.numRows ))
-      p.add( diffView )
-      p.add( Box.createVerticalStrut( 4 ))
-      val b = Box.createHorizontalBox()
-      val font = Wolkenpumpe.condensedFont.deriveFont( 15f ) // WARNING: use float argument
-      val ggOk = new JButton( "Create" )
-      ggOk.setUI( new BasicButtonUI() )
-      ggOk.setFocusable( false )
-      ggOk.setFont( font )
-      b.add( ggOk )
-      b.add( Box.createHorizontalStrut( 8 ))
-      val ggCancel = new JButton( "Abort" )
-      ggCancel.setUI( new BasicButtonUI() )
-      ggCancel.setFocusable( false )
-      ggCancel.setFont( font )
-      b.add( ggCancel )
-      p.add( b )
+   }
 
-      def close() { p.getParent.remove( p )}
+   private def hSpace( p: JComponent ) {
+      p.add( Box.createHorizontalStrut( 8 ))
+   }
 
-      ggOk.addActionListener( new ActionListener {
-         def actionPerformed( e: ActionEvent ) {
-            (genView.selection, diffView.selection) match {
-               case (Some( genF ), Some( diffF )) =>
-                  close()
-                  val displayPt = nuages.display.getAbsoluteCoordinate( p.getLocation, null )
-                  ProcTxn.atomic { implicit txn => createProc( genF, diffF, displayPt )}
-               case _ =>
-            }
-         }
-      })
-      ggCancel.addActionListener( new ActionListener {
-         def actionPerformed( e: ActionEvent ) {
-            close()
-         }
-      })
+   private def close( p: JPanel ) {
+      p.getParent.remove( p )
+   }
 
+   private def pack( p: JPanel ) = {
       p.setSize( p.getPreferredSize )
       p.validate()
       p
    }
 
+   private def createAbortBar( p: JPanel )( createAction: => Unit ) : Box = {
+      val b = Box.createHorizontalBox()
+      b.add( new BasicButton( "Create" )( createAction ))
+      hSpace( b )
+      b.add( new BasicButton( "Abort" )( close( p )))
+      p.add( b )
+      b
+   }
+
+   private lazy val createGenDialog = {
+      val p = createOverlayPanel
+      val genView = createFactoryView( ProcGen )
+      p.add( genView )
+      vSpace( p )
+      val diffView = createFactoryView( ProcDiff )
+      p.add( diffView )
+      vSpace( p )
+      createAbortBar( p ) {
+         (genView.selection, diffView.selection) match {
+            case (Some( genF ), Some( diffF )) =>
+               close( p )
+               val displayPt = nuages.display.getAbsoluteCoordinate( p.getLocation, null )
+               ProcTxn.atomic { implicit txn => createProc( genF, diffF, displayPt )}
+            case _ =>
+         }
+      }
+      pack( p )
+   }
+
+   private lazy val createFilterDialog = {
+      val p = createOverlayPanel
+      val fltView = createFactoryView( ProcFilter )
+      p.add( fltView )
+      vSpace( p )
+      createAbortBar( p )( fltView.selection.foreach { fltF =>
+         close( p )
+         ProcTxn.atomic( fltDialogDoneAction( fltF )( _ ))
+      })
+      pack( p )
+   }
+
    def showCreateGenDialog( pt: Point ) : Boolean = {
       nuages.showOverlayPanel( createGenDialog, pt )
+   }
+
+   def showCreateFilterDialog( nSrc: NodeItem, nTgt: NodeItem, out: ProcAudioOutput, in: ProcAudioInput, pt: Point ) : Boolean = {
+      if( nuages.isOverlayShowing ) return false
+      fltDialogDoneAction = { fltF =>
+         nSrc.setFixed( false ) // XXX woops.... we have to clean up the mess of ConnectControl
+         nTgt.setFixed( false )
+         val displayPt = nuages.display.getAbsoluteCoordinate( pt, null )
+         createFilter( out, in, fltF, displayPt )( _ )
+      }
+      nuages.showOverlayPanel( createFilterDialog, pt )
    }
 
    def createProc( genF: ProcFactory, diffF: ProcFactory, pt: Point2D )( implicit txn: ProcTxn ) {
@@ -106,6 +142,17 @@ class NuagesActions( nuages: NuagesPanel ) {
          val diffPt = new Point2D.Double( pt.getX, pt.getY + 30 )
          nuages.setLocationHint( gen, genPt )
          nuages.setLocationHint( diff, diffPt )
+      }
+   }
+
+   def createFilter( out: ProcAudioOutput, in: ProcAudioInput, fltF: ProcFactory, pt: Point2D )( implicit txn: ProcTxn ) {
+      import DSL._
+      val filter  = fltF.make
+      filter.bypass
+      out ~|filter|> in
+      if( !filter.isPlaying ) filter.play
+      txn.beforeCommit { _ =>
+         nuages.setLocationHint( filter, pt )
       }
    }
 }

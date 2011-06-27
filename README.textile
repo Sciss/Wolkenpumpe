@@ -1,7 +1,7 @@
-h2. Wolkenpumpe ==<small>-- version 0.12 (built 17-jul-10) --</small>==
+h2. Wolkenpumpe
 
 h3. statement
 
-Wolkenpumpe is a live improvisation interface based on ScalaCollider / SoundProcesses / Prefuse. It is (C)opyright 2008-2010 by Hanns Holger Rutz. All rights reserved. Wolkenpumpe is released under the "GNU General Public License":http://github.com/Sciss/Wolkenpumpe/blob/master/licenses/Wolkenpumpe-License.txt and comes with absolutely no warranties. To contact the author, send an email to @contact at sciss.de@
+Wolkenpumpe is a live improvisation interface based on ScalaCollider / SoundProcesses / Prefuse. It is (C)opyright 2008-2011 by Hanns Holger Rutz. All rights reserved. Wolkenpumpe is released under the "GNU General Public License":http://github.com/Sciss/Wolkenpumpe/blob/master/licenses/Wolkenpumpe-License.txt and comes with absolutely no warranties. To contact the author, send an email to @contact at sciss.de@
 
 Strictly speaking, this is Wolkenpumpe 5th generation. For generation four, based on SuperCollider and SwingOSC, see "sourceforge.net/projects/tintantmare":http://sourceforge.net/projects/tintantmare/ .

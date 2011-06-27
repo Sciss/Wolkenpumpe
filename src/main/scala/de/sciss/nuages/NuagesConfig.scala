@@ -37,5 +37,6 @@ case class NuagesConfig(
    soloChannels: Option[ IIdxSeq[ Int ]],
    recordPath: Option[ String ],
    meters: Boolean = false,
-   collector: Boolean = false
+   collector: Boolean = false,
+   fullScreenKey: Boolean = true
 )

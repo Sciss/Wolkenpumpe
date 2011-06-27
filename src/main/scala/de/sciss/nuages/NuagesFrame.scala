@@ -34,8 +34,9 @@ import de.sciss.synth.proc._
 import de.sciss.synth.ugen._
 import plaf.basic.{BasicSliderUI, BasicPanelUI}
 import javax.swing.event.{ChangeListener, ChangeEvent, ListSelectionListener, ListSelectionEvent}
-import java.awt.{GridBagConstraints, GridBagLayout, EventQueue, Component, Container, Color, BorderLayout}
 import collection.immutable.{IndexedSeq => IIdxSeq}
+import java.awt.{Toolkit, GridBagConstraints, GridBagLayout, EventQueue, Component, Container, Color, BorderLayout}
+import java.awt.event.{KeyEvent, ActionEvent, InputEvent}
 
 /**
  *    @version 0.12, 28-Nov-10
@@ -96,6 +97,23 @@ extends JFrame( "Wolkenpumpe") /* with ProcDemiurg.Listener */ {
 //      ProcTxn.atomic { implicit t =>
 //         ProcDemiurg.addListener( frame )
 //      }
+      if( config.fullScreenKey ) installFullScreenKey()
+//      panel.display.requestFocus
+   }
+
+   private def installFullScreenKey() {
+      val d       = panel.display
+      val imap    = d.getInputMap( JComponent.WHEN_IN_FOCUSED_WINDOW )
+      val amap    = d.getActionMap
+      val fsName  = "fullscreen"
+      imap.put( KeyStroke.getKeyStroke( KeyEvent.VK_F, Toolkit.getDefaultToolkit.getMenuShortcutKeyMask |
+         InputEvent.SHIFT_MASK ), fsName )
+      amap.put( fsName, new AbstractAction( fsName ) {
+         def actionPerformed( e: ActionEvent ) {
+            val sd = getGraphicsConfiguration.getDevice
+            sd.setFullScreenWindow( if( sd.getFullScreenWindow == frame ) null else frame )
+         }
+      })
    }
 
    override def dispose() {

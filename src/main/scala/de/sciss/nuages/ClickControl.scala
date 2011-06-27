@@ -118,13 +118,15 @@ class ClickControl( main: NuagesPanel ) extends ControlAdapter {
                   val tgtData = nTgt.get( COL_NUAGES ).asInstanceOf[ VisualData ]
                   if( srcData != null && tgtData != null ) {
                      (srcData, tgtData) match {
-                        case (vOut: VisualAudioOutput, vIn: VisualAudioInput) => main.filterFactory foreach { filterF =>
-                           val d          = getDisplay( e )
-                           val displayPt  = d.getAbsoluteCoordinate( e.getPoint, null )
-                           nSrc.setFixed( false ) // XXX woops.... we have to clean up the mess of ConnectControl
-                           nTgt.setFixed( false )
-                           createFilter( vOut.bus, vIn.bus, filterF, displayPt )
-                        }
+                        case (vOut: VisualAudioOutput, vIn: VisualAudioInput) =>
+                           main.actions.showCreateFilterDialog( nSrc, nTgt, vOut.bus, vIn.bus, e.getPoint )
+//                           main.filterFactory foreach { filterF =>
+//                              val d          = getDisplay( e )
+//                              val displayPt  = d.getAbsoluteCoordinate( e.getPoint, null )
+//                              nSrc.setFixed( false ) // XXX woops.... we have to clean up the mess of ConnectControl
+//                              nTgt.setFixed( false )
+//                              createFilter( vOut.bus, vIn.bus, filterF, displayPt )
+//                           }
                         case _ =>
                      }
                   }
@@ -133,22 +135,6 @@ class ClickControl( main: NuagesPanel ) extends ControlAdapter {
             }
          }
          case _ =>
-      }
-   }
-
-   private def createFilter( out: ProcAudioOutput, in: ProcAudioInput, filterF: ProcFactory, pt: Point2D ) {
-//      println( "CREATE FILTER " + out.name + " ~| " + filterF.name + " |> " + in.bus.name )
-      ProcTxn.atomic { implicit tx =>
-         val filter  = filterF.make
-         filter.bypass
-         out ~|filter|> in
-         if( !filter.isPlaying ) filter.play
-         tx.beforeCommit { _ =>
-            main.setLocationHint( filter, pt )
-         }
-//         tx.withTransition( main.transition( tx.time )) {
-//            out ~|filter|> in
-//         }
       }
    }
 
