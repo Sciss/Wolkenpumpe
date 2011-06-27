@@ -52,7 +52,7 @@ class NuagesTransitionPanel( main: NuagesPanel ) extends JPanel {
    {
       val font       = Wolkenpumpe.condensedFont.deriveFont( 15f ) // WARNING: use float argument
       val uiToggle   = new SimpleToggleButtonUI
-      val box        = Box.createHorizontalBox()
+//      val box        = Box.createHorizontalBox()
 
       def addButton( b: AbstractButton ) {
          b.setUI( uiToggle )
@@ -60,20 +60,22 @@ class NuagesTransitionPanel( main: NuagesPanel ) extends JPanel {
          b.setBackground( Color.black )
          b.setForeground( Color.white )
          bg.add( b )
-         box.add( b )
+//         box.add( b )
+         panel.add( b )
       }
 
       setUI( new BasicPanelUI() )
       setBackground( Color.black )
-      val ggTypeInstant = new JToggleButton( "Inst" )
-      val ggTypeGlide   = new JToggleButton( "Glide" )
-      val ggTypeXFade   = new JToggleButton( "XFade" )
+      val ggTypeInstant = new JToggleButton( "In" )
+      val ggTypeGlide   = new JToggleButton( "Gl" )
+      val ggTypeXFade   = new JToggleButton( "X" )
       addButton( ggTypeInstant )
       addButton( ggTypeGlide )
       addButton( ggTypeXFade )
       models   = new JavaConversions.JEnumerationWrapper( bg.getElements ).toArray.map( _.getModel )
-      panel.setLayout( new BoxLayout( panel, BoxLayout.Y_AXIS ))
-      panel.add( box )
+//      panel.setLayout( new BoxLayout( panel, BoxLayout.Y_AXIS ))
+      panel.setLayout( new BoxLayout( panel, BoxLayout.X_AXIS ))
+//      panel.add( box )
       ggSlider.setUI( new BasicSliderUI( ggSlider ))
       ggSlider.setBackground( Color.black )
       ggSlider.setForeground( Color.white )

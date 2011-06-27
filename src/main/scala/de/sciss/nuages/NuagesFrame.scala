@@ -47,24 +47,36 @@ extends JFrame( "Wolkenpumpe") /* with ProcDemiurg.Listener */ {
 
    val panel      = new NuagesPanel( config )
    val transition = new NuagesTransitionPanel( panel );
+   val bottom     = {
+      val p = new JPanel
+      p.setLayout( new BoxLayout( p, BoxLayout.X_AXIS ))
+      p
+   }
 
    // ---- constructor ----
    {
       val cp = getContentPane
       cp.setBackground( Color.black )
-      val ggEastBox     = new BasicPanel
-      ggEastBox.setLayout( new BorderLayout() )
+//      val ggEastBox     = new BasicPanel
+//      ggEastBox.setLayout( new BorderLayout() )
 //      val font          = Wolkenpumpe.condensedFont.deriveFont( 15f ) // WARNING: use float argument
 
-      ggEastBox.add( transition, BorderLayout.SOUTH )
-      cp.add( BorderLayout.EAST, ggEastBox )
-      cp.add( BorderLayout.CENTER, panel )
+      val ggSouthBox = Box.createHorizontalBox()
+      ggSouthBox.add( bottom )
+      ggSouthBox.add( Box.createHorizontalGlue() )
+      ggSouthBox.add( transition )
+
+//      ggEastBox.add( transition, BorderLayout.SOUTH )
+//      cp.add( BorderLayout.EAST, ggEastBox )
+      cp.add( panel, BorderLayout.CENTER )
 
       setDefaultCloseOperation( WindowConstants.DISPOSE_ON_CLOSE )
 
       val gridLay       = new GridBagLayout() 
       val ggFaderBox    = new JPanel( gridLay )
-      ggEastBox.add( ggFaderBox, BorderLayout.EAST )
+//      ggEastBox.add( ggFaderBox, BorderLayout.EAST )
+      cp.add( ggSouthBox, BorderLayout.SOUTH )
+      cp.add( ggFaderBox, BorderLayout.EAST )
 
       val gridCon       = new GridBagConstraints()
       gridCon.fill      = GridBagConstraints.BOTH
