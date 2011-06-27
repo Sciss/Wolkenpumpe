@@ -48,7 +48,7 @@ extends JFrame( "Wolkenpumpe") /* with ProcDemiurg.Listener */ {
    val panel      = new NuagesPanel( config )
    val transition = new NuagesTransitionPanel( panel );
    val bottom     = {
-      val p = new JPanel
+      val p = new BasicPanel
       p.setLayout( new BoxLayout( p, BoxLayout.X_AXIS ))
       p
    }
