@@ -2,7 +2,7 @@ import xml._
 import sbt.{ FileUtilities => FU, _}
 
 class WolkenpumpeProject( info: ProjectInfo ) extends DefaultProject( info ) {
-   val scalaColliderSwing  = "de.sciss" %% "scalacolliderswing" % "0.26"
+   val scalaColliderSwing  = "de.sciss" %% "scalacolliderswing" % "0.27"
    val soundProcesses      = "de.sciss" %% "soundprocesses" % "0.23"
 //   // for some reason, we need to add the snapshot repos here again...
 //   val ccstmRepo           = "CCSTM Release Repository at PPL" at "http://ppl.stanford.edu/ccstm/repo-releases"
