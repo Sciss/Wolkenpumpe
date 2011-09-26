@@ -210,10 +210,11 @@ with ProcFactoryProvider {
          import synth._
          import ugen._
 
-         def meterGraph( sig: GE ) {
+         def meterGraph( sig: In ) {
             val meterTr    = Impulse.kr( 1000.0 / LAYOUT_TIME )
-            val peak       = Peak.kr( sig, meterTr ).outputs
-            val peakM      = peak.tail.foldLeft[ GE ]( peak.head )( _ max _ ) \ 0
+            val peak       = Peak.kr( sig, meterTr ) // .outputs
+//            val peakM      = peak.tail.foldLeft[ GE ]( peak.head )( _ max _ ) \ 0
+            val peakM      = Reduce.max( peak )
             val me         = Proc.local
             // warning: currently a bug in SendReply? if values are audio-rate,
             // trigger needs to be audio-rate, too
@@ -225,7 +226,7 @@ with ProcFactoryProvider {
          }
 
          if( config.meters ) meterFactory = Some( diff( "$meter" ) {
-            graph { sig =>
+            graph { sig: In =>
                meterGraph( sig )
                0.0
             }
@@ -233,7 +234,7 @@ with ProcFactoryProvider {
 
          if( config.collector ) {
             if( verbose ) Console.print( "Creating collector...")
-            val p = (filter( "_+" )( graph( x => x ))).make
+            val p = (filter( "_+" )( graph( (x: In) => x ))).make
             collector = Some( p )
             if( verbose ) println( " ok" )
          }
@@ -244,7 +245,7 @@ with ProcFactoryProvider {
             val pMaster = (diff( name ) {
                val pAmp = pControl( "amp", masterAmpSpec._1, masterAmpSpec._2 )
                val pIn  = pAudioIn( "in", None )
-               graph { sig => efficientOuts( Limiter.ar( sig * pAmp.kr, (-0.2).dbamp ), chans ); 0.0 }
+               graph { (sig: In) => efficientOuts( Limiter.ar( sig * pAmp.kr, (-0.2).dbamp ), chans ); 0.0 }
             }).make
             pMaster.control( "amp" ).v = masterAmpSpec._2
             // XXX bus should be freed in panel disposal
@@ -268,7 +269,7 @@ with ProcFactoryProvider {
             masterBusVar   = Some( b )
 
             masterFactory = Some( diff( "$diff" ) {
-               graph { sig =>
+               graph { (sig: In) =>
                   require( sig.numOutputs == b.numChannels )
                   if( config.meters ) meterGraph( sig )
                   Out.ar( b.index, sig )
@@ -282,24 +283,27 @@ with ProcFactoryProvider {
          soloFactory = config.soloChannels.map { chans => diff( "$solo" ) {
             val pAmp = pControl( "amp", soloAmpSpec._1, soloAmpSpec._2 )
 
-            graph { sig =>
+            graph { sig: In =>
                val numIn   = sig.numOutputs
                val numOut  = chans.size
-               val sigOut  = Array.fill[ GE ]( numOut )( 0.0f )
+//               val sigOut  = Array.fill[ GE ]( numOut )( 0.0f )
                val sca     = (numOut - 1).toFloat / (numIn - 1)
-               sig.outputs.zipWithIndex.foreach { tup =>
-                  val (sigIn, inCh) = tup
-                  val outCh         = inCh * sca
-                  val fr            = outCh % 1f
-                  val outChI        = outCh.toInt
-                  if( fr == 0f ) {
-                     sigOut( outChI ) += sigIn
-                  } else {
-                     sigOut( outChI )     += sigIn * (1 - fr).sqrt
-                     sigOut( outChI + 1 ) += sigIn * fr.sqrt
-                  }
-               }
-               efficientOuts( sigOut.toSeq * pAmp.kr, chans )
+
+               val sigOut  = SplayAz.ar( numOut, sig ) // , spread, center, level, width, orient
+
+//               sig.outputs.zipWithIndex.foreach { tup =>
+//                  val (sigIn, inCh) = tup
+//                  val outCh         = inCh * sca
+//                  val fr            = outCh % 1f
+//                  val outChI        = outCh.toInt
+//                  if( fr == 0f ) {
+//                     sigOut( outChI ) += sigIn
+//                  } else {
+//                     sigOut( outChI )     += sigIn * (1 - fr).sqrt
+//                     sigOut( outChI + 1 ) += sigIn * fr.sqrt
+//                  }
+//               }
+               efficientOuts( sigOut /*.toSeq */ * pAmp.kr, chans )
                0.0
             }}
          }
@@ -310,25 +314,29 @@ with ProcFactoryProvider {
 
    private def efficientOuts( sig: GE, chans: IIdxSeq[ Int ]) {
       require( sig.numOutputs == chans.size )
+      if( chans.isEmpty ) return
 
-      import synth._
-      import ugen._
-      
-      def funky( seq: IIdxSeq[ (Int, UGenIn) ]) {
-         seq.headOption.foreach { tup =>
-            val (idx, e1)  = tup
-            var cnt = -1
-            val (ja, nein) = seq.span { tup =>
-               val (idx2, _) = tup
-               cnt += 1
-               idx2 == idx + cnt
-            }
-            Out.ar( idx, ja.map( _._2 ))
-            funky( nein )
-         }
-      }
+require( chans == IIdxSeq.tabulate( chans.size )( i => i + chans( 0 )))
+Out.ar( chans( 0 ), sig )
 
-      funky( chans.zip( sig.outputs ).sortBy( _._1 ))
+//      import synth._
+//      import ugen._
+//
+//      def funky( seq: IIdxSeq[ (Int, UGenIn) ]) {
+//         seq.headOption.foreach { tup =>
+//            val (idx, e1)  = tup
+//            var cnt = -1
+//            val (ja, nein) = seq.span { tup =>
+//               val (idx2, _) = tup
+//               cnt += 1
+//               idx2 == idx + cnt
+//            }
+//            Out.ar( idx, ja.map( _._2 ) : GE )
+//            funky( nein )
+//         }
+//      }
+//
+//      funky( chans.zip( sig.outputs ).sortBy( _._1 ))
    }
 
    private def defer( code: => Unit ) {
