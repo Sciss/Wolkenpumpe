@@ -29,18 +29,10 @@
 package de.sciss.nuages
 
 import de.sciss.synth.proc._
-import collection.immutable.{ Set => ISet }
 import de.sciss.synth._
-import java.awt.event.{ActionEvent, ActionListener, KeyEvent, KeyAdapter}
-import java.awt.{AWTEvent, BorderLayout, Color, Font}
-import javax.swing.{AbstractAction, BorderFactory, JButton, JComponent, JLabel, JPanel, KeyStroke, WindowConstants}
+import java.awt.Font
+import javax.swing.WindowConstants
 
-//case class NuagesUpdate( gensAdded: ISet[ ProcFactory ], gensRemoved: ISet[ ProcFactory ],
-//                         filtersAdded: ISet[ ProcFactory ], filtersRemoved: ISet[ ProcFactory ])
-
-/**
- *    @version 0.13, 02-Aug-10
- */
 object Wolkenpumpe /* extends TxnModel[ NuagesUpdate ]*/ {
    val name          = "Wolkenpumpe"
    val version       = 0.26
@@ -51,18 +43,19 @@ object Wolkenpumpe /* extends TxnModel[ NuagesUpdate ]*/ {
       if( args.size > 0 && args( 0 ) == "--test" ) {
          test
       } else {
-         printInfo
-         System.exit( 1 )
+         printInfo()
+         sys.exit( 1 )
       }
    }
 
-   def printInfo {
+   def printInfo() {
       println( "\n" + name + " v" + versionString + "\n" + copyright + ". All rights reserved.\n" +
          "This is a library which cannot be executed directly.\n" )
    }
 
    def test {
       var s : Server = null
+      SynthGraph.warnOutsideContext = true
       val booting = Server.boot() {
 //         case ServerConnection.Preparing( srv ) =>
          case ServerConnection.Running( srv ) => {
@@ -75,7 +68,7 @@ object Wolkenpumpe /* extends TxnModel[ NuagesUpdate ]*/ {
 //            val soloBus    = new AudioBus( srv, 6, 2 )
             val config = NuagesConfig( srv, Some( Vector( 0, 1 )), Some( Vector( 2, 3 )), Some( recordPath ), true )
             val f = new NuagesFrame( config )
-            val p = f.panel
+//            val p = f.panel
 //            p.addKeyListener( new TestKeyListener( p ))
             f.setDefaultCloseOperation( WindowConstants.EXIT_ON_CLOSE )
             f.setSize( 640, 480 )

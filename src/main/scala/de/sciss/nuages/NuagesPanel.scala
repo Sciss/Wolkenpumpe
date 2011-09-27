@@ -29,32 +29,27 @@
 package de.sciss.nuages
 
 import collection.breakOut
-import collection.mutable.{ Set => MSet }
-import collection.immutable.{ IndexedSeq => IIdxSeq, IntMap }
+import collection.immutable.{IndexedSeq => IIdxSeq}
 import prefuse.{Constants, Display, Visualization}
 import prefuse.action.{RepaintAction, ActionList}
-import prefuse.action.animate.{VisibilityAnimator, LocationAnimator, ColorAnimator}
-import prefuse.action.layout.graph.{ForceDirectedLayout, NodeLinkTreeLayout}
+import prefuse.action.layout.graph.ForceDirectedLayout
 import prefuse.activity.Activity
 import prefuse.util.ColorLib
-import prefuse.visual.sort.TreeDepthItemSorter
 import prefuse.visual.expression.InGroupPredicate
-import prefuse.data.{Edge, Node => PNode, Graph}
-import prefuse.controls._
-import de.sciss.synth.proc._
-import prefuse.render._
-import prefuse.action.assignment.{FontAction, ColorAction}
-import java.awt._
-import java.awt.event.{ComponentAdapter, ComponentEvent, ComponentListener, ActionEvent, ActionListener, MouseEvent}
-import java.awt.geom._
-import prefuse.visual.{NodeItem, AggregateItem, VisualItem}
-import java.util.TimerTask
+import prefuse.data.{Edge, Graph}
+import prefuse.action.assignment.ColorAction
+import prefuse.visual.{AggregateItem, VisualItem}
 import de.sciss.synth
+import synth.proc.{ProcDiff, ControlGliding, ControlValue, ProcControl, ControlABusMapping, ControlBusMapping, Ref, ProcParamAudioOutput, ProcParamAudioInput, ProcParamFloat, RichGroup, RichBus, DSL, ProcTxn, ProcWorld, Instant, Transition, ProcEdge, Proc, ProcFactory, ProcDemiurg, ExpWarp, ParamSpec}
 import synth.ugen.Out
-import synth.{Group, AudioBus, Bus, UGenIn, GE, Model, Server}
+import synth.{AudioBus, GE}
 import sys.error
 import javax.swing.{JComponent, JPanel}
 import javax.swing.event.{AncestorEvent, AncestorListener}
+import java.awt.geom.Point2D
+import java.awt.{Component, Dimension, Rectangle, Container, LayoutManager, Point, EventQueue, Color}
+import prefuse.render.{DefaultRendererFactory, EdgeRenderer, PolygonRenderer}
+import prefuse.controls.{PanControl, WheelZoomControl, ZoomControl}
 
 object NuagesPanel {
    var verbose = false
@@ -73,7 +68,7 @@ with ProcFactoryProvider {
    panel =>
    
    import NuagesPanel._
-   import ProcWorld._
+//   import ProcWorld._
 //   import Proc._
 
    val vis     = new Visualization()
@@ -244,7 +239,7 @@ with ProcFactoryProvider {
             val name    = if( config.collector ) "_master" else "$master"
             val pMaster = (diff( name ) {
                val pAmp = pControl( "amp", masterAmpSpec._1, masterAmpSpec._2 )
-               val pIn  = pAudioIn( "in", None )
+               /* val pIn = */ pAudioIn( "in", None )
                graph { (sig: In) => efficientOuts( Limiter.ar( sig * pAmp.kr, (-0.2).dbamp ), chans ); 0.0 }
             }).make
             pMaster.control( "amp" ).v = masterAmpSpec._2
@@ -270,7 +265,8 @@ with ProcFactoryProvider {
 
             masterFactory = Some( diff( "$diff" ) {
                graph { (sig: In) =>
-                  require( sig.numOutputs == b.numChannels )
+//                  require( sig.numOutputs == b.numChannels )
+if( sig.numOutputs != b.numChannels ) println( "Warning - masterFactory. sig has " + sig.numOutputs + " outputs, but bus has " +b.numChannels + " channels " )
                   if( config.meters ) meterGraph( sig )
                   Out.ar( b.index, sig )
                }
@@ -287,7 +283,7 @@ with ProcFactoryProvider {
                val numIn   = sig.numOutputs
                val numOut  = chans.size
 //               val sigOut  = Array.fill[ GE ]( numOut )( 0.0f )
-               val sca     = (numOut - 1).toFloat / (numIn - 1)
+//               val sca     = (numOut - 1).toFloat / (numIn - 1)
 
                val sigOut  = SplayAz.ar( numOut, sig ) // , spread, center, level, width, orient
 
@@ -313,7 +309,8 @@ with ProcFactoryProvider {
    }
 
    private def efficientOuts( sig: GE, chans: IIdxSeq[ Int ]) {
-      require( sig.numOutputs == chans.size )
+//      require( sig.numOutputs == chans.size, sig.numOutputs.toString + " =! " + chans.size )
+if( sig.numOutputs != chans.size ) println( "WARNING: efficientOuts. sig has " + sig.numOutputs.toString + " outs, while chans has = " + chans.size )
       if( chans.isEmpty ) return
 
 require( chans == IIdxSeq.tabulate( chans.size )( i => i + chans( 0 )))

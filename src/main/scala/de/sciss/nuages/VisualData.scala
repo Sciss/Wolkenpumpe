@@ -31,12 +31,13 @@ package de.sciss.nuages
 import java.awt.{Font, Graphics2D, Shape, BasicStroke, Color}
 import java.awt.event.MouseEvent
 import prefuse.util.ColorLib
-import prefuse.data.{Edge, Node => PNode, Graph}
+import prefuse.data.{Edge, Node => PNode}
 import prefuse.visual.{AggregateItem, VisualItem}
 import java.awt.geom.{Line2D, Arc2D, Area, Point2D, Ellipse2D, GeneralPath, Rectangle2D}
 import collection.immutable.{Set => ISet}
 import de.sciss.synth
-import synth.proc.{Glide, XFade, DSL, ProcAudioBus, Instant, ControlValue, ProcControl, ProcAudioInput, ProcAudioOutput, ControlBusMapping, ProcDiff, ProcFilter, ProcTxn, Proc}
+import synth.proc.{Glide, XFade, ProcAudioBus, Instant, ControlValue, ProcControl, ProcAudioInput, ProcAudioOutput,
+   ControlBusMapping, ProcDiff, ProcFilter, ProcTxn, Proc}
 import de.sciss.sonogram.IntensityColorScheme
 
 private[nuages] object VisualData {
@@ -73,28 +74,28 @@ private[nuages] trait VisualData {
    protected def main: NuagesPanel
 
    def update( shp: Shape ) {
-      val newR = shp.getBounds2D()
-      if( (math.abs( newR.getWidth() - r.getWidth() ) < eps) &&
-          (math.abs( newR.getHeight() - r.getHeight() ) < eps) ) {
+      val newR = shp.getBounds2D
+      if( (math.abs( newR.getWidth - r.getWidth ) < eps) &&
+          (math.abs( newR.getHeight - r.getHeight ) < eps) ) {
 
-         r.setFrame( newR.getX(), newR.getY(), r.getWidth(), r.getHeight() )
+         r.setFrame( newR.getX, newR.getY, r.getWidth, r.getHeight )
          return
       }
       r.setFrame( newR )
       outline = shp
 
-      outerE.setFrame( 0, 0, r.getWidth(), r.getHeight() )
-      innerE.setFrame( margin, margin, r.getWidth() - margin2, r.getHeight() - margin2 )
+      outerE.setFrame( 0, 0, r.getWidth, r.getHeight )
+      innerE.setFrame( margin, margin, r.getWidth - margin2, r.getHeight - margin2 )
       gp.reset()
       gp.append( outerE, false )
-      boundsResized
+      boundsResized()
    }
 
    def render( g: Graphics2D, vi: VisualItem ) {
       g.setColor( ColorLib.getColor( vi.getFillColor ))
       g.fill( outline )
       val atOrig = g.getTransform
-      g.translate( r.getX(), r.getY() )
+      g.translate( r.getX, r.getY )
 //         g.setRenderingHint( RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON )
       renderDetail( g, vi )
       g.setTransform( atOrig )
@@ -107,25 +108,25 @@ private[nuages] trait VisualData {
    def itemDragged( vi: VisualItem, e: MouseEvent, pt: Point2D ) {}
 
    protected def drawName( g: Graphics2D, vi: VisualItem, font: Font ) {
-      g.setColor( ColorLib.getColor( vi.getTextColor() ))
+      g.setColor( ColorLib.getColor( vi.getTextColor ))
       if( main.display.isHighQuality ) {
          drawNameHQ( g, vi, font )
       } else {
-         val cx   = r.getWidth() / 2
-         val cy   = r.getHeight() / 2
+         val cx   = r.getWidth / 2
+         val cy   = r.getHeight / 2
          g.setFont( font )
-         val fm   = g.getFontMetrics()
+         val fm   = g.getFontMetrics
          val n    = name
          g.drawString( n, (cx - (fm.stringWidth( n ) * 0.5)).toInt,
-                          (cy + ((fm.getAscent() - fm.getLeading()) * 0.5)).toInt )
+                          (cy + ((fm.getAscent - fm.getLeading) * 0.5)).toInt )
       }
    }
 
    private def drawNameHQ( g: Graphics2D, vi: VisualItem, font: Font ) {
       val n    = name
-      val v = font.createGlyphVector( g.getFontRenderContext(), n )
-      val vvb = v.getVisualBounds()
-      val vlb = v.getLogicalBounds()
+      val v = font.createGlyphVector( g.getFontRenderContext, n )
+      val vvb = v.getVisualBounds
+//      val vlb = v.getLogicalBounds
 
       // for PDF output, drawGlyphVector gives correct font rendering,
       // while drawString only does with particular fonts.
@@ -133,19 +134,19 @@ private[nuages] trait VisualData {
 //                           ((r.getHeight() + (fm.getAscent() - fm.getLeading())) * 0.5).toFloat )
 //         g.drawGlyphVector( v, ((r.getWidth() - vb.getWidth()) * 0.5).toFloat,
 //                               ((r.getHeight() - vb.getHeight()) * 0.5).toFloat )
-      val shp = v.getOutline( ((r.getWidth() - vvb.getWidth()) * 0.5).toFloat,
-                              ((r.getHeight() + vvb.getHeight()) * 0.5).toFloat )
+      val shp = v.getOutline( ((r.getWidth - vvb.getWidth) * 0.5).toFloat,
+                              ((r.getHeight + vvb.getHeight) * 0.5).toFloat )
       g.fill( shp )
    }
 
    def name : String
-   protected def boundsResized : Unit
+   protected def boundsResized() : Unit
    protected def renderDetail( g: Graphics2D, vi: VisualItem )
 }
 
 object VisualProc {
    private val logPeakCorr		= 20.0 / math.log( 10 )
-   private val logRMSCorr		= 10.0 / math.log( 10 )
+//   private val logRMSCorr		= 10.0 / math.log( 10 )
 
 //   private def hsbFade( w1: Float, rgbMin: Int, rgbMax: Int ) : Color = {
 //      val hsbTop = new Array[ Float ]( 3 )
@@ -196,7 +197,7 @@ extends VisualData {
    def state = stateVar
    def state_=( value: Proc.State ) {
       stateVar = value
-      if( disposeAfterFade && !value.fading && !isCollectorInput ) disposeProc
+      if( disposeAfterFade && !value.fading && !isCollectorInput ) disposeProc()
    }
 
    private def paintToNorm( paint: Float ) : Float = {
@@ -248,8 +249,8 @@ extends VisualData {
       if( super.itemPressed( vi, e, pt )) return true
       if( isSynthetic ) return false
 
-      val xt = pt.getX() - r.getX()
-      val yt = pt.getY() - r.getY()
+      val xt = pt.getX - r.getX
+      val yt = pt.getY - r.getY
       if( playArea.contains( xt, yt )) {
          ProcTxn.atomic { implicit t =>
             t.withTransition( main.transition( t.time )) {
@@ -269,7 +270,7 @@ extends VisualData {
          main.setSolo( vproc, !soloed )
          true
 //         println( "SOLO" )
-      } else if( outerE.contains( xt, yt ) & e.isAltDown() ) {
+      } else if( outerE.contains( xt, yt ) & e.isAltDown ) {
          val instant = !stateVar.playing || stateVar.bypassed || (main.transition( 0 ) == Instant)
          proc.anatomy match {
             case ProcFilter => {
@@ -317,8 +318,6 @@ extends VisualData {
    }
 
    private def disposeCollectorInput( p: Proc )( implicit tx: ProcTxn ) {
-      import DSL._
-
       val trans = main.transition( tx.time ) match {
          case XFade( start, dur ) => Glide( start, dur )
          case n => n
@@ -341,7 +340,7 @@ extends VisualData {
       }
    }
 
-   private def disposeProc {
+   private def disposeProc() {
 //println( "DISPOSE " + proc )
       ProcTxn.atomic { implicit t =>
          proc.anatomy match {
@@ -387,8 +386,8 @@ extends VisualData {
       })
    }
 
-   protected def boundsResized {
-      val arc = new Arc2D.Double( 0, 0, r.getWidth(), r.getHeight(), 135, 90, Arc2D.PIE )
+   protected def boundsResized() {
+      val arc = new Arc2D.Double( 0, 0, r.getWidth, r.getHeight, 135, 90, Arc2D.PIE )
       playArea.reset()
       playArea.add( new Area( arc ))
       playArea.subtract( new Area( innerE ))
@@ -425,7 +424,7 @@ extends VisualData {
          
          if( meter ) {
             val angExtent  = (math.max( 0f, peakNorm ) * 90).toInt
-            val pValArc    = new Arc2D.Double( 0, 0, r.getWidth(), r.getHeight(), -45, angExtent, Arc2D.PIE )
+            val pValArc    = new Arc2D.Double( 0, 0, r.getWidth, r.getHeight, -45, angExtent, Arc2D.PIE )
             val peakArea   = new Area( pValArc )
             peakArea.subtract( new Area( innerE ))
 
@@ -439,7 +438,7 @@ extends VisualData {
       g.setColor( if( disposeAfterFade ) Color.red else Color.white )
       g.draw( gp )
 
-      val font = Wolkenpumpe.condensedFont.deriveFont( diam * vi.getSize().toFloat * 0.33333f )
+      val font = Wolkenpumpe.condensedFont.deriveFont( diam * vi.getSize.toFloat * 0.33333f )
       drawName( g, vi, font )
    }
 }
@@ -462,10 +461,10 @@ extends VisualBusParam {
 
    def name : String = bus.name
 
-   protected def boundsResized {}
+   protected def boundsResized() {}
 
    protected def renderDetail( g: Graphics2D, vi: VisualItem ) {
-      val font = Wolkenpumpe.condensedFont.deriveFont( diam * vi.getSize().toFloat * 0.5f )
+      val font = Wolkenpumpe.condensedFont.deriveFont( diam * vi.getSize.toFloat * 0.5f )
       drawName( g, vi, font )
    }
 }
@@ -476,10 +475,10 @@ extends VisualBusParam {
 
    def name : String = bus.name
 
-   protected def boundsResized {}
+   protected def boundsResized() {}
 
    protected def renderDetail( g: Graphics2D, vi: VisualItem ) {
-      val font = Wolkenpumpe.condensedFont.deriveFont( diam * vi.getSize().toFloat * 0.5f )
+      val font = Wolkenpumpe.condensedFont.deriveFont( diam * vi.getSize.toFloat * 0.5f )
       drawName( g, vi, font )
    }
 }
@@ -510,12 +509,12 @@ extends VisualParam {
       if( !vProc.isAlive ) return false
 //         if( super.itemPressed( vi, e, pt )) return true
 
-      if( containerArea.contains( pt.getX() - r.getX(), pt.getY() - r.getY() )) {
-         val dy   = r.getCenterY() - pt.getY()
-         val dx   = pt.getX() - r.getCenterX()
+      if( containerArea.contains( pt.getX - r.getX, pt.getY - r.getY )) {
+         val dy   = r.getCenterY - pt.getY
+         val dx   = pt.getX - r.getCenterX
          val ang  = math.max( 0.0, math.min( 1.0, (((-math.atan2( dy, dx ) / math.Pi + 3.5) % 2.0) - 0.25) / 1.5 ))
          val instant = !vProc.state.playing || vProc.state.bypassed || main.transition( 0 ) == Instant
-         val vStart = if( e.isAltDown() ) {
+         val vStart = if( e.isAltDown ) {
 //               val res = math.min( 1.0f, (((ang / math.Pi + 3.25) % 2.0) / 1.5).toFloat )
 //               if( ang != value ) {
                val m    = control.spec.map( ang )
@@ -541,8 +540,8 @@ extends VisualParam {
 
    override def itemDragged( vi: VisualItem, e: MouseEvent, pt: Point2D ) {
       drag.foreach( dr => {
-         val dy   = r.getCenterY() - pt.getY()
-         val dx   = pt.getX() - r.getCenterX()
+         val dy   = r.getCenterY - pt.getY
+         val dx   = pt.getX - r.getCenterX
 //            val ang  = -math.atan2( dy, dx )
          val ang  = (((-math.atan2( dy, dx ) / math.Pi + 3.5) % 2.0) - 0.25) / 1.5
          val vEff = math.max( 0.0, math.min( 1.0, dr.valueStart + (ang - dr.angStart) ))
@@ -566,8 +565,8 @@ extends VisualParam {
       }
    }
 
-   protected def boundsResized {
-      val pContArc = new Arc2D.Double( 0, 0, r.getWidth(), r.getHeight(), -45, 270, Arc2D.PIE )
+   protected def boundsResized() {
+      val pContArc = new Arc2D.Double( 0, 0, r.getWidth, r.getHeight, -45, 270, Arc2D.PIE )
       containerArea.reset()
       containerArea.add( new Area( pContArc ))
       containerArea.subtract( new Area( innerE ))
@@ -581,7 +580,7 @@ extends VisualParam {
 //println( "updateRenderValue( " + control.name + " ) from " + v + " to " + vn )
       val angExtent  = (vn * 270).toInt
       val angStart   = 225 - angExtent
-      val pValArc    = new Arc2D.Double( 0, 0, r.getWidth(), r.getHeight(), angStart, angExtent, Arc2D.PIE )
+      val pValArc    = new Arc2D.Double( 0, 0, r.getWidth, r.getHeight, angStart, angExtent, Arc2D.PIE )
       valueArea.reset()
       valueArea.add( new Area( pValArc ))
       valueArea.subtract( new Area( innerE ))
@@ -618,7 +617,7 @@ extends VisualParam {
       g.setColor( ColorLib.getColor( vi.getStrokeColor ))
       g.draw( gp )
 
-      val font = Wolkenpumpe.condensedFont.deriveFont( diam * vi.getSize().toFloat * 0.33333f )
+      val font = Wolkenpumpe.condensedFont.deriveFont( diam * vi.getSize.toFloat * 0.33333f )
       drawName( g, vi, font )
    }
 
