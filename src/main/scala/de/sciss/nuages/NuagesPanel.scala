@@ -266,7 +266,7 @@ with ProcFactoryProvider {
             masterFactory = Some( diff( "$diff" ) {
                graph { (sig: In) =>
 //                  require( sig.numOutputs == b.numChannels )
-if( sig.numOutputs != b.numChannels ) println( "Warning - masterFactory. sig has " + sig.numOutputs + " outputs, but bus has " +b.numChannels + " channels " )
+if( sig.numChannels != b.numChannels ) println( "Warning - masterFactory. sig has " + sig.numChannels + " outputs, but bus has " +b.numChannels + " channels " )
                   if( config.meters ) meterGraph( sig )
                   Out.ar( b.index, sig )
                }
@@ -280,7 +280,7 @@ if( sig.numOutputs != b.numChannels ) println( "Warning - masterFactory. sig has
             val pAmp = pControl( "amp", soloAmpSpec._1, soloAmpSpec._2 )
 
             graph { sig: In =>
-               val numIn   = sig.numOutputs
+//               val numIn   = sig.numOutputs
                val numOut  = chans.size
 //               val sigOut  = Array.fill[ GE ]( numOut )( 0.0f )
 //               val sca     = (numOut - 1).toFloat / (numIn - 1)
@@ -310,7 +310,7 @@ if( sig.numOutputs != b.numChannels ) println( "Warning - masterFactory. sig has
 
    private def efficientOuts( sig: GE, chans: IIdxSeq[ Int ]) {
 //      require( sig.numOutputs == chans.size, sig.numOutputs.toString + " =! " + chans.size )
-if( sig.numOutputs != chans.size ) println( "WARNING: efficientOuts. sig has " + sig.numOutputs.toString + " outs, while chans has = " + chans.size )
+//if( sig.numOutputs != chans.size ) println( "WARNING: efficientOuts. sig has " + sig.numOutputs.toString + " outs, while chans has = " + chans.size )
       if( chans.isEmpty ) return
 
 require( chans == IIdxSeq.tabulate( chans.size )( i => i + chans( 0 )))

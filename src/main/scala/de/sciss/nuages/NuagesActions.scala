@@ -147,6 +147,7 @@ class NuagesActions( nuages: NuagesPanel ) {
 
    def createFilter( out: ProcAudioOutput, in: ProcAudioInput, fltF: ProcFactory, pt: Point2D )( implicit txn: ProcTxn ) {
       import DSL._
+//println( "filter from out " + out.bus + " to " + in.bus )
       val filter  = fltF.make
       filter.bypass
       out ~|filter|> in

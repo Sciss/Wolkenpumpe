@@ -60,7 +60,7 @@ object Wolkenpumpe /* extends TxnModel[ NuagesUpdate ]*/ {
 //         case ServerConnection.Preparing( srv ) =>
          case ServerConnection.Running( srv ) => {
             s = srv
-//            srv.dumpOSC(1)
+//            srv.dumpOSC()
             ProcDemiurg.addServer( srv )
             val recordPath = "/tmp"
 //            val masterBus  = new AudioBus( srv, 0, 2 )
@@ -90,6 +90,7 @@ object Wolkenpumpe /* extends TxnModel[ NuagesUpdate ]*/ {
                   val pmix  = pAudio( "mix", ParamSpec( 0, 1 ), 1 )
 
                   graph { in: In =>
+//println( "Filter : in has " + in.numChannels + " channels" )
                      val normFreq   = pfreq.ar
                      val lowFreqN	= Lag.ar( Clip.ar( normFreq, -1, 0 ))
                      val highFreqN  = Lag.ar( Clip.ar( normFreq,  0, 1 ))
@@ -113,7 +114,8 @@ object Wolkenpumpe /* extends TxnModel[ NuagesUpdate ]*/ {
                   graph { in: In =>
                      val speed	   = Lag.ar( pspeed.ar, 0.1 )
                      val numFrames  = sampleRate.toInt
-                     val numChannels= in.numOutputs
+                     val numChannels= in.numChannels // numOutputs
+//println( "numChannels = " + numChannels )
                      val buf        = bufEmpty( numFrames, numChannels )
                      val bufID      = buf.id
                      val writeRate  = BufRateScale.kr( bufID )
