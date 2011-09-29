@@ -44,12 +44,13 @@ import synth.proc.{ProcDiff, ControlGliding, ControlValue, ProcControl, ControlA
 import synth.ugen.Out
 import synth.{AudioBus, GE}
 import sys.error
-import javax.swing.{JComponent, JPanel}
 import javax.swing.event.{AncestorEvent, AncestorListener}
 import java.awt.geom.Point2D
 import java.awt.{Component, Dimension, Rectangle, Container, LayoutManager, Point, EventQueue, Color}
 import prefuse.render.{DefaultRendererFactory, EdgeRenderer, PolygonRenderer}
 import prefuse.controls.{PanControl, WheelZoomControl, ZoomControl}
+import javax.swing.{Timer => SwingTimer, JComponent, JPanel}
+import java.awt.event.{ActionEvent, ActionListener}
 
 object NuagesPanel {
    var verbose = false
@@ -408,6 +409,7 @@ Out.ar( chans( 0 ), sig )
          vi.setEndY( loc.getY() )
       })
       val aggr = aggrTable.addItem().asInstanceOf[ AggregateItem ]
+//println( "ADD AGGR " + aggr )
       aggr.addItem( vi )
 
       def createNode = {
@@ -587,8 +589,32 @@ Out.ar( chans( 0 ), sig )
       }
    }
 
+//   private def tryRepeatedly( code: => Unit ) {
+//      def iter( repeats: Int, print: Boolean ) {
+//         try {
+//            code
+//         } catch {
+//            case e =>
+//               if( print ) e.printStackTrace()
+//               if( repeats > 0 ) {
+//                  new SwingTimer( 1000, new ActionListener {
+//                     def actionPerformed( e: ActionEvent ) {
+//                        iter( repeats - 1, false )
+//                     }
+//                  }).start()
+//               }
+//         }
+//      }
+//      iter( 10, true )
+//   }
+
    private def topRemoveProc( vProc: VisualProc ) {
+      // fucking prefuse -- always trouble with the aggregates
+//Thread.sleep(50)
+//println( "REMOVE AGGR " + vProc.aggr )
+//      vProc.aggr.removeAllItems()
       aggrTable.removeTuple( vProc.aggr )
+//      tryRepeatedly( aggrTable.removeTuple( vProc.aggr ))
       g.removeNode( vProc.pNode )
       vProc.params.values.foreach( vParam => {
 // WE MUST NOT REMOVE THE EDGES, AS THE REMOVAL OF
