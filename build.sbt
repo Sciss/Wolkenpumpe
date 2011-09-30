@@ -12,7 +12,9 @@ scalaVersion := "2.9.1"
 // unmanagedClasspath in Compile += Attributed.blank(new java.io.File("doesnotexist"))
 
 libraryDependencies ++= Seq(
-   "de.sciss" %% "scalacolliderswing" % "0.30-SNAPSHOT",
+//   "de.sciss" %% "scalacolliderswing" % "0.30-SNAPSHOT",
+   "de.sciss" % "prefuse-core" % "0.21",
+   "de.sciss" %% "scalacollider" % "0.30-SNAPSHOT",
    "de.sciss" %% "soundprocesses" % "0.30-SNAPSHOT"
 )
 

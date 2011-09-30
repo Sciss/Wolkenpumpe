@@ -24,15 +24,6 @@
     <orderEntry type="module-library">
       <library>
         <CLASSES>
-          <root url="jar://$MODULE_DIR$/lib_managed/jars/de.sciss/scalacolliderswing_2.9.1/scalacolliderswing_2.9.1-0.30-SNAPSHOT.jar!/" />
-        </CLASSES>
-        <JAVADOC />
-        <SOURCES />
-      </library>
-    </orderEntry>
-    <orderEntry type="module-library">
-      <library>
-        <CLASSES>
           <root url="jar://$MODULE_DIR$/lib_managed/jars/de.sciss/scalacollider_2.9.1/scalacollider_2.9.1-0.30-SNAPSHOT.jar!/" />
         </CLASSES>
         <JAVADOC />
@@ -43,15 +34,6 @@
       <library>
         <CLASSES>
           <root url="jar://$MODULE_DIR$/lib_managed/jars/de.sciss/scalaaudiofile_2.9.1/scalaaudiofile_2.9.1-0.20.jar!/" />
-        </CLASSES>
-        <JAVADOC />
-        <SOURCES />
-      </library>
-    </orderEntry>
-    <orderEntry type="module-library">
-      <library>
-        <CLASSES>
-          <root url="jar://$MODULE_DIR$/lib_managed/jars/jsyntaxpane/jsyntaxpane/jsyntaxpane-0.9.5-b29.jar!/" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />
@@ -78,15 +60,6 @@
     <orderEntry type="module-library">
       <library>
         <CLASSES>
-          <root url="jar://$MODULE_DIR$/lib_managed/jars/de.sciss/scalainterpreterpane_2.9.1/scalainterpreterpane_2.9.1-0.18.jar!/" />
-        </CLASSES>
-        <JAVADOC />
-        <SOURCES />
-      </library>
-    </orderEntry>
-    <orderEntry type="module-library">
-      <library>
-        <CLASSES>
           <root url="jar://$MODULE_DIR$/lib_managed/jars/org.scala-tools/scala-stm_2.9.1/scala-stm_2.9.1-0.3.jar!/" />
         </CLASSES>
         <JAVADOC />
@@ -96,34 +69,7 @@
     <orderEntry type="module-library">
       <library>
         <CLASSES>
-          <root url="jar://$MODULE_DIR$/lib_managed/jars/org.scala-lang/scala-swing/scala-swing-2.9.1.jar!/" />
-        </CLASSES>
-        <JAVADOC />
-        <SOURCES />
-      </library>
-    </orderEntry>
-    <orderEntry type="module-library">
-      <library>
-        <CLASSES>
           <root url="jar://$MODULE_DIR$/lib_managed/jars/de.sciss/prefuse-core/prefuse-core-0.21.jar!/" />
-        </CLASSES>
-        <JAVADOC />
-        <SOURCES />
-      </library>
-    </orderEntry>
-    <orderEntry type="module-library">
-      <library>
-        <CLASSES>
-          <root url="jar://$MODULE_DIR$/lib_managed/jars/de.sciss/scalaaudiowidgets_2.9.1/scalaaudiowidgets_2.9.1-0.10.jar!/" />
-        </CLASSES>
-        <JAVADOC />
-        <SOURCES />
-      </library>
-    </orderEntry>
-    <orderEntry type="module-library">
-      <library>
-        <CLASSES>
-          <root url="jar://$MODULE_DIR$/lib_managed/jars/de.sciss/audiowidgets_2.9.1/audiowidgets_2.9.1-0.10.jar!/" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />
