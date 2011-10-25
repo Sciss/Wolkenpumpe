@@ -35,9 +35,14 @@ import javax.swing.WindowConstants
 
 object Wolkenpumpe /* extends TxnModel[ NuagesUpdate ]*/ {
    val name          = "Wolkenpumpe"
-   val version       = 0.26
+   val version       = 0.30
+   val isSnapshot    = false
    val copyright     = "(C)opyright 2004-2011 Hanns Holger Rutz"
-   def versionString = (version + 0.001).toString.substring( 0, 4 )
+
+   def versionString = {
+      val s = (version + 0.001).toString.substring( 0, 4 )
+      if( isSnapshot ) s + "-SNAPSHOT" else s
+   }
 
    def main( args: Array[ String ]) {
       if( args.size > 0 && args( 0 ) == "--test" ) {

@@ -1,28 +1,29 @@
 name := "wolkenpumpe"
 
-version := "0.30-SNAPSHOT"
+version := "0.30"
 
 organization := "de.sciss"
 
 scalaVersion := "2.9.1"
 
-// crossScalaVersions := Seq("2.9.1", "2.9.0", "2.8.1")
-
-// fix sbt issue #85 (https://github.com/harrah/xsbt/issues/85)
-// unmanagedClasspath in Compile += Attributed.blank(new java.io.File("doesnotexist"))
-
 libraryDependencies ++= Seq(
-//   "de.sciss" %% "scalacolliderswing" % "0.30-SNAPSHOT",
+//   "de.sciss" %% "scalacolliderswing" % "0.30",
    "de.sciss" % "prefuse-core" % "0.21",
-   "de.sciss" %% "scalacollider" % "0.30-SNAPSHOT",
-   "de.sciss" %% "soundprocesses" % "0.30-SNAPSHOT"
+   "de.sciss" %% "scalacollider" % "0.30",
+   "de.sciss" %% "soundprocesses" % "0.30"
 )
 
 retrieveManaged := true
 
+scalacOptions ++= Seq( "-deprecation", "-unchecked" )
+
 // ---- publishing ----
 
-publishTo := Some(ScalaToolsReleases)
+publishTo <<= version { (v: String) =>
+   Some( "Scala Tools Nexus" at "http://nexus.scala-tools.org/content/repositories/".+(
+      if( v.endsWith( "-SNAPSHOT")) "snapshots/" else "releases/"
+   ))
+}
 
 pomExtra :=
 <licenses>
