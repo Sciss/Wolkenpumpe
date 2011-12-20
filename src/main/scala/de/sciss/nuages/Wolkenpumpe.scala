@@ -21,9 +21,6 @@
  *
  *  For further information, please contact Hanns Holger Rutz at
  *  contact@sciss.de
- *
- *
- *  Changelog:
  */
 
 package de.sciss.nuages
@@ -35,8 +32,8 @@ import javax.swing.WindowConstants
 
 object Wolkenpumpe /* extends TxnModel[ NuagesUpdate ]*/ {
    val name          = "Wolkenpumpe"
-   val version       = 0.30
-   val isSnapshot    = false
+   val version       = 0.32
+   val isSnapshot    = true
    val copyright     = "(C)opyright 2004-2011 Hanns Holger Rutz"
 
    def versionString = {

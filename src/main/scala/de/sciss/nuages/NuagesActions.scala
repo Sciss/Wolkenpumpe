@@ -21,23 +21,18 @@
  *
  *  For further information, please contact Hanns Holger Rutz at
  *  contact@sciss.de
- *
- *
- *  Changelog:
  */
 
 package de.sciss.nuages
 
 import java.awt.Point
 import java.awt.geom.Point2D
-import javax.swing.plaf.basic.BasicButtonUI
-import java.awt.event.{ActionEvent, ActionListener}
 import prefuse.visual.NodeItem
-import javax.swing.{JComponent, JPanel, JButton, Box, BorderFactory, BoxLayout}
+import javax.swing.{JComponent, JPanel, Box, BorderFactory, BoxLayout}
 import de.sciss.synth.proc.{ProcAudioInput, ProcAudioOutput, ProcAnatomy, DSL, ProcDiff, ProcGen, ProcFactory, ProcTxn, ProcFilter}
 
 class NuagesActions( nuages: NuagesPanel ) {
-   private val font = Wolkenpumpe.condensedFont.deriveFont( 15f ) // WARNING: use float argument
+//   private val font = Wolkenpumpe.condensedFont.deriveFont( 15f ) // WARNING: use float argument
    private var fltDialogDoneAction: ProcFactory => ProcTxn => Unit = f => t => ()
 
    private def createOverlayPanel = {

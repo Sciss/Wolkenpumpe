@@ -21,9 +21,6 @@
  *
  *  For further information, please contact Hanns Holger Rutz at
  *  contact@sciss.de
- *
- *
- *  Changelog:
  */
 
 package de.sciss.nuages
@@ -32,10 +29,9 @@ import prefuse.controls.ControlAdapter
 import prefuse.visual.{NodeItem, VisualItem}
 import java.awt.event.MouseEvent
 import prefuse.util.display.PaintListener
-import prefuse.util.ColorLib
-import java.awt.{Color, BasicStroke, Paint, Graphics2D}
+import java.awt.{Color, Graphics2D}
 import java.awt.geom.{Line2D, Point2D}
-import de.sciss.synth.proc.{ProcTxn, ProcParamAudioInput, ProcParamAudioOutput}
+import de.sciss.synth.proc.ProcTxn
 import prefuse.{Visualization, Display}
 
 class ConnectControl( vis: Visualization )

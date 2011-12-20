@@ -21,14 +21,11 @@
  *
  *  For further information, please contact Hanns Holger Rutz at
  *  contact@sciss.de
- *
- *
- *  Changelog:
  */
 
 package de.sciss.nuages
 
-import de.sciss.synth.{AudioBus, Server}
+import de.sciss.synth.Server
 import collection.immutable.{IndexedSeq => IIdxSeq}
 
 case class NuagesConfig(

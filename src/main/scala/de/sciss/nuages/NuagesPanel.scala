@@ -21,9 +21,6 @@
  *
  *  For further information, please contact Hanns Holger Rutz at
  *  contact@sciss.de
- *
- *
- *  Changelog:
  */
 
 package de.sciss.nuages
@@ -49,8 +46,7 @@ import java.awt.geom.Point2D
 import java.awt.{Component, Dimension, Rectangle, Container, LayoutManager, Point, EventQueue, Color}
 import prefuse.render.{DefaultRendererFactory, EdgeRenderer, PolygonRenderer}
 import prefuse.controls.{PanControl, WheelZoomControl, ZoomControl}
-import javax.swing.{Timer => SwingTimer, JComponent, JPanel}
-import java.awt.event.{ActionEvent, ActionListener}
+import javax.swing.{JComponent, JPanel}
 
 object NuagesPanel {
    var verbose = false
@@ -112,7 +108,7 @@ with ProcFactoryProvider {
    def masterBus : Option[ AudioBus ] = masterBusVar
 
    private object topoListener extends ProcWorld.Listener {
-      def updated( u: ProcWorld.Update ) = topoUpdate( u ) // { defer( topoUpdate( u ))}
+      def updated( u: ProcWorld.Update ) { topoUpdate( u )}
    }
 
    private object procListener extends Proc.Listener {
@@ -130,7 +126,7 @@ with ProcFactoryProvider {
       locHintMap += p -> loc
    }
 
-   private var overlay = Option.empty[ JComponent ]
+   private var overlay = Option.empty[ JComponent ];
 
    // ---- constructor ----
    {
@@ -338,7 +334,7 @@ Out.ar( chans( 0 ), sig )
    }
 
    private def defer( code: => Unit ) {
-      EventQueue.invokeLater( new Runnable { def run = code })
+      EventQueue.invokeLater( new Runnable { def run() { code }})
    }
 
    def showOverlayPanel( p: JComponent, pt: Point ) : Boolean = {
@@ -405,8 +401,8 @@ Out.ar( chans( 0 ), sig )
       val locO    = locHintMap.get( p )
       locO.foreach( loc => {
          locHintMap -= p
-         vi.setEndX( loc.getX() )
-         vi.setEndY( loc.getY() )
+         vi.setEndX( loc.getX )
+         vi.setEndY( loc.getY )
       })
       val aggr = aggrTable.addItem().asInstanceOf[ AggregateItem ]
 //println( "ADD AGGR " + aggr )
@@ -417,8 +413,8 @@ Out.ar( chans( 0 ), sig )
          val pParamEdge = g.addEdge( pNode, pParamNode )
          val vi         = vis.getVisualItem( GROUP_GRAPH, pParamNode )
          locO.foreach( loc => {
-            vi.setEndX( loc.getX() )
-            vi.setEndY( loc.getY() )
+            vi.setEndX( loc.getX )
+            vi.setEndY( loc.getY )
          })
          aggr.addItem( vi )
          (pParamNode, pParamEdge, vi)
@@ -634,7 +630,7 @@ Out.ar( chans( 0 ), sig )
                   g.removeEdge( pEdge )
                }
                catch {
-                  case ex => println( "" + new java.util.Date() + " CAUGHT " + e + " : " + ex.getClass().getName )
+                  case ex => println( "" + new java.util.Date() + " CAUGHT " + e + " : " + ex.getClass.getName )
                }
                edgeMap -= e
             })

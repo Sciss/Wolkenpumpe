@@ -21,9 +21,6 @@
  *
  *  For further information, please contact Hanns Holger Rutz at
  *  contact@sciss.de
- *
- *
- *  Changelog:
  */
 
 package de.sciss.nuages
@@ -60,7 +57,7 @@ class ProcFactoryViewManager( config: NuagesConfig ) extends ProcDemiurg.Listene
    }
 
    private def defer( thunk: => Unit ) {
-      EventQueue.invokeLater( new Runnable { def run() = thunk })
+      EventQueue.invokeLater( new Runnable { def run() { thunk }})
    }
 
    def updated( u: ProcDemiurg.Update ) { defer {

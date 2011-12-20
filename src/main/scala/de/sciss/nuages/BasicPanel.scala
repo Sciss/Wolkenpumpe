@@ -21,16 +21,13 @@
  *
  *  For further information, please contact Hanns Holger Rutz at
  *  contact@sciss.de
- *
- *
- *  Changelog:
  */
 
 package de.sciss.nuages
 
 import javax.swing.JPanel
 import javax.swing.plaf.basic.BasicPanelUI
-import java.awt.{Color, AWTEvent, LayoutManager}
+import java.awt.{Color, AWTEvent}
 
 class BasicPanel extends JPanel {
    setUI( new BasicPanelUI() )

@@ -33,14 +33,9 @@ import javax.swing.event.{ListSelectionEvent, ListSelectionListener}
 import javax.swing.{DefaultListCellRenderer, ListSelectionModel, JList, JScrollPane, ScrollPaneConstants, AbstractListModel}
 import java.awt.{Component, Color}
 
-object ProcFactoryView {
-//   var preferredNumRows = 16
-}
 class ProcFactoryView
 extends JScrollPane( ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS,
                      ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER ) {
-   import ProcFactoryView._
-
    private var sel = Option.empty[ ProcFactory ]
    private val ggList  = new JList( ListModel )
    ggList.setBackground( Color.black )
@@ -123,7 +118,7 @@ extends JScrollPane( ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS,
 
          val str = value match {
             case pf: ProcFactory => pf.name
-            case x => x.toString
+            case other => other.toString
          }
          setText( str )
          setBackground( if( isSelected ) { if( isFocused ) Color.white else colrUnfocused } else Color.black )

@@ -36,7 +36,7 @@
 package de.sciss.nuages
 
 import prefuse.action.layout.Layout
-import prefuse.visual.{AggregateItem, AggregateTable, VisualItem}
+import prefuse.visual.{AggregateItem, VisualItem}
 import prefuse.util.GraphicsLib
 
 /**
@@ -47,11 +47,11 @@ object PrefuseAggregateLayout {
    private val hullMargin = 5
 
    private def addPoint( pts: Array[ Double ], idx: Int, item: VisualItem, growth: Int ) {
-      val b          = item.getBounds()
-      val minX       = b.getMinX() - growth
-      val minY       = b.getMinY() - growth
-      val maxX       = b.getMaxX() + growth
-      val maxY       = b.getMaxY() + growth
+      val b          = item.getBounds
+      val minX       = b.getMinX - growth
+      val minY       = b.getMinY - growth
+      val maxX       = b.getMaxX + growth
+      val maxY       = b.getMaxY + growth
       pts( idx )     = minX
       pts( idx + 1 ) = minY
       pts( idx + 2 ) = minX
@@ -70,14 +70,14 @@ class PrefuseAggregateLayout( aggrGroup: String ) extends Layout( aggrGroup ) {
 
    def run( frac: Double ) {
       val aggr = m_vis.getGroup( aggrGroup ) // .asInstanceOf[ AggregateTable ]
-      if( aggr.getTupleCount() == 0 ) return // do we have any to process?
+      if( aggr.getTupleCount == 0 ) return // do we have any to process?
 
       // update buffers
       var maxsz = 0
       val iter1 = aggr.tuples()
-      while( iter1.hasNext() ) {
+      while( iter1.hasNext ) {
          val item = iter1.next().asInstanceOf[ AggregateItem ]
-         maxsz = math.max( maxsz, 4 * 2 * item.getAggregateSize() )
+         maxsz = math.max( maxsz, 4 * 2 * item.getAggregateSize )
       }
       if( maxsz > points.length ) {
          points = new Array[ Double ]( maxsz + 8 )
@@ -85,14 +85,14 @@ class PrefuseAggregateLayout( aggrGroup: String ) extends Layout( aggrGroup ) {
 
       // compute and assign convex hull for each aggregate
       val iter2 = m_vis.visibleItems( aggrGroup )
-      while( iter2.hasNext() ) {
+      while( iter2.hasNext ) {
          val aitem = iter2.next().asInstanceOf[ AggregateItem ]
          var idx = 0
-         if( aitem.getAggregateSize() > 0 ) {
+         if( aitem.getAggregateSize > 0 ) {
             val iter3 = aitem.items()
-            while( iter3.hasNext() ) {
+            while( iter3.hasNext ) {
                val item = iter3.next().asInstanceOf[ VisualItem ]
-               if( item.isVisible() ) {
+               if( item.isVisible ) {
                   addPoint( points, idx, item, hullMargin )
                   idx += 2 * 4
                }

@@ -21,26 +21,17 @@
  *
  *  For further information, please contact Hanns Holger Rutz at
  *  contact@sciss.de
- *
- *
- *  Changelog:
  */
 
 package de.sciss.nuages
 
 import javax.swing._
-import de.sciss.synth._
 import de.sciss.synth.proc._
-import de.sciss.synth.ugen._
-import plaf.basic.{BasicSliderUI, BasicPanelUI}
-import javax.swing.event.{ChangeListener, ChangeEvent, ListSelectionListener, ListSelectionEvent}
-import collection.immutable.{IndexedSeq => IIdxSeq}
-import java.awt.{Toolkit, GridBagConstraints, GridBagLayout, EventQueue, Component, Container, Color, BorderLayout}
+import plaf.basic.BasicSliderUI
+import javax.swing.event.{ChangeListener, ChangeEvent}
+import java.awt.{Toolkit, GridBagConstraints, GridBagLayout, Color, BorderLayout}
 import java.awt.event.{KeyEvent, ActionEvent, InputEvent}
 
-/**
- *    @version 0.12, 28-Nov-10
- */
 class NuagesFrame( val config: NuagesConfig )
 extends JFrame( "Wolkenpumpe") /* with ProcDemiurg.Listener */ {
    frame =>

@@ -21,21 +21,15 @@
  *
  *  For further information, please contact Hanns Holger Rutz at
  *  contact@sciss.de
- *
- *
- *  Changelog:
  */
 
 package de.sciss.nuages
 
 import prefuse.controls.ControlAdapter
 import java.awt.event.MouseEvent
-import javax.swing.{ListModel, ListSelectionModel}
-import prefuse.{Visualization, Display}
+import prefuse.Display
 import de.sciss.synth.proc._
-import DSL._
-import prefuse.visual.{NodeItem, VisualItem, EdgeItem}
-import de.sciss.synth.control
+import prefuse.visual.{VisualItem, EdgeItem}
 import prefuse.util.GraphicsLib
 import prefuse.util.display.DisplayLib
 import java.awt.geom.{Rectangle2D, Point2D}
@@ -47,8 +41,6 @@ import java.awt.geom.{Rectangle2D, Point2D}
  * 
  *    Methods are guaranteed to be called in the awt
  *    event thread.
- *
- *    @version 0.11, 14-Jul-10  
  */
 trait ProcFactoryProvider {
    def genFactory:      Option[ ProcFactory ]

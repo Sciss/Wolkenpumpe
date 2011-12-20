@@ -21,9 +21,6 @@
  *
  *  For further information, please contact Hanns Holger Rutz at
  *  contact@sciss.de
- *
- *
- *  Changelog:
  */
 
 package de.sciss.nuages
@@ -31,29 +28,20 @@ package de.sciss.nuages
 import prefuse.visual.VisualItem
 import java.awt._
 import geom._
-import javax.swing._
-import prefuse.util.ColorLib
-import prefuse.render.{AbstractShapeRenderer, ShapeRenderer, Renderer}
-
-/**
- *    @version 0.10, 29-Jun-10
- */
-//object NuagesProcRenderer {
-//}
+import prefuse.render.AbstractShapeRenderer
 
 class NuagesProcRenderer( size: Int )
 extends AbstractShapeRenderer {
-//   import NuagesProcRenderer._
    import NuagesPanel._
 
    private val ellipse  = new Ellipse2D.Float()
 
    protected def getRawShape( vi: VisualItem ) : Shape = {
-      var x    = vi.getX()
+      var x    = vi.getX
       if( x.isNaN || x.isInfinity ) x = 0.0
-      var y    = vi.getY()
+      var y    = vi.getY
       if( y.isNaN || y.isInfinity ) y = 0.0
-      val diam = size * vi.getSize()
+      val diam = size * vi.getSize
       if ( diam > 1 ) {
           x -= diam / 2
           y -= diam / 2

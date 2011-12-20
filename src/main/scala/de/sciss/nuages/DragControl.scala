@@ -21,9 +21,6 @@
  *
  *  For further information, please contact Hanns Holger Rutz at
  *  contact@sciss.de
- *
- *
- *  Changelog:
  */
 
 package de.sciss.nuages
@@ -42,7 +39,7 @@ object DragControl {
    import NuagesPanel._
 
    private val csrHand     = Cursor.getPredefinedCursor( Cursor.HAND_CURSOR )
-   private val csrDefault  = Cursor.getDefaultCursor()
+   private val csrDefault  = Cursor.getDefaultCursor
 
    def setSmartFixed( vis: Visualization, vi: VisualItem, state: Boolean ) {
       if( state == true ) {
@@ -97,14 +94,14 @@ class DragControl( vis: Visualization ) extends ControlAdapter {
             val data = vi.get( COL_NUAGES ).asInstanceOf[ VisualData ]
             if( data != null ) {
                val d          = getDisplay( e )
-               val displayPt  = d.getAbsoluteCoordinate( e.getPoint(), null )
+               val displayPt  = d.getAbsoluteCoordinate( e.getPoint, null )
                data.update( pr.getShape( vi ))
                data.itemEntered( vi, e, displayPt )
             }
          }
          case _ =>
       }
-      e.getComponent().setCursor( csrHand )
+      e.getComponent.setCursor( csrHand )
       hoverItem = Some( vi )
       vi match {
          case ni: NodeItem => {
@@ -118,7 +115,7 @@ class DragControl( vis: Visualization ) extends ControlAdapter {
       }
    }
 
-   @inline private def getDisplay( e: MouseEvent ) = e.getComponent().asInstanceOf[ Display ]
+   @inline private def getDisplay( e: MouseEvent ) = e.getComponent.asInstanceOf[ Display ]
 
    override def itemExited( vi: VisualItem, e: MouseEvent ) {
       vis.getRenderer( vi ) match {
@@ -126,7 +123,7 @@ class DragControl( vis: Visualization ) extends ControlAdapter {
             val data = vi.get( COL_NUAGES ).asInstanceOf[ VisualData ]
             if( data != null ) {
                val d          = getDisplay( e )
-               val displayPt  = d.getAbsoluteCoordinate( e.getPoint(), null )
+               val displayPt  = d.getAbsoluteCoordinate( e.getPoint, null )
                data.update( pr.getShape( vi ))
                data.itemExited( vi, e, displayPt )
             }
@@ -144,12 +141,12 @@ class DragControl( vis: Visualization ) extends ControlAdapter {
          }
          case _ =>
       }
-      e.getComponent().setCursor( csrDefault )
+      e.getComponent.setCursor( csrDefault )
    }
 
    override def itemPressed( vi: VisualItem, e: MouseEvent ) {
       val d          = getDisplay( e )
-      val displayPt  = d.getAbsoluteCoordinate( e.getPoint(), null )
+      val displayPt  = d.getAbsoluteCoordinate( e.getPoint, null )
       vis.getRenderer( vi ) match {
          case pr: NuagesProcRenderer => {
             val data       = vi.get( COL_NUAGES ).asInstanceOf[ VisualData ]
@@ -163,7 +160,7 @@ class DragControl( vis: Visualization ) extends ControlAdapter {
          }
          case _ =>
       }
-      if( !SwingUtilities.isLeftMouseButton( e ) || e.isShiftDown() ) return
+      if( !SwingUtilities.isLeftMouseButton( e ) || e.isShiftDown ) return
 //      if( e.isAltDown() ) {
 //         vi match {
 //
@@ -180,7 +177,7 @@ class DragControl( vis: Visualization ) extends ControlAdapter {
             val data = vi.get( COL_NUAGES ).asInstanceOf[ VisualData ]
             if( data != null ) {
                val d          = getDisplay( e )
-               val displayPt  = d.getAbsoluteCoordinate( e.getPoint(), null )
+               val displayPt  = d.getAbsoluteCoordinate( e.getPoint, null )
                data.update( pr.getShape( vi ))
                data.itemReleased( vi, e, displayPt )
             }
@@ -195,7 +192,7 @@ class DragControl( vis: Visualization ) extends ControlAdapter {
 
    override def itemDragged( vi: VisualItem, e: MouseEvent ) {
       val d          = getDisplay( e )
-      val newPt      = d.getAbsoluteCoordinate( e.getPoint(), null )
+      val newPt      = d.getAbsoluteCoordinate( e.getPoint, null )
       vis.getRenderer( vi ) match {
          case pr: NuagesProcRenderer => {
             val data       = vi.get( COL_NUAGES ).asInstanceOf[ VisualData ]
@@ -208,8 +205,8 @@ class DragControl( vis: Visualization ) extends ControlAdapter {
       }
       drag.foreach( dr => {
          if( !dr.started ) dr.started = true
-         val dx = newPt.getX() - dr.lastPt.getX()
-         val dy = newPt.getY() - dr.lastPt.getY()
+         val dx = newPt.getX - dr.lastPt.getX
+         val dy = newPt.getY - dr.lastPt.getY
          move( vi, dx, dy )
          dr.lastPt.setLocation( newPt )
       })
@@ -220,7 +217,7 @@ class DragControl( vis: Visualization ) extends ControlAdapter {
       vi match {
          case ai: AggregateItem => {
             val iter = ai.items()
-            while( iter.hasNext() ) {
+            while( iter.hasNext ) {
                val vi2 = iter.next.asInstanceOf[ VisualItem ]
                setFixed( vi2, fixed )
             }
@@ -234,14 +231,14 @@ class DragControl( vis: Visualization ) extends ControlAdapter {
       vi match {
          case ai: AggregateItem => {
             val iter = ai.items()
-            while( iter.hasNext() ) {
+            while( iter.hasNext ) {
                val vi2 = iter.next.asInstanceOf[ VisualItem ]
                move( vi2, dx, dy )
             }
          }
          case _ => {
-            val x = vi.getX()
-            val y = vi.getY()
+            val x = vi.getX
+            val y = vi.getY
             vi.setStartX( x )
             vi.setStartY( y )
             vi.setX( x + dx )

@@ -1,16 +1,15 @@
 name := "wolkenpumpe"
 
-version := "0.30"
+version := "0.32-SNAPSHOT"
 
 organization := "de.sciss"
 
 scalaVersion := "2.9.1"
 
 libraryDependencies ++= Seq(
-//   "de.sciss" %% "scalacolliderswing" % "0.30",
    "de.sciss" % "prefuse-core" % "0.21",
-   "de.sciss" %% "scalacollider" % "0.30",
-   "de.sciss" %% "soundprocesses" % "0.30"
+   "de.sciss" %% "scalacollider" % "0.32-SNAPSHOT",
+   "de.sciss" %% "soundprocesses" % "0.32-SNAPSHOT"
 )
 
 retrieveManaged := true

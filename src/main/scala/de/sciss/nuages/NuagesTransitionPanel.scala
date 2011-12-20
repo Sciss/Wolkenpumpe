@@ -21,9 +21,6 @@
  *
  *  For further information, please contact Hanns Holger Rutz at
  *  contact@sciss.de
- *
- *
- *  Changelog:
  */
 
 package de.sciss.nuages
@@ -33,12 +30,8 @@ import event.{ChangeEvent, ChangeListener}
 import java.awt.Color
 import plaf.basic.{BasicSliderUI, BasicPanelUI}
 import de.sciss.synth.proc._
-import java.awt.event.{ActionListener, ActionEvent}
 import collection.JavaConversions
 
-/**
- *    @version 0.11, 12-Jul-10
- */
 class NuagesTransitionPanel( main: NuagesPanel ) extends JPanel {
    panel =>
 
