@@ -53,10 +53,10 @@ extends ControlAdapter with PaintListener {
    def postPaint( d: Display, g: Graphics2D ) {
       drag.foreach( dr => {
          g.setColor( if( dr.target.isDefined ) Color.green else Color.red )
-         val tgtX = dr.target.map( _.vi.getX() ).getOrElse( dr.targetLoc.getX() )
-         val tgtY = dr.target.map( _.vi.getY() ).getOrElse( dr.targetLoc.getY() )
-         val srcX = dr.source.vi.getX()
-         val srcY = dr.source.vi.getY()
+         val tgtX = dr.target.map( _.vi.getX ).getOrElse( dr.targetLoc.getX )
+         val tgtY = dr.target.map( _.vi.getY ).getOrElse( dr.targetLoc.getY )
+         val srcX = dr.source.vi.getX
+         val srcY = dr.source.vi.getY
          val lin  = new Line2D.Double( srcX, srcY, tgtX, tgtY )
          val trns = d.getTransform
          val shp  = trns.createTransformedShape( lin )
@@ -66,7 +66,7 @@ extends ControlAdapter with PaintListener {
 
    override def itemPressed( vi: VisualItem, e: MouseEvent ) {
 //      if( !e.isControlDown() ) return
-      if( !e.isShiftDown() ) return
+      if( !e.isShiftDown ) return
       vi match {
          case ni: NodeItem => {
             val data = ni.get( COL_NUAGES ).asInstanceOf[ VisualData ]
@@ -74,10 +74,10 @@ extends ControlAdapter with PaintListener {
             data match {
                case vBus: VisualAudioOutput => {
                   val d          = getDisplay( e )
-                  val displayPt  = d.getAbsoluteCoordinate( e.getPoint(), null )
-                  val dr = new Drag( DragSource( vi, vBus ), displayPt, None )
+                  val displayPt  = d.getAbsoluteCoordinate( e.getPoint, null )
+                  val dr         = new Drag( DragSource( vi, vBus ), displayPt, None )
                   d.addPaintListener( control )
-                  drag = Some( dr )
+                  drag           = Some( dr )
                }
                case _ =>
             }
@@ -111,7 +111,7 @@ extends ControlAdapter with PaintListener {
    private def checkDrag( e: MouseEvent ) {
       drag.foreach( dr => {
          val d          = getDisplay( e )
-         val screenPt   = e.getPoint()
+         val screenPt   = e.getPoint
          d.getAbsoluteCoordinate( screenPt, dr.targetLoc )
          val vi         = d.findItem( screenPt )
          val tgt        = vi match {
@@ -164,5 +164,5 @@ extends ControlAdapter with PaintListener {
       })
    }
 
-   @inline private def getDisplay( e: MouseEvent ) = e.getComponent().asInstanceOf[ Display ]
+   @inline private def getDisplay( e: MouseEvent ) = e.getComponent.asInstanceOf[ Display ]
 }

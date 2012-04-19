@@ -29,7 +29,7 @@
 
 package de.sciss.sonogram
 
-import java.awt.{ Color }
+import java.awt.Color
 import scala.math._
 
 // colors from niklas werner's sonasound!

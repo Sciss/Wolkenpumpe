@@ -33,7 +33,7 @@ import javax.swing.WindowConstants
 object Wolkenpumpe /* extends TxnModel[ NuagesUpdate ]*/ {
    val name          = "Wolkenpumpe"
    val version       = 0.34
-   val isSnapshot    = true
+   val isSnapshot    = false
    val copyright     = "(C)opyright 2004-2012 Hanns Holger Rutz"
 
    def versionString = {
@@ -43,7 +43,7 @@ object Wolkenpumpe /* extends TxnModel[ NuagesUpdate ]*/ {
 
    def main( args: Array[ String ]) {
       if( args.size > 0 && args( 0 ) == "--test" ) {
-         test
+         test()
       } else {
          printInfo()
          sys.exit( 1 )
@@ -55,7 +55,7 @@ object Wolkenpumpe /* extends TxnModel[ NuagesUpdate ]*/ {
          "This is a library which cannot be executed directly.\n" )
    }
 
-   def test {
+   def test() {
       var s : Server = null
       SynthGraph.warnOutsideContext = true
       val booting = Server.boot() {
@@ -147,7 +147,7 @@ object Wolkenpumpe /* extends TxnModel[ NuagesUpdate ]*/ {
             }
          }
       }
-      Runtime.getRuntime().addShutdownHook( new Thread { override def run = {
+      Runtime.getRuntime.addShutdownHook( new Thread { override def run() {
          if( (s != null) && (s.condition != Server.Offline) ) {
             s.quit
             s = null

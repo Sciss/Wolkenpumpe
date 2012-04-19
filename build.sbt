@@ -1,15 +1,20 @@
 name := "wolkenpumpe"
 
-version := "0.34-SNAPSHOT"
+version := "0.34"
 
 organization := "de.sciss"
 
-scalaVersion := "2.9.1"
+homepage := Some( url( "https://github.com/Sciss/Wolkenpumpe" ))
+
+description := "A Prefuse based visual interface for SoundProcesses, a sound synthesis framework"
+
+licenses := Seq( "GPL v2+" -> url( "http://www.gnu.org/licenses/gpl-2.0.txt" ))
+
+scalaVersion := "2.9.2"
 
 libraryDependencies ++= Seq(
    "de.sciss" % "prefuse-core" % "0.21",
-//   "de.sciss" %% "scalacollider" % "0.32-SNAPSHOT",
-   "de.sciss" %% "soundprocesses" % "0.34-SNAPSHOT"
+   "de.sciss" %% "soundprocesses" % "0.34"
 )
 
 retrieveManaged := true
@@ -18,20 +23,42 @@ scalacOptions ++= Seq( "-deprecation", "-unchecked" )
 
 // ---- publishing ----
 
+publishMavenStyle := true
+
 publishTo <<= version { (v: String) =>
-   Some( "Scala Tools Nexus" at "http://nexus.scala-tools.org/content/repositories/".+(
-      if( v.endsWith( "-SNAPSHOT")) "snapshots/" else "releases/"
-   ))
+   Some( if( v.endsWith( "-SNAPSHOT" ))
+      "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
+   else
+      "Sonatype Releases"  at "https://oss.sonatype.org/service/local/staging/deploy/maven2"
+   )
 }
 
+publishArtifact in Test := false
+
+pomIncludeRepository := { _ => false }
+
 pomExtra :=
-<licenses>
-  <license>
-    <name>GPL v2+</name>
-    <url>http://www.gnu.org/licenses/gpl-2.0.txt</url>
-    <distribution>repo</distribution>
-  </license>
-</licenses>
+<scm>
+  <url>git@github.com:Sciss/Wolkenpumpe.git</url>
+  <connection>scm:git:git@github.com:Sciss/Wolkenpumpe.git</connection>
+</scm>
+<developers>
+   <developer>
+      <id>sciss</id>
+      <name>Hanns Holger Rutz</name>
+      <url>http://www.sciss.de</url>
+   </developer>
+</developers>
 
-credentials += Credentials(Path.userHome / ".ivy2" / ".credentials")
+// ---- ls.implicit.ly ----
 
+seq( lsSettings :_* )
+
+(LsKeys.tags in LsKeys.lsync) := Seq( "sound-synthesis", "gui", "sound", "music", "supercollider" )
+
+(LsKeys.ghUser in LsKeys.lsync) := Some( "Sciss" )
+
+(LsKeys.ghRepo in LsKeys.lsync) := Some( "Wolkenpumpe" )
+
+// bug in ls -- doesn't find the licenses from global scope
+(licenses in LsKeys.lsync) := Seq( "GPL v2+" -> url( "http://www.gnu.org/licenses/gpl-2.0.txt" ))

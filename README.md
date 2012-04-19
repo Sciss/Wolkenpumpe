@@ -8,7 +8,7 @@ Strictly speaking, this is Wolkenpumpe 5th generation. For generation four, base
 
 ### requirements
 
-Builds with xsbt (sbt 0.11) against Scala 2.9.1. Depends on [ScalaCollider](http://github.com/Sciss/ScalaCollider) and [SoundProcesses](http://github.com/Sciss/SoundProcesses). Standard sbt targets are `clean`, `update`, `compile`, `package`, `doc`, `publish-local`.
+Builds with xsbt (sbt 0.11) against Scala 2.9.2. Depends on [ScalaCollider](http://github.com/Sciss/ScalaCollider) and [SoundProcesses](http://github.com/Sciss/SoundProcesses). Standard sbt targets are `clean`, `update`, `compile`, `package`, `doc`, `publish-local`.
 
 ### creating an IntelliJ IDEA project
 
