@@ -2,7 +2,7 @@
  *  Wolkenpumpe.scala
  *  (Wolkenpumpe)
  *
- *  Copyright (c) 2008-2011 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2008-2012 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -32,9 +32,9 @@ import javax.swing.WindowConstants
 
 object Wolkenpumpe /* extends TxnModel[ NuagesUpdate ]*/ {
    val name          = "Wolkenpumpe"
-   val version       = 0.32
+   val version       = 0.34
    val isSnapshot    = true
-   val copyright     = "(C)opyright 2004-2011 Hanns Holger Rutz"
+   val copyright     = "(C)opyright 2004-2012 Hanns Holger Rutz"
 
    def versionString = {
       val s = (version + 0.001).toString.substring( 0, 4 )
