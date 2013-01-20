@@ -2,7 +2,7 @@
  *  Wolkenpumpe.scala
  *  (Wolkenpumpe)
  *
- *  Copyright (c) 2008-2012 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2008-2013 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -32,14 +32,8 @@ import javax.swing.WindowConstants
 
 object Wolkenpumpe /* extends TxnModel[ NuagesUpdate ]*/ {
    val name          = "Wolkenpumpe"
-   val version       = 0.34
-   val isSnapshot    = false
-   val copyright     = "(C)opyright 2004-2012 Hanns Holger Rutz"
-
-   def versionString = {
-      val s = (version + 0.001).toString.substring( 0, 4 )
-      if( isSnapshot ) s + "-SNAPSHOT" else s
-   }
+   val version       = "0.35.0"
+   val copyright     = "(C)opyright 2004-2013 Hanns Holger Rutz"
 
    def main( args: Array[ String ]) {
       if( args.size > 0 && args( 0 ) == "--test" ) {
@@ -51,7 +45,7 @@ object Wolkenpumpe /* extends TxnModel[ NuagesUpdate ]*/ {
    }
 
    def printInfo() {
-      println( "\n" + name + " v" + versionString + "\n" + copyright + ". All rights reserved.\n" +
+      println( "\n" + name + " v" + version + "\n" + copyright + ". All rights reserved.\n" +
          "This is a library which cannot be executed directly.\n" )
    }
 
@@ -68,7 +62,7 @@ object Wolkenpumpe /* extends TxnModel[ NuagesUpdate ]*/ {
 //            val masterBus  = new AudioBus( srv, 0, 2 )
 //            val soloBus    = Bus.audio( srv, 2 )
 //            val soloBus    = new AudioBus( srv, 6, 2 )
-            val config = NuagesConfig( srv, Some( Vector( 0, 1 )), Some( Vector( 2, 3 )), Some( recordPath ), true )
+            val config = NuagesConfig( srv, Some( Vector( 0, 1 )), Some( Vector( 2, 3 )), Some( recordPath ), meters = true )
             val f = new NuagesFrame( config )
 //            val p = f.panel
 //            p.addKeyListener( new TestKeyListener( p ))
@@ -149,10 +143,10 @@ object Wolkenpumpe /* extends TxnModel[ NuagesUpdate ]*/ {
       }
       Runtime.getRuntime.addShutdownHook( new Thread { override def run() {
          if( (s != null) && (s.condition != Server.Offline) ) {
-            s.quit
+            s.quit()
             s = null
          } else {
-            booting.abort
+            booting.abort()
          }
       }})
 //      booting.start
@@ -163,13 +157,13 @@ object Wolkenpumpe /* extends TxnModel[ NuagesUpdate ]*/ {
     *    so consumers must rescale.
     */
    /*lazy val*/ var condensedFont : Font = {
-// createFont doesn't properly create the spacing. fucking hell...
-//      val is   = Wolkenpumpe.getClass.getResourceAsStream( "BellySansCondensed.ttf" )
-//      val res  = Font.createFont( Font.TRUETYPE_FONT, is )
-//      is.close
-//      res
-      // "SF Movie Poster Condensed"
-      new Font( "BellySansCondensed", Font.PLAIN, 12 )
+      // NOT ANY MORE: createFont doesn't properly create the spacing. fucking hell...
+      val is   = Wolkenpumpe.getClass.getResourceAsStream( "BellySansCondensed.ttf" )
+      val res  = Font.createFont( Font.TRUETYPE_FONT, is )
+      is.close()
+      res
+//      // "SF Movie Poster Condensed"
+//      new Font( "BellySansCondensed", Font.PLAIN, 12 )
    }
 
 //   private class TestKeyListener( p: NuagesPanel ) extends KeyAdapter {

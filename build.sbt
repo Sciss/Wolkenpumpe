@@ -1,6 +1,6 @@
 name := "wolkenpumpe"
 
-version := "0.34"
+version := "0.35.0"
 
 organization := "de.sciss"
 
@@ -10,11 +10,11 @@ description := "A Prefuse based visual interface for SoundProcesses, a sound syn
 
 licenses := Seq( "GPL v2+" -> url( "http://www.gnu.org/licenses/gpl-2.0.txt" ))
 
-scalaVersion := "2.9.2"
+scalaVersion := "2.10.0"
 
 libraryDependencies ++= Seq(
    "de.sciss" % "prefuse-core" % "0.21",
-   "de.sciss" %% "soundprocesses" % "0.34"
+   "de.sciss" %% "soundprocesses" % "0.35.+"
 )
 
 retrieveManaged := true
