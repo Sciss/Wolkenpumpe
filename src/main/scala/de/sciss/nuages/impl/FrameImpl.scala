@@ -3,22 +3,25 @@ package impl
 
 import java.awt.event.{ActionEvent, InputEvent, KeyEvent}
 import java.awt.{Toolkit, GridBagConstraints, GridBagLayout, BorderLayout, Color}
-import javax.swing.{AbstractAction, KeyStroke, JComponent, JPanel, Box, BoxLayout}
+import javax.swing.event.{ChangeEvent, ChangeListener}
+import javax.swing.plaf.basic.BasicSliderUI
+import javax.swing.{SwingConstants, JSlider, AbstractAction, KeyStroke, JComponent, JPanel, Box, BoxLayout}
 
+import de.sciss.lucre.stm
 import de.sciss.lucre.synth.Sys
 import de.sciss.lucre.swing.deferTx
 
-import scala.swing.{Swing, Frame}
+import scala.swing.{Slider, GridBagPanel, BorderPanel, BoxPanel, Orientation, Swing, Frame}
 import Swing._
 
 object FrameImpl {
-  def apply[S <: Sys[S]](panel: NuagesPanel[S])(implicit tx: S#Tx): NuagesFrame[S] = {
+  def apply[S <: Sys[S]](panel: NuagesPanel[S])(implicit tx: S#Tx, cursor: stm.Cursor[S]): NuagesFrame[S] = {
     val res = new Impl(panel)
     deferTx(res.guiInit())
     res
   }
 
-  private final class Impl[S <: Sys[S]](val view: NuagesPanel[S])
+  private final class Impl[S <: Sys[S]](val view: NuagesPanel[S])(implicit cursor: stm.Cursor[S])
     extends NuagesFrame[S] {
 
     private var _frame: Frame = _
@@ -32,64 +35,59 @@ object FrameImpl {
       _frame = value
     }
 
+    import cursor.{step => atomic}
+    import view.config
+
     // ---- constructor ----
     def guiInit(): Unit = {
       val transition = new NuagesTransitionPanel(view)
-      val bottom = new BasicPanel
-      bottom.setLayout(new BoxLayout(bottom, BoxLayout.X_AXIS))
+      val bottom = new BasicPanel(Orientation.Horizontal)
 
       //      val ggEastBox     = new BasicPanel
       //      ggEastBox.setLayout( new BorderLayout() )
       //      val font          = Wolkenpumpe.condensedFont.deriveFont( 15f ) // WARNING: use float argument
 
-      val ggSouthBox = Box.createHorizontalBox()
-      ggSouthBox.add(bottom)
-      ggSouthBox.add(Box.createHorizontalGlue())
-      ggSouthBox.add(transition)
+      val ggSouthBox = new BoxPanel(Orientation.Horizontal)
+      ggSouthBox.contents += bottom
+      ggSouthBox.contents += Swing.HGlue
+      ggSouthBox.contents += transition
 
-      val gridCon       = new GridBagConstraints()
-      gridCon.fill      = GridBagConstraints.BOTH
+      val ggFaderBox    = new GridBagPanel
+      val gridCon       = new ggFaderBox.Constraints()
+      gridCon.fill      = GridBagPanel.Fill.Both
       gridCon.weightx   = 1.0
-      gridCon.gridwidth = GridBagConstraints.REMAINDER
+      gridCon.gridwidth = 0
 
-      val gridLay = new GridBagLayout()
-      val ggFaderBox = new JPanel(gridLay)
-      //      ggEastBox.add( ggFaderBox, BorderLayout.EAST )
-      //      ggEastBox.add( transition, BorderLayout.SOUTH )
-      //      cp.add( BorderLayout.EAST, ggEastBox )
+      def mkFader(ctrlSpecT: (ParamSpec, Double), weighty: Double)(fun: (Double, S#Tx) => Unit): Unit = {
+        val (ctrlSpec, ctrlInit) = ctrlSpecT
+        val slidSpec = ParamSpec(0, 0x10000)
+        val slidInit = slidSpec.map(ctrlSpec.unmap(ctrlInit)).toInt
+        val slid = BasicSlider(Orientation.Vertical, min = slidSpec.lo.toInt, max = slidSpec.hi.toInt,
+          value = slidInit) { v =>
+            val ctrlVal = ctrlSpec.map(slidSpec.unmap(v))
+            //               grpMaster.set( ctrlName -> ctrlVal )
+            atomic { implicit tx =>
+              fun(ctrlVal, tx)
+            }
+          }
 
-      //    def mkFader(ctrlSpecT: (ParamSpec, Double), weighty: Double)(fun: (Double, ProcTxn) => Unit): Unit = {
-      //      val (ctrlSpec, ctrlInit) = ctrlSpecT
-      //      val slidSpec = ParamSpec(0, 0x10000)
-      //      val slidInit = slidSpec.map(ctrlSpec.unmap(ctrlInit)).toInt
-      //      val slid = new JSlider(SwingConstants.VERTICAL, slidSpec.lo.toInt, slidSpec.hi.toInt, slidInit)
-      //      slid.setUI(new BasicSliderUI(slid))
-      //      slid.setBackground(Color.black)
-      //      slid.setForeground(Color.white)
-      //      slid.addChangeListener(new ChangeListener {
-      //        def stateChanged(e: ChangeEvent): Unit = {
-      //          val ctrlVal = ctrlSpec.map(slidSpec.unmap(slid.getValue))
-      //          //               grpMaster.set( ctrlName -> ctrlVal )
-      //          ProcTxn.atomic { t => fun(ctrlVal, t)}
-      //        }
-      //      })
-      //      gridCon.weighty = weighty
-      //      gridLay.setConstraints(slid, gridCon)
-      //      ggFaderBox.add(slid)
-      //    }
+        gridCon.weighty = weighty
+        ggFaderBox.layout(slid) = gridCon
+      }
 
-      //    if (config.masterChannels.isDefined) mkFader(NuagesPanel.masterAmpSpec, 0.75)(panel.setMasterVolume(_)(_))
-      //    if (config.soloChannels  .isDefined) mkFader(NuagesPanel.soloAmpSpec  , 0.25)(panel.setSoloVolume  (_)(_))
+      if (config.masterChannels.isDefined) mkFader(NuagesPanel.masterAmpSpec, 0.75)(view.setMasterVolume(_)(_))
+      if (config.soloChannels  .isDefined) mkFader(NuagesPanel.soloAmpSpec  , 0.25)(view.setSoloVolume  (_)(_))
 
       frame = new Frame {
         title = "Wolkenpumpe"
         // setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE)
-        private val cp = peer.getContentPane
-        cp.setBackground(Color.black)
-        cp.add(view.component.peer, BorderLayout.CENTER)
 
-        cp.add(ggSouthBox, BorderLayout.SOUTH)
-        cp.add(ggFaderBox, BorderLayout.EAST)
+        contents = new BorderPanel {
+          background = Color.black
+          add(view.component, BorderPanel.Position.Center)
+          add(ggSouthBox    , BorderPanel.Position.South )
+          add(ggFaderBox    , BorderPanel.Position.East  )
+        }
 
         size = (640, 480)
         centerOnScreen()
@@ -99,7 +97,7 @@ object FrameImpl {
       //      ProcTxn.atomic { implicit t =>
       //         ProcDemiurg.addListener( frame )
       //      }
-      if (view.config.fullScreenKey) installFullScreenKey(frame)
+      if (config.fullScreenKey) installFullScreenKey(frame)
       //      panel.display.requestFocus
     }
 

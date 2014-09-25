@@ -34,12 +34,12 @@ import javax.swing.{JComponent, JPanel, Box, BorderFactory, BoxLayout}
 class NuagesActions[S <: Sys[S]](nuages: NuagesPanel[S]) {
   // private var fltDialogDoneAction: ProcFactory => ProcTxn => Unit = f => t => ()
 
-  private def createOverlayPanel = {
-    val p = new OverlayPanel
-    p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS))
-    p.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12))
-    p
-  }
+  //  private def createOverlayPanel = {
+  //    val p = new OverlayPanel
+  //    p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS))
+  //    p.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12))
+  //    p
+  //  }
 
   //  private def createFactoryView(ana: ProcAnatomy) = {
   //    val fm = nuages.factoryManager
@@ -48,26 +48,26 @@ class NuagesActions[S <: Sys[S]](nuages: NuagesPanel[S]) {
   //    v
   //  }
 
-  private def vSpace(p: JComponent): Unit = p.add(Box.createVerticalStrut(4))
-  private def hSpace(p: JComponent): Unit = p.add(Box.createHorizontalStrut(8))
+  //  private def vSpace(p: JComponent): Unit = p.add(Box.createVerticalStrut(4))
+  //  private def hSpace(p: JComponent): Unit = p.add(Box.createHorizontalStrut(8))
 
   private def close(p: JPanel): Unit =
     p.getParent.remove(p)
 
-  private def pack(p: JPanel) = {
-    p.setSize(p.getPreferredSize)
-    p.validate()
-    p
-  }
+  //  private def pack(p: JPanel) = {
+  //    p.setSize(p.getPreferredSize)
+  //    p.validate()
+  //    p
+  //  }
 
-  private def createAbortBar(p: JPanel)(createAction: => Unit): Box = {
-    val b = Box.createHorizontalBox()
-    b.add(BasicButton("Create")(createAction))
-    hSpace(b)
-    b.add(BasicButton("Abort")(close(p)))
-    p.add(b)
-    b
-  }
+  //  private def createAbortBar(p: JPanel)(createAction: => Unit): Box = {
+  //    val b = Box.createHorizontalBox()
+  //    b.add(BasicButton("Create")(createAction))
+  //    hSpace(b)
+  //    b.add(BasicButton("Abort")(close(p)))
+  //    p.add(b)
+  //    b
+  //  }
 
   //  private lazy val createGenDialog = {
   //    val p = createOverlayPanel

@@ -62,10 +62,7 @@ class ClickControl[S <: Sys[S]](main: NuagesPanel[S]) extends ControlAdapter {
     if (e.isMetaDown) {
       zoomToFit(e)
     } else if (e.getClickCount == 2) {
-      //         val d          = getDisplay( e )
-      //         val displayPt  = d.getAbsoluteCoordinate( e.getPoint, null )
-//      main.actions.showCreateGenDialog(e.getPoint)
-      //         insertProc( e )
+      main.showCreateGenDialog(e.getPoint)
     }
   }
 

@@ -25,69 +25,60 @@
 
 package de.sciss.nuages
 
-import javax.swing._
-import event.{ChangeEvent, ChangeListener}
 import java.awt.Color
-import plaf.basic.{BasicSliderUI, BasicPanelUI}
+import javax.swing.ButtonModel
+import javax.swing.plaf.basic.BasicSliderUI
 import de.sciss.lucre.synth.Sys
-import de.sciss.synth.proc._
-import collection.JavaConversions
+import scala.swing.event.ValueChanged
+import scala.swing.{AbstractButton, Slider, ButtonGroup, Orientation}
 
-class NuagesTransitionPanel[S <: Sys[S]](main: NuagesPanel[S]) extends JPanel {
+class NuagesTransitionPanel[S <: Sys[S]](main: NuagesPanel[S]) extends BasicPanel(Orientation.Horizontal) {
   panel =>
 
   private val bg          = new ButtonGroup()
   private var models: Array[ButtonModel] = _
   private val specSlider  = ParamSpec(0, 0x10000)
   private val specTime    = ParamSpec(0.06, 60.0, ExpWarp)
-  private val ggSlider    = new JSlider(specSlider.lo.toInt, specSlider.hi.toInt)
+
+  private val ggTypeInstant = BasicToggleButton("In")(if (_) dispatchTransition(inst = true , gl = false, xf = false))
+  private val ggTypeGlide   = BasicToggleButton("Gl")(if (_) dispatchTransition(inst = false, gl = true , xf = false))
+  private val ggTypeXFade   = BasicToggleButton("X" )(if (_) dispatchTransition(inst = false, gl = false, xf = true ))
+
+  private val ggSlider    = BasicSlider(Orientation.Horizontal, min = specSlider.lo.toInt, max = specSlider.hi.toInt,
+    value = specSlider.lo.toInt) { _ =>
+
+    if (!ggTypeInstant.selected) {
+      dispatchTransition(ggTypeInstant.selected, ggTypeGlide.selected, ggTypeXFade.selected)
+    }
+  }
+
+  private def addButton(b: AbstractButton): Unit = {
+    bg.buttons += b
+    contents += b
+  }
+
+  private def dispatchTransition(inst: Boolean, gl: Boolean, xf: Boolean): Unit = {
+    //      main.transition = if (inst) {
+    //        (_) => Instant
+    //      } else {
+    //        val fdt = specTime.map(specSlider.unmap(ggSlider.getValue()))
+    //        if (xf) {
+    //          XFade(_, fdt)
+    //        } else {
+    //          Glide(_, fdt)
+    //        }
+    //      }
+  }
 
   // ---- constructor ----
-  {
-    //      val font       = Wolkenpumpe.condensedFont.deriveFont( 15f ) // WARNING: use float argument
-
-    def addButton(b: AbstractButton): Unit = {
-      bg.add(b)
-      //         box.add( b )
-      panel.add(b)
-    }
-
-    def dispatchTransition(inst: Boolean, gl: Boolean, xf: Boolean): Unit = {
-//      main.transition = if (inst) {
-//        (_) => Instant
-//      } else {
-//        val fdt = specTime.map(specSlider.unmap(ggSlider.getValue()))
-//        if (xf) {
-//          XFade(_, fdt)
-//        } else {
-//          Glide(_, fdt)
-//        }
-//      }
-    }
-
-    setUI(new BasicPanelUI())
-    setBackground(Color.black)
-    val ggTypeInstant = BasicToggleButton("In")(if (_) dispatchTransition(true, false, false))
-    val ggTypeGlide = BasicToggleButton("Gl")(if (_) dispatchTransition(false, true, false))
-    val ggTypeXFade = BasicToggleButton("X")(if (_) dispatchTransition(false, false, true))
-    addButton(ggTypeInstant)
-    addButton(ggTypeGlide)
-    addButton(ggTypeXFade)
+  addButton(ggTypeInstant)
+  addButton(ggTypeGlide)
+  addButton(ggTypeXFade)
 //    models = new JavaConversions.JEnumerationWrapper(bg.getElements).toArray.map(_.getModel)
     //      panel.setLayout( new BoxLayout( panel, BoxLayout.Y_AXIS ))
-    panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS))
     //      panel.add( box )
-    ggSlider.setUI(new BasicSliderUI(ggSlider))
-    ggSlider.setBackground(Color.black)
-    ggSlider.setForeground(Color.white)
-    panel.add(ggSlider)
+  contents += ggSlider
 
-    ggSlider.addChangeListener(new ChangeListener {
-      def stateChanged(e: ChangeEvent): Unit =
-        if (!ggTypeInstant.isSelected) {
-          dispatchTransition(ggTypeInstant.isSelected, ggTypeGlide.isSelected, ggTypeXFade.isSelected)
-        }
-    })
     //      val actionListener = new ActionListener {
     //         def actionPerformed( e: ActionEvent ) {
     //            dispatchTransition()
@@ -96,7 +87,6 @@ class NuagesTransitionPanel[S <: Sys[S]](main: NuagesPanel[S]) extends JPanel {
     //      ggTypeInstant.addActionListener( actionListener )
     //      ggTypeGlide.addActionListener( actionListener )
     //      ggTypeXFade.addActionListener( actionListener )
-  }
 
   def setTransition(idx: Int, tNorm: Double): Unit = {
 //    if (idx < 0 || idx > 2) return

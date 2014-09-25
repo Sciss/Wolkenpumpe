@@ -22,22 +22,29 @@
  *  For further information, please contact Hanns Holger Rutz at
  *  contact@sciss.de
  */
+
 package de.sciss.nuages
 
-import javax.swing.JButton
+import java.awt.Color
 import javax.swing.plaf.basic.BasicButtonUI
-import java.awt.event.{ActionListener, ActionEvent}
+
+import scala.swing.Button
+import scala.swing.event.ButtonClicked
 
 object BasicButton {
   def apply(label: String)(action: => Unit): BasicButton = new BasicButton(label, action)
 }
 
-class BasicButton private(label: String, action: => Unit) extends JButton(label) {
-  setUI(new BasicButtonUI())
-  setFocusable(false)
-  setFont(Wolkenpumpe.condensedFont.deriveFont(15f))
+class BasicButton private(label: String, action: => Unit) extends Button(label) { me =>
+  peer.setUI(new BasicButtonUI())
+  background  = Color.black
+  foreground  = Color.white
 
-  addActionListener(new ActionListener {
-    def actionPerformed(e: ActionEvent): Unit = action
-  })
+  focusable   = false
+  font        = Wolkenpumpe.condensedFont.deriveFont(15f)
+
+  listenTo(me)
+  reactions += {
+    case ButtonClicked(`me`) => action
+  }
 }

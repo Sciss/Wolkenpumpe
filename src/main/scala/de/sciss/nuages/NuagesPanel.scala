@@ -31,6 +31,8 @@ import de.sciss.lucre.synth.Sys
 import impl.{PanelImpl => Impl}
 import prefuse.{Visualization, Display}
 
+import scala.swing.Point
+
 object NuagesPanel {
   var verbose = false
 
@@ -46,9 +48,15 @@ object NuagesPanel {
 trait NuagesPanel[S <: Sys[S]] extends View[S] {
   def config : Nuages.Config
 
+  def setMasterVolume(v: Double)(implicit tx: S#Tx): Unit
+  def setSoloVolume  (v: Double)(implicit tx: S#Tx): Unit
+
   /** Must be called on the EDT */
   def display: Display
 
   /** Must be called on the EDT */
   def visualization: Visualization
+
+  /** Must be called on the EDT */
+  def showCreateGenDialog(pt: Point): Boolean
 }

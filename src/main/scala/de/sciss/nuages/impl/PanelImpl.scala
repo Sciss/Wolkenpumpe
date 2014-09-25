@@ -1,15 +1,16 @@
 package de.sciss.nuages
 package impl
 
-import java.awt.{Dimension, Rectangle, Container, LayoutManager, Point, EventQueue, Color}
+import java.awt.{Dimension, Rectangle, LayoutManager, Point, EventQueue, Color}
 import java.awt.geom.Point2D
 import javax.swing.event.{AncestorEvent, AncestorListener}
-import javax.swing.{JComponent, JPanel}
+import javax.swing.JPanel
 
 import de.sciss.lucre.stm
-import de.sciss.lucre.swing._
+import de.sciss.lucre.swing.{deferTx, requireEDT}
 import de.sciss.lucre.swing.impl.ComponentHolder
 import de.sciss.lucre.synth.Sys
+import de.sciss.swingplus.ListView
 import de.sciss.synth.ugen.Out
 import de.sciss.synth.{GE, AudioBus}
 import de.sciss.synth.proc.Obj
@@ -27,7 +28,7 @@ import prefuse.{Constants, Display, Visualization}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm.{Ref, TxnLocal}
-import scala.swing.Component
+import scala.swing.{Container, Orientation, SequentialContainer, BoxPanel, Panel, Swing, Component}
 
 object PanelImpl {
   def apply[S <: Sys[S]](config: Nuages.Config)(implicit tx: S#Tx, cursor: stm.Cursor[S]): NuagesPanel[S] = {
@@ -107,7 +108,7 @@ object PanelImpl {
     def setLocationHint(p: Obj[S], loc: Point2D)(implicit tx: S#Tx): Unit =
       locHintMap.transform(_ + (p -> loc))(tx.peer)
 
-    private var overlay = Option.empty[JComponent]
+    private var overlay = Option.empty[Component]
 
     def dispose()(implicit tx: S#Tx): Unit = ()
 
@@ -335,21 +336,22 @@ object PanelImpl {
         def run(): Unit = code
       })
 
-    def showOverlayPanel(p: JComponent, pt: Point): Boolean = {
+    def showOverlayPanel(p: Component, pt: Point): Boolean = {
       if (overlay.isDefined) return false
+      val pp = p.peer
       val c = component
-      val x = math.max(0, math.min(pt.getX.toInt , c.peer.getWidth  - p.getWidth ))
-      val y = math.min(math.max(0, pt.getY.toInt), c.peer.getHeight - p.getHeight) // make sure bottom is visible
-      p.setLocation(x, y)
+      val x = math.max(0, math.min(pt.getX.toInt , c.peer.getWidth  - pp.getWidth ))
+      val y = math.min(math.max(0, pt.getY.toInt), c.peer.getHeight - pp.getHeight) // make sure bottom is visible
+      pp.setLocation(x, y)
       //println( "aqui " + p.getX + ", " + p.getY + ", " + p.getWidth + ", " + p.getHeight )
-      c.peer.add(p, 0)
+      c.peer.add(pp, 0)
       c.revalidate()
       c.repaint()
-      p.addAncestorListener(new AncestorListener {
+      pp.addAncestorListener(new AncestorListener {
         def ancestorAdded(e: AncestorEvent) = ()
 
         def ancestorRemoved(e: AncestorEvent): Unit = {
-          p.removeAncestorListener(this)
+          pp.removeAncestorListener(this)
           if (Some(p) == overlay) overlay = None
         }
 
@@ -498,6 +500,51 @@ object PanelImpl {
       val oldV = soloVolume.swap(v)(tx.peer)
       if (v == oldV) return
       // soloInfo().foreach(_._2.control("amp").v = v)
+    }
+
+    private def pack(p: Panel): p.type = {
+      p.peer.setSize(p.preferredSize)
+      p.peer.validate()
+      p
+    }
+
+    private def createAbortBar(p: SequentialContainer)(createAction: => Unit): Unit = {
+      val b = new BoxPanel(Orientation.Horizontal)
+      b.contents += BasicButton("Create")(createAction)
+      b.contents += Swing.HStrut(8)
+      b.contents += BasicButton("Abort")(close(p))
+      p.contents += b
+      // b
+    }
+
+    private def close(p: Container): Unit = p.peer.getParent.remove(p.peer)
+
+    private lazy val createGenDialog: Panel = {
+      val p = new OverlayPanel()
+      val genView = new ListView[String](Nil)  // createFactoryView(ProcGen)
+      p.contents += genView
+      p.contents += Swing.VStrut(4)
+      val diffView = new ListView[String](Nil) // createFactoryView(ProcDiff)
+      p.contents += diffView
+      p.contents += Swing.VStrut(4)
+      createAbortBar(p) {
+//        (genView.selection, diffView.selection) match {
+//          case (Some(genF), Some(diffF)) =>
+//            close(p)
+//            val displayPt = display.getAbsoluteCoordinate(p.getLocation, null)
+//            atomic { implicit tx =>
+//              println("TODO: createProc")
+//              // createProc(genF, diffF, displayPt)
+//            }
+//          case _ =>
+//        }
+      }
+      pack(p)
+    }
+
+    def showCreateGenDialog(pt: Point): Boolean = {
+      requireEDT()
+      showOverlayPanel(createGenDialog, pt)
     }
 
     //  private def topAddEdges(edges: Set[ProcEdge]): Unit = {
@@ -703,11 +750,11 @@ object PanelImpl {
   }
 
   private class Layout(peer: javax.swing.JComponent) extends LayoutManager {
-    def layoutContainer(parent: Container): Unit =
+    def layoutContainer(parent: java.awt.Container): Unit =
       peer.setBounds(new Rectangle(0, 0, parent.getWidth, parent.getHeight))
 
-    def minimumLayoutSize  (parent: Container): Dimension = peer.getMinimumSize
-    def preferredLayoutSize(parent: Container): Dimension = peer.getPreferredSize
+    def minimumLayoutSize  (parent: java.awt.Container): Dimension = peer.getMinimumSize
+    def preferredLayoutSize(parent: java.awt.Container): Dimension = peer.getPreferredSize
 
     def removeLayoutComponent(comp: java.awt.Component) = ()
 
