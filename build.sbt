@@ -1,46 +1,54 @@
-name := "wolkenpumpe"
+name               := "wolkenpumpe"
 
-version := "0.35.1-SNAPSHOT"
+version            := "1.0.0-SNAPSHOT"
 
-organization := "de.sciss"
+organization       := "de.sciss"
 
-homepage := Some( url( "https://github.com/Sciss/Wolkenpumpe" ))
+homepage           := Some(url("https://github.com/Sciss/" + name.value))
 
-description := "A Prefuse based visual interface for SoundProcesses, a sound synthesis framework"
+description        := "A Prefuse based visual interface for SoundProcesses, a sound synthesis framework"
 
-licenses := Seq( "GPL v2+" -> url( "http://www.gnu.org/licenses/gpl-2.0.txt" ))
+licenses           := Seq("GPL v2+" -> url( "http://www.gnu.org/licenses/gpl-2.0.txt"))
 
-scalaVersion := "2.10.4"
+scalaVersion       := "2.11.2"
+
+crossScalaVersions := Seq("2.11.2", "2.10.4")
+
+lazy val prefuseVersion        = "1.0.0"
+
+lazy val soundProcessesVersion = "2.7.0-SNAPSHOT"
+
+lazy val swingPlusVersion      = "0.2.0"
 
 libraryDependencies ++= Seq(
-  "de.sciss" %  "prefuse-core"   % "0.21",
-  "de.sciss" %% "soundprocesses" % "0.35.0"
+  "de.sciss" %  "prefuse-core"   % prefuseVersion,
+  "de.sciss" %% "soundprocesses" % soundProcessesVersion,
+  "de.sciss" %% "swingplus"      % swingPlusVersion
 )
 
 // retrieveManaged := true
 
-scalacOptions ++= Seq( "-deprecation", "-unchecked" )
+scalacOptions ++= Seq("-deprecation", "-unchecked", "-feature", "-encoding", "utf8", "-Xfuture")
 
 // ---- publishing ----
 
 publishMavenStyle := true
 
-publishTo <<= version { (v: String) =>
-   Some( if( v.endsWith( "-SNAPSHOT" ))
-      "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
-   else
-      "Sonatype Releases"  at "https://oss.sonatype.org/service/local/staging/deploy/maven2"
-   )
-}
+publishTo :=
+  Some(if (isSnapshot.value)
+    "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
+  else
+    "Sonatype Releases"  at "https://oss.sonatype.org/service/local/staging/deploy/maven2"
+  )
 
 publishArtifact in Test := false
 
 pomIncludeRepository := { _ => false }
 
-pomExtra :=
+pomExtra := { val n = name.value
 <scm>
-  <url>git@github.com:Sciss/Wolkenpumpe.git</url>
-  <connection>scm:git:git@github.com:Sciss/Wolkenpumpe.git</connection>
+  <url>git@github.com:Sciss/{n}.git</url>
+  <connection>scm:git:git@github.com:Sciss/{n}.git</connection>
 </scm>
 <developers>
    <developer>
@@ -49,16 +57,15 @@ pomExtra :=
       <url>http://www.sciss.de</url>
    </developer>
 </developers>
+}
 
 // ---- ls.implicit.ly ----
 
-seq( lsSettings :_* )
+seq(lsSettings :_*)
 
-(LsKeys.tags in LsKeys.lsync) := Seq( "sound-synthesis", "gui", "sound", "music", "supercollider" )
+(LsKeys.tags   in LsKeys.lsync) := Seq("sound-synthesis", "gui", "sound", "music", "supercollider")
 
-(LsKeys.ghUser in LsKeys.lsync) := Some( "Sciss" )
+(LsKeys.ghUser in LsKeys.lsync) := Some("Sciss")
 
-(LsKeys.ghRepo in LsKeys.lsync) := Some( "Wolkenpumpe" )
+(LsKeys.ghRepo in LsKeys.lsync) := Some(name.value)
 
-// bug in ls -- doesn't find the licenses from global scope
-(licenses in LsKeys.lsync) := Seq( "GPL v2+" -> url( "http://www.gnu.org/licenses/gpl-2.0.txt" ))

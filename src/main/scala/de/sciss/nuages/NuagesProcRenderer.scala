@@ -25,35 +25,37 @@
 
 package de.sciss.nuages
 
+import de.sciss.lucre.synth.Sys
 import prefuse.visual.VisualItem
 import java.awt._
 import geom._
 import prefuse.render.AbstractShapeRenderer
 
-class NuagesProcRenderer( size: Int )
-extends AbstractShapeRenderer {
-   import NuagesPanel._
+class NuagesProcRenderer[S <: Sys[S]](size: Int)
+  extends AbstractShapeRenderer {
 
-   private val ellipse  = new Ellipse2D.Float()
+  import NuagesPanel._
 
-   protected def getRawShape( vi: VisualItem ) : Shape = {
-      var x    = vi.getX
-      if( x.isNaN || x.isInfinity ) x = 0.0
-      var y    = vi.getY
-      if( y.isNaN || y.isInfinity ) y = 0.0
-      val diam = size * vi.getSize
-      if ( diam > 1 ) {
-          x -= diam / 2
-          y -= diam / 2
-      }
-      ellipse.setFrame( x, y, diam, diam )
-      ellipse
-   }
+  private val ellipse = new Ellipse2D.Float()
 
-   override def render( g: Graphics2D, vi: VisualItem ) {
-      val data = vi.get( COL_NUAGES ).asInstanceOf[ VisualData ]
-      if( data == null ) return
-      data.update( getShape( vi ))
-      data.render( g, vi )
-   }
+  protected def getRawShape(vi: VisualItem): Shape = {
+    var x = vi.getX
+    if (x.isNaN || x.isInfinity) x = 0.0
+    var y = vi.getY
+    if (y.isNaN || y.isInfinity) y = 0.0
+    val diam = size * vi.getSize
+    if (diam > 1) {
+      x -= diam / 2
+      y -= diam / 2
+    }
+    ellipse.setFrame(x, y, diam, diam)
+    ellipse
+  }
+
+  override def render(g: Graphics2D, vi: VisualItem): Unit = {
+    val data = vi.get(COL_NUAGES).asInstanceOf[VisualData[S]]
+    if (data == null) return
+    data.update(getShape(vi))
+    data.render(g, vi)
+  }
 }

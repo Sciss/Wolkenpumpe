@@ -29,86 +29,85 @@ import javax.swing._
 import event.{ChangeEvent, ChangeListener}
 import java.awt.Color
 import plaf.basic.{BasicSliderUI, BasicPanelUI}
+import de.sciss.lucre.synth.Sys
 import de.sciss.synth.proc._
 import collection.JavaConversions
 
-class NuagesTransitionPanel( main: NuagesPanel ) extends JPanel {
-   panel =>
+class NuagesTransitionPanel[S <: Sys[S]](main: NuagesPanel[S]) extends JPanel {
+  panel =>
 
-   private val bg                            = new ButtonGroup()
-   private var models : Array[ ButtonModel ] = _
-   private val specSlider                    = ParamSpec( 0, 0x10000 )
-   private val specTime                      = ParamSpec( 0.06, 60.0, ExpWarp )
-   private val ggSlider                      = new JSlider( specSlider.lo.toInt, specSlider.hi.toInt )
+  private val bg          = new ButtonGroup()
+  private var models: Array[ButtonModel] = _
+  private val specSlider  = ParamSpec(0, 0x10000)
+  private val specTime    = ParamSpec(0.06, 60.0, ExpWarp)
+  private val ggSlider    = new JSlider(specSlider.lo.toInt, specSlider.hi.toInt)
 
-   // ---- constructor ----
-   {
-//      val font       = Wolkenpumpe.condensedFont.deriveFont( 15f ) // WARNING: use float argument
+  // ---- constructor ----
+  {
+    //      val font       = Wolkenpumpe.condensedFont.deriveFont( 15f ) // WARNING: use float argument
 
-      def addButton( b: AbstractButton ) {
-         bg.add( b )
-//         box.add( b )
-         panel.add( b )
-      }
+    def addButton(b: AbstractButton): Unit = {
+      bg.add(b)
+      //         box.add( b )
+      panel.add(b)
+    }
 
-      def dispatchTransition( inst: Boolean, gl: Boolean, xf: Boolean ) {
-         main.transition = if( inst ) {
-            (_) => Instant
-         } else {
-            val fdt = specTime.map( specSlider.unmap( ggSlider.getValue() ))
-            if( xf ) {
-               XFade( _, fdt )
-            } else {
-               Glide( _, fdt )
-            }
-         }
-      }
-
-
-      setUI( new BasicPanelUI() )
-      setBackground( Color.black )
-      val ggTypeInstant = BasicToggleButton( "In" )( if( _ ) dispatchTransition( true, false, false ))
-      val ggTypeGlide   = BasicToggleButton( "Gl" )( if( _ ) dispatchTransition( false, true, false ))
-      val ggTypeXFade   = BasicToggleButton( "X" )(  if( _ ) dispatchTransition( false, false, true ))
-      addButton( ggTypeInstant )
-      addButton( ggTypeGlide )
-      addButton( ggTypeXFade )
-      models   = new JavaConversions.JEnumerationWrapper( bg.getElements ).toArray.map( _.getModel )
-//      panel.setLayout( new BoxLayout( panel, BoxLayout.Y_AXIS ))
-      panel.setLayout( new BoxLayout( panel, BoxLayout.X_AXIS ))
-//      panel.add( box )
-      ggSlider.setUI( new BasicSliderUI( ggSlider ))
-      ggSlider.setBackground( Color.black )
-      ggSlider.setForeground( Color.white )
-      panel.add( ggSlider )
-
-      ggSlider.addChangeListener( new ChangeListener {
-         def stateChanged( e: ChangeEvent ) {
-            if( !ggTypeInstant.isSelected ) {
-               dispatchTransition( ggTypeInstant.isSelected, ggTypeGlide.isSelected, ggTypeXFade.isSelected )
-            }
-         }
-      })
-//      val actionListener = new ActionListener {
-//         def actionPerformed( e: ActionEvent ) {
-//            dispatchTransition()
-//         }
+    def dispatchTransition(inst: Boolean, gl: Boolean, xf: Boolean): Unit = {
+//      main.transition = if (inst) {
+//        (_) => Instant
+//      } else {
+//        val fdt = specTime.map(specSlider.unmap(ggSlider.getValue()))
+//        if (xf) {
+//          XFade(_, fdt)
+//        } else {
+//          Glide(_, fdt)
+//        }
 //      }
-//      ggTypeInstant.addActionListener( actionListener )
-//      ggTypeGlide.addActionListener( actionListener )
-//      ggTypeXFade.addActionListener( actionListener )
-   }
+    }
 
-   def setTransition( idx: Int, tNorm: Double ) {
-      if( idx < 0 || idx > 2 ) return
-      bg.setSelected( models( idx ), true )
-      if( idx == 0 ) {
-         main.transition = (_) => Instant
-      } else {
-         val tNormC  = math.max( 0.0, math.min( 1.0, tNorm ))
-         val fdt     = specTime.map( tNormC ) 
-         ggSlider.setValue( specSlider.map( tNormC ).toInt )
-         main.transition = if( idx == 1 ) Glide( _, fdt ) else XFade( _, fdt )
-      }
-   }
+    setUI(new BasicPanelUI())
+    setBackground(Color.black)
+    val ggTypeInstant = BasicToggleButton("In")(if (_) dispatchTransition(true, false, false))
+    val ggTypeGlide = BasicToggleButton("Gl")(if (_) dispatchTransition(false, true, false))
+    val ggTypeXFade = BasicToggleButton("X")(if (_) dispatchTransition(false, false, true))
+    addButton(ggTypeInstant)
+    addButton(ggTypeGlide)
+    addButton(ggTypeXFade)
+//    models = new JavaConversions.JEnumerationWrapper(bg.getElements).toArray.map(_.getModel)
+    //      panel.setLayout( new BoxLayout( panel, BoxLayout.Y_AXIS ))
+    panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS))
+    //      panel.add( box )
+    ggSlider.setUI(new BasicSliderUI(ggSlider))
+    ggSlider.setBackground(Color.black)
+    ggSlider.setForeground(Color.white)
+    panel.add(ggSlider)
+
+    ggSlider.addChangeListener(new ChangeListener {
+      def stateChanged(e: ChangeEvent): Unit =
+        if (!ggTypeInstant.isSelected) {
+          dispatchTransition(ggTypeInstant.isSelected, ggTypeGlide.isSelected, ggTypeXFade.isSelected)
+        }
+    })
+    //      val actionListener = new ActionListener {
+    //         def actionPerformed( e: ActionEvent ) {
+    //            dispatchTransition()
+    //         }
+    //      }
+    //      ggTypeInstant.addActionListener( actionListener )
+    //      ggTypeGlide.addActionListener( actionListener )
+    //      ggTypeXFade.addActionListener( actionListener )
+  }
+
+  def setTransition(idx: Int, tNorm: Double): Unit = {
+//    if (idx < 0 || idx > 2) return
+//    bg.setSelected(models(idx), true)
+//    if (idx == 0) {
+//      main.transition = (_) => Instant
+//    } else {
+//      val tNormC = math.max(0.0, math.min(1.0, tNorm))
+//      val fdt = specTime.map(tNormC)
+//      ggSlider.setValue(specSlider.map(tNormC).toInt)
+//      main.transition = if (idx == 1) Glide(_, fdt) else XFade(_, fdt)
+//    }
+  }
 }

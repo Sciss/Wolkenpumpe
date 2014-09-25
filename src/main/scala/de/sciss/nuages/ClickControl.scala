@@ -25,6 +25,8 @@
 
 package de.sciss.nuages
 
+import de.sciss.lucre.stm
+import de.sciss.lucre.synth.Sys
 import prefuse.controls.ControlAdapter
 import java.awt.event.MouseEvent
 import prefuse.Display
@@ -34,101 +36,103 @@ import prefuse.util.GraphicsLib
 import prefuse.util.display.DisplayLib
 import java.awt.geom.{Rectangle2D, Point2D}
 
-/**
- *    Simple interface to query currently selected
- *    proc factory and to feedback on-display positions
- *    for newly created procs.
- * 
- *    Methods are guaranteed to be called in the awt
- *    event thread.
- */
-trait ProcFactoryProvider {
-   def genFactory:      Option[ ProcFactory ]
-   def filterFactory:   Option[ ProcFactory ]
-   def diffFactory:     Option[ ProcFactory ]
-   def collector:       Option[ Proc ]
-   def setLocationHint( p: Proc, loc: Point2D )
+/** Simple interface to query currently selected
+  * proc factory and to feedback on-display positions
+  * for newly created procs.
+  *
+  * Methods are guaranteed to be called in the awt
+  * event thread.
+  */
+trait ProcFactoryProvider[S <: Sys[S]] {
+  type PrH = stm.Source[S#Tx, Obj[S]]
+
+  def genFactory:      Option[PrH]
+  def filterFactory:   Option[PrH]
+  def diffFactory:     Option[PrH]
+  def collector:       Option[PrH]
+
+  def setLocationHint(p: Obj[S], loc: Point2D)(implicit tx: S#Tx): Unit
 }
 
-class ClickControl( main: NuagesPanel ) extends ControlAdapter {
-   import NuagesPanel._
+class ClickControl[S <: Sys[S]](main: NuagesPanel[S]) extends ControlAdapter {
 
-   override def mousePressed( e: MouseEvent ) {
-      if( e.isMetaDown ) {
-         zoomToFit( e )
-      } else if( e.getClickCount == 2 ) {
-//         val d          = getDisplay( e )
-//         val displayPt  = d.getAbsoluteCoordinate( e.getPoint, null )
-         main.actions.showCreateGenDialog( e.getPoint )
-//         insertProc( e )
-      }
-   }
+  import NuagesPanel._
 
-//   private def insertProc( e: MouseEvent ) {
-//      (main.genFactory, main.diffFactory) match {
-//         case (Some( genF ), Some( diffF )) => {
-//            val d          = getDisplay( e )
-//            val displayPt  = d.getAbsoluteCoordinate( e.getPoint, null )
-//            createProc( genF, diffF, displayPt )
-//         }
-//         case _ =>
-//      }
-//   }
+  override def mousePressed(e: MouseEvent): Unit = {
+    if (e.isMetaDown) {
+      zoomToFit(e)
+    } else if (e.getClickCount == 2) {
+      //         val d          = getDisplay( e )
+      //         val displayPt  = d.getAbsoluteCoordinate( e.getPoint, null )
+//      main.actions.showCreateGenDialog(e.getPoint)
+      //         insertProc( e )
+    }
+  }
 
-   override def itemPressed( vi: VisualItem, e: MouseEvent ) {
-      if( e.isAltDown ) return
-      if( e.isMetaDown ) {
-         zoom( e, vi.getBounds )
-      } else if( e.getClickCount == 2 ) doubleClick( vi, e )
-//      if( e.isAltDown() ) altClick( vi, e )
-   }
+  //   private def insertProc( e: MouseEvent ) {
+  //      (main.genFactory, main.diffFactory) match {
+  //         case (Some( genF ), Some( diffF )) => {
+  //            val d          = getDisplay( e )
+  //            val displayPt  = d.getAbsoluteCoordinate( e.getPoint, null )
+  //            createProc( genF, diffF, displayPt )
+  //         }
+  //         case _ =>
+  //      }
+  //   }
 
-   private def zoomToFit( e: MouseEvent ) {
-      val d       = getDisplay( e )
-      val vis     = d.getVisualization
-      val bounds  = vis.getBounds( NuagesPanel.GROUP_GRAPH )
-      zoom( e, bounds )
-   }
+  override def itemPressed(vi: VisualItem, e: MouseEvent): Unit = {
+    if (e.isAltDown) return
+    if (e.isMetaDown) {
+      zoom(e, vi.getBounds)
+    } else if (e.getClickCount == 2) doubleClick(vi, e)
+    //      if( e.isAltDown() ) altClick( vi, e )
+  }
 
-   private def zoom( e: MouseEvent, bounds: Rectangle2D ) {
-      val d = getDisplay( e )
-      if( d.isTranformInProgress ) return
-      val margin     = 50   // XXX could be customized
-      val duration   = 1000 // XXX could be customized
-      GraphicsLib.expand( bounds, margin + (1 / d.getScale).toInt )
-      DisplayLib.fitViewToBounds( d, bounds, duration )
-   }
+  private def zoomToFit(e: MouseEvent): Unit = {
+    val d       = getDisplay(e)
+    val vis     = d.getVisualization
+    val bounds  = vis.getBounds(NuagesPanel.GROUP_GRAPH)
+    zoom(e, bounds)
+  }
 
-   private def doubleClick( vi: VisualItem, e: MouseEvent ) {
-      vi match {
-         case ei: EdgeItem => {
-            val nSrc = ei.getSourceItem
-            val nTgt = ei.getTargetItem
-            (main.vis.getRenderer( nSrc ), main.vis.getRenderer( nTgt )) match {
-               case (_: NuagesProcRenderer, _: NuagesProcRenderer) => {
-                  val srcData = nSrc.get( COL_NUAGES ).asInstanceOf[ VisualData ]
-                  val tgtData = nTgt.get( COL_NUAGES ).asInstanceOf[ VisualData ]
-                  if( srcData != null && tgtData != null ) {
-                     (srcData, tgtData) match {
-                        case (vOut: VisualAudioOutput, vIn: VisualAudioInput) =>
-                           main.actions.showCreateFilterDialog( nSrc, nTgt, vOut.bus, vIn.bus, e.getPoint )
-//                           main.filterFactory foreach { filterF =>
-//                              val d          = getDisplay( e )
-//                              val displayPt  = d.getAbsoluteCoordinate( e.getPoint, null )
-//                              nSrc.setFixed( false ) // XXX woops.... we have to clean up the mess of ConnectControl
-//                              nTgt.setFixed( false )
-//                              createFilter( vOut.bus, vIn.bus, filterF, displayPt )
-//                           }
-                        case _ =>
-                     }
-                  }
-               }
-               case _ =>
+  private def zoom(e: MouseEvent, bounds: Rectangle2D): Unit = {
+    val d = getDisplay(e)
+    if (d.isTranformInProgress) return
+    val margin    = 50 // XXX could be customized
+    val duration  = 1000 // XXX could be customized
+    GraphicsLib.expand(bounds, margin + (1 / d.getScale).toInt)
+    DisplayLib.fitViewToBounds(d, bounds, duration)
+  }
+
+  private def doubleClick(vi: VisualItem, e: MouseEvent): Unit =
+    vi match {
+      case ei: EdgeItem =>
+        val nSrc = ei.getSourceItem
+        val nTgt = ei.getTargetItem
+        (main.vis.getRenderer(nSrc), main.vis.getRenderer(nTgt)) match {
+          case (_: NuagesProcRenderer[_], _: NuagesProcRenderer[_]) =>
+            val srcData = nSrc.get(COL_NUAGES).asInstanceOf[VisualData[S]]
+            val tgtData = nTgt.get(COL_NUAGES).asInstanceOf[VisualData[S]]
+            if (srcData != null && tgtData != null) {
+              (srcData, tgtData) match {
+//                case (vOut: VisualAudioOutput, vIn: VisualAudioInput) =>
+//                  main.actions.showCreateFilterDialog(nSrc, nTgt, vOut.bus, vIn.bus, e.getPoint)
+                //                           main.filterFactory foreach { filterF =>
+                //                              val d          = getDisplay( e )
+                //                              val displayPt  = d.getAbsoluteCoordinate( e.getPoint, null )
+                //                              nSrc.setFixed( false ) // XXX woops.... we have to clean up the mess of ConnectControl
+                //                              nTgt.setFixed( false )
+                //                              createFilter( vOut.bus, vIn.bus, filterF, displayPt )
+                //                           }
+                case _ =>
+              }
             }
-         }
-         case _ =>
-      }
-   }
 
-   @inline private def getDisplay( e: MouseEvent ) = e.getComponent.asInstanceOf[ Display ]
+          case _ =>
+        }
+
+      case _ =>
+    }
+
+  @inline private def getDisplay(e: MouseEvent) = e.getComponent.asInstanceOf[Display]
 }

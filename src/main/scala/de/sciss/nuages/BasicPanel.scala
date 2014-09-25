@@ -30,18 +30,20 @@ import javax.swing.plaf.basic.BasicPanelUI
 import java.awt.{Color, AWTEvent}
 
 class BasicPanel extends JPanel {
-   setUI( new BasicPanelUI() )
-   setBackground( Color.black )
+  setUI(new BasicPanelUI())
+  setBackground(Color.black)
 }
 
 class OverlayPanel extends BasicPanel {
-   import AWTEvent._
-   val masks = MOUSE_EVENT_MASK | MOUSE_MOTION_EVENT_MASK | MOUSE_WHEEL_EVENT_MASK
-   enableEvents( masks )
-   override protected def processEvent( e: AWTEvent ) {
-      val id = e.getID
-      if( (id & masks) == 0 ) {
-         super.processEvent( e )
-      }
-   }
+  import AWTEvent._
+
+  val masks = MOUSE_EVENT_MASK | MOUSE_MOTION_EVENT_MASK | MOUSE_WHEEL_EVENT_MASK
+  enableEvents(masks)
+
+  override protected def processEvent(e: AWTEvent): Unit = {
+    val id = e.getID
+    if ((id & masks) == 0) {
+      super.processEvent(e)
+    }
+  }
 }
