@@ -5,7 +5,6 @@ import java.awt.{Dimension, Rectangle, LayoutManager, Point, EventQueue, Color}
 import java.awt.geom.Point2D
 import javax.swing.event.{AncestorEvent, AncestorListener}
 import javax.swing.JPanel
-import javax.swing.plaf.basic.BasicListUI
 
 import de.sciss.lucre.stm
 import de.sciss.lucre.swing.{ListView, deferTx, requireEDT}
@@ -13,7 +12,7 @@ import de.sciss.lucre.swing.impl.ComponentHolder
 import de.sciss.lucre.synth.Sys
 import de.sciss.synth.ugen.Out
 import de.sciss.synth.{proc, GE, AudioBus}
-import de.sciss.synth.proc.{Folder, Obj}
+import de.sciss.synth.proc.{Proc, Folder, Obj}
 import prefuse.action.{RepaintAction, ActionList}
 import prefuse.action.assignment.ColorAction
 import prefuse.action.layout.graph.ForceDirectedLayout
@@ -93,7 +92,7 @@ object PanelImpl {
     private var g: Graph = _
     private var vg: VisualGraph = _
 
-    private val actions = new NuagesActions(this)
+    // private val actions = new NuagesActions(this)
 
     private var aggrTable: AggregateTable = _
 
@@ -106,6 +105,7 @@ object PanelImpl {
     //  private var meterFactory : Option[ProcFactory]  = None
     //  private var masterFactory: Option[ProcFactory]  = None
     //  private var masterProc   : Option[Proc]         = None
+
     private var masterBusVar : Option[AudioBus]     = None
 
     def masterBus: Option[AudioBus] = masterBusVar
@@ -126,7 +126,7 @@ object PanelImpl {
     //  var diffFactory         = Option.empty[ProcFactory]
     //  var collector           = Option.empty[Proc]
 
-    private var locHintMap  = TxnLocal(Map.empty[Obj[S], Point2D])
+    private val locHintMap = TxnLocal(Map.empty[Obj[S], Point2D])
 
     def setLocationHint(p: Obj[S], loc: Point2D)(implicit tx: S#Tx): Unit =
       locHintMap.transform(_ + (p -> loc))(tx.peer)
@@ -555,18 +555,53 @@ object PanelImpl {
       p.contents += listCol.component
       p.contents += Swing.VStrut(4)
       createAbortBar(p) {
-//        (genView.selection, diffView.selection) match {
-//          case (Some(genF), Some(diffF)) =>
-//            close(p)
-//            val displayPt = display.getAbsoluteCoordinate(p.getLocation, null)
-//            atomic { implicit tx =>
-//              println("TODO: createProc")
-//              // createProc(genF, diffF, displayPt)
-//            }
-//          case _ =>
-//        }
+        (listGen.guiSelection, listCol.guiSelection) match {
+          case (Vec(genIdx), Vec(colIdx)) =>
+            close(p)
+            val displayPt = display.getAbsoluteCoordinate(p.location, null)
+            atomic { implicit tx =>
+              val nuages = nuagesH()
+              for {
+                gen <- nuages.generators.get(genIdx)
+                col <- nuages.collectors.get(colIdx)
+              } {
+                // println(s"TODO: createProc ($genIdx, $colIdx)")
+                createProc(gen, col, displayPt)
+              }
+            }
+          case _ =>
+        }
       }
       pack(p)
+    }
+
+    def createProc(genSrc: Obj[S], colSrc: Obj[S], pt: Point2D)(implicit tx: S#Tx): Unit = {
+      val gen = Obj.copy(genSrc)
+      val col = Obj.copy(colSrc)
+
+      (gen, col) match {
+        case (Proc.Obj(genP), Proc.Obj(colP)) =>
+          val procGen = genP.elem.peer
+          val procCol = colP.elem.peer
+          val scanOut = procGen.scans.add("out")
+          val scanIn  = procCol.scans.add("in" )
+          scanOut.addSink(scanIn)
+
+        case _ =>
+      }
+
+      val genPt = new Point2D.Double(pt.getX, pt.getY - 30)
+      val colPt = new Point2D.Double(pt.getX, pt.getY + 30)
+      setLocationHint(gen, genPt)
+      setLocationHint(col, colPt)
+
+      //      if (diff.anatomy == ProcFilter) {
+//        // this is the case for config.collector == true
+//        nuages.collector.foreach(diff ~> _)
+//      }
+//
+//      txn.beforeCommit { _ =>
+//      }
     }
 
     def showCreateGenDialog(pt: Point): Boolean = {
