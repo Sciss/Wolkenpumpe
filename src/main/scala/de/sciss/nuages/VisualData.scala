@@ -27,14 +27,14 @@ package de.sciss.nuages
 
 import java.awt.{Font, Graphics2D, Shape, BasicStroke, Color}
 import java.awt.event.MouseEvent
+import de.sciss.intensitypalette.IntensityPalette
+import de.sciss.lucre.stm
 import de.sciss.lucre.synth.Sys
 import prefuse.util.ColorLib
 import prefuse.data.{Edge, Node => PNode}
 import prefuse.visual.{AggregateItem, VisualItem}
-import java.awt.geom.{Line2D, Arc2D, Area, Point2D, Ellipse2D, GeneralPath, Rectangle2D}
-import collection.immutable.{Set => ISet}
-import de.sciss.synth
-import synth.proc.Proc
+import java.awt.geom.{Arc2D, Area, Point2D, Ellipse2D, GeneralPath, Rectangle2D}
+import de.sciss.synth.proc.{Obj, Proc}
 
 private[nuages] object VisualData {
   val diam = 50
@@ -158,21 +158,30 @@ object VisualProc {
 //           hsbTop( 2 ) * w1 + hsbBot( 2 ) * w2 )
 //   }
 //
-//   private val colrPeak       = Array.tabulate( 91 )( ang => hsbFade( ang / 91f, 0x02FF02, 0xFF6B6B ))
-//   private val colrPeak = Array.tabulate(91)(ang => IntensityColorScheme.getColor(ang / 90f))
+   // private val colrPeak       = Array.tabulate( 91 )( ang => hsbFade( ang / 91f, 0x02FF02, 0xFF6B6B ))
+   private val colrPeak = Array.tabulate(91)(ang => new Color(IntensityPalette.apply(ang / 90f)))
+
+  def apply[S <: Sys[S]](main: NuagesPanel[S], obj: Obj[S], pMeter: Option[stm.Source[S#Tx, Proc.Obj[S]]],
+                         meter: Boolean, solo: Boolean)
+                        (implicit tx: S#Tx): VisualProc[S] =
+    new VisualProc(main, tx.newHandle(obj), pMeter, meter = meter, solo = solo)
 }
 
-private[nuages] case class VisualProc[S <: Sys[S]](main: NuagesPanel[S], proc: Proc[S], pNode: PNode, aggr: AggregateItem,
-                                      params: Map[String, VisualParam[S]], pMeter: Option[Proc[S]], meter: Boolean,
-                                      solo: Boolean)
+private[nuages] class VisualProc[S <: Sys[S]] private (val main: NuagesPanel[S], val objH: stm.Source[S#Tx, Obj[S]],
+                                                       /* val params: Map[String, VisualParam[S]], */
+                                                       val pMeter: Option[stm.Source[S#Tx, Proc.Obj[S]]],
+                                                       val meter: Boolean, val solo: Boolean)
   extends VisualData[S] {
   vproc =>
 
   import VisualData._
   import VisualProc._
 
+  var pNode : PNode = _
+  var aggr  : AggregateItem = _
+
   //  @volatile private var stateVar = Proc.State(false)
-  //  @volatile private var disposeAfterFade = false
+  @volatile private var disposeAfterFade = false
 
   private val playArea = new Area()
   private val soloArea = new Area()
@@ -417,36 +426,36 @@ private[nuages] case class VisualProc[S <: Sys[S]](main: NuagesPanel[S], proc: P
   }
 
     protected def renderDetail(g: Graphics2D, vi: VisualItem): Unit = {
-  //    if (stateVar.valid) {
-  //      g.setColor(if (stateVar.playing) {
-  //        if (stateVar.bypassed) colrBypassed else colrPlaying
-  //      } else colrStopped
-  //      )
-  //      g.fill(playArea)
-  //
-  //      if (solo) {
-  //        g.setColor(if (soloed) colrSoloed else colrStopped)
-  //        g.fill(soloArea)
-  //      }
-  //
-  //      if (meter) {
-  //        val angExtent = (math.max(0f, peakNorm) * 90).toInt
-  //        val pValArc = new Arc2D.Double(0, 0, r.getWidth, r.getHeight, -45, angExtent, Arc2D.PIE)
-  //        val peakArea = new Area(pValArc)
-  //        peakArea.subtract(new Area(innerE))
-  //
-  //        g.setColor(colrPeak(angExtent))
-  //        g.fill(peakArea)
-  //        peakToPaint = -160f
-  //        //      rmsToPaint	= -160f
-  //      }
-  //    }
-  //    //         g.setColor( ColorLib.getColor( vi.getStrokeColor ))
-  //    g.setColor(if (disposeAfterFade) Color.red else Color.white)
-  //    g.draw(gp)
-  //
-  //    val font = Wolkenpumpe.condensedFont.deriveFont(diam * vi.getSize.toFloat * 0.33333f)
-  //    drawName(g, vi, font)
+      if (true /* stateVar.valid */) {
+        g.setColor(if (true /* stateVar.playing */) {
+          /* if (stateVar.bypassed) colrBypassed else */ colrPlaying
+        } else colrStopped
+        )
+        g.fill(playArea)
+
+        if (solo) {
+          g.setColor(if (soloed) colrSoloed else colrStopped)
+          g.fill(soloArea)
+        }
+
+        if (meter) {
+          val angExtent = (math.max(0f, peakNorm) * 90).toInt
+          val pValArc = new Arc2D.Double(0, 0, r.getWidth, r.getHeight, -45, angExtent, Arc2D.PIE)
+          val peakArea = new Area(pValArc)
+          peakArea.subtract(new Area(innerE))
+
+          g.setColor(colrPeak(angExtent))
+          g.fill(peakArea)
+          peakToPaint = -160f
+          //      rmsToPaint	= -160f
+        }
+      }
+      //         g.setColor( ColorLib.getColor( vi.getStrokeColor ))
+      g.setColor(if (disposeAfterFade) Color.red else Color.white)
+      g.draw(gp)
+
+      val font = Wolkenpumpe.condensedFont.deriveFont(diam * vi.getSize.toFloat * 0.33333f)
+      drawName(g, vi, font)
     }
 }
 

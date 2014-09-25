@@ -30,7 +30,7 @@ import java.awt.Font
 import de.sciss.lucre.synth.InMemory
 import de.sciss.synth
 import de.sciss.synth.proc
-import de.sciss.synth.proc.{ExprImplicits, Obj, Proc}
+import de.sciss.synth.proc.{AuralSystem, ExprImplicits, Obj, Proc}
 import proc.Implicits._
 
 object Wolkenpumpe extends App with Runnable {
@@ -137,7 +137,8 @@ object Wolkenpumpe extends App with Runnable {
       }
       n.collectors.addLast(col1Obj)
 
-      val p = NuagesPanel(n, config)
+      val aural = AuralSystem.start()
+      val p     = NuagesPanel(n, config, aural)
       NuagesFrame(p)
     }
 

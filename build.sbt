@@ -22,11 +22,14 @@ lazy val lucreSwingVersion      = "0.5.0"
 
 lazy val swingPlusVersion       = "0.2.0"
 
+lazy val intensityVersion       = "1.0.0"
+
 libraryDependencies ++= Seq(
-  "de.sciss" %% "soundprocesses" % soundProcessesVersion,
-  "de.sciss" %  "prefuse-core"   % prefuseVersion,
-  "de.sciss" %% "lucreswing"     % lucreSwingVersion,
-  "de.sciss" %% "swingplus"      % swingPlusVersion
+  "de.sciss" %% "soundprocesses"    % soundProcessesVersion,
+  "de.sciss" %  "prefuse-core"      % prefuseVersion,
+  "de.sciss" %% "lucreswing"        % lucreSwingVersion,
+  "de.sciss" %% "swingplus"         % swingPlusVersion,
+  "de.sciss" %  "intensitypalette"  % intensityVersion
 )
 
 // retrieveManaged := true

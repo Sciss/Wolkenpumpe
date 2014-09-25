@@ -28,6 +28,7 @@ package de.sciss.nuages
 import de.sciss.lucre.stm
 import de.sciss.lucre.swing.View
 import de.sciss.lucre.synth.Sys
+import de.sciss.synth.proc.{AuralSystem, Transport}
 import impl.{PanelImpl => Impl}
 import prefuse.{Visualization, Display}
 
@@ -36,18 +37,20 @@ import scala.swing.Point
 object NuagesPanel {
   var verbose = false
 
-  private[nuages] val GROUP_GRAPH         = "graph"
-  private[nuages] val COL_NUAGES          = "nuages"
+  private[nuages] val GROUP_GRAPH = "graph"
+  private[nuages] val COL_NUAGES  = "nuages"
 
   final val masterAmpSpec       = ParamSpec(0.01, 10.0, ExpWarp) -> 1.0
   final val soloAmpSpec         = ParamSpec(0.10, 10.0, ExpWarp) -> 0.5
 
-  def apply[S <: Sys[S]](nuages: Nuages[S], config: Nuages.Config)
+  def apply[S <: Sys[S]](nuages: Nuages[S], config: Nuages.Config, aural: AuralSystem)
                         (implicit tx: S#Tx, cursor: stm.Cursor[S]): NuagesPanel[S] =
-    Impl(nuages, config)
+    Impl(nuages, config, aural)
 }
 trait NuagesPanel[S <: Sys[S]] extends View[S] {
   def nuages(implicit tx: S#Tx): Nuages[S]
+
+  def transport: Transport[S]
 
   def config : Nuages.Config
 

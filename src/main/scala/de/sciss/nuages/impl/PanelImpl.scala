@@ -6,13 +6,16 @@ import java.awt.geom.Point2D
 import javax.swing.event.{AncestorEvent, AncestorListener}
 import javax.swing.JPanel
 
+import de.sciss.lucre.bitemp.{SpanLike => SpanLikeEx}
 import de.sciss.lucre.stm
+import de.sciss.lucre.stm.Disposable
 import de.sciss.lucre.swing.{ListView, deferTx, requireEDT}
 import de.sciss.lucre.swing.impl.ComponentHolder
 import de.sciss.lucre.synth.Sys
+import de.sciss.span.Span
 import de.sciss.synth.ugen.Out
 import de.sciss.synth.{proc, GE, AudioBus}
-import de.sciss.synth.proc.{Proc, Folder, Obj}
+import de.sciss.synth.proc.{ExprImplicits, AuralSystem, Transport, ObjKeys, Timeline, Proc, Folder, Obj}
 import prefuse.action.{RepaintAction, ActionList}
 import prefuse.action.assignment.ColorAction
 import prefuse.action.layout.graph.ForceDirectedLayout
@@ -21,7 +24,7 @@ import prefuse.controls.{PanControl, WheelZoomControl, ZoomControl}
 import prefuse.data.Graph
 import prefuse.render.{DefaultRendererFactory, PolygonRenderer, EdgeRenderer}
 import prefuse.util.ColorLib
-import prefuse.visual.{AggregateTable, VisualGraph, VisualItem}
+import prefuse.visual.{AggregateItem, AggregateTable, VisualGraph, VisualItem}
 import prefuse.visual.expression.InGroupPredicate
 import prefuse.{Constants, Display, Visualization}
 
@@ -30,15 +33,18 @@ import scala.concurrent.stm.{Ref, TxnLocal}
 import scala.swing.{Container, Orientation, SequentialContainer, BoxPanel, Panel, Swing, Component}
 
 object PanelImpl {
-  def apply[S <: Sys[S]](nuages: Nuages[S], config: Nuages.Config)
+  def apply[S <: Sys[S]](nuages: Nuages[S], config: Nuages.Config, aural: AuralSystem)
                         (implicit tx: S#Tx, cursor: stm.Cursor[S]): NuagesPanel[S] = {
     val nuagesH   = tx.newHandle(nuages)
     val listGen   = mkListView(nuages.generators)
     val listFlt   = mkListView(nuages.filters   )
     val listCol   = mkListView(nuages.collectors)
-    val res       = new Impl[S](nuagesH, config, listGen = listGen, listFlt = listFlt, listCol = listCol)
-    deferTx(res.guiInit())
-    res
+    val map       = tx.newInMemoryIDMap[VisualProc[S]]
+    val transport = Transport[S](aural)
+    val timelineObj = nuages.timeline
+    transport.addObject(timelineObj)
+    new Impl[S](nuagesH, map, config, transport, listGen = listGen, listFlt = listFlt, listCol = listCol)
+      .init(timelineObj)
   }
 
   private final val GROUP_NODES = "graph.nodes"
@@ -57,16 +63,20 @@ object PanelImpl {
     val h = ListView.Handler[S, Obj[S], Obj.Update[S]] { implicit tx => obj => obj.attr.name } (_ => (_, _) => None)
     implicit val ser = de.sciss.lucre.expr.List.serializer[S, Obj[S], Obj.Update[S]]
     val res = ListView[S, Obj[S], Obj.Update[S], String](folder, h)
-    //    deferTx {
-    //      val c = res.component
-    //      // c.peer.setUI(new BasicListUI)
-    //      c.background = Color.black
-    //      c.foreground = Color.white
-    //    }
+    deferTx {
+      val c = res.view
+      // c.peer.setUI(new BasicListUI)
+      c.background = Color.black
+      c.foreground = Color.white
+      c.selectIndices(0)
+    }
     res
   }
 
-  private final class Impl[S <: Sys[S]](nuagesH: stm.Source[S#Tx, Nuages[S]], val config: Nuages.Config,
+  private final class Impl[S <: Sys[S]](nuagesH: stm.Source[S#Tx, Nuages[S]],
+                                        map: stm.IdentifierMap[S#ID, S#Tx, VisualProc[S]],
+                                        val config: Nuages.Config,
+                                        val transport: Transport[S],
                                         listGen: ListView[S, Obj[S], Obj.Update[S]],
                                         listFlt: ListView[S, Obj[S], Obj.Update[S]],
                                         listCol: ListView[S, Obj[S], Obj.Update[S]])
@@ -84,10 +94,7 @@ object PanelImpl {
     //  val world   = ProcDemiurg.worlds(config.server)
     private var _disp: Display = _
 
-    //  private var soloFactory: Option[ProcFactory] = None
-
-    def display: Display = _disp
-    def visualization: Visualization = _vis
+    private var soloFactory: Option[stm.Source[S#Tx, Proc.Obj[S]]] = None
 
     private var g: Graph = _
     private var vg: VisualGraph = _
@@ -102,13 +109,11 @@ object PanelImpl {
 
     //  var transition: Double => Transition = (_) => Instant
 
-    //  private var meterFactory : Option[ProcFactory]  = None
+    private var meterFactory : Option[stm.Source[S#Tx, Proc.Obj[S]]] = None
     //  private var masterFactory: Option[ProcFactory]  = None
     //  private var masterProc   : Option[Proc]         = None
 
     private var masterBusVar : Option[AudioBus]     = None
-
-    def masterBus: Option[AudioBus] = masterBusVar
 
     //  private object topoListener extends ProcWorld.Listener {
     //    def updated(u: ProcWorld.Update): Unit = topoUpdate(u)
@@ -128,17 +133,39 @@ object PanelImpl {
 
     private val locHintMap = TxnLocal(Map.empty[Obj[S], Point2D])
 
+    private var overlay = Option.empty[Component]
+
+    private var observer: Disposable[S#Tx] = _
+
+    def display: Display = _disp
+    def visualization: Visualization = _vis
+
+    def masterBus: Option[AudioBus] = masterBusVar
+
     def setLocationHint(p: Obj[S], loc: Point2D)(implicit tx: S#Tx): Unit =
       locHintMap.transform(_ + (p -> loc))(tx.peer)
 
-    private var overlay = Option.empty[Component]
-
     def nuages(implicit tx: S#Tx): Nuages[S] = nuagesH()
 
-    def dispose()(implicit tx: S#Tx): Unit = ()
+    def dispose()(implicit tx: S#Tx): Unit = {
+      deferTx(stopAnimation())
+      observer .dispose()
+      transport.dispose()
+      map      .dispose()
+    }
+
+    def init(timeline: Timeline.Obj[S])(implicit tx: S#Tx): this.type = {
+      deferTx(guiInit())
+      observer = timeline.elem.peer.changed.react { implicit tx => upd =>
+        upd.changes.foreach {
+          case other => println(s"OBSERVED: $other")
+        }
+      }
+      this
+    }
 
     // ---- constructor ----
-    def guiInit(): Unit = {
+    private def guiInit(): Unit = {
       _vis  = new Visualization
       _disp = new Display(_vis)
 
@@ -219,7 +246,6 @@ object PanelImpl {
       component = Component.wrap(p)
     }
 
-    private def init()(implicit tx: S#Tx): Unit = {
       //      // import DSL._
       //      import synth._
       //      import ugen._
@@ -326,7 +352,6 @@ object PanelImpl {
       //
       //      world.addListener(topoListener)
       //    }
-    }
 
     private def efficientOuts(sig: GE, chans: Vec[Int]): Unit = {
       //      require( sig.numOutputs == chans.size, sig.numOutputs.toString + " =! " + chans.size )
@@ -421,6 +446,49 @@ object PanelImpl {
           startAnimation()
         }
       }
+
+    def addNode(timed: Timeline.Timed[S])(implicit tx: S#Tx): Unit = {
+      val id = timed.id
+      val proc = timed.value
+      val n = proc.attr.expr[String](ObjKeys.attrName).fold("<unnamed>")(_.value)
+      // val n = proc.name.value
+      //            val par  = proc.par.entriesAt( time )
+      val par = Map.empty[String, Double]
+      // val vp    = new VisualProc[S](n, par, cursor.position, tx.newHandle(proc))
+      val vp = VisualProc[S](this, /* timed.span, */ proc, pMeter = None,
+        meter = meterFactory.isDefined, solo = soloFactory.isDefined)
+      val span = timed.span.value
+      //      map.get(id) match {
+      //        case Some(vpm) =>
+      //          map.remove(id)
+      //          map.put(id, vpm + (span -> (vp :: vpm.getOrElse(span, Nil))))
+      //        case _ =>
+      //          map.put(id, Map(span -> (vp :: Nil)))
+      //      }
+      map.put(id, vp)
+      val locO = locHintMap.getAndTransform(_ - proc)(tx.peer).get(proc)
+
+      deferTx(visDo(addNodeGUI(vp, locO)))
+    }
+
+    private def addNodeGUI(vp: VisualProc[S], locO: Option[Point2D]): Unit = {
+      val pNode = g.addNode()
+      vp.pNode  = pNode
+      val vi    = _vis.getVisualItem(GROUP_GRAPH, pNode)
+      locO.foreach { loc =>
+        // locHintMap -= p
+        vi.setEndX(loc.getX)
+        vi.setEndY(loc.getY)
+      }
+      val aggr  = aggrTable.addItem().asInstanceOf[AggregateItem]
+      vp.aggr   = aggr
+      aggr.addItem(vi)
+      //      pMeter.foreach { pm => meterMap += pm -> res}
+      vi.set(COL_NUAGES, vp)
+      // XXX this doesn't work. the vProc needs initial layout...
+      //      if( p.anatomy == ProcDiff ) vi.setFixed( true )
+      // procMap += p -> vProc
+    }
 
     //  private def topAddProc(p: Proc, pMeter: Option[Proc]): Unit = {
     //    val pNode = g.addNode()
@@ -564,9 +632,10 @@ object PanelImpl {
               for {
                 gen <- nuages.generators.get(genIdx)
                 col <- nuages.collectors.get(colIdx)
+                tl  <- nuages.timeline.elem.peer.modifiableOption
               } {
                 // println(s"TODO: createProc ($genIdx, $colIdx)")
-                createProc(gen, col, displayPt)
+                createProc(tl, gen, col, displayPt)
               }
             }
           case _ =>
@@ -575,7 +644,8 @@ object PanelImpl {
       pack(p)
     }
 
-    def createProc(genSrc: Obj[S], colSrc: Obj[S], pt: Point2D)(implicit tx: S#Tx): Unit = {
+    def createProc(tl: Timeline.Modifiable[S], genSrc: Obj[S], colSrc: Obj[S], pt: Point2D)
+                  (implicit tx: S#Tx): Unit = {
       val gen = Obj.copy(genSrc)
       val col = Obj.copy(colSrc)
 
@@ -595,13 +665,14 @@ object PanelImpl {
       setLocationHint(gen, genPt)
       setLocationHint(col, colPt)
 
-      //      if (diff.anatomy == ProcFilter) {
-//        // this is the case for config.collector == true
-//        nuages.collector.foreach(diff ~> _)
-//      }
-//
-//      txn.beforeCommit { _ =>
-//      }
+      val imp = ExprImplicits[S]
+      import imp._
+      val time    = transport.position
+      val span    = Span.From(time)
+      val genSpan = SpanLikeEx.newVar(span)
+      val colSpan = SpanLikeEx.newVar(span)
+      tl.add(genSpan, gen)
+      tl.add(colSpan, gen)
     }
 
     def showCreateGenDialog(pt: Point): Boolean = {
@@ -720,12 +791,12 @@ object PanelImpl {
       aggrTable.removeTuple(vProc.aggr)
       //      tryRepeatedly( aggrTable.removeTuple( vProc.aggr ))
       g.removeNode(vProc.pNode)
-      vProc.params.values.foreach { vParam =>
-        // WE MUST NOT REMOVE THE EDGES, AS THE REMOVAL OF
-        // VPROC.PNODE INCLUDES ALL THE EDGES!
-        //         g.removeEdge( vParam.pEdge )
-        g.removeNode(vParam.pNode)
-      }
+//      vProc.params.values.foreach { vParam =>
+//        // WE MUST NOT REMOVE THE EDGES, AS THE REMOVAL OF
+//        // VPROC.PNODE INCLUDES ALL THE EDGES!
+//        //         g.removeEdge( vParam.pEdge )
+//        g.removeNode(vParam.pNode)
+//      }
       //    procMap -= vProc.proc
     }
 

@@ -28,18 +28,20 @@ package de.sciss.nuages
 import de.sciss.lucre.stm.Disposable
 import de.sciss.lucre.synth.Sys
 import de.sciss.serial.{DataInput, Serializer, Writable}
-import de.sciss.synth.proc.Folder
+import de.sciss.synth.proc.{Obj, AuralSystem, Timeline, Folder}
 import impl.{NuagesImpl => Impl}
 
 import collection.immutable.{IndexedSeq => Vec}
 import language.implicitConversions
 
 object Nuages {
-  def apply[S <: Sys[S]](generators: Folder[S], filters: Folder[S], collectors: Folder[S])
+  def apply[S <: Sys[S]](generators: Folder[S], filters: Folder[S], collectors: Folder[S],
+                         timeline: Timeline.Obj[S])
                         (implicit tx: S#Tx): Nuages[S] =
-    Impl(generators = generators, filters = filters, collectors = collectors)
+    Impl(generators = generators, filters = filters, collectors = collectors, timeline = timeline)
 
-  def empty[S <: Sys[S]](implicit tx: S#Tx): Nuages[S] = apply(Folder[S], Folder[S], Folder[S])
+  def empty[S <: Sys[S]](implicit tx: S#Tx): Nuages[S] =
+    apply(Folder[S], Folder[S], Folder[S], Obj(Timeline.Elem(Timeline[S])))
 
   implicit def serializer[S <: Sys[S]]: Serializer[S#Tx, S#Acc, Nuages[S]] = Impl.serializer[S]
 
@@ -125,4 +127,6 @@ trait Nuages[S <: Sys[S]] extends Writable with Disposable[S#Tx] {
   def generators: Folder[S]
   def filters   : Folder[S]
   def collectors: Folder[S]
+
+  def timeline  : Timeline.Obj[S]
 }

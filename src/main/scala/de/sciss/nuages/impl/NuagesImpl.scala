@@ -3,12 +3,13 @@ package impl
 
 import de.sciss.lucre.synth.{InMemory, Sys}
 import de.sciss.serial.{DataOutput, DataInput, Serializer}
-import de.sciss.synth.proc.Folder
+import de.sciss.synth.proc.{Obj, Timeline, Folder}
 
 object NuagesImpl {
-  def apply[S <: Sys[S]](generators: Folder[S], filters: Folder[S], collectors: Folder[S])
+  def apply[S <: Sys[S]](generators: Folder[S], filters: Folder[S], collectors: Folder[S],
+                         timeline: Timeline.Obj[S])
                         (implicit tx: S#Tx): Nuages[S] = {
-    val res = new Impl(generators = generators, filters = filters, collectors = collectors)
+    val res = new Impl(generators = generators, filters = filters, collectors = collectors, timeline = timeline)
     res
   }
 
@@ -25,16 +26,19 @@ object NuagesImpl {
     def read(in: DataInput, access: S#Acc)(implicit tx: S#Tx): Nuages[S] = {
       val cookie      = in.readInt()
       if (cookie != COOKIE) sys.error(s"Unexpected cookie (found $cookie, expected $COOKIE)")
-      val generators  = Folder.read[S](in, access)
-      val filters     = Folder.read[S](in, access)
-      val collectors  = Folder.read[S](in, access)
-      new Impl(generators = generators, filters = filters, collectors = collectors)
+      val generators  = Folder  .read[S](in, access)
+      val filters     = Folder  .read[S](in, access)
+      val collectors  = Folder  .read[S](in, access)
+      // val timeline    = Timeline.read[S](in, access)
+      val timeline    = Obj.readT[S, Timeline.Elem](in, access)
+      new Impl(generators = generators, filters = filters, collectors = collectors, timeline = timeline)
     }
   }
 
   private final val COOKIE = 0x4E7500
 
-  private final class Impl[S <: Sys[S]](val generators: Folder[S], val filters: Folder[S], val collectors: Folder[S])
+  private final class Impl[S <: Sys[S]](val generators: Folder[S], val filters: Folder[S],
+                                        val collectors: Folder[S], val timeline: Timeline.Obj[S])
     extends Nuages[S] {
 
     def dispose()(implicit tx: S#Tx) = ()
@@ -44,6 +48,7 @@ object NuagesImpl {
       generators.write(out)
       filters   .write(out)
       collectors.write(out)
+      timeline  .write(out)
     }
   }
 }
