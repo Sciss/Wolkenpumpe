@@ -135,6 +135,7 @@ object Wolkenpumpe extends App with Runnable {
         // pout.ar(sig)
         Out.ar(0, sig)
       }
+      n.collectors.addLast(col1Obj)
 
       val p = NuagesPanel(n, config)
       NuagesFrame(p)

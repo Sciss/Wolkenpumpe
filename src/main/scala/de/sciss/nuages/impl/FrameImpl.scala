@@ -43,10 +43,6 @@ object FrameImpl {
       val transition = new NuagesTransitionPanel(view)
       val bottom = new BasicPanel(Orientation.Horizontal)
 
-      //      val ggEastBox     = new BasicPanel
-      //      ggEastBox.setLayout( new BorderLayout() )
-      //      val font          = Wolkenpumpe.condensedFont.deriveFont( 15f ) // WARNING: use float argument
-
       val ggSouthBox = new BoxPanel(Orientation.Horizontal)
       ggSouthBox.contents += bottom
       ggSouthBox.contents += Swing.HGlue
@@ -80,7 +76,6 @@ object FrameImpl {
 
       frame = new Frame {
         title = "Wolkenpumpe"
-        // setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE)
 
         contents = new BorderPanel {
           background = Color.black

@@ -5,15 +5,15 @@ import java.awt.{Dimension, Rectangle, LayoutManager, Point, EventQueue, Color}
 import java.awt.geom.Point2D
 import javax.swing.event.{AncestorEvent, AncestorListener}
 import javax.swing.JPanel
+import javax.swing.plaf.basic.BasicListUI
 
 import de.sciss.lucre.stm
-import de.sciss.lucre.swing.{deferTx, requireEDT}
+import de.sciss.lucre.swing.{ListView, deferTx, requireEDT}
 import de.sciss.lucre.swing.impl.ComponentHolder
 import de.sciss.lucre.synth.Sys
-import de.sciss.swingplus.ListView
 import de.sciss.synth.ugen.Out
-import de.sciss.synth.{GE, AudioBus}
-import de.sciss.synth.proc.Obj
+import de.sciss.synth.{proc, GE, AudioBus}
+import de.sciss.synth.proc.{Folder, Obj}
 import prefuse.action.{RepaintAction, ActionList}
 import prefuse.action.assignment.ColorAction
 import prefuse.action.layout.graph.ForceDirectedLayout
@@ -33,8 +33,11 @@ import scala.swing.{Container, Orientation, SequentialContainer, BoxPanel, Panel
 object PanelImpl {
   def apply[S <: Sys[S]](nuages: Nuages[S], config: Nuages.Config)
                         (implicit tx: S#Tx, cursor: stm.Cursor[S]): NuagesPanel[S] = {
-    val nuagesH = tx.newHandle(nuages)
-    val res     = new Impl[S](nuagesH, config)
+    val nuagesH   = tx.newHandle(nuages)
+    val listGen   = mkListView(nuages.generators)
+    val listFlt   = mkListView(nuages.filters   )
+    val listCol   = mkListView(nuages.collectors)
+    val res       = new Impl[S](nuagesH, config, listGen = listGen, listFlt = listFlt, listCol = listCol)
     deferTx(res.guiInit())
     res
   }
@@ -50,7 +53,24 @@ object PanelImpl {
   private final val LAYOUT_TIME = 50
   //   private val FADE_TIME            = 333
 
-  private final class Impl[S <: Sys[S]](nuagesH: stm.Source[S#Tx, Nuages[S]], val config: Nuages.Config)
+  private def mkListView[S <: Sys[S]](folder: Folder[S])(implicit tx: S#Tx, cursor: stm.Cursor[S]) = {
+    import proc.Implicits._
+    val h = ListView.Handler[S, Obj[S], Obj.Update[S]] { implicit tx => obj => obj.attr.name } (_ => (_, _) => None)
+    implicit val ser = de.sciss.lucre.expr.List.serializer[S, Obj[S], Obj.Update[S]]
+    val res = ListView[S, Obj[S], Obj.Update[S], String](folder, h)
+    //    deferTx {
+    //      val c = res.component
+    //      // c.peer.setUI(new BasicListUI)
+    //      c.background = Color.black
+    //      c.foreground = Color.white
+    //    }
+    res
+  }
+
+  private final class Impl[S <: Sys[S]](nuagesH: stm.Source[S#Tx, Nuages[S]], val config: Nuages.Config,
+                                        listGen: ListView[S, Obj[S], Obj.Update[S]],
+                                        listFlt: ListView[S, Obj[S], Obj.Update[S]],
+                                        listCol: ListView[S, Obj[S], Obj.Update[S]])
                                        (implicit cursor: stm.Cursor[S])
     extends NuagesPanel[S] with ComponentHolder[Component] {
     panel =>
@@ -516,7 +536,9 @@ object PanelImpl {
     private def createAbortBar(p: SequentialContainer)(createAction: => Unit): Unit = {
       val b = new BoxPanel(Orientation.Horizontal)
       b.contents += BasicButton("Create")(createAction)
-      b.contents += Swing.HStrut(8)
+      val strut = Swing.HStrut(8)
+      // strut.background = Color.black
+      b.contents += strut
       b.contents += BasicButton("Abort")(close(p))
       p.contents += b
       // b
@@ -526,11 +548,11 @@ object PanelImpl {
 
     private lazy val createGenDialog: Panel = {
       val p = new OverlayPanel()
-      val genView = new ListView[String](Nil)  // createFactoryView(ProcGen)
-      p.contents += genView
+      // val genView = new ListView[String](Nil)
+      p.contents += listGen.component
       p.contents += Swing.VStrut(4)
-      val diffView = new ListView[String](Nil) // createFactoryView(ProcDiff)
-      p.contents += diffView
+      // val diffView = new ListView[String](Nil)
+      p.contents += listCol.component
       p.contents += Swing.VStrut(4)
       createAbortBar(p) {
 //        (genView.selection, diffView.selection) match {
