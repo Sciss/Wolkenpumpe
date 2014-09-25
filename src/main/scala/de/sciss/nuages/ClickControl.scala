@@ -109,7 +109,8 @@ class ClickControl[S <: Sys[S]](main: NuagesPanel[S]) extends ControlAdapter {
       case ei: EdgeItem =>
         val nSrc = ei.getSourceItem
         val nTgt = ei.getTargetItem
-        (main.vis.getRenderer(nSrc), main.vis.getRenderer(nTgt)) match {
+        val vis  = main.visualization
+        (vis.getRenderer(nSrc), vis.getRenderer(nTgt)) match {
           case (_: NuagesProcRenderer[_], _: NuagesProcRenderer[_]) =>
             val srcData = nSrc.get(COL_NUAGES).asInstanceOf[VisualData[S]]
             val tgtData = nTgt.get(COL_NUAGES).asInstanceOf[VisualData[S]]

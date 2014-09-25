@@ -26,32 +26,28 @@
 package de.sciss.nuages
 
 object Util {
-   /**
-    *    Binary search on an indexed collection. Couldn't find this in
-    *    the standard Scala library?! And java.util.Collections unfortunately
-    *    requires a java.util.List... This is taken from the SuperCollider
-    *    timebased code.
+  /** Binary search on an indexed collection.
     *
-    *    @return  if positive: the position of elem in coll (i.e. elem is
-    *             contained in coll). if negative: (-ins -1) where ins is the
-    *             position at which elem should be inserted into the collection. 
+    * @return  if positive: the position of elem in coll (i.e. elem is
+    *          contained in coll). if negative: (-ins -1) where ins is the
+    *          position at which elem should be inserted into the collection.
     */
-   def binarySearch[ @specialized T ]( coll: IndexedSeq[ T ], elem: T )( implicit ord: Ordering[ T ]) : Int = {
-      var index   = 0
-      var low	   = 0
-      var high	   = coll.size - 1
-      while({
-         index  = (high + low) >> 1
-         low   <= high
-      }) {
-         val cmp = ord.compare( coll( index ), elem )
-         if( cmp == 0 ) return index
-         if( cmp < 0 ) {
-            low = index + 1
-         } else {
-            high = index - 1
-         }
+  def binarySearch[A](coll: IndexedSeq[A], elem: A)(implicit ord: Ordering[A]): Int = {
+    var index = 0
+    var low = 0
+    var high = coll.size - 1
+    while ({
+      index  = (high + low) >> 1
+      low   <= high
+    }) {
+      val cmp = ord.compare(coll(index), elem)
+      if (cmp == 0) return index
+      if (cmp < 0) {
+        low = index + 1
+      } else {
+        high = index - 1
       }
-      -low - 1
-   }
+    }
+    -low - 1
+  }
 }

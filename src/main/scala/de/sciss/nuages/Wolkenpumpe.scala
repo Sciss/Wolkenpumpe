@@ -25,26 +25,25 @@
 
 package de.sciss.nuages
 
-import de.sciss.synth.proc._
-import de.sciss.synth._
 import java.awt.Font
-import javax.swing.WindowConstants
 
-object Wolkenpumpe extends App {
+import de.sciss.lucre.synth.InMemory
 
-  if (args.size > 0 && args(0) == "--test") {
-    test()
-  } else {
-    printInfo()
-    sys.exit(1)
-  }
+object Wolkenpumpe extends App with Runnable {
+  run()
 
-  def printInfo(): Unit = {
-//    println("\n" + name + " v" + version + "\n" + copyright + ". All rights reserved.\n" +
-//      "This is a library which cannot be executed directly.\n")
-  }
+  def run(): Unit = {
+    type S = InMemory
+    implicit val system = InMemory()
 
-  def test(): Unit = {
+    val config            = Nuages.Config()
+    config.masterChannels = Some(Vector(0, 1))
+    config.recordPath     = Some("/tmp")
+    val f = system.step { implicit tx =>
+      val p = NuagesPanel(config)
+      NuagesFrame(p)
+    }
+
 //    var s: Server = null
 //    SynthGraph.warnOutsideContext = true
 //    val booting = Server.boot() {
