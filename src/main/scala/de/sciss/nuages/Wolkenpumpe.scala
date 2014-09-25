@@ -28,6 +28,10 @@ package de.sciss.nuages
 import java.awt.Font
 
 import de.sciss.lucre.synth.InMemory
+import de.sciss.synth
+import de.sciss.synth.proc
+import de.sciss.synth.proc.{ExprImplicits, Obj, Proc}
+import proc.Implicits._
 
 object Wolkenpumpe extends App with Runnable {
   run()
@@ -39,19 +43,103 @@ object Wolkenpumpe extends App with Runnable {
     val config            = Nuages.Config()
     config.masterChannels = Some(Vector(0, 1))
     config.recordPath     = Some("/tmp")
-    val f = system.step { implicit tx =>
-      val p = NuagesPanel(config)
+    /* val f = */ system.step { implicit tx =>
+      val n = Nuages.empty[S]
+      val imp = ExprImplicits[S]
+
+      import imp._
+      import synth._
+      import ugen._
+      import proc.graph.{ScanIn, ScanOut, Attribute}
+
+      val gen1          = Proc[S]
+      val gen1Obj       = Obj(Proc.Elem(gen1))
+      gen1Obj.attr.name = "Sprink"
+      gen1.graph()      = SynthGraph {
+        val freq = Attribute.ar("freq", 0.5)
+        // ParamSpec(0.2, 50), 1)
+        val out = BPZ2.ar(WhiteNoise.ar(LFPulse.ar(freq, 0, 0.25) * Seq(0.1, 0.1)))
+        ScanOut("out", out)
+      }
+      n.generators.addLast(gen1Obj)
+
+      val flt1          = Proc[S]
+      val flt1Obj       = Obj(Proc.Elem(flt1))
+      flt1Obj.attr.name = "Filt"
+      flt1.graph()      = SynthGraph {
+        // val pfreq = pAudio("freq", ParamSpec(-1, 1), 0.7)
+        // val pmix = pAudio("mix", ParamSpec(0, 1), 1)
+        val in        = ScanIn("in")
+        val normFreq  = Attribute.ar("freq", 0.5)
+        val lowFreqN  = Lag.ar(Clip.ar(normFreq, -1, 0))
+        val highFreqN = Lag.ar(Clip.ar(normFreq, 0, 1))
+        val lowFreq   = LinExp.ar(lowFreqN, -1, 0, 30, 20000)
+        val highFreq  = LinExp.ar(highFreqN, 0, 1, 30, 20000)
+        val lowMix    = Clip.ar(lowFreqN * -10.0, 0, 1)
+        val highMix   = Clip.ar(highFreqN * 10.0, 0, 1)
+        val dryMix    = 1 - (lowMix + highMix)
+        val lpf       = LPF.ar(in, lowFreq) * lowMix
+        val hpf       = HPF.ar(in, highFreq) * highMix
+        val dry       = in * dryMix
+        val flt       = dry + lpf + hpf
+        val mix       = Attribute.ar("mix", 1)
+        val out       = LinXFade2.ar(in, flt, mix * 2 - 1)
+        ScanOut("out", out)
+      }
+      n.filters.addLast(flt1Obj)
+
+      val flt2          = Proc[S]
+      val flt2Obj       = Obj(Proc.Elem(flt2))
+      flt2Obj.attr.name = "Achil"
+      flt2.graph()      = SynthGraph {
+        val in = ScanIn("in")
+        // val pspeed = pAudio("speed", ParamSpec(0.125, 2.3511, ExpWarp), 0.5)
+        // val pmix    = pAudio( "mix", ParamSpec( 0, 1 ), 1 )
+
+        val speed         = Lag.ar(Attribute.ar("speed", 1.0), 0.1)
+        val numFrames     = 44100 // sampleRate.toInt
+        val numChannels   = 2     // in.numChannels // numOutputs
+        //println( "numChannels = " + numChannels )
+
+        // val buf           = bufEmpty(numFrames, numChannels)
+        // val bufID         = buf.id
+        val bufID         = LocalBuf(numFrames = numFrames, numChannels = numChannels)
+
+        val writeRate     = BufRateScale.kr(bufID)
+        val readRate      = writeRate * speed
+        val readPhasor    = Phasor.ar(0, readRate, 0, numFrames)
+        val read          = BufRd.ar(numChannels, bufID, readPhasor, 0, 4)
+        val writePhasor   = Phasor.ar(0, writeRate, 0, numFrames)
+        val old           = BufRd.ar(numChannels, bufID, writePhasor, 0, 1)
+        val wet0          = SinOsc.ar(0, (readPhasor - writePhasor).abs / numFrames * math.Pi)
+        val dry           = 1 - wet0.squared
+        val wet           = 1 - (1 - wet0).squared
+        BufWr.ar((old * dry) + (in * wet), bufID, writePhasor)
+
+        val mix           = Attribute.ar("mix", 1)
+
+        LinXFade2.ar(in, read, mix * 2 - 1)
+      }
+      n.filters.addLast(flt2Obj)
+
+      val col1          = Proc[S]
+      val col1Obj       = Obj(Proc.Elem(col1))
+      col1Obj.attr.name = "Out"
+      col1.graph()      = SynthGraph {
+        // val pamp = pAudio("amp", ParamSpec(0.01, 10, ExpWarp), 1)
+        // val pout = pAudioOut("out", None) // Some( RichBus.wrap( masterBus ))
+
+        val in  = ScanIn("in")
+        val amp = Attribute.ar("gain", 1)
+        val sig = in * amp
+        // pout.ar(sig)
+        Out.ar(0, sig)
+      }
+
+      val p = NuagesPanel(n, config)
       NuagesFrame(p)
     }
 
-//    var s: Server = null
-//    SynthGraph.warnOutsideContext = true
-//    val booting = Server.boot() {
-//      //         case ServerConnection.Preparing( srv ) =>
-//      case ServerConnection.Running(srv) => {
-//        s = srv
-//        //            srv.dumpOSC()
-//        ProcDemiurg.addServer(srv)
 //        val recordPath = "/tmp"
 //        //            val masterBus  = new AudioBus( srv, 0, 2 )
 //        //            val soloBus    = Bus.audio( srv, 2 )
@@ -63,89 +151,6 @@ object Wolkenpumpe extends App with Runnable {
 //        f.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE)
 //        f.setSize(640, 480)
 //        f.setVisible(true)
-//        ProcTxn.atomic { implicit tx =>
-//          import de.sciss.synth.proc.DSL._
-//          import de.sciss.synth._
-//          import de.sciss.synth.ugen._
-//
-//          gen("Sprink") {
-//            val pfreq = pAudio("freq", ParamSpec(0.2, 50), 1)
-//            graph {
-//              BPZ2.ar(WhiteNoise.ar(LFPulse.ar(pfreq.ar, 0, 0.25) * List(0.1, 0.1)))
-//            }
-//          }
-//
-//          filter("Filt") {
-//            val pfreq = pAudio("freq", ParamSpec(-1, 1), 0.7)
-//            val pmix = pAudio("mix", ParamSpec(0, 1), 1)
-//
-//            graph { in: In =>
-//              //println( "Filter : in has " + in.numChannels + " channels" )
-//              val normFreq = pfreq.ar
-//              val lowFreqN = Lag.ar(Clip.ar(normFreq, -1, 0))
-//              val highFreqN = Lag.ar(Clip.ar(normFreq, 0, 1))
-//              val lowFreq = LinExp.ar(lowFreqN, -1, 0, 30, 20000)
-//              val highFreq = LinExp.ar(highFreqN, 0, 1, 30, 20000)
-//              val lowMix = Clip.ar(lowFreqN * -10.0, 0, 1)
-//              val highMix = Clip.ar(highFreqN * 10.0, 0, 1)
-//              val dryMix = 1 - (lowMix + highMix)
-//              val lpf = LPF.ar(in, lowFreq) * lowMix
-//              val hpf = HPF.ar(in, highFreq) * highMix
-//              val dry = in * dryMix
-//              val flt = dry + lpf + hpf
-//              LinXFade2.ar(in, flt, pmix.ar * 2 - 1)
-//            }
-//          }
-//
-//          filter("Achil") {
-//            val pspeed = pAudio("speed", ParamSpec(0.125, 2.3511, ExpWarp), 0.5)
-//            val pmix    = pAudio( "mix", ParamSpec( 0, 1 ), 1 )
-//
-//            graph { in: In =>
-//              val speed = Lag.ar(pspeed.ar, 0.1)
-//              val numFrames = sampleRate.toInt
-//              val numChannels = in.numChannels // numOutputs
-//            //println( "numChannels = " + numChannels )
-//            val buf = bufEmpty(numFrames, numChannels)
-//              val bufID = buf.id
-//              val writeRate = BufRateScale.kr(bufID)
-//              val readRate = writeRate * speed
-//              val readPhasor = Phasor.ar(0, readRate, 0, numFrames)
-//              val read = BufRd.ar(numChannels, bufID, readPhasor, 0, 4)
-//              val writePhasor = Phasor.ar(0, writeRate, 0, numFrames)
-//              val old = BufRd.ar(numChannels, bufID, writePhasor, 0, 1)
-//              val wet0 = SinOsc.ar(0, ((readPhasor - writePhasor).abs / numFrames * math.Pi))
-//              val dry = 1 - wet0.squared
-//              val wet = 1 - (1 - wet0).squared
-//              BufWr.ar((old * dry) + (in * wet), bufID, writePhasor)
-//              LinXFade2.ar(in, read, pmix.ar * 2 - 1)
-//            }
-//          }
-//
-//          diff("Out") {
-//            val pamp = pAudio("amp", ParamSpec(0.01, 10, ExpWarp), 1)
-//            val pout = pAudioOut("out", None) // Some( RichBus.wrap( masterBus ))
-//
-//            graph { in: In =>
-//              val sig = in * pamp.ar
-//              //                      Out.ar( masterBus.index, sig )
-//              pout.ar(sig)
-//            }
-//          }
-//        }
-//      }
-//    }
-//    Runtime.getRuntime.addShutdownHook(new Thread {
-//      override def run(): Unit = {
-//        if ((s != null) && (s.condition != Server.Offline)) {
-//          s.quit()
-//          s = null
-//        } else {
-//          booting.abort()
-//        }
-//      }
-//    })
-//    //      booting.start
   }
 
   /** A condensed font for GUI usage. This is in 12 pt size,

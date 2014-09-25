@@ -31,8 +31,10 @@ import scala.concurrent.stm.{Ref, TxnLocal}
 import scala.swing.{Container, Orientation, SequentialContainer, BoxPanel, Panel, Swing, Component}
 
 object PanelImpl {
-  def apply[S <: Sys[S]](config: Nuages.Config)(implicit tx: S#Tx, cursor: stm.Cursor[S]): NuagesPanel[S] = {
-    val res = new Impl[S](config)
+  def apply[S <: Sys[S]](nuages: Nuages[S], config: Nuages.Config)
+                        (implicit tx: S#Tx, cursor: stm.Cursor[S]): NuagesPanel[S] = {
+    val nuagesH = tx.newHandle(nuages)
+    val res     = new Impl[S](nuagesH, config)
     deferTx(res.guiInit())
     res
   }
@@ -48,7 +50,8 @@ object PanelImpl {
   private final val LAYOUT_TIME = 50
   //   private val FADE_TIME            = 333
 
-  private final class Impl[S <: Sys[S]](val config: Nuages.Config)(implicit cursor: stm.Cursor[S])
+  private final class Impl[S <: Sys[S]](nuagesH: stm.Source[S#Tx, Nuages[S]], val config: Nuages.Config)
+                                       (implicit cursor: stm.Cursor[S])
     extends NuagesPanel[S] with ComponentHolder[Component] {
     panel =>
 
@@ -110,6 +113,8 @@ object PanelImpl {
 
     private var overlay = Option.empty[Component]
 
+    def nuages(implicit tx: S#Tx): Nuages[S] = nuagesH()
+
     def dispose()(implicit tx: S#Tx): Unit = ()
 
     // ---- constructor ----
@@ -130,17 +135,17 @@ object PanelImpl {
 
       val rf = new DefaultRendererFactory(procRenderer)
       rf.add(new InGroupPredicate(GROUP_EDGES), edgeRenderer)
-      rf.add(new InGroupPredicate(AGGR_PROC), aggrRenderer)
+      rf.add(new InGroupPredicate(AGGR_PROC  ), aggrRenderer)
       _vis.setRendererFactory(rf)
 
       // colors
-      val actionNodeStroke = new ColorAction(GROUP_NODES, VisualItem.STROKECOLOR, ColorLib.rgb(255, 255, 255))
-      val actionNodeFill = new ColorAction(GROUP_NODES, VisualItem.FILLCOLOR, ColorLib.rgb(0, 0, 0))
-      val actionTextColor = new ColorAction(GROUP_NODES, VisualItem.TEXTCOLOR, ColorLib.rgb(255, 255, 255))
+      val actionNodeStroke  = new ColorAction(GROUP_NODES, VisualItem.STROKECOLOR, ColorLib.rgb(255, 255, 255))
+      val actionNodeFill    = new ColorAction(GROUP_NODES, VisualItem.FILLCOLOR  , ColorLib.rgb(0, 0, 0))
+      val actionTextColor   = new ColorAction(GROUP_NODES, VisualItem.TEXTCOLOR  , ColorLib.rgb(255, 255, 255))
 
-      val actionEdgeColor = new ColorAction(GROUP_EDGES, VisualItem.STROKECOLOR, ColorLib.rgb(255, 255, 255))
-      val actionAggrFill = new ColorAction(AGGR_PROC, VisualItem.FILLCOLOR, ColorLib.rgb(80, 80, 80))
-      val actionAggrStroke = new ColorAction(AGGR_PROC, VisualItem.STROKECOLOR, ColorLib.rgb(255, 255, 255))
+      val actionEdgeColor   = new ColorAction(GROUP_EDGES, VisualItem.STROKECOLOR, ColorLib.rgb(255, 255, 255))
+      val actionAggrFill    = new ColorAction(AGGR_PROC  , VisualItem.FILLCOLOR  , ColorLib.rgb(80, 80, 80))
+      val actionAggrStroke  = new ColorAction(AGGR_PROC  , VisualItem.STROKECOLOR, ColorLib.rgb(255, 255, 255))
 
       val lay = new ForceDirectedLayout(GROUP_GRAPH)
 

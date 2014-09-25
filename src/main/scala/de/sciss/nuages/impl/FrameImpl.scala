@@ -2,16 +2,16 @@ package de.sciss.nuages
 package impl
 
 import java.awt.event.{ActionEvent, InputEvent, KeyEvent}
-import java.awt.{Toolkit, GridBagConstraints, GridBagLayout, BorderLayout, Color}
-import javax.swing.event.{ChangeEvent, ChangeListener}
-import javax.swing.plaf.basic.BasicSliderUI
-import javax.swing.{SwingConstants, JSlider, AbstractAction, KeyStroke, JComponent, JPanel, Box, BoxLayout}
+import java.awt.{Toolkit, Color}
+import javax.swing.{AbstractAction, KeyStroke, JComponent}
 
 import de.sciss.lucre.stm
 import de.sciss.lucre.synth.Sys
 import de.sciss.lucre.swing.deferTx
+import de.sciss.swingplus.CloseOperation
+import de.sciss.swingplus.Implicits._
 
-import scala.swing.{Slider, GridBagPanel, BorderPanel, BoxPanel, Orientation, Swing, Frame}
+import scala.swing.{GridBagPanel, BorderPanel, BoxPanel, Orientation, Swing, Frame}
 import Swing._
 
 object FrameImpl {
@@ -89,7 +89,8 @@ object FrameImpl {
           add(ggFaderBox    , BorderPanel.Position.East  )
         }
 
-        size = (640, 480)
+        this.defaultCloseOperation = CloseOperation.Exit
+        size = (800, 600)
         centerOnScreen()
         open()
       }

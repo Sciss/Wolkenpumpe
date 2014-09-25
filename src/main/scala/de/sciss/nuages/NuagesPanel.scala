@@ -42,10 +42,13 @@ object NuagesPanel {
   final val masterAmpSpec       = ParamSpec(0.01, 10.0, ExpWarp) -> 1.0
   final val soloAmpSpec         = ParamSpec(0.10, 10.0, ExpWarp) -> 0.5
 
-  def apply[S <: Sys[S]](config: Nuages.Config)(implicit tx: S#Tx, cursor: stm.Cursor[S]): NuagesPanel[S] =
-    Impl(config)
+  def apply[S <: Sys[S]](nuages: Nuages[S], config: Nuages.Config)
+                        (implicit tx: S#Tx, cursor: stm.Cursor[S]): NuagesPanel[S] =
+    Impl(nuages, config)
 }
 trait NuagesPanel[S <: Sys[S]] extends View[S] {
+  def nuages(implicit tx: S#Tx): Nuages[S]
+
   def config : Nuages.Config
 
   def setMasterVolume(v: Double)(implicit tx: S#Tx): Unit

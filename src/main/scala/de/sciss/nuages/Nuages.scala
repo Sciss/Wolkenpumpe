@@ -25,10 +25,28 @@
 
 package de.sciss.nuages
 
+import de.sciss.lucre.stm.Disposable
+import de.sciss.lucre.synth.Sys
+import de.sciss.serial.{DataInput, Serializer, Writable}
+import de.sciss.synth.proc.Folder
+import impl.{NuagesImpl => Impl}
+
 import collection.immutable.{IndexedSeq => Vec}
 import language.implicitConversions
 
 object Nuages {
+  def apply[S <: Sys[S]](generators: Folder[S], filters: Folder[S], collectors: Folder[S])
+                        (implicit tx: S#Tx): Nuages[S] =
+    Impl(generators = generators, filters = filters, collectors = collectors)
+
+  def empty[S <: Sys[S]](implicit tx: S#Tx): Nuages[S] = apply(Folder[S], Folder[S], Folder[S])
+
+  implicit def serializer[S <: Sys[S]]: Serializer[S#Tx, S#Acc, Nuages[S]] = Impl.serializer[S]
+
+  def read[S <: Sys[S]](in: DataInput, access: S#Acc)(implicit tx: S#Tx): Nuages[S] = Impl.read(in, access)
+
+  // ---- config ----
+
   sealed trait ConfigLike {
     def masterChannels: Option[Vec[Int]]
     def soloChannels  : Option[Vec[Int]]
@@ -102,4 +120,9 @@ object Nuages {
   ) extends Config {
     override def productPrefix = "Nuages.Config"
   }
+}
+trait Nuages[S <: Sys[S]] extends Writable with Disposable[S#Tx] {
+  def generators: Folder[S]
+  def filters   : Folder[S]
+  def collectors: Folder[S]
 }
