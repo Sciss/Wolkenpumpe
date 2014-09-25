@@ -5,23 +5,29 @@ import java.awt.event.{ActionEvent, InputEvent, KeyEvent}
 import java.awt.{Toolkit, Color}
 import javax.swing.{AbstractAction, KeyStroke, JComponent}
 
+import de.sciss.audiowidgets.TimelineModel
 import de.sciss.lucre.stm
 import de.sciss.lucre.synth.Sys
 import de.sciss.lucre.swing.deferTx
+import de.sciss.span.Span
 import de.sciss.swingplus.CloseOperation
 import de.sciss.swingplus.Implicits._
+import de.sciss.synth.proc.Timeline
+import de.sciss.synth.proc.gui.TransportView
 
 import scala.swing.{GridBagPanel, BorderPanel, BoxPanel, Orientation, Swing, Frame}
 import Swing._
 
 object FrameImpl {
   def apply[S <: Sys[S]](panel: NuagesPanel[S])(implicit tx: S#Tx, cursor: stm.Cursor[S]): NuagesFrame[S] = {
-    val res = new Impl(panel)
-    deferTx(res.guiInit())
-    res
+    val tlm       = TimelineModel(Span(0L, (Timeline.SampleRate * 60 * 60 * 10).toLong), Timeline.SampleRate)
+    val transport = panel.transport
+    val trnspView = TransportView(transport, tlm, hasMillis = false, hasLoop = false)
+    new Impl(panel, trnspView).init()
   }
 
-  private final class Impl[S <: Sys[S]](val view: NuagesPanel[S])(implicit cursor: stm.Cursor[S])
+  private final class Impl[S <: Sys[S]](val view: NuagesPanel[S], transportView: TransportView[S])
+                                       (implicit cursor: stm.Cursor[S])
     extends NuagesFrame[S] {
 
     private var _frame: Frame = _
@@ -38,13 +44,23 @@ object FrameImpl {
     import cursor.{step => atomic}
     import view.config
 
-    // ---- constructor ----
-    def guiInit(): Unit = {
-      val transition = new NuagesTransitionPanel(view)
-      val bottom = new BasicPanel(Orientation.Horizontal)
+    def init()(implicit tx: S#Tx): this.type = {
+      deferTx(guiInit())
+      this
+    }
 
-      val ggSouthBox = new BoxPanel(Orientation.Horizontal)
-      ggSouthBox.contents += bottom
+    private def guiInit(): Unit = {
+      val transition = new NuagesTransitionPanel(view)
+      // val bottom = new BasicPanel(Orientation.Horizontal)
+
+      val ggSouthBox = new BasicPanel(Orientation.Horizontal)
+      // ggSouthBox.contents += bottom
+      // ggSouthBox.contents += Swing.HStrut(8)
+      val transportC = transportView.component
+      transportC.border = Swing.EmptyBorder(0, 4, 0, 4)
+      // transportC.background = Color.black
+      ggSouthBox.contents += transportC
+      // ggSouthBox.contents += Swing.HStrut(8)
       ggSouthBox.contents += Swing.HGlue
       ggSouthBox.contents += transition
 

@@ -33,8 +33,8 @@ import de.sciss.synth.proc
 import de.sciss.synth.proc.{AuralSystem, ExprImplicits, Obj, Proc}
 import proc.Implicits._
 
-object Wolkenpumpe extends App with Runnable {
-  run()
+object Wolkenpumpe extends Runnable {
+  def main(args: Array[String]): Unit = run()
 
   def run(): Unit = {
     type S = InMemory

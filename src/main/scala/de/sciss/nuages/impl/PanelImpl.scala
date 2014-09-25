@@ -6,13 +6,15 @@ import java.awt.geom.Point2D
 import javax.swing.event.{AncestorEvent, AncestorListener}
 import javax.swing.JPanel
 
+import de.sciss.audiowidgets.TimelineModel
 import de.sciss.lucre.bitemp.{SpanLike => SpanLikeEx}
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.Disposable
 import de.sciss.lucre.swing.{ListView, deferTx, requireEDT}
 import de.sciss.lucre.swing.impl.ComponentHolder
 import de.sciss.lucre.synth.Sys
-import de.sciss.span.Span
+import de.sciss.span.{SpanLike, Span}
+import de.sciss.synth.proc.gui.TransportView
 import de.sciss.synth.ugen.Out
 import de.sciss.synth.{proc, GE, AudioBus}
 import de.sciss.synth.proc.{ExprImplicits, AuralSystem, Transport, ObjKeys, Timeline, Proc, Folder, Obj}
@@ -43,6 +45,7 @@ object PanelImpl {
     val transport = Transport[S](aural)
     val timelineObj = nuages.timeline
     transport.addObject(timelineObj)
+
     new Impl[S](nuagesH, map, config, transport, listGen = listGen, listFlt = listFlt, listCol = listCol)
       .init(timelineObj)
   }
@@ -158,6 +161,10 @@ object PanelImpl {
       deferTx(guiInit())
       observer = timeline.elem.peer.changed.react { implicit tx => upd =>
         upd.changes.foreach {
+          case Timeline.Added(span, timed) =>
+            if (span.contains(transport.position)) addNode(span, timed)
+            // XXX TODO - update scheduler
+
           case other => println(s"OBSERVED: $other")
         }
       }
@@ -447,7 +454,7 @@ object PanelImpl {
         }
       }
 
-    def addNode(timed: Timeline.Timed[S])(implicit tx: S#Tx): Unit = {
+    def addNode(span: SpanLike, timed: Timeline.Timed[S])(implicit tx: S#Tx): Unit = {
       val id = timed.id
       val proc = timed.value
       val n = proc.attr.expr[String](ObjKeys.attrName).fold("<unnamed>")(_.value)
@@ -457,7 +464,7 @@ object PanelImpl {
       // val vp    = new VisualProc[S](n, par, cursor.position, tx.newHandle(proc))
       val vp = VisualProc[S](this, /* timed.span, */ proc, pMeter = None,
         meter = meterFactory.isDefined, solo = soloFactory.isDefined)
-      val span = timed.span.value
+      // val span = timed.span.value
       //      map.get(id) match {
       //        case Some(vpm) =>
       //          map.remove(id)
