@@ -36,6 +36,7 @@ import prefuse.data.{Edge, Node => PNode}
 import prefuse.visual.{AggregateItem, VisualItem}
 import java.awt.geom.{Arc2D, Area, Point2D, Ellipse2D, GeneralPath, Rectangle2D}
 import de.sciss.synth.proc.{Obj, Proc}
+import scala.collection.breakOut
 import proc.Implicits._
 
 private[nuages] object VisualData {
@@ -90,6 +91,9 @@ private[nuages] trait VisualData[S <: Sys[S]] {
       boundsResized()
    }
 
+  private var _fontSize = 0f
+  private var _font: Font = _
+
   def render(g: Graphics2D, vi: VisualItem): Unit = {
     g.setColor(ColorLib.getColor(vi.getFillColor))
     g.fill(outline)
@@ -106,14 +110,19 @@ private[nuages] trait VisualData[S <: Sys[S]] {
   def itemReleased(vi: VisualItem, e: MouseEvent, pt: Point2D) = ()
   def itemDragged (vi: VisualItem, e: MouseEvent, pt: Point2D) = ()
 
-  protected def drawName(g: Graphics2D, vi: VisualItem, font: Font): Unit = {
+  protected def drawName(g: Graphics2D, vi: VisualItem, fontSize: Float): Unit = {
+    if (_fontSize != fontSize) {
+      _fontSize = fontSize
+      _font = Wolkenpumpe.condensedFont.deriveFont(fontSize)
+    }
+
     g.setColor(ColorLib.getColor(vi.getTextColor))
     if (main.display.isHighQuality) {
-      drawNameHQ(g, vi, font)
+      drawNameHQ(g, vi, _font)
     } else {
       val cx = r.getWidth / 2
       val cy = r.getHeight / 2
-      g.setFont(font)
+      g.setFont(_font)
       val fm = g.getFontMetrics
       val n = name
       g.drawString(n, (cx - (fm.stringWidth(n) * 0.5)).toInt,
@@ -152,8 +161,17 @@ object VisualProc {
 
   def apply[S <: Sys[S]](main: NuagesPanel[S], obj: Obj[S], pMeter: Option[stm.Source[S#Tx, Proc.Obj[S]]],
                          meter: Boolean, solo: Boolean)
-                        (implicit tx: S#Tx): VisualProc[S] =
-    new VisualProc(main, tx.newHandle(obj), obj.attr.name, pMeter, meter = meter, solo = solo)
+                        (implicit tx: S#Tx): VisualProc[S] = {
+    val res = new VisualProc(main, tx.newHandle(obj), obj.attr.name, pMeter, meter = meter, solo = solo)
+    obj match {
+      case Proc.Obj(objT) =>
+        val scans = objT.elem.peer.scans
+        res.scans = scans.keys.map { key => key -> VisualScan(res, key) } (breakOut)
+
+      case _ =>
+    }
+    res
+  }
 }
 
 private[nuages] class VisualProc[S <: Sys[S]] private (val main: NuagesPanel[S], val objH: stm.Source[S#Tx, Obj[S]],
@@ -169,6 +187,8 @@ private[nuages] class VisualProc[S <: Sys[S]] private (val main: NuagesPanel[S],
 
   var pNode : PNode = _
   var aggr  : AggregateItem = _
+
+  var scans = Map.empty[String, VisualScan[S]]
 
   //  @volatile private var stateVar = Proc.State(false)
   @volatile private var disposeAfterFade = false
@@ -413,38 +433,37 @@ private[nuages] class VisualProc[S <: Sys[S]] private (val main: NuagesPanel[S],
     }
   }
 
-    protected def renderDetail(g: Graphics2D, vi: VisualItem): Unit = {
-      if (true /* stateVar.valid */) {
-        g.setColor(if (true /* stateVar.playing */) {
-          /* if (stateVar.bypassed) colrBypassed else */ colrPlaying
-        } else colrStopped
-        )
-        g.fill(playArea)
+  protected def renderDetail(g: Graphics2D, vi: VisualItem): Unit = {
+    if (true /* stateVar.valid */) {
+      g.setColor(if (true /* stateVar.playing */) {
+        /* if (stateVar.bypassed) colrBypassed else */ colrPlaying
+      } else colrStopped
+      )
+      g.fill(playArea)
 
-        if (solo) {
-          g.setColor(if (soloed) colrSoloed else colrStopped)
-          g.fill(soloArea)
-        }
-
-        if (meter) {
-          val angExtent = (math.max(0f, peakNorm) * 90).toInt
-          val pValArc = new Arc2D.Double(0, 0, r.getWidth, r.getHeight, -45, angExtent, Arc2D.PIE)
-          val peakArea = new Area(pValArc)
-          peakArea.subtract(new Area(innerE))
-
-          g.setColor(colrPeak(angExtent))
-          g.fill(peakArea)
-          peakToPaint = -160f
-          //      rmsToPaint	= -160f
-        }
+      if (solo) {
+        g.setColor(if (soloed) colrSoloed else colrStopped)
+        g.fill(soloArea)
       }
-      //         g.setColor( ColorLib.getColor( vi.getStrokeColor ))
-      g.setColor(if (disposeAfterFade) Color.red else Color.white)
-      g.draw(gp)
 
-      val font = Wolkenpumpe.condensedFont.deriveFont(diam * vi.getSize.toFloat * 0.33333f)
-      drawName(g, vi, font)
+      if (meter) {
+        val angExtent = (math.max(0f, peakNorm) * 90).toInt
+        val pValArc = new Arc2D.Double(0, 0, r.getWidth, r.getHeight, -45, angExtent, Arc2D.PIE)
+        val peakArea = new Area(pValArc)
+        peakArea.subtract(new Area(innerE))
+
+        g.setColor(colrPeak(angExtent))
+        g.fill(peakArea)
+        peakToPaint = -160f
+        //      rmsToPaint	= -160f
+      }
     }
+    //         g.setColor( ColorLib.getColor( vi.getStrokeColor ))
+    g.setColor(if (disposeAfterFade) Color.red else Color.white)
+    g.draw(gp)
+
+    drawName(g, vi, diam * vi.getSize.toFloat * 0.33333f)
+  }
 }
 
 private[nuages] trait VisualParam[S <: Sys[S]] extends VisualData[S] {
@@ -458,20 +477,22 @@ private[nuages] trait VisualParam[S <: Sys[S]] extends VisualData[S] {
 //  def bus: ProcAudioBus
 //}
 
-//private[nuages] case class VisualAudioInput(main: NuagesPanel, bus: ProcAudioInput, pNode: PNode, pEdge: Edge)
-//  extends VisualBusParam {
-//
-//  import VisualData._
-//
-//  def name: String = bus.name
-//
-//  protected def boundsResized() = ()
-//
-//  protected def renderDetail(g: Graphics2D, vi: VisualItem): Unit = {
-//    val font = Wolkenpumpe.condensedFont.deriveFont(diam * vi.getSize.toFloat * 0.5f)
-//    drawName(g, vi, font)
-//  }
-//}
+private[nuages] case class VisualScan[S <: Sys[S]](parent: VisualProc[S], key: String)
+  extends VisualParam[S] /* VisualBusParam */ {
+
+  import VisualData._
+
+  var pNode: PNode = _
+  var pEdge: Edge  = _
+
+  def name: String = key
+  def main = parent.main
+
+  protected def boundsResized() = ()
+
+  protected def renderDetail(g: Graphics2D, vi: VisualItem): Unit =
+    drawName(g, vi, diam * vi.getSize.toFloat * 0.5f)
+}
 
 //private[nuages] case class VisualAudioOutput(main: NuagesPanel, bus: ProcAudioOutput, pNode: PNode, pEdge: Edge)
 //  extends VisualBusParam {

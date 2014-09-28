@@ -455,7 +455,7 @@ object PanelImpl {
     def addNode(span: SpanLike, timed: Timeline.Timed[S])(implicit tx: S#Tx): Unit = {
       val id = timed.id
       val proc = timed.value
-      val n = proc.attr.expr[String](ObjKeys.attrName).fold("<unnamed>")(_.value)
+      // val n = proc.attr.expr[String](ObjKeys.attrName).fold("<unnamed>")(_.value)
       // val n = proc.name.value
       //            val par  = proc.par.entriesAt( time )
       val par = Map.empty[String, Double]
@@ -477,17 +477,35 @@ object PanelImpl {
     }
 
     private def addNodeGUI(vp: VisualProc[S], locO: Option[Point2D]): Unit = {
-      val pNode = g.addNode()
-      vp.pNode  = pNode
-      val vi    = _vis.getVisualItem(GROUP_GRAPH, pNode)
-      locO.foreach { loc =>
-        // locHintMap -= p
-        vi.setEndX(loc.getX)
-        vi.setEndY(loc.getY)
-      }
       val aggr  = aggrTable.addItem().asInstanceOf[AggregateItem]
       vp.aggr   = aggr
-      aggr.addItem(vi)
+
+      def createNode() = {
+        val pN  = g.addNode()
+        val _vi = _vis.getVisualItem(GROUP_GRAPH, pN)
+        locO.foreach { loc =>
+          _vi.setEndX(loc.getX)
+          _vi.setEndY(loc.getY)
+        }
+        aggr.addItem(_vi)
+        (pN, _vi)
+      }
+
+      val (pNode, vi) = createNode()
+      vp.pNode = pNode
+
+      def createChildNode() = {
+        val (pParamNode, _vi) = createNode()
+        val pParamEdge = g.addEdge(pNode, pParamNode)
+        (pParamNode, pParamEdge, _vi)
+      }
+
+      vp.scans.foreach { case (_, vScan) =>
+        val (_, _, vi) = createChildNode()
+        vi.set(VisualItem.SIZE, 0.33333f)
+        vi.set(COL_NUAGES, vScan)
+      }
+
       //      pMeter.foreach { pm => meterMap += pm -> res}
       vi.set(COL_NUAGES, vp)
       // XXX this doesn't work. the vProc needs initial layout...
