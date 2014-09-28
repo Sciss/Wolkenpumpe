@@ -19,7 +19,7 @@ final case class ParamSpec(lo: Double = 0.0, hi: Double = 1.0, warp: Warp = LinW
     if (step <= 0.0) w else w.roundTo(step)
   }
 
-  def unmap(value: Double): Double = warp.unmap(this, value)
+  def inverseMap(value: Double): Double = warp.inverseMap(this, value)
 
   /** Maps a graph element from normalized range to spec.
     * Note: this does involve rounding
@@ -30,7 +30,7 @@ final case class ParamSpec(lo: Double = 0.0, hi: Double = 1.0, warp: Warp = LinW
     if (step <= 0.0) w else w.roundTo(step)
   }
 
-  def unmap(value: GE): GE = warp.unmap(this, value)
+  def inverseMap(value: GE): GE = warp.inverseMap(this, value)
 }
 trait Warp {
   /** From normalized range to spec.
@@ -40,30 +40,30 @@ trait Warp {
   def map(spec: ParamSpec, value: Double): Double
 
   /** From spec to normalized range */
-  def unmap(spec: ParamSpec, value: Double): Double
+  def inverseMap(spec: ParamSpec, value: Double): Double
 
   def map(spec: ParamSpec, value: GE): GE
 
-  def unmap(spec: ParamSpec, value: GE): GE
+  def inverseMap(spec: ParamSpec, value: GE): GE
 }
 
 object LinWarp extends Warp {
   import synth._
   def map  (spec: ParamSpec, value: Double): Double = value * spec.range + spec.lo
 
-  def unmap(spec: ParamSpec, value: Double): Double = (value - spec.lo) / spec.range
+  def inverseMap(spec: ParamSpec, value: Double): Double = (value - spec.lo) / spec.range
 
   def map  (spec: ParamSpec, value: GE): GE = value * spec.range + spec.lo
 
-  def unmap(spec: ParamSpec, value: GE): GE = (value - spec.lo) / spec.range
+  def inverseMap(spec: ParamSpec, value: GE): GE = (value - spec.lo) / spec.range
 }
 
 object ExpWarp extends Warp {
   import synth._
   def map  (spec: ParamSpec, value: Double): Double = spec.ratio.pow(value) * spec.lo
-  def unmap(spec: ParamSpec, value: Double): Double = (value / spec.lo).log / spec.ratio.log
+  def inverseMap(spec: ParamSpec, value: Double): Double = (value / spec.lo).log / spec.ratio.log
 
   def map(spec: ParamSpec, value: GE): GE = (spec.hi / spec.lo).pow(value) * spec.lo
 
-  def unmap(spec: ParamSpec, value: GE): GE = (value / spec.lo).log / spec.ratio.log
+  def inverseMap(spec: ParamSpec, value: GE): GE = (value / spec.lo).log / spec.ratio.log
 }

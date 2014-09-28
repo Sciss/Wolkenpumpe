@@ -73,10 +73,10 @@ object FrameImpl {
       def mkFader(ctrlSpecT: (ParamSpec, Double), weighty: Double)(fun: (Double, S#Tx) => Unit): Unit = {
         val (ctrlSpec, ctrlInit) = ctrlSpecT
         val slidSpec = ParamSpec(0, 0x10000)
-        val slidInit = slidSpec.map(ctrlSpec.unmap(ctrlInit)).toInt
+        val slidInit = slidSpec.map(ctrlSpec.inverseMap(ctrlInit)).toInt
         val slid = BasicSlider(Orientation.Vertical, min = slidSpec.lo.toInt, max = slidSpec.hi.toInt,
           value = slidInit) { v =>
-            val ctrlVal = ctrlSpec.map(slidSpec.unmap(v))
+            val ctrlVal = ctrlSpec.map(slidSpec.inverseMap(v))
             //               grpMaster.set( ctrlName -> ctrlVal )
             atomic { implicit tx =>
               fun(ctrlVal, tx)

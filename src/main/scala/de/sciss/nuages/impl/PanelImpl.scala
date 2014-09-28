@@ -6,7 +6,6 @@ import java.awt.geom.Point2D
 import javax.swing.event.{AncestorEvent, AncestorListener}
 import javax.swing.JPanel
 
-import de.sciss.audiowidgets.TimelineModel
 import de.sciss.lucre.bitemp.{SpanLike => SpanLikeEx}
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.Disposable
@@ -14,7 +13,6 @@ import de.sciss.lucre.swing.{ListView, deferTx, requireEDT}
 import de.sciss.lucre.swing.impl.ComponentHolder
 import de.sciss.lucre.synth.Sys
 import de.sciss.span.{SpanLike, Span}
-import de.sciss.synth.proc.gui.TransportView
 import de.sciss.synth.ugen.Out
 import de.sciss.synth.{proc, GE, AudioBus}
 import de.sciss.synth.proc.{ExprImplicits, AuralSystem, Transport, ObjKeys, Timeline, Proc, Folder, Obj}
@@ -679,7 +677,7 @@ object PanelImpl {
       val genSpan = SpanLikeEx.newVar(span)
       val colSpan = SpanLikeEx.newVar(span)
       tl.add(genSpan, gen)
-      tl.add(colSpan, gen)
+      tl.add(colSpan, col)
     }
 
     def showCreateGenDialog(pt: Point): Boolean = {

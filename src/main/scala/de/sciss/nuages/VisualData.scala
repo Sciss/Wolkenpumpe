@@ -30,11 +30,13 @@ import java.awt.event.MouseEvent
 import de.sciss.intensitypalette.IntensityPalette
 import de.sciss.lucre.stm
 import de.sciss.lucre.synth.Sys
+import de.sciss.synth.proc
 import prefuse.util.ColorLib
 import prefuse.data.{Edge, Node => PNode}
 import prefuse.visual.{AggregateItem, VisualItem}
 import java.awt.geom.{Arc2D, Area, Point2D, Ellipse2D, GeneralPath, Rectangle2D}
 import de.sciss.synth.proc.{Obj, Proc}
+import proc.Implicits._
 
 private[nuages] object VisualData {
   val diam = 50
@@ -145,34 +147,22 @@ private[nuages] trait VisualData[S <: Sys[S]] {
 
 object VisualProc {
   private val logPeakCorr = 20.0 / math.log(10)
-  //   private val logRMSCorr		= 10.0 / math.log( 10 )
 
-//   private def hsbFade( w1: Float, rgbMin: Int, rgbMax: Int ) : Color = {
-//      val hsbTop = new Array[ Float ]( 3 )
-//      val hsbBot = new Array[ Float ]( 3 )
-//      Color.RGBtoHSB( (rgbMax >> 16) & 0xFF, (rgbMax >> 8) & 0xFF, rgbMax & 0xFF, hsbTop )
-//      Color.RGBtoHSB( (rgbMin >> 16) & 0xFF, (rgbMin >> 8) & 0xFF, rgbMin & 0xFF, hsbBot );
-//      val w2 = 1f - w1
-//      Color.getHSBColor( hsbTop( 0 ) * w1 + hsbBot( 0 ) * w2,
-//           hsbTop( 1 ) * w1 + hsbBot( 1 ) * w2,
-//           hsbTop( 2 ) * w1 + hsbBot( 2 ) * w2 )
-//   }
-//
-   // private val colrPeak       = Array.tabulate( 91 )( ang => hsbFade( ang / 91f, 0x02FF02, 0xFF6B6B ))
-   private val colrPeak = Array.tabulate(91)(ang => new Color(IntensityPalette.apply(ang / 90f)))
+  private val colrPeak = Array.tabulate(91)(ang => new Color(IntensityPalette.apply(ang / 90f)))
 
   def apply[S <: Sys[S]](main: NuagesPanel[S], obj: Obj[S], pMeter: Option[stm.Source[S#Tx, Proc.Obj[S]]],
                          meter: Boolean, solo: Boolean)
                         (implicit tx: S#Tx): VisualProc[S] =
-    new VisualProc(main, tx.newHandle(obj), pMeter, meter = meter, solo = solo)
+    new VisualProc(main, tx.newHandle(obj), obj.attr.name, pMeter, meter = meter, solo = solo)
 }
 
 private[nuages] class VisualProc[S <: Sys[S]] private (val main: NuagesPanel[S], val objH: stm.Source[S#Tx, Obj[S]],
+                                                       var name: String,
                                                        /* val params: Map[String, VisualParam[S]], */
                                                        val pMeter: Option[stm.Source[S#Tx, Proc.Obj[S]]],
                                                        val meter: Boolean, val solo: Boolean)
   extends VisualData[S] {
-  vproc =>
+  vProc =>
 
   import VisualData._
   import VisualProc._
@@ -197,8 +187,6 @@ private[nuages] class VisualProc[S <: Sys[S]] private (val main: NuagesPanel[S],
   @volatile var soloed = false
 
   // def name: String = proc.name
-
-  def name = "TODO: name"
 
   //  private val isCollectorInput = main.collector.isDefined && (proc.anatomy == ProcFilter) && (proc.name.startsWith("O-"))
   //  private val isSynthetic = proc.name.startsWith("_")

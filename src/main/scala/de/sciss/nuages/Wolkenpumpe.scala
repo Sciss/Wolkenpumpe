@@ -27,14 +27,61 @@ package de.sciss.nuages
 
 import java.awt.Font
 
-import de.sciss.lucre.synth.InMemory
+import de.sciss.lucre.synth.{Sys, InMemory}
 import de.sciss.synth
-import de.sciss.synth.proc
+import de.sciss.synth.proc.graph.{ScanIn, ScanOut}
+import de.sciss.synth.{SynthGraph, GE, proc}
 import de.sciss.synth.proc.{AuralSystem, ExprImplicits, Obj, Proc}
 import proc.Implicits._
 
 object Wolkenpumpe extends Runnable {
   def main(args: Array[String]): Unit = run()
+
+  class DSL[S <: Sys[S]] {
+    val imp = ExprImplicits[S]
+    import imp._
+
+    def generator(name: String)(fun: => GE)(implicit tx: S#Tx, n: Nuages[S]): Proc.Obj[S] = {
+      val p   = Proc[S]
+      val obj = Obj(Proc.Elem(p))
+      obj.attr.name = name
+      p.graph() = SynthGraph {
+        val out = fun
+        ScanOut("out", out)
+      }
+      p.scans.add("out")
+      n.generators.addLast(obj)
+      obj
+    }
+
+    def filter(name: String)(fun: GE => GE)(implicit tx: S#Tx, n: Nuages[S]): Proc.Obj[S] = {
+      val p   = Proc[S]
+      val obj = Obj(Proc.Elem(p))
+      obj.attr.name = name
+      p.graph() = SynthGraph {
+        val in  = ScanIn("in")
+        val out = fun(in)
+        ScanOut("out", out)
+      }
+      p.scans.add("in" )
+      p.scans.add("out")
+      n.filters.addLast(obj)
+      obj
+    }
+
+    def collector(name: String)(fun: GE => Unit)(implicit tx: S#Tx, n: Nuages[S]): Proc.Obj[S] = {
+      val p   = Proc[S]
+      val obj = Obj(Proc.Elem(p))
+      obj.attr.name = name
+      p.graph() = SynthGraph {
+        val in  = ScanIn("in")
+        fun(in)
+      }
+      p.scans.add("in")
+      n.collectors.addLast(obj)
+      obj
+    }
+  }
 
   def run(): Unit = {
     type S = InMemory
@@ -44,32 +91,23 @@ object Wolkenpumpe extends Runnable {
     config.masterChannels = Some(Vector(0, 1))
     config.recordPath     = Some("/tmp")
     /* val f = */ system.step { implicit tx =>
-      val n = Nuages.empty[S]
-      val imp = ExprImplicits[S]
+      implicit val n = Nuages.empty[S]
+      val dsl = new DSL[S]
+      import dsl._
 
-      import imp._
       import synth._
       import ugen._
-      import proc.graph.{ScanIn, ScanOut, Attribute}
+      import proc.graph.Attribute
 
-      val gen1          = Proc[S]
-      val gen1Obj       = Obj(Proc.Elem(gen1))
-      gen1Obj.attr.name = "Sprink"
-      gen1.graph()      = SynthGraph {
+      generator("Sprink") {
         val freq = Attribute.ar("freq", 0.5)
         // ParamSpec(0.2, 50), 1)
-        val out = BPZ2.ar(WhiteNoise.ar(LFPulse.ar(freq, 0, 0.25) * Seq(0.1, 0.1)))
-        ScanOut("out", out)
+        BPZ2.ar(WhiteNoise.ar(LFPulse.ar(freq, 0, 0.25) * Seq(0.1, 0.1)))
       }
-      n.generators.addLast(gen1Obj)
 
-      val flt1          = Proc[S]
-      val flt1Obj       = Obj(Proc.Elem(flt1))
-      flt1Obj.attr.name = "Filt"
-      flt1.graph()      = SynthGraph {
+      filter("Filt") { in =>
         // val pfreq = pAudio("freq", ParamSpec(-1, 1), 0.7)
         // val pmix = pAudio("mix", ParamSpec(0, 1), 1)
-        val in        = ScanIn("in")
         val normFreq  = Attribute.ar("freq", 0.5)
         val lowFreqN  = Lag.ar(Clip.ar(normFreq, -1, 0))
         val highFreqN = Lag.ar(Clip.ar(normFreq, 0, 1))
@@ -83,16 +121,10 @@ object Wolkenpumpe extends Runnable {
         val dry       = in * dryMix
         val flt       = dry + lpf + hpf
         val mix       = Attribute.ar("mix", 1)
-        val out       = LinXFade2.ar(in, flt, mix * 2 - 1)
-        ScanOut("out", out)
+        LinXFade2.ar(in, flt, mix * 2 - 1)
       }
-      n.filters.addLast(flt1Obj)
 
-      val flt2          = Proc[S]
-      val flt2Obj       = Obj(Proc.Elem(flt2))
-      flt2Obj.attr.name = "Achil"
-      flt2.graph()      = SynthGraph {
-        val in = ScanIn("in")
+      filter("Achil") { in =>
         // val pspeed = pAudio("speed", ParamSpec(0.125, 2.3511, ExpWarp), 0.5)
         // val pmix    = pAudio( "mix", ParamSpec( 0, 1 ), 1 )
 
@@ -120,22 +152,16 @@ object Wolkenpumpe extends Runnable {
 
         LinXFade2.ar(in, read, mix * 2 - 1)
       }
-      n.filters.addLast(flt2Obj)
 
-      val col1          = Proc[S]
-      val col1Obj       = Obj(Proc.Elem(col1))
-      col1Obj.attr.name = "Out"
-      col1.graph()      = SynthGraph {
+      collector("Out") { in =>
         // val pamp = pAudio("amp", ParamSpec(0.01, 10, ExpWarp), 1)
         // val pout = pAudioOut("out", None) // Some( RichBus.wrap( masterBus ))
 
-        val in  = ScanIn("in")
         val amp = Attribute.ar("gain", 1)
         val sig = in * amp
         // pout.ar(sig)
         Out.ar(0, sig)
       }
-      n.collectors.addLast(col1Obj)
 
       val aural = AuralSystem.start()
       val p     = NuagesPanel(n, config, aural)
