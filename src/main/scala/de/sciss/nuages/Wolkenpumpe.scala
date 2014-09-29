@@ -90,7 +90,7 @@ object Wolkenpumpe extends Runnable {
 
   def run(): Unit = {
     initTypes()
-    
+
     type S = InMemory
     implicit val system = InMemory()
 
