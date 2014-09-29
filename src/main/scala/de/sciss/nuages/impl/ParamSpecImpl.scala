@@ -108,7 +108,7 @@ object ParamSpecExprImpl
   private[this] final val anySer = new Ser[InMemory]
 
   private[this] final class Ser[S <: Sys[S]] extends evt.EventLikeSerializer[S, Repr[S]] {
-    def readConstant(in: DataInput)(implicit tx: S#Tx): Repr[S] = readConst(in)
+    def readConstant(in: DataInput)(implicit tx: S#Tx): Repr[S] = newConst[S](readValue(in))
 
     def read(in: DataInput, access: S#Acc, targets: evt.Targets[S])(implicit tx: S#Tx): Repr[S] with evt.Node[S] = {
       // 0 = var, 1 = op
