@@ -22,8 +22,8 @@ import de.sciss.synth.proc
 import prefuse.util.ColorLib
 import prefuse.data.{Edge, Node => PNode}
 import prefuse.visual.{AggregateItem, VisualItem}
-import java.awt.geom.{Arc2D, Area, Point2D, Ellipse2D, GeneralPath, Rectangle2D}
-import de.sciss.synth.proc.{Obj, Proc}
+import java.awt.geom.{Line2D, Arc2D, Area, Point2D, Ellipse2D, GeneralPath, Rectangle2D}
+import de.sciss.synth.proc.{DoubleElem, Obj, Proc}
 import scala.collection.breakOut
 import proc.Implicits._
 
@@ -154,7 +154,15 @@ object VisualObj {
     obj match {
       case Proc.Obj(objT) =>
         val scans = objT.elem.peer.scans
-        res.scans = scans.keys.map { key => key -> VisualScan(res, key) } (breakOut)
+        res.scans = scans.keys.map { key => key -> new VisualScan(res, key) } (breakOut)
+        res.params = objT.attr.iterator.flatMap {
+          case (key, DoubleElem.Obj(dObj)) =>
+            val value = dObj.elem.peer.value
+            val spec  = ParamSpec(math.min(0.0, value), math.max(1.0, value)) // XXX TODO
+            Some(key -> new VisualControl(res, key, spec, value))
+          case _ =>
+            None
+        } .toMap
 
       case _ =>
     }
@@ -179,7 +187,8 @@ private[nuages] class VisualObj[S <: Sys[S]] private (val main: NuagesPanel[S], 
 
   var aggr  : AggregateItem = _
 
-  var scans = Map.empty[String, VisualScan[S]]
+  var scans   = Map.empty[String, VisualScan[S]]
+  var params  = Map.empty[String, VisualControl[S]]
 
   //  @volatile private var stateVar = Proc.State(false)
   @volatile private var disposeAfterFade = false
@@ -458,22 +467,23 @@ private[nuages] class VisualObj[S <: Sys[S]] private (val main: NuagesPanel[S], 
 }
 
 private[nuages] trait VisualParam[S <: Sys[S]] extends VisualNode[S] {
-  def pEdge: Edge
+  var pEdge: Edge  = _
+
+  def parent: VisualObj[S]
+  def key: String
+
+  def name: String = key
+  def main = parent.main
 }
 
 //private[nuages] trait VisualBusParam extends VisualParam {
 //  def bus: ProcAudioBus
 //}
 
-private[nuages] case class VisualScan[S <: Sys[S]](parent: VisualObj[S], key: String)
+private[nuages] class VisualScan[S <: Sys[S]](val parent: VisualObj[S], val key: String)
   extends VisualParam[S] /* VisualBusParam */ {
 
   import VisualData._
-
-  var pEdge: Edge  = _
-
-  def name: String = key
-  def main = parent.main
 
   // var sources = List.empty[Edge]
   // var sinks   = List.empty[Edge]
@@ -484,68 +494,51 @@ private[nuages] case class VisualScan[S <: Sys[S]](parent: VisualObj[S], key: St
     drawName(g, vi, diam * vi.getSize.toFloat * 0.5f)
 }
 
-//private[nuages] case class VisualAudioOutput(main: NuagesPanel, bus: ProcAudioOutput, pNode: PNode, pEdge: Edge)
-//  extends VisualBusParam {
-//
-//  import VisualData._
-//
-//  def name: String = bus.name
-//
-//  protected def boundsResized() = ()
-//
-//  protected def renderDetail(g: Graphics2D, vi: VisualItem): Unit = {
-//    val font = Wolkenpumpe.condensedFont.deriveFont(diam * vi.getSize.toFloat * 0.5f)
-//    drawName(g, vi, font)
-//  }
-//}
-
 //private[nuages] final case class VisualMapping(mapping: ControlBusMapping, pEdge: Edge)
 
-  //private[nuages] final case class VisualControl(control: ProcControl, pNode: PNode, pEdge: Edge)(vProc: => VisualProc)
-  //  extends VisualParam {
-  //
-  //  import VisualData._
-  //
-  //  var value: ControlValue = null
-  //  //      var mapped  = false
-  //  var gliding = false
-  //  var mapping: Option[VisualMapping] = None
-  //
-  //  private var renderedValue = Double.NaN
-  //  private val containerArea = new Area()
-  //  private val valueArea = new Area()
-  //
-  //  def name: String = control.name
-  //
-  //  def main: NuagesPanel = vProc.main
-  //
-  //  private var drag: Option[Drag] = None
-  //
-  //  //      private def isValid = vProc.isValid
-  //
-  //  override def itemPressed(vi: VisualItem, e: MouseEvent, pt: Point2D): Boolean = {
-  //    if (!vProc.isAlive) return false
-  //    //         if( super.itemPressed( vi, e, pt )) return true
-  //
-  //    if (containerArea.contains(pt.getX - r.getX, pt.getY - r.getY)) {
-  //      val dy = r.getCenterY - pt.getY
-  //      val dx = pt.getX - r.getCenterX
-  //      val ang = math.max(0.0, math.min(1.0, (((-math.atan2(dy, dx) / math.Pi + 3.5) % 2.0) - 0.25) / 1.5))
-  //      val instant = !vProc.state.playing || vProc.state.bypassed || main.transition(0) == Instant
-  //      val vStart = if (e.isAltDown) {
-  //        //               val res = math.min( 1.0f, (((ang / math.Pi + 3.25) % 2.0) / 1.5).toFloat )
-  //        //               if( ang != value ) {
-  //        val m = control.spec.map(ang)
-  //        if (instant) setControl(control, m, true)
-  //        //               }
-  //        ang
-  //      } else control.spec.unmap(value.currentApprox)
-  //      val dr = Drag(ang, vStart, instant)
-  //      drag = Some(dr)
-  //      true
-  //    } else false
-  //  }
-  //
+private[nuages] final class VisualControl[S <: Sys[S]](val parent: VisualObj[S], val key: String,
+                                                       var spec: ParamSpec, var value: Double)
+  extends VisualParam[S] {
+
+  import VisualData._
+
+  // var value: ControlValue = null
+
+  //      var mapped  = false
+  var gliding = false
+  // var mapping: Option[VisualMapping] = None
+
+  private var renderedValue = Double.NaN
+  private val containerArea = new Area()
+  private val valueArea = new Area()
+
+  private var drag: Option[Drag] = None
+
+  //      private def isValid = vProc.isValid
+
+  override def itemPressed(vi: VisualItem, e: MouseEvent, pt: Point2D): Boolean = {
+    // if (!vProc.isAlive) return false
+
+    //         if( super.itemPressed( vi, e, pt )) return true
+
+    if (containerArea.contains(pt.getX - r.getX, pt.getY - r.getY)) {
+      val dy = r.getCenterY - pt.getY
+      val dx = pt.getX - r.getCenterX
+      val ang = math.max(0.0, math.min(1.0, (((-math.atan2(dy, dx) / math.Pi + 3.5) % 2.0) - 0.25) / 1.5))
+      val instant = true // !vProc.state.playing || vProc.state.bypassed || main.transition(0) == Instant
+      val vStart = if (e.isAltDown) {
+        //               val res = math.min( 1.0f, (((ang / math.Pi + 3.25) % 2.0) / 1.5).toFloat )
+        //               if( ang != value ) {
+        val m = /* control. */ spec.map(ang)
+        // if (instant) setControl(control, m, true)
+        ang
+      } else /* control. */ spec.inverseMap(value /* .currentApprox */)
+      val dr = Drag(ang, vStart, instant)
+      drag = Some(dr)
+      true
+    } else false
+  }
+
   //  private def setControl(c: ProcControl, v: Double, instant: Boolean): Unit =
   //    ProcTxn.atomic { implicit t =>
   //      if (instant) {
@@ -554,90 +547,89 @@ private[nuages] case class VisualScan[S <: Sys[S]](parent: VisualObj[S], key: St
   //        c.v = v
   //      }
   //    }
-  //
-  //  override def itemDragged(vi: VisualItem, e: MouseEvent, pt: Point2D): Unit =
-  //    drag.foreach { dr =>
-  //      val dy = r.getCenterY - pt.getY
-  //      val dx = pt.getX - r.getCenterX
-  //      //            val ang  = -math.atan2( dy, dx )
-  //      val ang = (((-math.atan2(dy, dx) / math.Pi + 3.5) % 2.0) - 0.25) / 1.5
-  //      val vEff = math.max(0.0, math.min(1.0, dr.valueStart + (ang - dr.angStart)))
-  //      //            if( vEff != value ) {
-  //      val m = control.spec.map(vEff)
-  //      if (dr.instant) {
-  //        setControl(control, m, true)
-  //      } else {
-  //        dr.dragValue = m
-  //      }
-  //      //            }
-  //    }
-  //
-  //  override def itemReleased(vi: VisualItem, e: MouseEvent, pt: Point2D): Unit =
-  //    drag foreach { dr =>
-  //      if (!dr.instant) {
-  //        setControl(control, dr.dragValue, false)
-  //      }
-  //      drag = None
-  //    }
-  //
-  //  protected def boundsResized(): Unit = {
-  //    val pContArc = new Arc2D.Double(0, 0, r.getWidth, r.getHeight, -45, 270, Arc2D.PIE)
-  //    containerArea.reset()
-  //    containerArea.add(new Area(pContArc))
-  //    containerArea.subtract(new Area(innerE))
-  //    gp.append(containerArea, false)
-  //    renderedValue = Double.NaN // triggers updateRenderValue
-  //  }
-  //
-  //  private def updateRenderValue(v: Double): Unit = {
-  //    renderedValue = v
-  //    val vn = control.spec.unmap(v)
-  //    //println( "updateRenderValue( " + control.name + " ) from " + v + " to " + vn )
-  //    val angExtent = (vn * 270).toInt
-  //    val angStart = 225 - angExtent
-  //    val pValArc = new Arc2D.Double(0, 0, r.getWidth, r.getHeight, angStart, angExtent, Arc2D.PIE)
-  //    valueArea.reset()
-  //    valueArea.add(new Area(pValArc))
-  //    valueArea.subtract(new Area(innerE))
-  //  }
-  //
-  //  protected def renderDetail(g: Graphics2D, vi: VisualItem): Unit = {
-  //    if (vProc.state.valid) {
-  //      val v = value.currentApprox
-  //      if (renderedValue != v) {
-  //        updateRenderValue(v)
-  //      }
-  //      g.setColor(if (mapping.isDefined) colrMapped else if (gliding) colrGliding else colrManual)
-  //      g.fill(valueArea)
-  //      drag foreach { dr => if (!dr.instant) {
-  //        g.setColor(colrAdjust)
-  //        val ang = ((1.0 - control.spec.unmap(dr.dragValue)) * 1.5 - 0.25) * math.Pi
-  //        //               val cx   = diam * 0.5 // r.getCenterX
-  //        //               val cy   = diam * 0.5 // r.getCenterY
-  //        val cos = math.cos(ang)
-  //        val sin = math.sin(ang)
-  //        //               val lin  = new Line2D.Double( cx + cos * diam*0.5, cy - sin * diam*0.5,
-  //        //                                             cx + cos * diam*0.3, cy - sin * diam*0.3 )
-  //        val diam05 = diam * 0.5
-  //        val x0 = (1 + cos) * diam05
-  //        val y0 = (1 - sin) * diam05
-  //        val lin = new Line2D.Double(x0, y0,
-  //          x0 - (cos * diam * 0.2), y0 + (sin * diam * 0.2))
-  //        val strkOrig = g.getStroke
-  //        g.setStroke(strkThick)
-  //        g.draw(lin)
-  //        g.setStroke(strkOrig)
-  //      }
-  //      }
-  //    }
-  //    g.setColor(ColorLib.getColor(vi.getStrokeColor))
-  //    g.draw(gp)
-  //
-  //    val font = Wolkenpumpe.condensedFont.deriveFont(diam * vi.getSize.toFloat * 0.33333f)
-  //    drawName(g, vi, font)
-  //  }
-  //
-  //  private final case class Drag(angStart: Double, valueStart: Double, instant: Boolean) {
-  //    var dragValue = valueStart
-  //  }
-  // }
+
+  override def itemDragged(vi: VisualItem, e: MouseEvent, pt: Point2D): Unit =
+    drag.foreach { dr =>
+      val dy = r.getCenterY - pt.getY
+      val dx = pt.getX - r.getCenterX
+      //            val ang  = -math.atan2( dy, dx )
+      val ang = (((-math.atan2(dy, dx) / math.Pi + 3.5) % 2.0) - 0.25) / 1.5
+      val vEff = math.max(0.0, math.min(1.0, dr.valueStart + (ang - dr.angStart)))
+      //            if( vEff != value ) {
+      val m = /* control. */ spec.map(vEff)
+      if (dr.instant) {
+        // setControl(control, m, true)
+      } else {
+        dr.dragValue = m
+      }
+      //            }
+    }
+
+  override def itemReleased(vi: VisualItem, e: MouseEvent, pt: Point2D): Unit =
+    drag foreach { dr =>
+      if (!dr.instant) {
+        // setControl(control, dr.dragValue, false)
+      }
+      drag = None
+    }
+
+  protected def boundsResized(): Unit = {
+    val pContArc = new Arc2D.Double(0, 0, r.getWidth, r.getHeight, -45, 270, Arc2D.PIE)
+    containerArea.reset()
+    containerArea.add(new Area(pContArc))
+    containerArea.subtract(new Area(innerE))
+    gp.append(containerArea, false)
+    renderedValue = Double.NaN // triggers updateRenderValue
+  }
+
+  private def updateRenderValue(v: Double): Unit = {
+    renderedValue = v
+    val vn = /* control. */ spec.inverseMap(v)
+    //println( "updateRenderValue( " + control.name + " ) from " + v + " to " + vn )
+    val angExtent = (vn * 270).toInt
+    val angStart = 225 - angExtent
+    val pValArc = new Arc2D.Double(0, 0, r.getWidth, r.getHeight, angStart, angExtent, Arc2D.PIE)
+    valueArea.reset()
+    valueArea.add(new Area(pValArc))
+    valueArea.subtract(new Area(innerE))
+  }
+
+  protected def renderDetail(g: Graphics2D, vi: VisualItem): Unit = {
+    // if (vProc.state.valid) {
+      val v = value // .currentApprox
+      if (renderedValue != v) {
+        updateRenderValue(v)
+      }
+      g.setColor(/* if (mapping.isDefined) colrMapped else */ if (gliding) colrGliding else colrManual)
+      g.fill(valueArea)
+      drag foreach { dr => if (!dr.instant) {
+        g.setColor(colrAdjust)
+        val ang = ((1.0 - /* control. */ spec.inverseMap(dr.dragValue)) * 1.5 - 0.25) * math.Pi
+        //               val cx   = diam * 0.5 // r.getCenterX
+        //               val cy   = diam * 0.5 // r.getCenterY
+        val cos = math.cos(ang)
+        val sin = math.sin(ang)
+        //               val lin  = new Line2D.Double( cx + cos * diam*0.5, cy - sin * diam*0.5,
+        //                                             cx + cos * diam*0.3, cy - sin * diam*0.3 )
+        val diam05 = diam * 0.5
+        val x0 = (1 + cos) * diam05
+        val y0 = (1 - sin) * diam05
+        val lin = new Line2D.Double(x0, y0,
+          x0 - (cos * diam * 0.2), y0 + (sin * diam * 0.2))
+        val strkOrig = g.getStroke
+        g.setStroke(strkThick)
+        g.draw(lin)
+        g.setStroke(strkOrig)
+      }
+      }
+    // }
+    g.setColor(ColorLib.getColor(vi.getStrokeColor))
+    g.draw(gp)
+
+    drawName(g, vi, diam * vi.getSize.toFloat * 0.33333f)
+  }
+
+  private final case class Drag(angStart: Double, valueStart: Double, instant: Boolean) {
+    var dragValue = valueStart
+  }
+}

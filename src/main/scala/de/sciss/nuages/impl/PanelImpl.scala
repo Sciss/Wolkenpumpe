@@ -540,6 +540,7 @@ object PanelImpl {
           _vi.setEndY(loc.getY)
         }
         aggr.addItem(_vi)
+        _vi.set(COL_NUAGES, vn)
         _vi
       }
 
@@ -554,11 +555,16 @@ object PanelImpl {
       vp.scans.foreach { case (_, vScan) =>
         val vi = createChildNode(vScan)
         vi.set(VisualItem.SIZE, 0.33333f)
-        vi.set(COL_NUAGES, vScan)
+        // vi.set(COL_NUAGES, vScan)
+      }
+
+      vp.params.foreach { case (_, vParam) =>
+        /* val vi = */ createChildNode(vParam)
+        // vi.set(COL_NUAGES, vParam)
       }
 
       //      pMeter.foreach { pm => meterMap += pm -> res}
-      vi.set(COL_NUAGES, vp)
+      // vi.set(COL_NUAGES, vp)
       // XXX this doesn't work. the vProc needs initial layout...
       //      if( p.anatomy == ProcDiff ) vi.setFixed( true )
       // procMap += p -> vProc
@@ -573,58 +579,6 @@ object PanelImpl {
       }
     }
 
-    //  private def topAddProc(p: Proc, pMeter: Option[Proc]): Unit = {
-    //    val pNode = g.addNode()
-    //    val vi    = vis.getVisualItem(GROUP_GRAPH, pNode)
-    //    val locO  = locHintMap.get(p)
-    //    locO.foreach { loc =>
-    //      locHintMap -= p
-    //      vi.setEndX(loc.getX)
-    //      vi.setEndY(loc.getY)
-    //    }
-    //    val aggr = aggrTable.addItem().asInstanceOf[AggregateItem]
-    //    //println( "ADD AGGR " + aggr )
-    //    aggr.addItem(vi)
-    //
-    //    def createNode = {
-    //      val pParamNode = g.addNode()
-    //      val pParamEdge = g.addEdge(pNode, pParamNode)
-    //      val vi = vis.getVisualItem(GROUP_GRAPH, pParamNode)
-    //      locO.foreach { loc =>
-    //        vi.setEndX(loc.getX)
-    //        vi.setEndY(loc.getY)
-    //      }
-    //      aggr.addItem(vi)
-    //      (pParamNode, pParamEdge, vi)
-    //    }
-    //
-    //    lazy val vProc: VisualProc = {
-    //      val vParams: Map[String, VisualParam] = p.params.collect {
-    //        case pFloat: ProcParamFloat =>
-    //          val (pParamNode, pParamEdge, vi) = createNode
-    //          val pControl = p.control(pFloat.name)
-    //          val vControl = VisualControl(pControl, pParamNode, pParamEdge)(vProc)
-    //          vi.set(COL_NUAGES, vControl)
-    //          vControl.name -> vControl
-    //
-    //        case pParamBus: ProcParamAudioInput =>
-    //          val (pParamNode, pParamEdge, vi) = createNode
-    //          vi.set(VisualItem.SIZE, 0.33333f)
-    //          val pBus = p.audioInput(pParamBus.name)
-    //          val vBus = VisualAudioInput(panel, pBus, pParamNode, pParamEdge)
-    //          vi.set(COL_NUAGES, vBus)
-    //          vBus.name -> vBus
-    //
-    //        case pParamBus: ProcParamAudioOutput =>
-    //          val (pParamNode, pParamEdge, vi) = createNode
-    //          vi.set(VisualItem.SIZE, 0.33333f)
-    //          val pBus = p.audioOutput(pParamBus.name)
-    //          val vBus = VisualAudioOutput(panel, pBus, pParamNode, pParamEdge)
-    //          vi.set(COL_NUAGES, vBus)
-    //          vBus.name -> vBus
-    //
-    //      } (breakOut)
-    //
     //      val res = VisualProc(panel, p, pNode, aggr, vParams, pMeter, meterFactory.isDefined, soloFactory.isDefined)
     //      pMeter.foreach { pm => meterMap += pm -> res}
     //      res
