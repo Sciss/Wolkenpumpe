@@ -154,15 +154,15 @@ private[nuages] trait VisualData[S <: Sys[S]] {
   protected def renderDetail(g: Graphics2D, vi: VisualItem): Unit
 }
 
-object VisualProc {
+object VisualObj {
   private val logPeakCorr = 20.0 / math.log(10)
 
   private val colrPeak = Array.tabulate(91)(ang => new Color(IntensityPalette.apply(ang / 90f)))
 
   def apply[S <: Sys[S]](main: NuagesPanel[S], obj: Obj[S], pMeter: Option[stm.Source[S#Tx, Proc.Obj[S]]],
                          meter: Boolean, solo: Boolean)
-                        (implicit tx: S#Tx): VisualProc[S] = {
-    val res = new VisualProc(main, tx.newHandle(obj), obj.attr.name, pMeter, meter = meter, solo = solo)
+                        (implicit tx: S#Tx): VisualObj[S] = {
+    val res = new VisualObj(main, tx.newHandle(obj), obj.attr.name, pMeter, meter = meter, solo = solo)
     obj match {
       case Proc.Obj(objT) =>
         val scans = objT.elem.peer.scans
@@ -174,18 +174,21 @@ object VisualProc {
   }
 }
 
-private[nuages] class VisualProc[S <: Sys[S]] private (val main: NuagesPanel[S], val objH: stm.Source[S#Tx, Obj[S]],
-                                                       var name: String,
-                                                       /* val params: Map[String, VisualParam[S]], */
-                                                       val pMeter: Option[stm.Source[S#Tx, Proc.Obj[S]]],
-                                                       val meter: Boolean, val solo: Boolean)
-  extends VisualData[S] {
+private[nuages] trait VisualNode[S <: Sys[S]] extends VisualData[S] {
+  var pNode: PNode = _
+}
+
+private[nuages] class VisualObj[S <: Sys[S]] private (val main: NuagesPanel[S], val objH: stm.Source[S#Tx, Obj[S]],
+                                                      var name: String,
+                                                      /* val params: Map[String, VisualParam[S]], */
+                                                      val pMeter: Option[stm.Source[S#Tx, Proc.Obj[S]]],
+                                                      val meter: Boolean, val solo: Boolean)
+  extends VisualNode[S] {
   vProc =>
 
   import VisualData._
-  import VisualProc._
+  import VisualObj._
 
-  var pNode : PNode = _
   var aggr  : AggregateItem = _
 
   var scans = Map.empty[String, VisualScan[S]]
@@ -466,10 +469,7 @@ private[nuages] class VisualProc[S <: Sys[S]] private (val main: NuagesPanel[S],
   }
 }
 
-private[nuages] trait VisualParam[S <: Sys[S]] extends VisualData[S] {
-  //      def param: ProcParam[ _ ]
-  def pNode: PNode
-
+private[nuages] trait VisualParam[S <: Sys[S]] extends VisualNode[S] {
   def pEdge: Edge
 }
 
@@ -477,16 +477,18 @@ private[nuages] trait VisualParam[S <: Sys[S]] extends VisualData[S] {
 //  def bus: ProcAudioBus
 //}
 
-private[nuages] case class VisualScan[S <: Sys[S]](parent: VisualProc[S], key: String)
+private[nuages] case class VisualScan[S <: Sys[S]](parent: VisualObj[S], key: String)
   extends VisualParam[S] /* VisualBusParam */ {
 
   import VisualData._
 
-  var pNode: PNode = _
   var pEdge: Edge  = _
 
   def name: String = key
   def main = parent.main
+
+  // var sources = List.empty[Edge]
+  // var sinks   = List.empty[Edge]
 
   protected def boundsResized() = ()
 

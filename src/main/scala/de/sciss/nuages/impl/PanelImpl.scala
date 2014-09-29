@@ -1,7 +1,7 @@
 package de.sciss.nuages
 package impl
 
-import java.awt.{Dimension, Rectangle, LayoutManager, Point, EventQueue, Color}
+import java.awt.{Dimension, Rectangle, LayoutManager, Point, Color}
 import java.awt.geom.Point2D
 import javax.swing.event.{AncestorEvent, AncestorListener}
 import javax.swing.JPanel
@@ -15,7 +15,7 @@ import de.sciss.lucre.synth.Sys
 import de.sciss.span.{SpanLike, Span}
 import de.sciss.synth.ugen.Out
 import de.sciss.synth.{proc, GE, AudioBus}
-import de.sciss.synth.proc.{ExprImplicits, AuralSystem, Transport, ObjKeys, Timeline, Proc, Folder, Obj}
+import de.sciss.synth.proc.{Scan, ExprImplicits, AuralSystem, Transport, Timeline, Proc, Folder, Obj}
 import prefuse.action.{RepaintAction, ActionList}
 import prefuse.action.assignment.ColorAction
 import prefuse.action.layout.graph.ForceDirectedLayout
@@ -39,12 +39,13 @@ object PanelImpl {
     val listGen   = mkListView(nuages.generators)
     val listFlt   = mkListView(nuages.filters   )
     val listCol   = mkListView(nuages.collectors)
-    val map       = tx.newInMemoryIDMap[VisualProc[S]]
+    val nodeMap   = tx.newInMemoryIDMap[VisualObj[S]]
+    val scanMap   = tx.newInMemoryIDMap[ScanInfo[S]]
     val transport = Transport[S](aural)
     val timelineObj = nuages.timeline
     transport.addObject(timelineObj)
 
-    new Impl[S](nuagesH, map, config, transport, listGen = listGen, listFlt = listFlt, listCol = listCol)
+    new Impl[S](nuagesH, nodeMap, scanMap, config, transport, listGen = listGen, listFlt = listFlt, listCol = listCol)
       .init(timelineObj)
   }
 
@@ -74,8 +75,14 @@ object PanelImpl {
     res
   }
 
+  private final class VisualLink[S <: Sys[S]](val source: VisualObj[S], val sourceKey: String,
+                                              val sink  : VisualObj[S], val sinkKey  : String)
+
+  private final case class ScanInfo[S <: Sys[S]](id: S#ID, key: String)
+
   private final class Impl[S <: Sys[S]](nuagesH: stm.Source[S#Tx, Nuages[S]],
-                                        map: stm.IdentifierMap[S#ID, S#Tx, VisualProc[S]],
+                                        nodeMap: stm.IdentifierMap[S#ID, S#Tx, VisualObj[S]],
+                                        scanMap: stm.IdentifierMap[S#ID, S#Tx, ScanInfo[S]],
                                         val config: Nuages.Config,
                                         val transport: Transport[S],
                                         listGen: ListView[S, Obj[S], Obj.Update[S]],
@@ -88,19 +95,13 @@ object PanelImpl {
     import NuagesPanel._
     import cursor.{step => atomic}
 
-    //   import ProcWorld._
-    //   import Proc._
-
     private var _vis: Visualization = _
-    //  val world   = ProcDemiurg.worlds(config.server)
-    private var _disp: Display = _
+    private var _dsp: Display = _
 
     private var soloFactory: Option[stm.Source[S#Tx, Proc.Obj[S]]] = None
 
     private var g: Graph = _
     private var vg: VisualGraph = _
-
-    // private val actions = new NuagesActions(this)
 
     private var aggrTable: AggregateTable = _
 
@@ -116,21 +117,23 @@ object PanelImpl {
 
     private var masterBusVar : Option[AudioBus]     = None
 
-    //  private object topoListener extends ProcWorld.Listener {
-    //    def updated(u: ProcWorld.Update): Unit = topoUpdate(u)
-    //  }
-    //
-    //  private object procListener extends Proc.Listener {
-    //    def updated(u: Proc.Update): Unit =
-    //      defer(procUpdate(u))
-    //  }
+/*
+      private object topoListener extends ProcWorld.Listener {
+        def updated(u: ProcWorld.Update): Unit = topoUpdate(u)
+      }
 
-    // ---- ProcFactoryProvider ----
-    //  val factoryManager      = new ProcFactoryViewManager(config)
-    //  var genFactory          = Option.empty[ProcFactory]
-    //  var filterFactory       = Option.empty[ProcFactory]
-    //  var diffFactory         = Option.empty[ProcFactory]
-    //  var collector           = Option.empty[Proc]
+      private object procListener extends Proc.Listener {
+        def updated(u: Proc.Update): Unit =
+          defer(procUpdate(u))
+      }
+
+    ---- ProcFactoryProvider ----
+      val factoryManager      = new ProcFactoryViewManager(config)
+      var genFactory          = Option.empty[ProcFactory]
+      var filterFactory       = Option.empty[ProcFactory]
+      var diffFactory         = Option.empty[ProcFactory]
+      var collector           = Option.empty[Proc]
+*/
 
     private val locHintMap = TxnLocal(Map.empty[Obj[S], Point2D])
 
@@ -138,7 +141,7 @@ object PanelImpl {
 
     private var observer: Disposable[S#Tx] = _
 
-    def display: Display = _disp
+    def display: Display = _dsp
     def visualization: Visualization = _vis
 
     def masterBus: Option[AudioBus] = masterBusVar
@@ -152,7 +155,8 @@ object PanelImpl {
       deferTx(stopAnimation())
       observer .dispose()
       transport.dispose()
-      map      .dispose()
+      nodeMap  .dispose()
+      scanMap  .dispose()
     }
 
     def init(timeline: Timeline.Obj[S])(implicit tx: S#Tx): this.type = {
@@ -172,7 +176,7 @@ object PanelImpl {
     // ---- constructor ----
     private def guiInit(): Unit = {
       _vis  = new Visualization
-      _disp = new Display(_vis)
+      _dsp = new Display(_vis)
 
       g     = new Graph
       vg    = _vis.addGraph(GROUP_GRAPH, g)
@@ -221,14 +225,14 @@ object PanelImpl {
       // ------------------------------------------------
 
       // initialize the display
-      _disp.setSize(800, 600)
-      _disp.addControlListener(new ZoomControl())
-      _disp.addControlListener(new WheelZoomControl())
-      _disp.addControlListener(new PanControl())
-      _disp.addControlListener(new DragControl(_vis))
-      _disp.addControlListener(new ClickControl(this))
-      _disp.addControlListener(new ConnectControl(_vis))
-      _disp.setHighQuality(true)
+      _dsp.setSize(800, 600)
+      _dsp.addControlListener(new ZoomControl())
+      _dsp.addControlListener(new WheelZoomControl())
+      _dsp.addControlListener(new PanControl())
+      _dsp.addControlListener(new DragControl(_vis))
+      _dsp.addControlListener(new ClickControl(this))
+      _dsp.addControlListener(new ConnectControl(_vis))
+      _dsp.setHighQuality(true)
 
       // ------------------------------------------------
 
@@ -237,126 +241,128 @@ object PanelImpl {
       edgeRenderer.setVerticalAlignment1(Constants.CENTER)
       edgeRenderer.setVerticalAlignment2(Constants.CENTER)
 
-      _disp.setForeground(Color.WHITE)
-      _disp.setBackground(Color.BLACK)
+      _dsp.setForeground(Color.WHITE)
+      _dsp.setBackground(Color.BLACK)
 
       //      setLayout( new BorderLayout() )
       //      add( display, BorderLayout.CENTER )
       val p = new JPanel
-      p.setLayout(new Layout(_disp))
-      p.add(_disp)
+      p.setLayout(new Layout(_dsp))
+      p.add(_dsp)
 
       _vis.run(ACTION_COLOR)
 
       component = Component.wrap(p)
     }
 
-      //      // import DSL._
-      //      import synth._
-      //      import ugen._
-      //
-      //      def meterGraph(sig: In): Unit = {
-      //        val meterTr = Impulse.kr(1000.0 / LAYOUT_TIME)
-      //        val peak = Peak.kr(sig, meterTr) // .outputs
-      //        //            val peakM      = peak.tail.foldLeft[ GE ]( peak.head )( _ max _ ) \ 0
-      //        val peakM = Reduce.max(peak)
-      //        val me = Proc.local
-      //        // warning: currently a bug in SendReply? if values are audio-rate,
-      //        // trigger needs to be audio-rate, too
-      //        meterTr.react(peakM /* :: rms :: Nil */) { vals =>
-      //          defer(meterMap.get(me).foreach { visOut =>
-      //            visOut.meterUpdate(vals(0).toFloat)
-      //          })
-      //        }
-      //      }
-      //
-      //      if (config.meters) meterFactory = Some(diff("$meter") {
-      //        graph { sig: In =>
-      //          meterGraph(sig)
-      //          0.0
-      //        }
-      //      })
-      //
-      //      if (config.collector) {
-      //        if (verbose) Console.print("Creating collector...")
-      //        val p = (filter("_+")(graph((x: In) => x))).make
-      //        collector = Some(p)
-      //        if (verbose) println(" ok")
-      //      }
-      //
-      //      config.masterChannels.foreach { chans =>
-      //        if (verbose) Console.print("Creating master...")
-      //        val name = if (config.collector) "_master" else "$master"
-      //        val pMaster = (diff(name) {
-      //          val pAmp = pControl("amp", masterAmpSpec._1, masterAmpSpec._2)
-      //          /* val pIn = */ pAudioIn("in", None)
-      //          graph { (sig: In) => efficientOuts(Limiter.ar(sig * pAmp.kr, (-0.2).dbamp), chans); 0.0}
-      //        }).make
-      //        pMaster.control("amp").v = masterAmpSpec._2
-      //        // XXX bus should be freed in panel disposal
-      //
-      //        val b = Bus.audio(config.server, chans.size)
-      //        collector match {
-      //          case Some(pColl) =>
-      //            val b2 = Bus.audio(config.server, chans.size)
-      //            pColl.audioInput("in").bus = Some(RichBus.wrap(b2))
-      //            pColl ~> pMaster
-      //            pColl.play
-      //          case None =>
-      //        }
-      //        pMaster.audioInput("in").bus = Some(RichBus.wrap(b))
-      //
-      //        val g = RichGroup(Group(config.server))
-      //        g.play(RichGroup.default(config.server), addToTail)
-      //        pMaster.group = g
-      //        pMaster.play
-      //        masterProc = Some(pMaster)
-      //        masterBusVar = Some(b)
-      //
-      //        masterFactory = Some(diff("$diff") {
-      //          graph { (sig: In) =>
-      //            //                  require( sig.numOutputs == b.numChannels )
-      //            if (sig.numChannels != b.numChannels) println("Warning - masterFactory. sig has " + sig.numChannels + " outputs, but bus has " + b.numChannels + " channels ")
-      //            if (config.meters) meterGraph(sig)
-      //            Out.ar(b.index, sig)
-      //          }
-      //        })
-      //
-      //        factoryManager.startListening
-      //        if (verbose) println(" ok")
-      //      }
-      //
-      //      soloFactory = config.soloChannels.map { chans => diff("$solo") {
-      //        val pAmp = pControl("amp", soloAmpSpec._1, soloAmpSpec._2)
-      //
-      //        graph { sig: In =>
-      //          //               val numIn   = sig.numOutputs
-      //          val numOut = chans.size
-      //          //               val sigOut  = Array.fill[ GE ]( numOut )( 0.0f )
-      //          //               val sca     = (numOut - 1).toFloat / (numIn - 1)
-      //
-      //          val sigOut = SplayAz.ar(numOut, sig) // , spread, center, level, width, orient
-      //
-      //          //               sig.outputs.zipWithIndex.foreach { tup =>
-      //          //                  val (sigIn, inCh) = tup
-      //          //                  val outCh         = inCh * sca
-      //          //                  val fr            = outCh % 1f
-      //          //                  val outChI        = outCh.toInt
-      //          //                  if( fr == 0f ) {
-      //          //                     sigOut( outChI ) += sigIn
-      //          //                  } else {
-      //          //                     sigOut( outChI )     += sigIn * (1 - fr).sqrt
-      //          //                     sigOut( outChI + 1 ) += sigIn * fr.sqrt
-      //          //                  }
-      //          //               }
-      //          efficientOuts(sigOut /*.toSeq */ * pAmp.kr, chans)
-      //          0.0
-      //        }
-      //      }
-      //      }
-      //
-      //      world.addListener(topoListener)
-      //    }
+/*
+            // import DSL._
+            import synth._
+            import ugen._
+
+            def meterGraph(sig: In): Unit = {
+              val meterTr = Impulse.kr(1000.0 / LAYOUT_TIME)
+              val peak = Peak.kr(sig, meterTr) // .outputs
+              //            val peakM      = peak.tail.foldLeft[ GE ]( peak.head )( _ max _ ) \ 0
+              val peakM = Reduce.max(peak)
+              val me = Proc.local
+              // warning: currently a bug in SendReply? if values are audio-rate,
+              // trigger needs to be audio-rate, too
+              meterTr.react(peakM /* :: rms :: Nil */) { vals =>
+                defer(meterMap.get(me).foreach { visOut =>
+                  visOut.meterUpdate(vals(0).toFloat)
+                })
+              }
+            }
+
+            if (config.meters) meterFactory = Some(diff("$meter") {
+              graph { sig: In =>
+                meterGraph(sig)
+                0.0
+              }
+            })
+
+            if (config.collector) {
+              if (verbose) Console.print("Creating collector...")
+              val p = (filter("_+")(graph((x: In) => x))).make
+              collector = Some(p)
+              if (verbose) println(" ok")
+            }
+
+            config.masterChannels.foreach { chans =>
+              if (verbose) Console.print("Creating master...")
+              val name = if (config.collector) "_master" else "$master"
+              val pMaster = (diff(name) {
+                val pAmp = pControl("amp", masterAmpSpec._1, masterAmpSpec._2)
+                /* val pIn = */ pAudioIn("in", None)
+                graph { (sig: In) => efficientOuts(Limiter.ar(sig * pAmp.kr, (-0.2).dbamp), chans); 0.0}
+              }).make
+              pMaster.control("amp").v = masterAmpSpec._2
+              // XXX bus should be freed in panel disposal
+
+              val b = Bus.audio(config.server, chans.size)
+              collector match {
+                case Some(pColl) =>
+                  val b2 = Bus.audio(config.server, chans.size)
+                  pColl.audioInput("in").bus = Some(RichBus.wrap(b2))
+                  pColl ~> pMaster
+                  pColl.play
+                case None =>
+              }
+              pMaster.audioInput("in").bus = Some(RichBus.wrap(b))
+
+              val g = RichGroup(Group(config.server))
+              g.play(RichGroup.default(config.server), addToTail)
+              pMaster.group = g
+              pMaster.play
+              masterProc = Some(pMaster)
+              masterBusVar = Some(b)
+
+              masterFactory = Some(diff("$diff") {
+                graph { (sig: In) =>
+                  //                  require( sig.numOutputs == b.numChannels )
+                  if (sig.numChannels != b.numChannels) println("Warning - masterFactory. sig has " + sig.numChannels + " outputs, but bus has " + b.numChannels + " channels ")
+                  if (config.meters) meterGraph(sig)
+                  Out.ar(b.index, sig)
+                }
+              })
+
+              factoryManager.startListening
+              if (verbose) println(" ok")
+            }
+
+            soloFactory = config.soloChannels.map { chans => diff("$solo") {
+              val pAmp = pControl("amp", soloAmpSpec._1, soloAmpSpec._2)
+
+              graph { sig: In =>
+                //               val numIn   = sig.numOutputs
+                val numOut = chans.size
+                //               val sigOut  = Array.fill[ GE ]( numOut )( 0.0f )
+                //               val sca     = (numOut - 1).toFloat / (numIn - 1)
+
+                val sigOut = SplayAz.ar(numOut, sig) // , spread, center, level, width, orient
+
+                //               sig.outputs.zipWithIndex.foreach { tup =>
+                //                  val (sigIn, inCh) = tup
+                //                  val outCh         = inCh * sca
+                //                  val fr            = outCh % 1f
+                //                  val outChI        = outCh.toInt
+                //                  if( fr == 0f ) {
+                //                     sigOut( outChI ) += sigIn
+                //                  } else {
+                //                     sigOut( outChI )     += sigIn * (1 - fr).sqrt
+                //                     sigOut( outChI + 1 ) += sigIn * fr.sqrt
+                //                  }
+                //               }
+                efficientOuts(sigOut /*.toSeq */ * pAmp.kr, chans)
+                0.0
+              }
+            }
+            }
+
+            world.addListener(topoListener)
+          }
+*/
 
     private def efficientOuts(sig: GE, chans: Vec[Int]): Unit = {
       //      require( sig.numOutputs == chans.size, sig.numOutputs.toString + " =! " + chans.size )
@@ -366,30 +372,27 @@ object PanelImpl {
       require(chans == Vec.tabulate(chans.size)(i => i + chans(0)))
       Out.ar(chans(0), sig)
 
-      //      import synth._
-      //      import ugen._
-      //
-      //      def funky( seq: Vec[ (Int, UGenIn) ]) {
-      //         seq.headOption.foreach { tup =>
-      //            val (idx, e1)  = tup
-      //            var cnt = -1
-      //            val (ja, nein) = seq.span { tup =>
-      //               val (idx2, _) = tup
-      //               cnt += 1
-      //               idx2 == idx + cnt
-      //            }
-      //            Out.ar( idx, ja.map( _._2 ) : GE )
-      //            funky( nein )
-      //         }
-      //      }
-      //
-      //      funky( chans.zip( sig.outputs ).sortBy( _._1 ))
-    }
+/*
+            import synth._
+            import ugen._
 
-    private def defer(code: => Unit): Unit =
-      EventQueue.invokeLater(new Runnable {
-        def run(): Unit = code
-      })
+            def funky( seq: Vec[ (Int, UGenIn) ]) {
+               seq.headOption.foreach { tup =>
+                  val (idx, e1)  = tup
+                  var cnt = -1
+                  val (ja, nein) = seq.span { tup =>
+                     val (idx2, _) = tup
+                     cnt += 1
+                     idx2 == idx + cnt
+                  }
+                  Out.ar( idx, ja.map( _._2 ) : GE )
+                  funky( nein )
+               }
+            }
+
+            funky( chans.zip( sig.outputs ).sortBy( _._1 ))
+*/
+    }
 
     def showOverlayPanel(p: Component, pt: Point): Boolean = {
       if (overlay.isDefined) return false
@@ -453,14 +456,14 @@ object PanelImpl {
       }
 
     def addNode(span: SpanLike, timed: Timeline.Timed[S])(implicit tx: S#Tx): Unit = {
-      val id = timed.id
-      val proc = timed.value
+      val id   = timed.id
+      val obj  = timed.value
       // val n = proc.attr.expr[String](ObjKeys.attrName).fold("<unnamed>")(_.value)
       // val n = proc.name.value
       //            val par  = proc.par.entriesAt( time )
-      val par = Map.empty[String, Double]
+      // val par = Map.empty[String, Double]
       // val vp    = new VisualProc[S](n, par, cursor.position, tx.newHandle(proc))
-      val vp = VisualProc[S](this, /* timed.span, */ proc, pMeter = None,
+      val vp = VisualObj[S](this, /* timed.span, */ obj, pMeter = None,
         meter = meterFactory.isDefined, solo = soloFactory.isDefined)
       // val span = timed.span.value
       //      map.get(id) match {
@@ -470,38 +473,73 @@ object PanelImpl {
       //        case _ =>
       //          map.put(id, Map(span -> (vp :: Nil)))
       //      }
-      map.put(id, vp)
-      val locO = locHintMap.getAndTransform(_ - proc)(tx.peer).get(proc)
+      nodeMap.put(id, vp)
+      val locO = locHintMap.getAndTransform(_ - obj)(tx.peer).get(obj)
 
-      deferTx(visDo(addNodeGUI(vp, locO)))
+      val links: List[VisualLink[S]] = obj match {
+        case Proc.Obj(objT) =>
+          val scans = objT.elem.peer.scans
+          scans.iterator.flatMap { case (key, scan) =>
+            val info = new ScanInfo(id, key)
+            addScan(vp, scan, info)
+          } .toList
+        case _ => Nil
+      }
+
+      deferTx(visDo(addNodeGUI(vp, links, locO)))
     }
 
-    private def addNodeGUI(vp: VisualProc[S], locO: Option[Point2D]): Unit = {
+    private def addScan(vi: VisualObj[S], scan: Scan[S], info: ScanInfo[S])(implicit tx: S#Tx): List[VisualLink[S]] = {
+      scanMap.put(scan.id, info)  // stupid look-up
+      var res = List.empty[VisualLink[S]]
+      scan.sources.foreach {
+        case Scan.Link.Scan(source) =>
+          for {
+            ScanInfo(sourceTimedID, sourceKey) <- scanMap.get(source.id)
+            sourceVis <- nodeMap.get(sourceTimedID)
+          } {
+            res ::= new VisualLink(sourceVis, sourceKey, vi, info.key)
+          }
+        case _ =>
+      }
+      scan.sinks.foreach {
+        case Scan.Link.Scan(sink) =>
+          for {
+            ScanInfo(sinkTimedID, sinkKey) <- scanMap.get(sink.id)
+            sinkVis <- nodeMap.get(sinkTimedID)
+          } {
+            res ::= new VisualLink(vi, info.key, sinkVis, sinkKey)
+          }
+        case _ =>
+      }
+      res
+    }
+
+    private def addNodeGUI(vp: VisualObj[S], links: List[VisualLink[S]], locO: Option[Point2D]): Unit = {
       val aggr  = aggrTable.addItem().asInstanceOf[AggregateItem]
       vp.aggr   = aggr
 
-      def createNode() = {
-        val pN  = g.addNode()
-        val _vi = _vis.getVisualItem(GROUP_GRAPH, pN)
+      def createNode(vn: VisualNode[S]): VisualItem = {
+        vn.pNode = g.addNode()
+        val _vi = _vis.getVisualItem(GROUP_GRAPH, vn.pNode)
         locO.foreach { loc =>
           _vi.setEndX(loc.getX)
           _vi.setEndY(loc.getY)
         }
         aggr.addItem(_vi)
-        (pN, _vi)
+        _vi
       }
 
-      val (pNode, vi) = createNode()
-      vp.pNode = pNode
+      val vi = createNode(vp)
 
-      def createChildNode() = {
-        val (pParamNode, _vi) = createNode()
-        val pParamEdge = g.addEdge(pNode, pParamNode)
-        (pParamNode, pParamEdge, _vi)
+      def createChildNode(vc: VisualNode[S]): VisualItem = {
+        val _vi = createNode(vc)
+        /* val pParamEdge = */ g.addEdge(vp.pNode, vc.pNode)
+        _vi
       }
 
       vp.scans.foreach { case (_, vScan) =>
-        val (_, _, vi) = createChildNode()
+        val vi = createChildNode(vScan)
         vi.set(VisualItem.SIZE, 0.33333f)
         vi.set(COL_NUAGES, vScan)
       }
@@ -511,6 +549,15 @@ object PanelImpl {
       // XXX this doesn't work. the vProc needs initial layout...
       //      if( p.anatomy == ProcDiff ) vi.setFixed( true )
       // procMap += p -> vProc
+
+      links.foreach { link =>
+        for {
+          sourceVisScan <- link.source.scans.get(link.sourceKey)
+          sinkVisScan   <- link.sink  .scans.get(link.sinkKey  )
+        } {
+          /* val pLinkEdge = */ g.addEdge(sourceVisScan.pNode, sinkVisScan.pNode)
+        }
+      }
     }
 
     //  private def topAddProc(p: Proc, pMeter: Option[Proc]): Unit = {
@@ -579,7 +626,7 @@ object PanelImpl {
     private val soloVolume  = Ref(soloAmpSpec._2)  // 0.5
     // private val soloInfo    = Ref(Option.empty[(VisualProc, Proc)])
 
-    def setSolo(vp: VisualProc[S], onOff: Boolean): Unit = {
+    def setSolo(vp: VisualObj[S], onOff: Boolean): Unit = {
       //    // import DSL._
       //    if (!EventQueue.isDispatchThread) error("Must be called in event thread")
       //    soloFactory.foreach { fact => atomic { implicit t =>
@@ -806,7 +853,7 @@ object PanelImpl {
     //      iter( 10, true )
     //   }
 
-    private def topRemoveProc(vProc: VisualProc[S]): Unit = {
+    private def topRemoveProc(vProc: VisualObj[S]): Unit = {
       // fucking prefuse -- always trouble with the aggregates
       //Thread.sleep(50)
       //println( "REMOVE AGGR " + vProc.aggr )
