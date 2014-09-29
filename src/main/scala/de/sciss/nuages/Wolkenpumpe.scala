@@ -28,6 +28,10 @@ import scala.concurrent.stm.TxnLocal
 object Wolkenpumpe extends Runnable {
   def main(args: Array[String]): Unit = run()
 
+  def initTypes(): Unit = {
+    ParamSpec
+  }
+
   class DSL[S <: Sys[S]] {
     val imp = ExprImplicits[S]
     import imp._
@@ -85,6 +89,8 @@ object Wolkenpumpe extends Runnable {
   }
 
   def run(): Unit = {
+    initTypes()
+    
     type S = InMemory
     implicit val system = InMemory()
 
