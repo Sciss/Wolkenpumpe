@@ -1,3 +1,16 @@
+/*
+ *  PrefuseAggregateLayout.scala
+ *  (Wolkenpumpe)
+ *
+ *  Copyright (c) 2008-2014 Hanns Holger Rutz. All rights reserved.
+ *
+ *  This software is published under the GNU General Public License v2+
+ *
+ *
+ *  For further information, please contact Hanns Holger Rutz at
+ *  contact@sciss.de
+ */
+
 /**
  *  The code on which this class is based, is released under
  *  a BSD style license:

@@ -2,21 +2,9 @@
  *  Wolkenpumpe.scala
  *  (Wolkenpumpe)
  *
- *  Copyright (c) 2008-2013 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2008-2014 Hanns Holger Rutz. All rights reserved.
  *
- *  This software is free software; you can redistribute it and/or
- *  modify it under the terms of the GNU General Public License
- *  as published by the Free Software Foundation; either
- *  version 2, june 1991 of the License, or (at your option) any later version.
- *
- *  This software is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- *  General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public
- *  License (gpl.txt) along with this software; if not, write to the Free Software
- *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *  This software is published under the GNU General Public License v2+
  *
  *
  *  For further information, please contact Hanns Holger Rutz at
@@ -28,11 +16,14 @@ package de.sciss.nuages
 import java.awt.Font
 
 import de.sciss.lucre.synth.{Sys, InMemory}
+import de.sciss.lucre.expr.{Double => DoubleEx}
 import de.sciss.synth
-import de.sciss.synth.proc.graph.{ScanIn, ScanOut}
+import de.sciss.synth.proc.graph.{Attribute, ScanIn, ScanOut}
 import de.sciss.synth.{SynthGraph, GE, proc}
-import de.sciss.synth.proc.{AuralSystem, ExprImplicits, Obj, Proc}
+import de.sciss.synth.proc.{DoubleElem, AuralSystem, ExprImplicits, Obj, Proc}
 import proc.Implicits._
+
+import scala.concurrent.stm.TxnLocal
 
 object Wolkenpumpe extends Runnable {
   def main(args: Array[String]): Unit = run()
@@ -41,43 +32,53 @@ object Wolkenpumpe extends Runnable {
     val imp = ExprImplicits[S]
     import imp._
 
-    def generator(name: String)(fun: => GE)(implicit tx: S#Tx, n: Nuages[S]): Proc.Obj[S] = {
+    private val current = TxnLocal[Proc.Obj[S]]()
+
+    private def mkObj(name: String)(fun: => Unit)(implicit tx: S#Tx, n: Nuages[S]): Proc.Obj[S] = {
       val p   = Proc[S]
       val obj = Obj(Proc.Elem(p))
       obj.attr.name = name
-      p.graph() = SynthGraph {
+      current.set(obj )(tx.peer)
+      p.graph() = SynthGraph { fun }
+      current.set(null)(tx.peer)
+      obj
+    }
+
+    def pAudio(key: String, spec: ParamSpec, default: Double)(implicit tx: S#Tx): GE = {
+      val obj = current.get(tx.peer)
+      obj.attr.put(key, Obj(DoubleElem(DoubleEx.newVar(DoubleEx.newConst(default)))))
+      Attribute.ar(key, default)
+    }
+
+    def generator(name: String)(fun: => GE)(implicit tx: S#Tx, n: Nuages[S]): Proc.Obj[S] = {
+      val obj = mkObj(name) {
         val out = fun
         ScanOut("out", out)
       }
-      p.scans.add("out")
+      obj.elem.peer.scans.add("out")
       n.generators.addLast(obj)
       obj
     }
 
     def filter(name: String)(fun: GE => GE)(implicit tx: S#Tx, n: Nuages[S]): Proc.Obj[S] = {
-      val p   = Proc[S]
-      val obj = Obj(Proc.Elem(p))
-      obj.attr.name = name
-      p.graph() = SynthGraph {
+      val obj = mkObj(name) {
         val in  = ScanIn("in")
         val out = fun(in)
         ScanOut("out", out)
       }
-      p.scans.add("in" )
-      p.scans.add("out")
+      val scans = obj.elem.peer.scans
+      scans.add("in" )
+      scans.add("out")
       n.filters.addLast(obj)
       obj
     }
 
     def collector(name: String)(fun: GE => Unit)(implicit tx: S#Tx, n: Nuages[S]): Proc.Obj[S] = {
-      val p   = Proc[S]
-      val obj = Obj(Proc.Elem(p))
-      obj.attr.name = name
-      p.graph() = SynthGraph {
+      val obj = mkObj(name) {
         val in  = ScanIn("in")
         fun(in)
       }
-      p.scans.add("in")
+      obj.elem.peer.scans.add("in")
       n.collectors.addLast(obj)
       obj
     }
@@ -97,18 +98,14 @@ object Wolkenpumpe extends Runnable {
 
       import synth._
       import ugen._
-      import proc.graph.Attribute
 
       generator("Sprink") {
-        val freq = Attribute.ar("freq", 0.5)
-        // ParamSpec(0.2, 50), 1)
+        val freq = pAudio("freq", ParamSpec(0.2, 50), 1)
         BPZ2.ar(WhiteNoise.ar(LFPulse.ar(freq, 0, 0.25) * Seq(0.1, 0.1)))
       }
 
       filter("Filt") { in =>
-        // val pfreq = pAudio("freq", ParamSpec(-1, 1), 0.7)
-        // val pmix = pAudio("mix", ParamSpec(0, 1), 1)
-        val normFreq  = Attribute.ar("freq", 0.5)
+        val normFreq  = pAudio("freq", ParamSpec(-1, 1), 0.7)
         val lowFreqN  = Lag.ar(Clip.ar(normFreq, -1, 0))
         val highFreqN = Lag.ar(Clip.ar(normFreq, 0, 1))
         val lowFreq   = LinExp.ar(lowFreqN, -1, 0, 30, 20000)
@@ -120,15 +117,12 @@ object Wolkenpumpe extends Runnable {
         val hpf       = HPF.ar(in, highFreq) * highMix
         val dry       = in * dryMix
         val flt       = dry + lpf + hpf
-        val mix       = Attribute.ar("mix", 1)
+        val mix       = pAudio("mix", ParamSpec(0, 1), 1)
         LinXFade2.ar(in, flt, mix * 2 - 1)
       }
 
       filter("Achil") { in =>
-        // val pspeed = pAudio("speed", ParamSpec(0.125, 2.3511, ExpWarp), 0.5)
-        // val pmix    = pAudio( "mix", ParamSpec( 0, 1 ), 1 )
-
-        val speed         = Lag.ar(Attribute.ar("speed", 1.0), 0.1)
+        val speed         = Lag.ar(pAudio("speed", ParamSpec(0.125, 2.3511, ExpWarp), 0.5), 0.1)
         val numFrames     = 44100 // sampleRate.toInt
         val numChannels   = 2     // in.numChannels // numOutputs
         //println( "numChannels = " + numChannels )
@@ -148,16 +142,15 @@ object Wolkenpumpe extends Runnable {
         val wet           = 1 - (1 - wet0).squared
         BufWr.ar((old * dry) + (in * wet), bufID, writePhasor)
 
-        val mix           = Attribute.ar("mix", 1)
+        val mix           = pAudio("mix", ParamSpec(0, 1), 1)
 
         LinXFade2.ar(in, read, mix * 2 - 1)
       }
 
       collector("Out") { in =>
-        // val pamp = pAudio("amp", ParamSpec(0.01, 10, ExpWarp), 1)
         // val pout = pAudioOut("out", None) // Some( RichBus.wrap( masterBus ))
 
-        val amp = Attribute.ar("gain", 1)
+        val amp = pAudio("amp", ParamSpec(0.01, 10, ExpWarp), 1)
         val sig = in * amp
         // pout.ar(sig)
         Out.ar(0, sig)
