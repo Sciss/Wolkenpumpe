@@ -15,6 +15,7 @@ package de.sciss.nuages
 
 import java.awt.Font
 
+import de.sciss.lucre.stm
 import de.sciss.lucre.synth.{Sys, InMemory}
 import de.sciss.lucre.expr.{Double => DoubleEx}
 import de.sciss.synth
@@ -25,8 +26,12 @@ import proc.Implicits._
 
 import scala.concurrent.stm.TxnLocal
 
-object Wolkenpumpe extends Runnable {
-  def main(args: Array[String]): Unit = run()
+object Wolkenpumpe {
+  def main(args: Array[String]): Unit = {
+    type S = InMemory
+    implicit val system = InMemory()
+    run[S]()
+  }
 
   def initTypes(): Unit = {
     ParamSpec
@@ -49,8 +54,11 @@ object Wolkenpumpe extends Runnable {
     }
 
     def pAudio(key: String, spec: ParamSpec, default: Double)(implicit tx: S#Tx): GE = {
-      val obj = current.get(tx.peer)
-      obj.attr.put(key, Obj(DoubleElem(DoubleEx.newVar(DoubleEx.newConst(default)))))
+      val obj       = current.get(tx.peer)
+      val paramObj  = Obj(DoubleElem(DoubleEx.newVar(DoubleEx.newConst[S](default))))
+      val specObj   = Obj(ParamSpec.Elem(ParamSpec.Expr.newConst[S](spec)))
+      paramObj.attr.put(ParamSpec.Key, specObj)
+      obj     .attr.put(key, paramObj)
       Attribute.ar(key, default)
     }
 
@@ -88,16 +96,13 @@ object Wolkenpumpe extends Runnable {
     }
   }
 
-  def run(): Unit = {
+  def run[S <: Sys[S]]()(implicit cursor: stm.Cursor[S]): Unit = {
     initTypes()
-
-    type S = InMemory
-    implicit val system = InMemory()
 
     val config            = Nuages.Config()
     config.masterChannels = Some(Vector(0, 1))
     config.recordPath     = Some("/tmp")
-    /* val f = */ system.step { implicit tx =>
+    /* val f = */ cursor.step { implicit tx =>
       implicit val n = Nuages.empty[S]
       val dsl = new DSL[S]
       import dsl._

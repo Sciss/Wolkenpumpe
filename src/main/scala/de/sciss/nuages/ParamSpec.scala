@@ -17,22 +17,25 @@ import de.sciss.lucre.event.Sys
 import de.sciss.model.Change
 import de.sciss.serial.{Serializer, DataOutput, DataInput, Writable}
 import de.sciss.synth
-import de.sciss.lucre.expr.{Expr => _Expr, Type1}
+import de.sciss.lucre.expr.{Expr => _Expr}
 import de.sciss.synth.proc
-import impl.{ParamSpecImpl => Impl}
+import impl.{ParamSpecExprImpl => ExprImpl, ParamSpecElemImpl => ElemImpl}
 
 object ParamSpec {
   final val typeID = 21
 
-  // ---- register types ----
-  Impl.ExprImpl
-  Impl.ElemImpl
+  final val Key = "spec"
 
-  val Expr: ExprCompanion = Impl.ExprImpl
+  // ---- init types ----
+  ExprImpl
+  ElemImpl
 
-  trait ExprCompanion extends Type1[Expr] {
-
+  trait ExprCompanion extends ExprLikeType[ParamSpec, Expr] {
+    def apply[S <: Sys[S]](lo: _Expr[S, Double], hi: _Expr[S, Double], warp: _Expr[S, Warp],
+                           step: _Expr[S, Double], unit: _Expr[S, String])(implicit tx: S#Tx): Expr[S]
   }
+
+  final val Expr: ExprCompanion = ExprImpl
 
   trait Expr[S <: Sys[S]] extends _Expr[S, ParamSpec] {
     def lo  (implicit tx: S#Tx): _Expr[S, Double]
@@ -42,14 +45,14 @@ object ParamSpec {
     def unit(implicit tx: S#Tx): _Expr[S, String]
   }
 
-  def read(in: DataInput): ParamSpec = Impl.ExprImpl.readValue(in)
+  def read(in: DataInput): ParamSpec = ExprImpl.readValue(in)
 
   // ---- element ----
 
   object Elem {
-    def apply[S <: Sys[S]](peer: ParamSpec.Expr[S])(implicit tx: S#Tx): ParamSpec.Elem[S] = Impl.ElemImpl(peer)
+    def apply[S <: Sys[S]](peer: ParamSpec.Expr[S])(implicit tx: S#Tx): ParamSpec.Elem[S] = ElemImpl(peer)
 
-    implicit def serializer[S <: Sys[S]]: Serializer[S#Tx, S#Acc, ParamSpec.Elem[S]] = Impl.ElemImpl.serializer
+    implicit def serializer[S <: Sys[S]]: Serializer[S#Tx, S#Acc, ParamSpec.Elem[S]] = ElemImpl.serializer
   }
 
   trait Elem[S <: Sys[S]] extends proc.Elem[S] {
@@ -99,5 +102,5 @@ final case class ParamSpec(lo: Double = 0.0, hi: Double = 1.0, warp: Warp = LinW
 
   def inverseMap(value: GE): GE = warp.inverseMap(this, value)
 
-  def write(out: DataOutput): Unit = Impl.ExprImpl.writeValue(this, out)
+  def write(out: DataOutput): Unit = ExprImpl.writeValue(this, out)
 }
