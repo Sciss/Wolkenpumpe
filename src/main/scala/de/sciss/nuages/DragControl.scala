@@ -20,7 +20,6 @@ import java.awt.Cursor
 import java.awt.event.MouseEvent
 import java.awt.geom.Point2D
 import prefuse.{Visualization, Display}
-import prefuse.render.EdgeRenderer
 import prefuse.visual.{EdgeItem, NodeItem, AggregateItem, VisualItem}
 
 object DragControl {
@@ -30,11 +29,13 @@ object DragControl {
   private val csrHand     = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
   private val csrDefault  = Cursor.getDefaultCursor
 
-  def setSmartFixed(vis: Visualization, vi: VisualItem, state: Boolean): Unit = ()
-//    vi.setFixed(state || getVisualData(vis, vi) match {
-//      case Some(vProc: VisualProc) if vProc.proc.anatomy == ProcDiff => true
-//      case _ => false
-//    })
+  def setSmartFixed(vis: Visualization, vi: VisualItem, state: Boolean): Unit = {
+    val state1 = state /* || getVisualData(vis, vi) match {
+      case Some(vProc: VisualProc) if vProc.proc.anatomy == ProcDiff => true
+      case _ => false
+    } */
+    vi.setFixed(state1)
+  }
 
   // XXX QUE MIERDA
   //   def getVisualData( vi: VisualItem ) : Option[ VisualData ] = {

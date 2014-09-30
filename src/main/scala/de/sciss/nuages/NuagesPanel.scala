@@ -53,4 +53,7 @@ trait NuagesPanel[S <: Sys[S]] extends View[S] {
 
   /** Must be called on the EDT */
   def showCreateGenDialog(pt: Point): Boolean
+
+  /** Must be called on the EDT */
+  def showCreateFilterDialog(vOut: VisualScan[S], vIn: VisualScan[S], pt: Point): Boolean
 }

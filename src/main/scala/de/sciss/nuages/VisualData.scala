@@ -16,8 +16,10 @@ package de.sciss.nuages
 import java.awt.{Font, Graphics2D, Shape, BasicStroke, Color}
 import java.awt.event.MouseEvent
 import de.sciss.intensitypalette.IntensityPalette
+import de.sciss.lucre.expr.{Expr, Double => DoubleEx}
 import de.sciss.lucre.stm
 import de.sciss.lucre.synth.Sys
+import de.sciss.numbers
 import de.sciss.synth.proc
 import prefuse.util.ColorLib
 import prefuse.data.{Edge, Node => PNode}
@@ -99,6 +101,7 @@ private[nuages] trait VisualData[S <: Sys[S]] {
   def itemDragged (vi: VisualItem, e: MouseEvent, pt: Point2D) = ()
 
   protected def drawName(g: Graphics2D, vi: VisualItem, fontSize: Float): Unit = {
+    // println(s"drawName($name)")
     if (_fontSize != fontSize) {
       _fontSize = fontSize
       _font = Wolkenpumpe.condensedFont.deriveFont(fontSize)
@@ -108,13 +111,12 @@ private[nuages] trait VisualData[S <: Sys[S]] {
     if (main.display.isHighQuality) {
       drawNameHQ(g, vi, _font)
     } else {
-      val cx = r.getWidth / 2
+      val cx = r.getWidth  / 2
       val cy = r.getHeight / 2
       g.setFont(_font)
       val fm = g.getFontMetrics
-      val n = name
-      g.drawString(n, (cx - (fm.stringWidth(n) * 0.5)).toInt,
-        (cy + ((fm.getAscent - fm.getLeading) * 0.5)).toInt)
+      val n  = name
+      g.drawString(n, (cx - (fm.stringWidth(n) * 0.5)).toInt, (cy + ((fm.getAscent - fm.getLeading) * 0.5)).toInt)
     }
   }
 
@@ -158,7 +160,10 @@ object VisualObj {
         res.params = objT.attr.iterator.flatMap {
           case (key, DoubleElem.Obj(dObj)) =>
             val value = dObj.elem.peer.value
-            val spec  = ParamSpec(math.min(0.0, value), math.max(1.0, value)) // XXX TODO
+            import numbers.Implicits._
+            val spec = dObj.attr.expr[ParamSpec](ParamSpec.Key).map(_.value)
+              .getOrElse(ParamSpec(math.min(0.0, value), math.max(1.0, value.roundUpTo(1))))
+            // val spec  = ParamSpec(math.min(0.0, value), math.max(1.0, value))
             Some(key -> new VisualControl(res, key, spec, value))
           case _ =>
             None
@@ -206,8 +211,6 @@ private[nuages] class VisualObj[S <: Sys[S]] private (val main: NuagesPanel[S], 
 
   @volatile var soloed = false
 
-  // def name: String = proc.name
-
   //  private val isCollectorInput = main.collector.isDefined && (proc.anatomy == ProcFilter) && (proc.name.startsWith("O-"))
   //  private val isSynthetic = proc.name.startsWith("_")
 
@@ -238,31 +241,31 @@ private[nuages] class VisualObj[S <: Sys[S]] private (val main: NuagesPanel[S], 
     } else -1f
   }
 
-   def meterUpdate( newPeak0: Float /*, newRMS0: Float */ ): Unit = {
-      val time = System.currentTimeMillis
-      val newPeak = (math.log( newPeak0 ) * logPeakCorr).toFloat
-      if( newPeak >= peak ) {
-         peak = newPeak
-      } else {
-         // 20 dB in 1500 ms bzw. 40 dB in 2500 ms
-         peak = math.max( newPeak, peak - (time - lastUpdate) * (if( peak > -20f ) 0.013333333333333f else 0.016f) )
-      }
-      peakToPaint	= math.max( peakToPaint, peak )
-      peakNorm 	= paintToNorm( peakToPaint )
+  def meterUpdate(newPeak0: Float /*, newRMS0: Float */): Unit = {
+    val time = System.currentTimeMillis
+    val newPeak = (math.log(newPeak0) * logPeakCorr).toFloat
+    if (newPeak >= peak) {
+      peak = newPeak
+    } else {
+      // 20 dB in 1500 ms bzw. 40 dB in 2500 ms
+      peak = math.max(newPeak, peak - (time - lastUpdate) * (if (peak > -20f) 0.013333333333333f else 0.016f))
+    }
+    peakToPaint = math.max(peakToPaint, peak)
+    peakNorm = paintToNorm(peakToPaint)
 
-//      val newRMS = (math.log( newRMS0 ) * logRMSCorr).toFloat
-//      if( newRMS > rms ) {
-//         rms	= newRMS
-//      } else {
-//         rms = math.max( newRMS, rms - (time - lastUpdate) * (if( rms > -20f ) 0.013333333333333f else 0.016f) )
-//      }
-//      rmsToPaint	= Math.max( rmsToPaint, rms )
-//      rmsNorm		= paintToNorm( rmsToPaint )
+    //      val newRMS = (math.log( newRMS0 ) * logRMSCorr).toFloat
+    //      if( newRMS > rms ) {
+    //         rms	= newRMS
+    //      } else {
+    //         rms = math.max( newRMS, rms - (time - lastUpdate) * (if( rms > -20f ) 0.013333333333333f else 0.016f) )
+    //      }
+    //      rmsToPaint	= Math.max( rmsToPaint, rms )
+    //      rmsNorm		= paintToNorm( rmsToPaint )
 
-      lastUpdate		= time
+    lastUpdate = time
 
-//      result		= peakNorm >= 0f;
-   }
+    //      result		= peakNorm >= 0f;
+  }
 
   //  override def itemPressed(vi: VisualItem, e: MouseEvent, pt: Point2D): Boolean = {
   //    if (!isAlive) return false
@@ -485,8 +488,8 @@ private[nuages] class VisualScan[S <: Sys[S]](val parent: VisualObj[S], val key:
 
   import VisualData._
 
-  // var sources = List.empty[Edge]
-  // var sinks   = List.empty[Edge]
+  var sources = Set.empty[Edge]
+  var sinks   = Set.empty[Edge]
 
   protected def boundsResized() = ()
 
@@ -501,6 +504,8 @@ private[nuages] final class VisualControl[S <: Sys[S]](val parent: VisualObj[S],
   extends VisualParam[S] {
 
   import VisualData._
+
+  private def atomic[A](fun: S#Tx => A): A = main.transport.scheduler.cursor.step(fun)
 
   // var value: ControlValue = null
 
@@ -530,7 +535,7 @@ private[nuages] final class VisualControl[S <: Sys[S]](val parent: VisualObj[S],
         //               val res = math.min( 1.0f, (((ang / math.Pi + 3.25) % 2.0) / 1.5).toFloat )
         //               if( ang != value ) {
         val m = /* control. */ spec.map(ang)
-        // if (instant) setControl(control, m, true)
+        if (instant) setControl(/* control, */ m, true)
         ang
       } else /* control. */ spec.inverseMap(value /* .currentApprox */)
       val dr = Drag(ang, vStart, instant)
@@ -539,14 +544,21 @@ private[nuages] final class VisualControl[S <: Sys[S]](val parent: VisualObj[S],
     } else false
   }
 
-  //  private def setControl(c: ProcControl, v: Double, instant: Boolean): Unit =
-  //    ProcTxn.atomic { implicit t =>
-  //      if (instant) {
-  //        c.v = v
-  //      } else t.withTransition(main.transition(t.time)) {
-  //        c.v = v
-  //      }
-  //    }
+  private def setControl(/* c: ProcControl, */ v: Double, instant: Boolean): Unit =
+    atomic { implicit t =>
+      if (instant) {
+        // c.v = v
+        val attr = parent.objH().attr
+        val vc   = DoubleEx.newConst[S](v)
+        attr.expr[Double](key) match {
+          case Some(Expr.Var(vr)) => vr() = vc
+          case _ => attr.put(key, Obj(DoubleElem(DoubleEx.newVar(vc))))
+        }
+
+      // } else t.withTransition(main.transition(t.time)) {
+      //  c.v = v
+      }
+    }
 
   override def itemDragged(vi: VisualItem, e: MouseEvent, pt: Point2D): Unit =
     drag.foreach { dr =>
@@ -558,7 +570,7 @@ private[nuages] final class VisualControl[S <: Sys[S]](val parent: VisualObj[S],
       //            if( vEff != value ) {
       val m = /* control. */ spec.map(vEff)
       if (dr.instant) {
-        // setControl(control, m, true)
+        setControl(/* control, */ m, instant = true)
       } else {
         dr.dragValue = m
       }
@@ -568,7 +580,7 @@ private[nuages] final class VisualControl[S <: Sys[S]](val parent: VisualObj[S],
   override def itemReleased(vi: VisualItem, e: MouseEvent, pt: Point2D): Unit =
     drag foreach { dr =>
       if (!dr.instant) {
-        // setControl(control, dr.dragValue, false)
+        setControl(/* control, */ dr.dragValue, instant = false)
       }
       drag = None
     }

@@ -25,6 +25,7 @@ import de.sciss.lucre.stm.Disposable
 import de.sciss.lucre.swing.{ListView, deferTx, requireEDT}
 import de.sciss.lucre.swing.impl.ComponentHolder
 import de.sciss.lucre.synth.Sys
+import de.sciss.model.Change
 import de.sciss.span.{SpanLike, Span}
 import de.sciss.synth.ugen.Out
 import de.sciss.synth.{proc, GE, AudioBus}
@@ -43,9 +44,11 @@ import prefuse.{Constants, Display, Visualization}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm.{Ref, TxnLocal}
-import scala.swing.{Container, Orientation, SequentialContainer, BoxPanel, Panel, Swing, Component}
+import scala.swing.{Button, Container, Orientation, SequentialContainer, BoxPanel, Panel, Swing, Component}
 
 object PanelImpl {
+  var DEBUG = true
+
   def apply[S <: Sys[S]](nuages: Nuages[S], config: Nuages.Config, aural: AuralSystem)
                         (implicit tx: S#Tx, cursor: stm.Cursor[S]): NuagesPanel[S] = {
     val nuagesH   = tx.newHandle(nuages)
@@ -180,7 +183,56 @@ object PanelImpl {
             if (span.contains(transport.position)) addNode(span, timed)
             // XXX TODO - update scheduler
 
-          case other => println(s"OBSERVED: $other")
+          case Timeline.Element(timed, Obj.UpdateT(obj, changes)) =>
+            nodeMap.get(timed.id).foreach { visObj =>
+              changes.foreach {
+                case Obj.AttrChange(key, _, attrChanges) if visObj.params.contains(key) =>
+                  attrChanges.foreach {
+                    case Obj.ElemChange(Change(_, now: Double)) =>
+                      // println(s"NOW $now")
+                      deferTx {
+                        visObj.params.get(key).foreach { visCtl =>
+                          visCtl.value = now
+                          val visItem = _vis.getVisualItem(GROUP_GRAPH, visCtl.pNode)
+                          _vis.damageReport(visItem, visItem.getBounds)
+                        }
+                      }
+
+                    // XXX TODO - ParamSpec changes
+
+                    case other => if (DEBUG) println(s"OBSERVED: Timeline.Element - AttrChange($key, $other)")
+                  }
+
+                case Obj.ElemChange(pUpd: Proc.Update[S]) =>
+                  pUpd.changes.foreach {
+                    case Proc.ScanChange(key, scan, scanChanges) =>
+                      def withScans(sink: Scan.Link[S])(fun: (VisualScan[S], VisualScan[S]) => Unit): Unit =
+                        for {
+                          sinkInfo <- scanMap.get(sink.id)
+                          sinkVis  <- nodeMap.get(sinkInfo.id)
+                        } deferTx {
+                          for {
+                            sourceVisScan <- visObj .scans.get(key)
+                            sinkVisScan   <- sinkVis.scans.get(sinkInfo.key)
+                          } visDo {
+                            fun(sourceVisScan, sinkVisScan)
+                          }
+                        }
+
+                      scanChanges.foreach {
+                        case Scan.SinkAdded  (sink) => withScans(sink)(addEdgeGUI   )
+                        case Scan.SinkRemoved(sink) => withScans(sink)(removeEdgeGUI)
+                        case _ =>
+                      }
+
+                    case other => if (DEBUG) println(s"OBSERVED: Timeline.Element - ProcChange($other)")
+                  }
+
+                case other => if (DEBUG) println(s"OBSERVED: Timeline.Element - $other")
+              }
+            }
+
+          case other => if (DEBUG) println(s"OBSERVED: $other")
         }
       }
       this
@@ -574,10 +626,23 @@ object PanelImpl {
           sourceVisScan <- link.source.scans.get(link.sourceKey)
           sinkVisScan   <- link.sink  .scans.get(link.sinkKey  )
         } {
-          /* val pLinkEdge = */ g.addEdge(sourceVisScan.pNode, sinkVisScan.pNode)
+          addEdgeGUI(sourceVisScan, sinkVisScan)
         }
       }
     }
+
+    def addEdgeGUI(source: VisualScan[S], sink: VisualScan[S]): Unit = {
+      val pEdge = g.addEdge(source.pNode, sink.pNode)
+      source.sinks   += pEdge
+      sink  .sources += pEdge
+    }
+
+    def removeEdgeGUI(source: VisualScan[S], sink: VisualScan[S]): Unit =
+      source.sinks.find(_.getTargetNode == sink.pNode).foreach { pEdge =>
+        source.sinks   -= pEdge
+        sink  .sources -= pEdge
+        g.removeEdge(pEdge)
+      }
 
     //      val res = VisualProc(panel, p, pNode, aggr, vParams, pMeter, meterFactory.isDefined, soloFactory.isDefined)
     //      pMeter.foreach { pm => meterMap += pm -> res}
@@ -640,11 +705,15 @@ object PanelImpl {
 
     private def createAbortBar(p: SequentialContainer)(createAction: => Unit): Unit = {
       val b = new BoxPanel(Orientation.Horizontal)
-      b.contents += BasicButton("Create")(createAction)
+      val butCreate = /* Basic */ Button("Create")(createAction)
+      butCreate.focusable = false
+      b.contents += butCreate
       val strut = Swing.HStrut(8)
       // strut.background = Color.black
       b.contents += strut
-      b.contents += BasicButton("Abort")(close(p))
+      val butAbort = /* Basic */ Button("Abort")(close(p))
+      butAbort.focusable = false
+      b.contents += butAbort
       p.contents += b
       // b
     }
@@ -681,6 +750,41 @@ object PanelImpl {
       pack(p)
     }
 
+    private var fltPred: VisualScan[S] = _
+    private var fltSucc: VisualScan[S] = _
+
+    private lazy val createFilterDialog = {
+      val p = new OverlayPanel()
+      p.contents += listFlt.component
+      p.contents += Swing.VStrut(4)
+      createAbortBar(p) {
+        listFlt.guiSelection match {
+          case Vec(fltIdx) =>
+          close(p)
+          val displayPt = display.getAbsoluteCoordinate(p.location, null)
+          atomic { implicit tx =>
+            val nuages = nuagesH()
+            for {
+              Proc.Obj(flt) <- nuages.filters.get(fltIdx)
+              tl <- nuages.timeline.elem.peer.modifiableOption
+            } {
+              (fltPred.parent.objH(), fltSucc.parent.objH()) match {
+                case (Proc.Obj(pred), Proc.Obj(succ)) =>
+                  for {
+                    predScan <- pred.elem.peer.scans.get(fltPred.key)
+                    succScan <- succ.elem.peer.scans.get(fltSucc.key)
+                  } {
+                    createFilter(tl, predScan, succScan, flt, displayPt)
+                  }
+                case _ =>
+              }
+            }
+          }
+        }
+      }
+      pack(p)
+    }
+
     def createProc(tl: Timeline.Modifiable[S], genSrc: Obj[S], colSrc: Obj[S], pt: Point2D)
                   (implicit tx: S#Tx): Unit = {
       val gen = Obj.copy(genSrc)
@@ -691,7 +795,7 @@ object PanelImpl {
           val procGen = genP.elem.peer
           val procCol = colP.elem.peer
           val scanOut = procGen.scans.add("out")
-          val scanIn  = procCol.scans.add("in" )
+          val scanIn = procCol.scans.add("in")
           scanOut.addSink(scanIn)
 
         case _ =>
@@ -702,19 +806,52 @@ object PanelImpl {
       setLocationHint(gen, genPt)
       setLocationHint(col, colPt)
 
+      addToTimeline(tl, gen)
+      addToTimeline(tl, col)
+    }
+
+    private def addToTimeline(tl: Timeline.Modifiable[S], obj: Obj[S])(implicit tx: S#Tx): Unit = {
       val imp = ExprImplicits[S]
       import imp._
       val time    = transport.position
       val span    = Span.From(time)
-      val genSpan = SpanLikeEx.newVar(span)
-      val colSpan = SpanLikeEx.newVar(span)
-      tl.add(genSpan, gen)
-      tl.add(colSpan, col)
+      val spanEx  = SpanLikeEx.newVar(span)
+      tl.add(spanEx, obj)
+    }
+
+    def createFilter(tl: Timeline.Modifiable[S], pred: Scan[S], succ: Scan[S], fltSrc: Obj[S], fltPt: Point2D)
+                  (implicit tx: S#Tx): Unit = {
+      val flt = Obj.copy(fltSrc)
+
+      flt match {
+        case Proc.Obj(fltP) =>
+          // val procPred = predP.elem.peer
+          val procFlt  = fltP .elem.peer
+          // val procSucc = succP.elem.peer
+          // val scanOut = procPred.scans.add("out")
+          // val scanIn  = procSucc.scans.add("in" )
+          pred.removeSink(succ)
+          pred.addSink(procFlt.scans.add("in"))
+          procFlt.scans.add("out").addSink(succ)
+
+        case _ =>
+      }
+
+      setLocationHint(flt, fltPt)
+
+      addToTimeline(tl, flt)
     }
 
     def showCreateGenDialog(pt: Point): Boolean = {
       requireEDT()
       showOverlayPanel(createGenDialog, pt)
+    }
+
+    def showCreateFilterDialog(pred: VisualScan[S], succ: VisualScan[S], pt: Point): Boolean = {
+      requireEDT()
+      fltPred = pred
+      fltSucc = succ
+      showOverlayPanel(createFilterDialog, pt)
     }
 
     //  private def topAddEdges(edges: Set[ProcEdge]): Unit = {

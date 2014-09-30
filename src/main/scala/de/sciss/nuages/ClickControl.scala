@@ -101,15 +101,15 @@ class ClickControl[S <: Sys[S]](main: NuagesPanel[S]) extends ControlAdapter {
             val tgtData = nTgt.get(COL_NUAGES).asInstanceOf[VisualData[S]]
             if (srcData != null && tgtData != null) {
               (srcData, tgtData) match {
-//                case (vOut: VisualAudioOutput, vIn: VisualAudioInput) =>
-//                  main.actions.showCreateFilterDialog(nSrc, nTgt, vOut.bus, vIn.bus, e.getPoint)
-                //                           main.filterFactory foreach { filterF =>
-                //                              val d          = getDisplay( e )
-                //                              val displayPt  = d.getAbsoluteCoordinate( e.getPoint, null )
-                //                              nSrc.setFixed( false ) // XXX woops.... we have to clean up the mess of ConnectControl
-                //                              nTgt.setFixed( false )
-                //                              createFilter( vOut.bus, vIn.bus, filterF, displayPt )
-                //                           }
+                case (vOut: VisualScan[S], vIn: VisualScan[S]) =>
+                  main.showCreateFilterDialog(/* nSrc, nTgt, */ vOut, vIn, e.getPoint)
+//                         main.filterFactory foreach { filterF =>
+//                            val d          = getDisplay( e )
+//                            val displayPt  = d.getAbsoluteCoordinate( e.getPoint, null )
+//                            nSrc.setFixed( false ) // XXX woops.... we have to clean up the mess of ConnectControl
+//                            nTgt.setFixed( false )
+//                            createFilter( vOut.bus, vIn.bus, filterF, displayPt )
+//                         }
                 case _ =>
               }
             }
