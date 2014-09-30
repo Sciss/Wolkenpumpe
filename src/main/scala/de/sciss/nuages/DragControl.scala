@@ -137,11 +137,6 @@ class DragControl[S <: Sys[S]](vis: Visualization) extends ControlAdapter {
       case _ =>
     }
     if (!SwingUtilities.isLeftMouseButton(e) || e.isShiftDown) return
-    //      if( e.isAltDown() ) {
-    //         vi match {
-    //
-    //         }
-    //      }
     val dr = new Drag(displayPt)
     drag = Some(dr)
     if (vi.isInstanceOf[AggregateItem]) setFixed(vi, fixed = true)

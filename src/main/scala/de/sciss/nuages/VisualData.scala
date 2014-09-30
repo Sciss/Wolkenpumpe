@@ -17,15 +17,17 @@ import java.awt.{Font, Graphics2D, Shape, BasicStroke, Color}
 import java.awt.event.MouseEvent
 import de.sciss.intensitypalette.IntensityPalette
 import de.sciss.lucre.expr.{Expr, Double => DoubleEx}
+import de.sciss.lucre.bitemp.{SpanLike => SpanLikeEx}
 import de.sciss.lucre.stm
 import de.sciss.lucre.synth.Sys
 import de.sciss.numbers
+import de.sciss.span.SpanLike
 import de.sciss.synth.proc
 import prefuse.util.ColorLib
 import prefuse.data.{Edge, Node => PNode}
 import prefuse.visual.{AggregateItem, VisualItem}
 import java.awt.geom.{Line2D, Arc2D, Area, Point2D, Ellipse2D, GeneralPath, Rectangle2D}
-import de.sciss.synth.proc.{DoubleElem, Obj, Proc}
+import de.sciss.synth.proc.{Scan, DoubleElem, Obj, Proc}
 import scala.collection.breakOut
 import proc.Implicits._
 
@@ -149,10 +151,12 @@ object VisualObj {
 
   private val colrPeak = Array.tabulate(91)(ang => new Color(IntensityPalette.apply(ang / 90f)))
 
-  def apply[S <: Sys[S]](main: NuagesPanel[S], obj: Obj[S], pMeter: Option[stm.Source[S#Tx, Proc.Obj[S]]],
+  def apply[S <: Sys[S]](main: NuagesPanel[S], span: Expr[S, SpanLike], obj: Obj[S],
+                         pMeter: Option[stm.Source[S#Tx, Proc.Obj[S]]],
                          meter: Boolean, solo: Boolean)
                         (implicit tx: S#Tx): VisualObj[S] = {
-    val res = new VisualObj(main, tx.newHandle(obj), obj.attr.name, pMeter, meter = meter, solo = solo)
+    import SpanLikeEx.serializer
+    val res = new VisualObj(main, tx.newHandle(span), tx.newHandle(obj), obj.attr.name, pMeter, meter = meter, solo = solo)
     obj match {
       case Proc.Obj(objT) =>
         val scans = objT.elem.peer.scans
@@ -177,9 +181,13 @@ object VisualObj {
 
 private[nuages] trait VisualNode[S <: Sys[S]] extends VisualData[S] {
   var pNode: PNode = _
+
+  final protected def atomic[A](fun: S#Tx => A): A = main.transport.scheduler.cursor.step(fun)
 }
 
-private[nuages] class VisualObj[S <: Sys[S]] private (val main: NuagesPanel[S], val objH: stm.Source[S#Tx, Obj[S]],
+private[nuages] class VisualObj[S <: Sys[S]] private (val main: NuagesPanel[S],
+                                                      val spanH: stm.Source[S#Tx, Expr[S, SpanLike]],
+                                                      val objH: stm.Source[S#Tx, Obj[S]],
                                                       var name: String,
                                                       /* val params: Map[String, VisualParam[S]], */
                                                       val pMeter: Option[stm.Source[S#Tx, Proc.Obj[S]]],
@@ -267,69 +275,98 @@ private[nuages] class VisualObj[S <: Sys[S]] private (val main: NuagesPanel[S], 
     //      result		= peakNorm >= 0f;
   }
 
-  //  override def itemPressed(vi: VisualItem, e: MouseEvent, pt: Point2D): Boolean = {
-  //    if (!isAlive) return false
-  //    if (super.itemPressed(vi, e, pt)) return true
-  //    if (isSynthetic) return false
-  //
-  //    val xt = pt.getX - r.getX
-  //    val yt = pt.getY - r.getY
-  //    if (playArea.contains(xt, yt)) {
-  //      ProcTxn.atomic { implicit t =>
-  //        t.withTransition(main.transition(t.time)) {
-  //          if (stateVar.playing) {
-  //            if (proc.anatomy == ProcFilter && !isCollectorInput) {
-  //              if (stateVar.bypassed) proc.engage else proc.bypass
-  //            } else {
-  //              proc.stop
-  //            }
-  //          } else {
-  //            proc.play
-  //          }
-  //        }
-  //      }
-  //      true
-  //    } else if (solo && soloArea.contains(xt, yt)) {
-  //      main.setSolo(vproc, !soloed)
-  //      true
-  //      //         println( "SOLO" )
-  //    } else if (outerE.contains(xt, yt) & e.isAltDown) {
-  //      val instant = !stateVar.playing || stateVar.bypassed || (main.transition(0) == Instant)
-  //      proc.anatomy match {
-  //        case ProcFilter => {
-  //          ProcTxn.atomic { implicit t =>
-  //            if (isCollectorInput) {
-  //              disposeCollectorInput(proc)
-  //            } else {
-  //              if (instant) disposeFilter
-  //              else {
-  //                t.afterCommit { _ => disposeAfterFade = true}
-  //                t.withTransition(main.transition(t.time)) {
-  //                  proc.bypass
-  //                }
-  //              }
-  //            }
-  //          }
-  //        }
-  //        case ProcDiff => {
-  //          ProcTxn.atomic { implicit t =>
-  //            //                     val toDispose = MSet.empty[ VisualProc ]()
-  //            //                     addToDisposal( toDispose, vproc )
-  //
-  //            if (instant) disposeGenDiff
-  //            else {
-  //              t.afterCommit { _ => disposeAfterFade = true}
-  //              t.withTransition(main.transition(t.time)) {
-  //                proc.stop
-  //              }
-  //            }
-  //          }
-  //        }
-  //        case _ =>
-  //      }
-  //      true
-  //    } else false
-  //  }
+  override def itemPressed(vi: VisualItem, e: MouseEvent, pt: Point2D): Boolean = {
+    // if (!isAlive) return false
+    if (super.itemPressed(vi, e, pt)) return true
+    // if (isSynthetic) return false
+
+    val xt = pt.getX - r.getX
+    val yt = pt.getY - r.getY
+    if (playArea.contains(xt, yt)) {
+//      atomic { implicit tx =>
+//        tx.withTransition(main.transition(tx.time)) {
+//          if (stateVar.playing) {
+//            if (proc.anatomy == ProcFilter && !isCollectorInput) {
+//              if (stateVar.bypassed) proc.engage else proc.bypass
+//            } else {
+//              proc.stop
+//            }
+//          } else {
+//            proc.play
+//          }
+//        }
+//      }
+      true
+    } else if (solo && soloArea.contains(xt, yt)) {
+      // main.setSolo(vproc, !soloed)
+      true
+
+    } else if (outerE.contains(xt, yt) & e.isAltDown) {
+      // val instant = !stateVar.playing || stateVar.bypassed || (main.transition(0) == Instant)
+      val scanKeys = scans.keySet
+      atomic { implicit tx =>
+        if (scanKeys.nonEmpty) {
+          val obj = objH()
+          obj match {
+            case Proc.Obj(objT) =>
+              val scans = objT.elem.peer.scans
+              val ins   = scans.get("in" ).fold(List.empty[Scan[S]])(_.sources.collect { case Scan.Link.Scan(source) => source } .toList)
+              val outs  = scans.get("out").fold(List.empty[Scan[S]])(_.sinks  .collect { case Scan.Link.Scan(sink  ) => sink   } .toList)
+              scanKeys.foreach { key =>
+                scans.get(key).foreach { scan =>
+                  scan.sinks  .toList.foreach(scan.removeSink  )
+                  scan.sources.toList.foreach(scan.removeSource)
+                }
+              }
+              ins.foreach { in =>
+                outs.foreach { out =>
+                  in.addSink(out)
+                }
+              }
+
+            case _ =>
+          }
+
+          main.nuages.timeline.elem.peer.modifiableOption.foreach { tl =>
+            // XXX TODO --- ought to be an update to the span variable
+            tl.remove(spanH(), obj)
+          }
+          // XXX TODO --- remove orphaned input or output procs
+        }
+      }
+//      proc.anatomy match {
+//        case ProcFilter =>
+//          atomic { implicit tx =>
+//            if (isCollectorInput) {
+//              disposeCollectorInput(proc)
+//            } else {
+//              if (instant) disposeFilter
+//              else {
+//                tx.afterCommit { disposeAfterFade = true}
+//                tx.withTransition(main.transition(t.time)) {
+//                  proc.bypass
+//                }
+//              }
+//            }
+//          }
+//
+//        case ProcDiff =>
+//          atomic { implicit tx =>
+//            if (instant) disposeGenDiff
+//            else {
+//              tx.afterCommit { disposeAfterFade = true}
+//              tx.withTransition(main.transition(tx.time)) {
+//                proc.stop
+//              }
+//            }
+//          }
+//
+//        case _ =>
+//      }
+      true
+
+    } else false
+  }
 
   //  /*
   //   * Removes and disposes subtree (without fading)
@@ -505,8 +542,6 @@ private[nuages] final class VisualControl[S <: Sys[S]](val parent: VisualObj[S],
 
   import VisualData._
 
-  private def atomic[A](fun: S#Tx => A): A = main.transport.scheduler.cursor.step(fun)
-
   // var value: ControlValue = null
 
   //      var mapped  = false
@@ -535,7 +570,7 @@ private[nuages] final class VisualControl[S <: Sys[S]](val parent: VisualObj[S],
         //               val res = math.min( 1.0f, (((ang / math.Pi + 3.25) % 2.0) / 1.5).toFloat )
         //               if( ang != value ) {
         val m = /* control. */ spec.map(ang)
-        if (instant) setControl(/* control, */ m, true)
+        if (instant) setControl(/* control, */ m, instant = true)
         ang
       } else /* control. */ spec.inverseMap(value /* .currentApprox */)
       val dr = Drag(ang, vStart, instant)

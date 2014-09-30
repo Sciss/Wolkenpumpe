@@ -54,23 +54,11 @@ class ClickControl[S <: Sys[S]](main: NuagesPanel[S]) extends ControlAdapter {
     }
   }
 
-  //   private def insertProc( e: MouseEvent ) {
-  //      (main.genFactory, main.diffFactory) match {
-  //         case (Some( genF ), Some( diffF )) => {
-  //            val d          = getDisplay( e )
-  //            val displayPt  = d.getAbsoluteCoordinate( e.getPoint, null )
-  //            createProc( genF, diffF, displayPt )
-  //         }
-  //         case _ =>
-  //      }
-  //   }
-
   override def itemPressed(vi: VisualItem, e: MouseEvent): Unit = {
     if (e.isAltDown) return
     if (e.isMetaDown) {
       zoom(e, vi.getBounds)
     } else if (e.getClickCount == 2) doubleClick(vi, e)
-    //      if( e.isAltDown() ) altClick( vi, e )
   }
 
   private def zoomToFit(e: MouseEvent): Unit = {
@@ -99,20 +87,12 @@ class ClickControl[S <: Sys[S]](main: NuagesPanel[S]) extends ControlAdapter {
           case (_: NuagesProcRenderer[_], _: NuagesProcRenderer[_]) =>
             val srcData = nSrc.get(COL_NUAGES).asInstanceOf[VisualData[S]]
             val tgtData = nTgt.get(COL_NUAGES).asInstanceOf[VisualData[S]]
-            if (srcData != null && tgtData != null) {
+            if (srcData != null && tgtData != null)
               (srcData, tgtData) match {
                 case (vOut: VisualScan[S], vIn: VisualScan[S]) =>
                   main.showCreateFilterDialog(/* nSrc, nTgt, */ vOut, vIn, e.getPoint)
-//                         main.filterFactory foreach { filterF =>
-//                            val d          = getDisplay( e )
-//                            val displayPt  = d.getAbsoluteCoordinate( e.getPoint, null )
-//                            nSrc.setFixed( false ) // XXX woops.... we have to clean up the mess of ConnectControl
-//                            nTgt.setFixed( false )
-//                            createFilter( vOut.bus, vIn.bus, filterF, displayPt )
-//                         }
                 case _ =>
               }
-            }
 
           case _ =>
         }

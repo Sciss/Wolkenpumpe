@@ -56,7 +56,7 @@ object PanelImpl {
     val listFlt   = mkListView(nuages.filters   )
     val listCol   = mkListView(nuages.collectors)
     val nodeMap   = tx.newInMemoryIDMap[VisualObj[S]]
-    val scanMap   = tx.newInMemoryIDMap[ScanInfo[S]]
+    val scanMap   = tx.newInMemoryIDMap[ScanInfo [S]]
     val transport = Transport[S](aural)
     val timelineObj = nuages.timeline
     transport.addObject(timelineObj)
@@ -182,6 +182,10 @@ object PanelImpl {
           case Timeline.Added(span, timed) =>
             if (span.contains(transport.position)) addNode(span, timed)
             // XXX TODO - update scheduler
+
+          case Timeline.Removed(span, timed) =>
+            if (span.contains(transport.position)) removeNode(span, timed)
+          // XXX TODO - update scheduler
 
           case Timeline.Element(timed, Obj.UpdateT(obj, changes)) =>
             nodeMap.get(timed.id).foreach { visObj =>
@@ -528,7 +532,7 @@ object PanelImpl {
       //            val par  = proc.par.entriesAt( time )
       // val par = Map.empty[String, Double]
       // val vp    = new VisualProc[S](n, par, cursor.position, tx.newHandle(proc))
-      val vp = VisualObj[S](this, /* timed.span, */ obj, pMeter = None,
+      val vp = VisualObj[S](this, timed.span, obj, pMeter = None,
         meter = meterFactory.isDefined, solo = soloFactory.isDefined)
       // val span = timed.span.value
       //      map.get(id) match {
@@ -552,6 +556,24 @@ object PanelImpl {
       }
 
       deferTx(visDo(addNodeGUI(vp, links, locO)))
+    }
+
+    def removeNode(span: SpanLike, timed: Timeline.Timed[S])(implicit tx: S#Tx): Unit = {
+      val id   = timed.id
+      val obj  = timed.value
+      nodeMap.get(id).foreach { vp =>
+        nodeMap.remove(id)
+        obj match {
+          case Proc.Obj(objT) =>
+            val scans = objT.elem.peer.scans
+            scans.iterator.foreach { case (_, scan) =>
+              scanMap.remove(scan.id)
+            }
+          case _ =>
+        }
+
+        deferTx(visDo(removeNodeGUI(vp)))
+      }
     }
 
     private def addScan(vi: VisualObj[S], scan: Scan[S], info: ScanInfo[S])(implicit tx: S#Tx): List[VisualLink[S]] = {
@@ -578,6 +600,17 @@ object PanelImpl {
         case _ =>
       }
       res
+    }
+
+    private def removeNodeGUI(vp: VisualObj[S]): Unit = {
+      aggrTable.removeTuple(vp.aggr)
+      g.removeNode(vp.pNode)
+      vp.scans.foreach { case (_, vs) =>
+        g.removeNode(vs.pNode)
+      }
+      vp.params.foreach { case (_, vc) =>
+        g.removeNode(vc.pNode)
+      }
     }
 
     private def addNodeGUI(vp: VisualObj[S], links: List[VisualLink[S]], locO: Option[Point2D]): Unit = {
@@ -722,10 +755,8 @@ object PanelImpl {
 
     private lazy val createGenDialog: Panel = {
       val p = new OverlayPanel()
-      // val genView = new ListView[String](Nil)
       p.contents += listGen.component
       p.contents += Swing.VStrut(4)
-      // val diffView = new ListView[String](Nil)
       p.contents += listCol.component
       p.contents += Swing.VStrut(4)
       createAbortBar(p) {
@@ -740,7 +771,6 @@ object PanelImpl {
                 col <- nuages.collectors.get(colIdx)
                 tl  <- nuages.timeline.elem.peer.modifiableOption
               } {
-                // println(s"TODO: createProc ($genIdx, $colIdx)")
                 createProc(tl, gen, col, displayPt)
               }
             }
@@ -825,11 +855,7 @@ object PanelImpl {
 
       flt match {
         case Proc.Obj(fltP) =>
-          // val procPred = predP.elem.peer
           val procFlt  = fltP .elem.peer
-          // val procSucc = succP.elem.peer
-          // val scanOut = procPred.scans.add("out")
-          // val scanIn  = procSucc.scans.add("in" )
           pred.removeSink(succ)
           pred.addSink(procFlt.scans.add("in"))
           procFlt.scans.add("out").addSink(succ)
@@ -853,27 +879,6 @@ object PanelImpl {
       fltSucc = succ
       showOverlayPanel(createFilterDialog, pt)
     }
-
-    //  private def topAddEdges(edges: Set[ProcEdge]): Unit = {
-    //    if (verbose) println("topAddEdges : " + edges)
-    //    visDo(topAddEdgesI(edges))
-    //  }
-    //
-    //  private def topAddEdgesI(edges: Set[ProcEdge]): Unit =
-    //    edges.foreach { e =>
-    //      procMap.get(e.sourceVertex).foreach { vProcSrc =>
-    //        procMap.get(e.targetVertex).foreach { vProcTgt =>
-    //          val outName = e.out.name
-    //          val inName  = e.in .name
-    //          vProcSrc.params.get(outName).map(_.pNode).foreach { pSrc =>
-    //            vProcTgt.params.get(inName).map(_.pNode).foreach { pTgt =>
-    //              val pEdge = g.addEdge(pSrc, pTgt)
-    //              edgeMap += e -> pEdge
-    //            }
-    //          }
-    //        }
-    //      }
-    //    }
 
     //  private def procUpdate(u: Proc.Update): Unit = {
     //    if (verbose) println("" + new java.util.Date() + " procUpdate: " + u)
@@ -938,58 +943,22 @@ object PanelImpl {
     //    }
     //  }
 
-    //   private def tryRepeatedly( code: => Unit ) {
-    //      def iter( repeats: Int, print: Boolean ) {
-    //         try {
-    //            code
-    //         } catch {
-    //            case e =>
-    //               if( print ) e.printStackTrace()
-    //               if( repeats > 0 ) {
-    //                  new SwingTimer( 1000, new ActionListener {
-    //                     def actionPerformed( e: ActionEvent ) {
-    //                        iter( repeats - 1, false )
-    //                     }
-    //                  }).start()
-    //               }
-    //         }
-    //      }
-    //      iter( 10, true )
-    //   }
-
-    private def topRemoveProc(vProc: VisualObj[S]): Unit = {
-      // fucking prefuse -- always trouble with the aggregates
-      //Thread.sleep(50)
-      //println( "REMOVE AGGR " + vProc.aggr )
-      //      vProc.aggr.removeAllItems()
-      aggrTable.removeTuple(vProc.aggr)
-      //      tryRepeatedly( aggrTable.removeTuple( vProc.aggr ))
-      g.removeNode(vProc.pNode)
-//      vProc.params.values.foreach { vParam =>
-//        // WE MUST NOT REMOVE THE EDGES, AS THE REMOVAL OF
-//        // VPROC.PNODE INCLUDES ALL THE EDGES!
-//        //         g.removeEdge( vParam.pEdge )
-//        g.removeNode(vParam.pNode)
-//      }
-      //    procMap -= vProc.proc
-    }
-
-    //  private def topRemoveEdges(edges: Set[ProcEdge]): Unit = {
-    //    if (verbose) println("topRemoveEdges : " + edges)
-    //    visDo {
-    //      edges.foreach { e =>
-    //        edgeMap.get(e).foreach { pEdge =>
-    //          try {
-    //            g.removeEdge(pEdge)
-    //          }
-    //          catch {
-    //            case NonFatal(ex) => println("" + new java.util.Date() + " CAUGHT " + e + " : " + ex.getClass.getName)
-    //          }
-    //          edgeMap -= e
-    //        }
-    //      }
-    //    }
-    //  }
+  //    private def topRemoveProc(vProc: VisualObj[S]): Unit = {
+  //      // fucking prefuse -- always trouble with the aggregates
+  //      //Thread.sleep(50)
+  //      //println( "REMOVE AGGR " + vProc.aggr )
+  //      //      vProc.aggr.removeAllItems()
+  //      aggrTable.removeTuple(vProc.aggr)
+  //      //      tryRepeatedly( aggrTable.removeTuple( vProc.aggr ))
+  //      g.removeNode(vProc.pNode)
+  ////      vProc.params.values.foreach { vParam =>
+  ////        // WE MUST NOT REMOVE THE EDGES, AS THE REMOVAL OF
+  ////        // VPROC.PNODE INCLUDES ALL THE EDGES!
+  ////        //         g.removeEdge( vParam.pEdge )
+  ////        g.removeNode(vParam.pNode)
+  ////      }
+  //      //    procMap -= vProc.proc
+  //    }
 
     //  private def topRemoveControlMap(vControl: VisualControl, vMap: VisualMapping): Unit = {
     //    g.removeEdge(vMap.pEdge)
