@@ -37,7 +37,7 @@ class ProcFactoryView
 extends JScrollPane( ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS,
                      ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER ) {
    private var sel = Option.empty[ ProcFactory ]
-   private val ggList  = new JList( ListModel )
+   private val ggList  = new JList[ProcFactory]( ListModel )
    ggList.setBackground( Color.black )
    ggList.setCellRenderer( ProcFactoryCellRenderer )
    ggList.setFixedCellWidth( 64 )
@@ -62,7 +62,7 @@ extends JScrollPane( ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS,
 
    def numRows : Int = ListModel.getSize
 
-   private object ListModel extends AbstractListModel with Ordering[ ProcFactory ] {
+   private object ListModel extends AbstractListModel[ProcFactory] with Ordering[ ProcFactory ] {
       model =>
 
       private var coll = Vector.empty[ ProcFactory ]
@@ -108,12 +108,12 @@ extends JScrollPane( ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS,
       def getElementAt( idx: Int ) : ProcFactory = coll( idx )
    }
 
-   private object ProcFactoryCellRenderer extends DefaultListCellRenderer {
+   private object ProcFactoryCellRenderer extends CellRendererFix {
       private val colrUnfocused = new Color( 0xC0, 0xC0, 0xC0 )
 
       setFont( Wolkenpumpe.condensedFont.deriveFont( 15f )) // WARNING: use float argument
 
-      override def getListCellRendererComponent( list: JList, value: AnyRef, index: Int,
+      def getRendererFixed(value: AnyRef, index: Int,
          isSelected: Boolean, isFocused: Boolean ) : Component = {
 
          val str = value match {
