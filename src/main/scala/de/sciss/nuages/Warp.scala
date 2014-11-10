@@ -31,7 +31,7 @@ object Warp {
 
     def readValue(in: DataInput): Warp = {
       val id = in.readShort()
-      (id: @switch) match {
+      id /* : @switch */ match {
         case LinWarp.id => LinWarp
         case ExpWarp.id => ExpWarp
       }

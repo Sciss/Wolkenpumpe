@@ -49,7 +49,9 @@ object ParamSpec {
 
   // ---- element ----
 
-  object Elem {
+  implicit object Elem extends proc.Elem.Companion[Elem] {
+    def typeID = ParamSpec.typeID
+
     def apply[S <: Sys[S]](peer: ParamSpec.Expr[S])(implicit tx: S#Tx): ParamSpec.Elem[S] = ElemImpl(peer)
 
     implicit def serializer[S <: Sys[S]]: Serializer[S#Tx, S#Acc, ParamSpec.Elem[S]] = ElemImpl.serializer

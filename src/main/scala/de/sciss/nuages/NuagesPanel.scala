@@ -16,7 +16,7 @@ package de.sciss.nuages
 import de.sciss.lucre.stm
 import de.sciss.lucre.swing.View
 import de.sciss.lucre.synth.Sys
-import de.sciss.synth.proc.{AuralSystem, Transport}
+import de.sciss.synth.proc.{WorkspaceHandle, AuralSystem, Transport}
 import impl.{PanelImpl => Impl}
 import prefuse.{Visualization, Display}
 
@@ -32,7 +32,7 @@ object NuagesPanel {
   final val soloAmpSpec         = ParamSpec(0.10, 10.0, ExpWarp) -> 0.5
 
   def apply[S <: Sys[S]](nuages: Nuages[S], config: Nuages.Config, aural: AuralSystem)
-                        (implicit tx: S#Tx, cursor: stm.Cursor[S]): NuagesPanel[S] =
+                        (implicit tx: S#Tx, cursor: stm.Cursor[S], workspace: WorkspaceHandle[S]): NuagesPanel[S] =
     Impl(nuages, config, aural)
 }
 trait NuagesPanel[S <: Sys[S]] extends View[S] {

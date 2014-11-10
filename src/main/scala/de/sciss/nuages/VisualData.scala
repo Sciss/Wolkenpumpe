@@ -156,7 +156,7 @@ object VisualObj {
                          meter: Boolean, solo: Boolean)
                         (implicit tx: S#Tx): VisualObj[S] = {
     import SpanLikeEx.serializer
-    val res = new VisualObj(main, tx.newHandle(span), tx.newHandle(obj), obj.attr.name, pMeter, meter = meter, solo = solo)
+    val res = new VisualObj(main, tx.newHandle(span), tx.newHandle(obj), obj.name, pMeter, meter = meter, solo = solo)
     obj match {
       case Proc.Obj(objT) =>
         val scans = objT.elem.peer.scans
@@ -165,7 +165,7 @@ object VisualObj {
           case (key, DoubleElem.Obj(dObj)) =>
             val value = dObj.elem.peer.value
             import numbers.Implicits._
-            val spec = dObj.attr.expr[ParamSpec](ParamSpec.Key).map(_.value)
+            val spec = dObj.attr[ParamSpec.Elem](ParamSpec.Key).map(_.value)
               .getOrElse(ParamSpec(math.min(0.0, value), math.max(1.0, value.roundUpTo(1))))
             // val spec  = ParamSpec(math.min(0.0, value), math.max(1.0, value))
             Some(key -> new VisualControl(res, key, spec, value))
@@ -585,7 +585,7 @@ private[nuages] final class VisualControl[S <: Sys[S]](val parent: VisualObj[S],
         // c.v = v
         val attr = parent.objH().attr
         val vc   = DoubleEx.newConst[S](v)
-        attr.expr[Double](key) match {
+        attr[DoubleElem](key) match {
           case Some(Expr.Var(vr)) => vr() = vc
           case _ => attr.put(key, Obj(DoubleElem(DoubleEx.newVar(vc))))
         }

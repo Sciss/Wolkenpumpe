@@ -29,7 +29,7 @@ import de.sciss.model.Change
 import de.sciss.span.{SpanLike, Span}
 import de.sciss.synth.ugen.Out
 import de.sciss.synth.{proc, GE, AudioBus}
-import de.sciss.synth.proc.{Scan, ExprImplicits, AuralSystem, Transport, Timeline, Proc, Folder, Obj}
+import de.sciss.synth.proc.{WorkspaceHandle, Scan, ExprImplicits, AuralSystem, Transport, Timeline, Proc, Folder, Obj}
 import prefuse.action.{RepaintAction, ActionList}
 import prefuse.action.assignment.ColorAction
 import prefuse.action.layout.graph.ForceDirectedLayout
@@ -50,7 +50,7 @@ object PanelImpl {
   var DEBUG = true
 
   def apply[S <: Sys[S]](nuages: Nuages[S], config: Nuages.Config, aural: AuralSystem)
-                        (implicit tx: S#Tx, cursor: stm.Cursor[S]): NuagesPanel[S] = {
+                        (implicit tx: S#Tx, cursor: stm.Cursor[S], workspace: WorkspaceHandle[S]): NuagesPanel[S] = {
     val nuagesH   = tx.newHandle(nuages)
     val listGen   = mkListView(nuages.generators)
     val listFlt   = mkListView(nuages.filters   )
@@ -78,7 +78,7 @@ object PanelImpl {
 
   private def mkListView[S <: Sys[S]](folder: Folder[S])(implicit tx: S#Tx, cursor: stm.Cursor[S]) = {
     import proc.Implicits._
-    val h = ListView.Handler[S, Obj[S], Obj.Update[S]] { implicit tx => obj => obj.attr.name } (_ => (_, _) => None)
+    val h = ListView.Handler[S, Obj[S], Obj.Update[S]] { implicit tx => obj => obj.name } (_ => (_, _) => None)
     implicit val ser = de.sciss.lucre.expr.List.serializer[S, Obj[S], Obj.Update[S]]
     val res = ListView[S, Obj[S], Obj.Update[S], String](folder, h)
     deferTx {

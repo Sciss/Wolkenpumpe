@@ -10,15 +10,15 @@ description        := "A Prefuse based visual interface for SoundProcesses, a so
 
 licenses           := Seq("GPL v2+" -> url( "http://www.gnu.org/licenses/gpl-2.0.txt"))
 
-scalaVersion       := "2.11.2"
+scalaVersion       := "2.11.4"
 
-crossScalaVersions := Seq("2.11.2", "2.10.4")
+crossScalaVersions := Seq("2.11.4", "2.10.4")
 
-lazy val soundProcessesVersion  = "2.7.0-SNAPSHOT"
+lazy val soundProcessesVersion  = "2.8.3"
 
 lazy val prefuseVersion         = "1.0.0"
 
-lazy val lucreSwingVersion      = "0.5.0"
+lazy val lucreSwingVersion      = "0.6.1"
 
 lazy val swingPlusVersion       = "0.2.0"
 
@@ -28,7 +28,7 @@ lazy val intensityVersion       = "1.0.0"
 
 lazy val webLaFVersion          = "1.28"
 
-lazy val lucreSTMVersion        = "2.1.0"
+lazy val lucreSTMVersion        = "2.1.1"
 
 libraryDependencies ++= Seq(
   "de.sciss" %% "soundprocesses-views"  % soundProcessesVersion,

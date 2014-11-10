@@ -21,7 +21,7 @@ import de.sciss.lucre.expr.{Double => DoubleEx}
 import de.sciss.synth
 import de.sciss.synth.proc.graph.{Attribute, ScanIn, ScanOut}
 import de.sciss.synth.{SynthGraph, GE, proc}
-import de.sciss.synth.proc.{DoubleElem, AuralSystem, ExprImplicits, Obj, Proc}
+import de.sciss.synth.proc.{WorkspaceHandle, DoubleElem, AuralSystem, ExprImplicits, Obj, Proc}
 import proc.Implicits._
 
 import scala.concurrent.stm.TxnLocal
@@ -46,7 +46,7 @@ object Wolkenpumpe {
     private def mkObj(name: String)(fun: => Unit)(implicit tx: S#Tx, n: Nuages[S]): Proc.Obj[S] = {
       val p   = Proc[S]
       val obj = Obj(Proc.Elem(p))
-      obj.attr.name = name
+      obj.name = name
       current.set(obj )(tx.peer)
       p.graph() = SynthGraph { fun }
       current.set(null)(tx.peer)
@@ -168,6 +168,7 @@ object Wolkenpumpe {
       }
 
       val aural = AuralSystem.start()
+      import WorkspaceHandle.Implicits._
       val p     = NuagesPanel(n, config, aural)
       NuagesFrame(p)
     }

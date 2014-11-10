@@ -363,7 +363,7 @@ object ParamSpecExprImpl
 
     def readExtension[S <: Sys[S]](opID: Int, in: DataInput, access: S#Acc, targets: evt.Targets[S])
                                   (implicit tx: S#Tx): Expr.Node[S, String] = {
-      val op: Tuple1Op[String] = (opID: @switch) match {
+      val op: Tuple1Op[String] = opID /* : @switch */ match {
         case Unit.id => Unit
         case _ => sys.error(s"Invalid operation id $opID")
       }
@@ -393,7 +393,7 @@ object ParamSpecExprImpl
 
     def readExtension[S <: Sys[S]](opID: Int, in: DataInput, access: S#Acc, targets: evt.Targets[S])
                                   (implicit tx: S#Tx): Expr.Node[S, nuages.Warp] = {
-      val op: Tuple1Op[nuages.Warp] = (opID: @switch) match {
+      val op: Tuple1Op[nuages.Warp] = opID /* : @switch */ match {
         case Warp.id => Warp
         case _ => sys.error(s"Invalid operation id $opID")
       }
@@ -468,7 +468,7 @@ object ParamSpecExprImpl
   }
 }
 
-object ParamSpecElemImpl extends proc.impl.ElemImpl.Companion[ParamSpec.Elem] {
+object ParamSpecElemImpl extends proc.impl.ElemCompanionImpl[ParamSpec.Elem] {
   def typeID = ParamSpec.typeID
 
   Elem.registerExtension(this)
@@ -499,12 +499,12 @@ object ParamSpecElemImpl extends proc.impl.ElemImpl.Companion[ParamSpec.Elem] {
   private final class Impl[S <: Sys[S]](protected val targets: evt.Targets[S],
                                         val peer: ParamSpec.Expr[S])
     extends ParamSpec.Elem[S]
-    with proc.impl.ElemImpl.Active[S] {
+    with proc.impl.ActiveElemImpl[S] {
 
     def typeID = ParamSpec.typeID
     def prefix = "ParamSpec"
 
-    override def toString() = s"$prefix$id"
+    override def toString = s"$prefix$id"
 
     def mkCopy()(implicit tx: S#Tx): ParamSpec.Elem[S] = ParamSpec.Elem(peer)
   }
