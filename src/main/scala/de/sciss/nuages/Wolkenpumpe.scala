@@ -15,12 +15,13 @@ package de.sciss.nuages
 
 import java.awt.Font
 
+import de.sciss.file._
 import de.sciss.lucre.stm
 import de.sciss.lucre.synth.{Sys, InMemory}
 import de.sciss.lucre.expr.{Double => DoubleEx}
 import de.sciss.synth
 import de.sciss.synth.proc.graph.{Attribute, ScanIn, ScanOut}
-import de.sciss.synth.{SynthGraph, GE, proc}
+import de.sciss.synth.{control, scalar, audio, Rate, SynthGraph, GE, proc}
 import de.sciss.synth.proc.{WorkspaceHandle, DoubleElem, AuralSystem, ExprImplicits, Obj, Proc}
 import proc.Implicits._
 
@@ -53,13 +54,22 @@ object Wolkenpumpe {
       obj
     }
 
-    def pAudio(key: String, spec: ParamSpec, default: Double)(implicit tx: S#Tx): GE = {
+    def pAudio(key: String, spec: ParamSpec, default: Double)(implicit tx: S#Tx): GE =
+      mkPar(audio, key = key, spec = spec, default = default)
+
+    def pControl(key: String, spec: ParamSpec, default: Double)(implicit tx: S#Tx): GE =
+      mkPar(control, key = key, spec = spec, default = default)
+
+    def pScalar(key: String, spec: ParamSpec, default: Double)(implicit tx: S#Tx): GE =
+      mkPar(scalar, key = key, spec = spec, default = default)
+
+    private def mkPar(rate: Rate, key: String, spec: ParamSpec, default: Double)(implicit tx: S#Tx): GE = {
       val obj       = current.get(tx.peer)
       val paramObj  = Obj(DoubleElem(DoubleEx.newVar(DoubleEx.newConst[S](default))))
       val specObj   = Obj(ParamSpec.Elem(ParamSpec.Expr.newConst[S](spec)))
       paramObj.attr.put(ParamSpec.Key, specObj)
       obj     .attr.put(key, paramObj)
-      Attribute.ar(key, default)
+      Attribute(rate, key, default)
     }
 
     def generator(name: String)(fun: => GE)(implicit tx: S#Tx, n: Nuages[S]): Proc.Obj[S] = {
@@ -167,6 +177,10 @@ object Wolkenpumpe {
         // pout.ar(sig)
         Out.ar(0, sig)
       }
+
+      val sCfg = ScissProcs.Config()
+      sCfg.audioFilesFolder = Some(userHome / "Music" / "tapes")
+      ScissProcs[S](sCfg)
 
       val aural = AuralSystem.start()
       import WorkspaceHandle.Implicits._
