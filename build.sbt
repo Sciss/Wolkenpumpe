@@ -44,6 +44,13 @@ libraryDependencies ++= Seq(
 
 scalacOptions ++= Seq("-deprecation", "-unchecked", "-feature", "-encoding", "utf8", "-Xfuture")
 
+// ---- console ----
+
+initialCommands in console :=
+  """import de.sciss.nuages._
+    |import de.sciss.numbers.Implicits._
+    |""".stripMargin
+
 // ---- publishing ----
 
 publishMavenStyle := true

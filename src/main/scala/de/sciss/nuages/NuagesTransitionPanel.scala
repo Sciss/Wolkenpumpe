@@ -26,7 +26,7 @@ class NuagesTransitionPanel[S <: Sys[S]](main: NuagesPanel[S]) extends BasicPane
   private val bg          = new ButtonGroup()
   private var models: Array[ButtonModel] = _
   private val specSlider  = ParamSpec(0, 0x10000)
-  private val specTime    = ParamSpec(0.06, 60.0, ExpWarp)
+  private val specTime    = ParamSpec(0.06, 60.0, ExponentialWarp)
 
   private val ggTypeInstant = BasicToggleButton("In")(if (_) dispatchTransition(inst = true , gl = false, xf = false))
   private val ggTypeGlide   = BasicToggleButton("Gl")(if (_) dispatchTransition(inst = false, gl = true , xf = false))

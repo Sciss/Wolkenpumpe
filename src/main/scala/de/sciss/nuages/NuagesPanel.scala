@@ -28,8 +28,8 @@ object NuagesPanel {
   private[nuages] val GROUP_GRAPH = "graph"
   private[nuages] val COL_NUAGES  = "nuages"
 
-  final val masterAmpSpec       = ParamSpec(0.01, 10.0, ExpWarp) -> 1.0
-  final val soloAmpSpec         = ParamSpec(0.10, 10.0, ExpWarp) -> 0.5
+  final val masterAmpSpec       = ParamSpec(0.01, 10.0, ExponentialWarp) -> 1.0
+  final val soloAmpSpec         = ParamSpec(0.10, 10.0, ExponentialWarp) -> 0.5
 
   def apply[S <: Sys[S]](nuages: Nuages[S], config: Nuages.Config, aural: AuralSystem)
                         (implicit tx: S#Tx, cursor: stm.Cursor[S], workspace: WorkspaceHandle[S]): NuagesPanel[S] =

@@ -72,7 +72,7 @@ object ParamSpec {
 
   type Obj[S <: Sys[S]] = proc.Obj.T[S, ParamSpec.Elem]
 }
-final case class ParamSpec(lo: Double = 0.0, hi: Double = 1.0, warp: Warp = LinWarp, step: Double = 0.0,
+final case class ParamSpec(lo: Double = 0.0, hi: Double = 1.0, warp: Warp = LinearWarp, step: Double = 0.0,
                            unit: String = "")
   extends Writable {
 

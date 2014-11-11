@@ -37,14 +37,6 @@ object DragControl {
     vi.setFixed(state1)
   }
 
-  // XXX QUE MIERDA
-  //   def getVisualData( vi: VisualItem ) : Option[ VisualData ] = {
-  //      if( vi.canGet( COL_NUAGES, classOf[ VisualData ])) {
-  //         val data = vi.get( COL_NUAGES ).asInstanceOf[ VisualData ]
-  //         if( data != null ) Some( data ) else None
-  //      } else None
-  //   }
-
   def getVisualData[S <: Sys[S]](vis: Visualization, vi: VisualItem): Option[VisualData[S]] =
     vis.getRenderer(vi) match {
       case pr: NuagesProcRenderer[_] =>

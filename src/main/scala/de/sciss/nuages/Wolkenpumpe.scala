@@ -128,12 +128,12 @@ object Wolkenpumpe {
         val hpf       = HPF.ar(in, highFreq) * highMix
         val dry       = in * dryMix
         val flt       = dry + lpf + hpf
-        val mix       = pAudio("mix", ParamSpec(0, 1), 1)
+        val mix       = pAudio("mix", ParamSpec(0, 1), 0 /* 1 */)
         LinXFade2.ar(in, flt, mix * 2 - 1)
       }
 
       filter("Achil") { in =>
-        val speed         = Lag.ar(pAudio("speed", ParamSpec(0.125, 2.3511, ExpWarp), 0.5), 0.1)
+        val speed         = Lag.ar(pAudio("speed", ParamSpec(0.125, 2.3511, ExponentialWarp), 0.5), 0.1)
         val numFrames     = 44100 // sampleRate.toInt
         val numChannels   = 2     // in.numChannels // numOutputs
         //println( "numChannels = " + numChannels )
@@ -161,7 +161,8 @@ object Wolkenpumpe {
       collector("Out") { in =>
         // val pout = pAudioOut("out", None) // Some( RichBus.wrap( masterBus ))
 
-        val amp = pAudio("amp", ParamSpec(0.01, 10, ExpWarp), 1)
+        // val amp = pAudio("amp", ParamSpec(0.01, 10, ExpWarp), 0.01 /* 1 */)
+        val amp = pAudio("amp", ParamSpec(-inf, 20, DbFaderWarp), -inf).dbamp
         val sig = in * amp
         // pout.ar(sig)
         Out.ar(0, sig)
