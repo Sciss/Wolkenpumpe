@@ -444,19 +444,13 @@ object ScissProcs {
       mix(in, flt, pMix)
     }
 
-    // XXX TODO
-    //      filter( "a-hilb" ) {
-    //         val pmix = pMix
-    //         graph { in: In =>
-    //            var flt: GE = List.fill( in.numOutputs )( 0.0 )
-    //            in.outputs foreach { ch =>
-    //               val hlb  = Hilbert.ar( DelayN.ar( ch, 0.01, 0.01 ))
-    //               val hlb2 = Hilbert.ar( Normalizer.ar( ch, dur = 0.02 ))
-    //               flt     += (hlb \ 0) * (hlb2 \ 0) - (hlb \ 1 * hlb2 \ 1)
-    //            }
-    //            mix( in, flt, pmix )
-    //         }
-    //      }
+    filter("a-hilb") { in =>
+      val pMix = mkMix()
+      val hlb   = Hilbert.ar(DelayN.ar(in, 0.01, 0.01))
+      val hlb2  = Hilbert.ar(Normalizer.ar(in, dur = 0.02))
+      val flt   = hlb.real * hlb2.real - hlb.imag * hlb2.imag
+      mix(in, flt, pMix)
+    }
 
     filter("hilbert") { in =>
       val pFreq = pAudio("freq", ParamSpec(-1, 1), 0.0)
@@ -593,8 +587,8 @@ object ScissProcs {
     }
 
     filter("~skew") { in =>
-      val pLo     = pAudio("lo", ParamSpec(0, 1), default = 0)
-      val pHi     = pAudio("hi", ParamSpec(0, 1), default = 1)
+      val pLo     = pAudio("lo" , ParamSpec(0, 1), default = 0)
+      val pHi     = pAudio("hi" , ParamSpec(0, 1), default = 1)
       val pPow    = pAudio("pow", ParamSpec(0.125, 8, ExpWarp), default = 1)
       val pRound  = pAudio("rnd", ParamSpec(0, 1), default = 0)
 
@@ -618,49 +612,47 @@ object ScissProcs {
     //      mix(in, sig, pMix)
     //    }
 
-    //    filter("m-above") { in =>
-    //      val pThresh = pAudio("thresh", ParamSpec(1.0e-3, 1.0e-1, ExpWarp), 1.0e-2)
-    //      val pMix    = mkMix()
-    //
-    //      val numChannels = in.numChannels // numOutputs
-    //      val thresh      = A2K.kr(pThresh)
-    //      val env         = Env(0.0, Seq(Env.Segment(0.2, 0.0, Curve.step), Env.Segment(0.2, 1.0, Curve.lin)))
-    //      val ramp        = EnvGen.kr(env)
-    //      //            val volume		   = LinLin.kr( thresh, 1.0e-3, 1.0e-1, 32, 4 )
-    //      val volume      = thresh.linlin(1.0e-3, 1.0e-1, 32, 4)
-    //      val bufIDs      = List.fill(numChannels)(bufEmpty(1024).id)
-    //      val chain1      = FFT(bufIDs, HPZ1.ar(in))
-    //      val chain2      = PV_MagAbove(chain1, thresh)
-    //      val flt         = LPZ1.ar(volume * IFFT(chain2)) * ramp
-    //
-    //      // account for initial dly
-    //      val env2 = Env(0.0, Seq(Env.Segment(BufDur.kr(bufIDs) * 2, 0.0, Curve.step), Env.Seg(0.2, 1, Curve.lin)))
-    //      val wet = EnvGen.kr(env2)
-    //      val sig = (in * (1 - wet).sqrt) + (flt * wet)
-    //      mix(in, sig, pMix)
-    //    }
+    filter("m-above") { in =>
+      val pThresh = pAudio("thresh", ParamSpec(1.0e-3, 1.0e-0, ExpWarp), 1.0e-2)
+      val pMix    = mkMix()
 
-    //    filter("m-below") { in =>
-    //      val pThresh     = pAudio("thresh", ParamSpec(1.0e-2, 1.0e-0, ExpWarp), 1.0e-1)
-    //      val pMix        = mkMix()
-    //
-    //      val numChannels = in.numChannels // numOutputs
-    //      val thresh      = A2K.kr(pThresh)
-    //      val env         = Env(0.0, Seq(Env.Segment(0.2, 0.0, Curve.step), Env.Segment(0.2, 1.0, Curve.lin)))
-    //      val ramp        = EnvGen.kr(env)
-    //      //            val volume		   = LinLin.kr( thresh, 1.0e-2, 1.0e-0, 4, 1 )
-    //      val volume      = thresh.linlin(1.0e-2, 1.0e-0, 4, 1)
-    //      val bufIDs      = List.fill(numChannels)(bufEmpty(1024).id)
-    //      val chain1      = FFT(bufIDs, in)
-    //      val chain2      = PV_MagBelow(chain1, thresh)
-    //      val flt         = volume * IFFT(chain2) * ramp
-    //
-    //      // account for initial dly
-    //      val env2 = Env(0.0, Seq(Env.Segment(BufDur.kr(bufIDs) * 2, 0.0, Curve.step), Env.Segment(0.2, 1, Curve.lin)))
-    //      val wet = EnvGen.kr(env2)
-    //      val sig = (in * (1 - wet).sqrt) + (flt * wet)
-    //      mix(in, sig, pMix)
-    //    }
+      val thresh  = A2K.kr(pThresh)
+      val env     = Env(0.0, Seq(Env.Segment(0.2, 0.0, Curve.step), Env.Segment(0.2, 1.0, Curve.lin)))
+      val ramp    = EnvGen.kr(env)
+      val volume  = thresh.linlin(1.0e-3, 1.0e-0, 4 /* 32 */, 2)
+      val bufIDs  = LocalBuf(numFrames = 1024, numChannels = Pad(1, in))
+      val chain1  = FFT(bufIDs, HPZ1.ar(in))
+      val chain2  = PV_MagAbove(chain1, thresh)
+      val flt     = LPZ1.ar(volume * IFFT.ar(chain2)) * ramp
+
+      // account for initial dly
+      val bufDur  = 1024 / SampleRate.ir
+      val env2    = Env(0.0, Seq(Env.Segment(bufDur * 2, 0.0, Curve.step), Env.Segment(0.2, 1, Curve.lin)))
+      val wet     = EnvGen.kr(env2)
+      val sig     = (in * (1 - wet).sqrt) + (flt * wet)
+      mix(in, sig, pMix)
+    }
+
+    filter("m-below") { in =>
+      val pThresh     = pAudio("thresh", ParamSpec(1.0e-1, 10.0, ExpWarp), default = 1.0)
+      val pMix        = mkMix()
+
+      val thresh      = A2K.kr(pThresh)
+      val env         = Env(0.0, Seq(Env.Segment(0.2, 0.0, Curve.step), Env.Segment(0.2, 1.0, Curve.lin)))
+      val ramp        = EnvGen.kr(env)
+      //            val volume		   = LinLin.kr( thresh, 1.0e-2, 1.0e-0, 4, 1 )
+      val volume      = thresh.linlin(1.0e-1, 10, 2, 1)
+      val bufIDs      = LocalBuf(numFrames = 1024, numChannels = Pad(1, in))
+      val chain1      = FFT(bufIDs, in)
+      val chain2      = PV_MagBelow(chain1, thresh)
+      val flt         = volume * IFFT.ar(chain2) * ramp
+
+      // account for initial dly
+      val env2 = Env(0.0, Seq(Env.Segment(BufDur.kr(bufIDs) * 2, 0.0, Curve.step), Env.Segment(0.2, 1, Curve.lin)))
+      val wet = EnvGen.kr(env2)
+      val sig = (in * (1 - wet).sqrt) + (flt * wet)
+      mix(in, sig, pMix)
+    }
 
     filter("pitch") { in =>
       val pTrans  = pAudio("shift", ParamSpec(0.125, 4, ExpWarp), 1)
