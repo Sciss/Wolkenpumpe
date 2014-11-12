@@ -775,29 +775,25 @@ object ScissProcs {
         }
 
         def mkOutPan(in: GE): GE = {
-          val pSpread       = pControl("spr" , ParamSpec(0.0, 1.0), 0.25) // XXX rand
-          val pRota         = pControl("rota", ParamSpec(0.0, 1.0), 0.0)
-          val pBase         = pControl("azi" , ParamSpec(0.0, 360.0), 0.0)
+          val pSpread       = pControl("spr" , ParamSpec(0.0, 1.0),   default = 0.25) // XXX rand
+          val pRota         = pControl("rota", ParamSpec(0.0, 1.0),   default = 0.0)
+          val pBase         = pControl("azi" , ParamSpec(0.0, 360.0), default = 0.0)
           val pAmp          = mkAmp()
 
           val baseAzi       = Lag.kr(pBase, 0.5) + IRand(0, 360)
           val rotaAmt       = Lag.kr(pRota, 0.1)
           val spread        = Lag.kr(pSpread, 0.5)
-          val inChannels    = ??? : Int // in.numChannels // numOutputs
           val outChannels   = cfg.numChannels
           val rotaSpeed     = 0.1
           val inSig         = in * Lag.ar(pAmp, 0.1) // .outputs
           val noise         = LFDNoise1.kr(rotaSpeed) * rotaAmt * 2
-          val pos: GE = Seq.tabulate(inChannels) { inCh =>
-            val pos0 = (baseAzi / 180) + (inCh / inChannels * 2)
-            pos0 + noise
-          }
-          val level = 1
-          val width = (spread * (outChannels - 2)) + 2
-          //println( "PanAz : " + outChannels )
-          // XXX tricky Mix motherfucker -- is that sound processes (?) somewhere checks the
-          // num channels in a wrong way.
-          val outSig = Mix(PanAz.ar(outChannels, inSig, pos, level, width, 0))
+          val pos0          = (baseAzi / 180) + (ChannelIndices(in) / NumChannels(in) * 2)
+          val pos           = pos0 + noise
+          val level         = 1
+          val width         = (spread * (outChannels - 2)) + 2
+          val panAz         = PanAz.ar(outChannels, inSig, pos, level, width, 0)
+          // tricky
+          val outSig        = panAz // Mix(panAz)
           placeChannels(outSig)
         }
 
