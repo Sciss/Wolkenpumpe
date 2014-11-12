@@ -19,7 +19,7 @@ import de.sciss.lucre.synth.Sys
 import de.sciss.nuages.Wolkenpumpe.DSL
 import de.sciss.synth
 import de.sciss.synth.io.AudioFile
-import de.sciss.synth.proc.{AudioGraphemeElem, ExprImplicits, Grapheme, Obj}
+import de.sciss.synth.proc.{AuralSystem, AudioGraphemeElem, ExprImplicits, Grapheme, Obj}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.language.implicitConversions
@@ -80,7 +80,7 @@ object ScissProcs {
 
   var tapePath: Option[String] = None
 
-  def apply[S <: Sys[S]](config: Config)(implicit tx: S#Tx, nuages: Nuages[S]): Unit = {
+  def apply[S <: Sys[S]](config: Config)(implicit tx: S#Tx, nuages: Nuages[S], aural: AuralSystem): Unit = {
     import synth._
     import ugen._
 
@@ -381,28 +381,25 @@ object ScissProcs {
     //        }
     //      }
     //    }
-    //
-    //    filter( "delay" ) {
-    //      val ptime   = pAudio( "time", ParamSpec( 0.3,  30.0, ExpWarp ), 10 )
-    //      val pfeed   = pAudio( "feed", ParamSpec( 0.001, 1.0, ExpWarp ), 0.001 )
-    //      val pmix    = pMix
-    //      graph { in: In =>
-    //        val numFrames  = (sampleRate * 30).toInt
-    //        val numChannels= in.numChannels // numOutputs
-    //      val buf        = bufEmpty( numFrames, numChannels )
-    //        val bufID      = buf.id
-    //        val time       = ptime.ar
-    //        val lin        = LocalIn.ar( numChannels )
-    //        val feed       = pfeed.ar
-    //        val wDry       = (1 - feed).sqrt
-    //        val wWet       = feed.sqrt
-    //        val flt0       = BufDelayL.ar( bufID, (in * wDry) + (lin * wWet), time )
-    //        val flt        = LeakDC.ar( flt0 )
-    //        LocalOut.ar( flt )
-    //
-    //        mix( in, flt, pmix )
-    //      }
-    //    }
+
+    filter("delay") { in =>
+      val pTime       = pAudio("time", ParamSpec(0.03, 30.0, ExpWarp), default = 10)
+      val pFeed       = pAudio("feed", ParamSpec(0.001, 1.0, ExpWarp), default = 0.001)
+      val pMix        = mkMix()
+
+      val numFrames   = SampleRate.ir * 30
+      val buf         = LocalBuf(numFrames = numFrames, numChannels = Pad(1, in))
+      val time        = Lag.ar(pTime)
+      val lin         = Pad.LocalIn.ar(in)
+      val feed        = pFeed
+      val wDry        = (1 - feed).sqrt
+      val wWet        = feed.sqrt
+      val flt0        = BufDelayL.ar(buf, (in * wDry) + (lin * wWet), time)
+      val flt         = LeakDC.ar(flt0)
+      LocalOut.ar(flt)
+
+      mix(in, flt, pMix)
+    }
 
     filter("mantissa") { in =>
       val pBits = pAudio("bits", ParamSpec(2, 14, LinWarp, 1), default = 14)
@@ -412,28 +409,28 @@ object ScissProcs {
       mix(in, flt, pMix)
     }
 
-    //    filter("achil") { in =>
-    //      val pSpeed  = pAudio("speed", ParamSpec(0.125, 2.3511, ExpWarp), default = 0.5)
-    //      val pMix    = mkMix()
-    //
-    //      val speed       = Lag.ar(pSpeed, 0.1)
-    //      val numFrames   = SampleRate.ir // sampleRate.toInt
-    //      val numChannels = ??? : Int // in.numChannels // numOutputs
-    //      //      val buf         = bufEmpty(numFrames, numChannels)
-    //      //      val bufID       = buf.id
-    //      val bufID       = LocalBuf(numFrames = numFrames, numChannels = numChannels)
-    //      val writeRate   = BufRateScale.kr(bufID)
-    //      val readRate    = writeRate * speed
-    //      val readPhasor  = Phasor.ar(0, readRate, 0, numFrames)
-    //      val read        = BufRd.ar(numChannels, bufID, readPhasor, 0, 4)
-    //      val writePhasor = Phasor.ar(0, writeRate, 0, numFrames)
-    //      val old         = BufRd.ar(numChannels, bufID, writePhasor, 0, 1)
-    //      val wet0        = SinOsc.ar(0, (readPhasor - writePhasor).abs / numFrames * math.Pi)
-    //      val dry         = 1 - wet0.squared
-    //      val wet         = 1 - (1 - wet0).squared
-    //      BufWr.ar((old * dry) + (in * wet), bufID, writePhasor)
-    //      mix(in, read, pMix)
-    //    }
+    filter("achil") { in =>
+      val pSpeed  = pAudio("speed", ParamSpec(0.125, 2.3511, ExpWarp), default = 0.5)
+      val pMix    = mkMix()
+
+      val speed       = Lag.ar(pSpeed, 0.1)
+      val numFrames   = SampleRate.ir // sampleRate.toInt
+      val bufID       = LocalBuf(numFrames = numFrames, numChannels = Pad(1, in))
+      val writeRate   = BufRateScale.kr(bufID)
+      val readRate    = writeRate * speed
+      val readPhasor  = Phasor.ar(0, readRate, 0, numFrames)
+      val read        = BufRd.ar(1, bufID, readPhasor, 0, 4)
+      val writePhasor = Phasor.ar(0, writeRate, 0, numFrames)
+      val old         = BufRd.ar(1, bufID, writePhasor, 0, 1)
+      val wet0        = SinOsc.ar(0, (readPhasor - writePhasor).abs / numFrames * math.Pi)
+      val dry         = 1 - wet0.squared
+      val wet         = 1 - (1 - wet0).squared
+      val writeSig    = (old * dry) + (in * wet)
+      // NOTE: `writeSig :: Nil: GE` does _not_ work because single
+      // element seqs are not created by that conversion.
+      BufWr.ar(Pad.Split(writeSig), bufID, writePhasor)
+      mix(in, read, pMix)
+    }
 
     filter("a-gate") { in =>
       val pAmt = pAudio("amt", ParamSpec(0, 1), default = 1)

@@ -178,14 +178,15 @@ object Wolkenpumpe {
         Out.ar(0, sig)
       }
 
+      implicit val aural = AuralSystem.start()
+
       val sCfg = ScissProcs.Config()
       sCfg.audioFilesFolder = Some(userHome / "Music" / "tapes")
       ScissProcs[S](sCfg)
 
-      val aural = AuralSystem.start()
       import WorkspaceHandle.Implicits._
       val p     = NuagesPanel(n, config, aural)
-      NuagesFrame(p)
+      NuagesFrame(p, undecorated = true)
     }
 
 //        val recordPath = "/tmp"

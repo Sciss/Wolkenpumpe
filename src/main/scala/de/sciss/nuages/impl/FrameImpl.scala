@@ -32,16 +32,17 @@ import scala.swing.{GridBagPanel, BorderPanel, BoxPanel, Orientation, Swing, Fra
 import Swing._
 
 object FrameImpl {
-  def apply[S <: Sys[S]](panel: NuagesPanel[S])(implicit tx: S#Tx, cursor: stm.Cursor[S]): NuagesFrame[S] = {
+  def apply[S <: Sys[S]](panel: NuagesPanel[S], undecorated: Boolean)
+                        (implicit tx: S#Tx, cursor: stm.Cursor[S]): NuagesFrame[S] = {
     val tlm       = TimelineModel(Span(0L, (Timeline.SampleRate * 60 * 60 * 10).toLong), Timeline.SampleRate)
     val transport = panel.transport
     val trnspView = TransportView(transport, tlm, hasMillis = false, hasLoop = false)
-    new Impl(panel, trnspView).init()
+    new Impl(panel, trnspView, undecorated = undecorated).init()
   }
 
-  private final class Impl[S <: Sys[S]](val view: NuagesPanel[S], transportView: TransportView[S])
+  private final class Impl[S <: Sys[S]](val view: NuagesPanel[S], transportView: TransportView[S], undecorated: Boolean)
                                        (implicit cursor: stm.Cursor[S])
-    extends NuagesFrame[S] {
+    extends NuagesFrame[S] { impl =>
 
     private var _frame: Frame = _
     def frame: Frame = {
@@ -105,6 +106,7 @@ object FrameImpl {
 
       frame = new Frame {
         title = "Wolkenpumpe"
+        peer.setUndecorated(impl.undecorated)
 
         contents = new BorderPanel {
           background = Color.black
