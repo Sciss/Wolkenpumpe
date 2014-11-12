@@ -597,19 +597,20 @@ object ScissProcs {
       mix(in, sig, pMix)
     }
 
-    //    filter("~onsets") { in =>
-    //      val pThresh = pControl("thresh", ParamSpec(0, 1), default = 0.5)
-    //      val pDecay  = pAudio  ("decay" , ParamSpec(0, 1), default = 0)
-    //
-    //      val pMix    = mkMix()
-    //
-    //      val numChannels = in.numChannels // numOutputs
-    //      val bufIDs      = Seq.fill(numChannels)(bufEmpty(1024).id)
-    //      val chain1      = FFT(bufIDs, in)
-    //      val onsets      = Onsets.kr(chain1, pThresh)
-    //      val sig         = Decay.ar(Trig1.ar(onsets, SampleDur.ir), pDecay).min(1) // * 2 - 1
-    //      mix(in, sig, pMix)
-    //    }
+    filter("~onsets") { in =>
+      val pThresh     = pControl("thresh", ParamSpec(0, 1), default = 0.5)
+      val pDecay      = pAudio  ("decay" , ParamSpec(0, 1), default = 0)
+
+      val pMix        = mkMix()
+
+      //      val numChannels = in.numChannels // numOutputs
+      //      val bufIDs      = Seq.fill(numChannels)(bufEmpty(1024).id)
+      val bufIDs      = LocalBuf(numFrames = 1024, numChannels = Pad(1, in))
+      val chain1      = FFT(bufIDs, in)
+      val onsets      = Onsets.kr(chain1, pThresh)
+      val sig         = Decay.ar(Trig1.ar(onsets, SampleDur.ir), pDecay).min(1) // * 2 - 1
+      mix(in, sig, pMix)
+    }
 
     filter("m-above") { in =>
       val pThresh = pAudio("thresh", ParamSpec(1.0e-3, 1.0e-0, ExpWarp), 1.0e-2)
@@ -681,53 +682,48 @@ object ScissProcs {
       mix(in, flt, pMix)
     }
 
-    // XXX this has problems with UDP max datagram size
-    //      filter( "renoise" ) {
-    //         val pcolor  = pAudio( "color", ParamSpec( 0, 1 ), 0 )
-    //         val pmix    = pMix
-    //         val step	   = 0.5
-    //         val freqF   = math.pow( 2, step )
-    //         val freqs	= Array.iterate( 32.0, 40 )( _ * freqF ).filter( _ <= 16000 )
-    //         graph { in =>
-    //            val color         = Lag.ar( pcolor.ar, 0.1 )
-    //            val numChannels   = in.numOutputs
-    //            val noise	      = WhiteNoise.ar( numChannels )
-    //            val sig           = freqs.foldLeft[ GE ]( 0 ){ (sum, freq) =>
-    //               val filt       = BPF.ar( in, freq, step )
-    //               val freq2      = ZeroCrossing.ar( filt )
-    //               val w0         = Amplitude.ar( filt )
-    //               val w2         = w0 * color
-    //               val w1         = w0 * (1 - color)
-    //               sum + BPF.ar( (noise * w1) + (LFPulse.ar( freq2 ) * w2), freq, step )
-    //            }
-    //            val amp           = step.reciprocal  // compensate for Q
-    //            val flt           = sig * amp
-    //            mix( in, flt, pmix )
-    //         }
-    //      }
+    filter("renoise") { in =>
+      val pColor      = pAudio("color", ParamSpec(0, 1), default = 0)
+      val pMix        = mkMix()
+      val step        = 0.5
+      val freqF       = math.pow(2, step)
+      val frequencies = Vec.iterate(32.0, 40)(_ * freqF).filter(_ <= 16000)
 
-    // XXX TODO
-    //      filter( "verb" ) {
-    //         val pextent = pScalar( "size", ParamSpec( 0, 1 ), 0.5 )
-    //         val pcolor  = pControl( "color", ParamSpec( 0, 1 ), 0.5 )
-    //         val pmix    = pMix
-    //         graph { in: In =>
-    //            val extent     = pextent.ir
-    //            val color	   = Lag.kr( pcolor.kr, 0.1 )
-    //            val i_roomSize	= LinExp.ir( extent, 0, 1, 1, 100 )
-    //            val i_revTime  = LinExp.ir( extent, 0, 1, 0.3, 20 )
-    //            val spread	   = 15
-    //            val numChannels= in.numOutputs
-    //            val ins        = in.outputs
-    //            val verbs      = (ins :+ ins.last).grouped( 2 ).toSeq.flatMap( pair =>
-    //               (GVerb.ar( Mix( pair ), i_roomSize, i_revTime, color, color, spread, 0, 1, 0.7, i_roomSize ) * 0.3).outputs
-    //            )
-    //// !! BUG IN SCALA 2.8.0 : CLASSCASTEXCEPTION
-    //// weird stuff goin on with UGenIn seqs...
-    //            val flt: GE     = Vector( verbs.take( numChannels ): _* ) // drops last one if necessary
-    //            mix( in, flt, pmix )
-    //         }
-    //      }
+      val color       = Lag.ar(pColor, 0.1)
+      val noise       = WhiteNoise.ar(Pad(1, in))
+      val sig         = frequencies.foldLeft[GE](0) { (sum, freq) =>
+        val flt   = BPF.ar(in, freq, step)
+        val freq2 = ZeroCrossing.ar(flt)
+        val w0    = Amplitude.ar(flt)
+        val w2    = w0 * color
+        val w1    = w0 * (1 - color)
+        sum + BPF.ar((noise * w1) + (LFPulse.ar(freq2) * w2), freq, step)
+      }
+      val amp         = step.reciprocal // compensate for Q
+      val flt         = sig * amp
+      mix(in, flt, pMix)
+    }
+
+    filter("verb") { in =>
+      val pExtent = pControl("size" , ParamSpec(0, 1), default = 0.5)
+      val pColor  = pControl("color", ParamSpec(0, 1), default = 0.5)
+      val pMix    = mkMix()
+
+      val extent      = pExtent
+      val color       = Lag.kr(pColor, 0.1)
+      val i_roomSize  = LinExp.kr(extent, 0, 1, 1, 100)
+      val i_revTime   = LinExp.kr(extent, 0, 1, 0.3, 20)
+      val spread      = 15
+      //      val numChannels = in.numOutputs
+      //      val ins         = in.outputs
+      //      val verbs       = (ins :+ ins.last).grouped(2).toSeq.flatMap(pair =>
+      //        (GVerb.ar(Mix(pair), i_roomSize, i_revTime, color, color, spread, 0, 1, 0.7, i_roomSize) * 0.3).outputs
+      //      )
+      //      val flt: GE = Vector(verbs.take(numChannels): _*) // drops last one if necessary
+      val fltS        = GVerb.ar(in, i_roomSize, i_revTime, color, color, spread, 0, 1, 0.7, i_roomSize) * 0.3
+      val flt         = fltS \ 0
+      mix(in, flt, pMix)
+    }
 
     filter("zero") { in =>
       val pWidth  = pAudio("width", ParamSpec(0, 1), default = 0.5)
