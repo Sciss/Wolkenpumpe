@@ -22,7 +22,7 @@ import de.sciss.lucre.expr.{Double => DoubleEx}
 import de.sciss.synth
 import de.sciss.synth.proc.graph.{Attribute, ScanIn, ScanOut}
 import de.sciss.synth.{control, scalar, audio, Rate, SynthGraph, GE, proc}
-import de.sciss.synth.proc.{WorkspaceHandle, DoubleElem, AuralSystem, ExprImplicits, Obj, Proc}
+import de.sciss.synth.proc.{Folder, WorkspaceHandle, DoubleElem, AuralSystem, ExprImplicits, Obj, Proc}
 import proc.Implicits._
 
 import scala.concurrent.stm.TxnLocal
@@ -72,13 +72,20 @@ object Wolkenpumpe {
       Attribute(rate, key, default)
     }
 
+    private def insertByName(folder: Folder[S], elem: Obj[S])(implicit tx: S#Tx): Unit = {
+      val nameL = elem.name.toLowerCase
+      val idx0  = folder.iterator.toList.indexWhere(_.name.toLowerCase.compareTo(nameL) > 0)
+      val idx   = if (idx0 >= 0) idx0 else folder.size
+      folder.insert(idx, elem)
+    }
+
     def generator(name: String)(fun: => GE)(implicit tx: S#Tx, n: Nuages[S]): Proc.Obj[S] = {
       val obj = mkObj(name) {
         val out = fun
         ScanOut("out", out)
       }
       obj.elem.peer.scans.add("out")
-      n.generators.addLast(obj)
+      insertByName(n.generators, obj)
       obj
     }
 
@@ -91,17 +98,24 @@ object Wolkenpumpe {
       val scans = obj.elem.peer.scans
       scans.add("in" )
       scans.add("out")
-      n.filters.addLast(obj)
+      insertByName(n.filters, obj)
       obj
     }
 
-    def collector(name: String)(fun: GE => Unit)(implicit tx: S#Tx, n: Nuages[S]): Proc.Obj[S] = {
+    def sink(name: String)(fun: GE => Unit)(implicit tx: S#Tx, n: Nuages[S]): Proc.Obj[S] =
+      sinkLike(n.filters, name, fun)
+
+    def collector(name: String)(fun: GE => Unit)(implicit tx: S#Tx, n: Nuages[S]): Proc.Obj[S] =
+      sinkLike(n.collectors, name, fun)
+
+    private def sinkLike(folder: Folder[S], name: String, fun: GE => Unit)
+                        (implicit tx: S#Tx, nuages: Nuages[S]): Proc.Obj[S] = {
       val obj = mkObj(name) {
         val in = ScanIn("in")
         fun(in)
       }
       obj.elem.peer.scans.add("in")
-      n.collectors.addLast(obj)
+      insertByName(folder, obj)
       obj
     }
   }

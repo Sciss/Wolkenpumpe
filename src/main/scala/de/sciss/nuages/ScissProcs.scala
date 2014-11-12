@@ -745,6 +745,12 @@ object ScissProcs {
       mix(in, flt, pMix)
     }
 
+    // -------------- SINKS --------------
+
+    sink("rec") { in =>
+      Mix.mono(in).poll(1, "poll")
+    }
+
     // -------------- DIFFUSIONS --------------
 
     masterChansOption.foreach { masterChans =>

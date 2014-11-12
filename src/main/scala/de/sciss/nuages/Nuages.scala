@@ -16,7 +16,7 @@ package de.sciss.nuages
 import de.sciss.lucre.stm.Disposable
 import de.sciss.lucre.synth.Sys
 import de.sciss.serial.{DataInput, Serializer, Writable}
-import de.sciss.synth.proc.{Obj, AuralSystem, Timeline, Folder}
+import de.sciss.synth.proc.{Obj, Timeline, Folder}
 import impl.{NuagesImpl => Impl}
 
 import collection.immutable.{IndexedSeq => Vec}

@@ -856,9 +856,11 @@ object PanelImpl {
       flt match {
         case Proc.Obj(fltP) =>
           val procFlt  = fltP .elem.peer
-          pred.removeSink(succ)
           pred.addSink(procFlt.scans.add("in"))
-          procFlt.scans.add("out").addSink(succ)
+          procFlt.scans.get("out").foreach { fltOut =>
+            pred.removeSink(succ)
+            fltOut.addSink(succ)
+          }
 
         case _ =>
       }
