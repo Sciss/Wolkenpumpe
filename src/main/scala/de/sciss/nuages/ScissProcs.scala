@@ -80,7 +80,8 @@ object ScissProcs {
 
   var tapePath: Option[String] = None
 
-  def apply[S <: Sys[S]](config: Config)(implicit tx: S#Tx, nuages: Nuages[S], aural: AuralSystem): Unit = {
+  def apply[S <: Sys[S]](sConfig: ScissProcs.Config, nConfig: Nuages.Config)
+                        (implicit tx: S#Tx, nuages: Nuages[S], aural: AuralSystem): Unit = {
     import synth._
     import ugen._
 
@@ -89,7 +90,7 @@ object ScissProcs {
     val imp = ExprImplicits[S]
     import imp._
 
-    // val masterBusOption = settings.frame.panel.masterBus
+    val masterChansOption = nConfig.masterChannels
 
     // -------------- GENERATORS --------------
 
@@ -134,7 +135,7 @@ object ScissProcs {
       disk // WrapExtendChannels( 2, disk )
     }
 
-    config.audioFilesFolder.foreach { folder =>
+    sConfig.audioFilesFolder.foreach { folder =>
       val loc = ArtifactLocation[S](folder)
 
       val audioFiles = folder.children
@@ -158,21 +159,23 @@ object ScissProcs {
       })
     }
 
-    //    masterBusOption.foreach { masterBus =>
-    //      generator( "(test)" ) {
-    //        val pAmp    = pControl( "amp",  ParamSpec( 0.01, 1.0, ExpWarp ), 1 )
-    //        val pSig    = pControl( "sig",  ParamSpec( 0, 1, LinWarp, 1 ), 0 )
-    //        val pFreq   = pControl( "freq", ParamSpec( 0.1, 10, ExpWarp ), 1 )
-    //
-    //        val idx = Stepper.kr( Impulse.kr( pFreq ), lo = 0, hi = masterBus.numChannels )
-    //        val sig0: GE = Seq( WhiteNoise.ar( 1 ), SinOsc.ar( 441 ))
-    //        val sig = Select.ar( pSig, sig0 ) * pAmp
-    //        val sigOut: GE = Seq.tabulate( masterBus.numChannels )( ch => sig * (1 - (ch - idx).abs.min( 1 )))
-    //        sigOut
-    //      }
-    //    }
+    masterChansOption.foreach { masterChans =>
+      val numChans = masterChans.size
 
-    val loopFrames  = (config.loopDuration * 44100 /* config.server.sampleRate */).toInt
+      generator("(test)") {
+        val pAmp  = pControl("amp" , ParamSpec(0.01,  1.0, ExpWarp),    default = 1)
+        val pSig  = pControl("sig" , ParamSpec(0   ,  1  , LinWarp, 1), default = 0)
+        val pFreq = pControl("freq", ParamSpec(0.1 , 10  , ExpWarp),    default = 1)
+
+        val idx       = Stepper.kr(Impulse.kr(pFreq), lo = 0, hi = numChans)
+        val sig0: GE  = Seq(WhiteNoise.ar(1), SinOsc.ar(441))
+        val sig       = Select.ar(pSig, sig0) * pAmp
+        val sigOut: GE = Seq.tabulate(numChans)(ch => sig * (1 - (ch - idx).abs.min(1)))
+        sigOut
+      }
+    }
+
+    val loopFrames  = (sConfig.loopDuration * 44100 /* config.server.sampleRate */).toInt
     //    val loopBuffers = Vec.fill[Buffer](config.numLoops)(Buffer.alloc(config.server, loopFrames, 2))
     //    val loopBufIDs  = loopBuffers.map(_.id)
 
@@ -245,7 +248,7 @@ object ScissProcs {
     //      }
     //    }
 
-    config.micInputs.foreach { cfg =>
+    sConfig.micInputs.foreach { cfg =>
       generator(cfg.name) {
         val pBoost    = pAudio("gain", ParamSpec(0.1, 10, ExpWarp), default = 0.1 /* 1 */)
         val pFeed     = pAudio("feed", ParamSpec(0, 1), default = 0)
@@ -285,7 +288,7 @@ object ScissProcs {
       }
     }
 
-    config.lineInputs.foreach { cfg =>
+    sConfig.lineInputs.foreach { cfg =>
       generator(cfg.name) {
         val pBoost = pAudio("gain", ParamSpec(0.1, 10, ExpWarp), default = 1)
 
@@ -721,7 +724,7 @@ object ScissProcs {
       //      )
       //      val flt: GE = Vector(verbs.take(numChannels): _*) // drops last one if necessary
       val fltS        = GVerb.ar(in, i_roomSize, i_revTime, color, color, spread, 0, 1, 0.7, i_roomSize) * 0.3
-      val flt         = fltS \ 0
+      val flt         = fltS \ 0   // simply drop the right channels of each verb
       mix(in, flt, pMix)
     }
 
@@ -744,159 +747,109 @@ object ScissProcs {
 
     // -------------- DIFFUSIONS --------------
 
-    //    masterBusOption.foreach { masterBus =>
-    //      val masterCfg        = NamedBusConfig( "", 0, masterBus.numChannels )
-    //      val masterGroupsCfg  = masterCfg +: settings.masterGroups
-    //
-    //      masterGroupsCfg.zipWithIndex.foreach { case (cfg, idx) =>
-    //        def placeChannels( sig: GE ) : GE = {
-    //          if( cfg.numChannels == masterBus.numChannels ) sig else {
-    //            //               IndexedSeq.fill( chanOff )( Constant( 0 )) ++ sig.outputs ++ IndexedSeq.fill( masterBus.numChannels - (numCh + chanOff) )( Constant( 0 ))
-    //            Seq( Silent.ar( cfg.offset ),
-    //              Flatten( sig ),
-    //              Silent.ar( masterBus.numChannels - (cfg.offset + cfg.numChannels) )) : GE
-    //          }
-    //        }
-    //
-    //        if( settings.frame.config.collector ) {
-    //          filter( "O-all" + cfg.name ) {
-    //            val pamp  = pAudio( "amp", ParamSpec( 0.01, 10, ExpWarp ), 1 )
-    //
-    //            graph { in: In =>
-    //              val sig           = (in * Lag.ar( pamp.ar, 0.1 )) // .outputs
-    //            val outChannels   = cfg.numChannels
-    //              val outSig        = WrapExtendChannels( outChannels, sig )
-    //              placeChannels( outSig )
-    //            }
-    //          }
-    //
-    //          filter( "O-pan" + cfg.name ) {
-    //            val pspread = pControl( "spr",  ParamSpec( 0.0, 1.0 ), 0.25 ) // XXX rand
-    //            val prota   = pControl( "rota", ParamSpec( 0.0, 1.0 ), 0.0 )
-    //            val pbase   = pControl( "azi",  ParamSpec( 0.0, 360.0 ), 0.0 )
-    //            val pamp    = pAudio( "amp", ParamSpec( 0.01, 10, ExpWarp ), 1 )
-    //
-    //            graph { in: In =>
-    //              val baseAzi       = Lag.kr( pbase.kr, 0.5 ) + IRand( 0, 360 )
-    //              val rotaAmt       = Lag.kr( prota.kr, 0.1 )
-    //              val spread        = Lag.kr( pspread.kr, 0.5 )
-    //              val inChannels    = in.numChannels // numOutputs
-    //            val outChannels   = cfg.numChannels
-    //              val rotaSpeed     = 0.1
-    //              val inSig         = (in * Lag.ar( pamp.ar, 0.1 )) // .outputs
-    //            val noise         = LFDNoise1.kr( rotaSpeed ) * rotaAmt * 2
-    //              val altern        = false
-    //              val pos: GE       = Seq.tabulate( inChannels ) { inCh =>
-    //                val pos0 = if( altern ) {
-    //                  (baseAzi / 180) + (inCh / outChannels * 2)
-    //                } else {
-    //                  (baseAzi / 180) + (inCh / inChannels * 2)
-    //                }
-    //                pos0 + noise
-    //              }
-    //              val level         = 1
-    //              val width         = (spread * (outChannels - 2)) + 2
-    //              //println( "PanAz : " + outChannels )
-    //              // XXX tricky Mix motherfucker -- is that sound processes (?) somewhere checks the
-    //              // num channels in a wrong way.
-    //              val outSig        = Mix( PanAz.ar( outChannels, inSig, pos, level, width, 0 ))
-    //              placeChannels( outSig )
-    //            }
-    //          }
-    //
-    //          filter( "O-rnd" + cfg.name ) {
-    //            val pamp  = pAudio( "amp", ParamSpec( 0.01, 10, ExpWarp ), 1 )
-    //            val pfreq = pControl( "freq", ParamSpec( 0.01, 10, ExpWarp ), 0.1 )
-    //            val ppow  = pControl( "pow", ParamSpec( 1, 10 ), 2 )
-    //            val plag  = pControl( "lag", ParamSpec( 0.1, 10 ), 1 )
-    //
-    //            graph { in: In =>
-    //              val sig          = (in * Lag.ar( pamp.ar, 0.1 )) // .outputs
-    //            //                  val inChannels   = in.numChannels // sig.size
-    //            val outChannels  = cfg.numChannels
-    //              val sig1         = WrapExtendChannels( outChannels, sig )
-    //              val freq         = pfreq.kr
-    //              val lag          = plag.kr
-    //              val pw           = ppow.kr
-    //              val rands        = Lag.ar( TRand.ar( 0, 1, Dust.ar( List.fill( outChannels )( freq ))).pow( pw ), lag )
-    //              val outSig       = sig1 * rands
-    //              placeChannels( outSig )
-    //            }
-    //          }
-    //
-    //        } else {
-    //          diff( "O-all" + cfg.name ) {
-    //            val pamp  = pAudio( "amp", ParamSpec( 0.01, 10, ExpWarp ), 1 )
-    //            val pout  = pAudioOut( "out", None )
-    //
-    //            graph { in: In =>
-    //              val sig          = (in * Lag.ar( pamp.ar, 0.1 )) // .outputs
-    //            //                  val inChannels   = in.numChannels // sig.size
-    //            val outChannels  = cfg.numChannels
-    //              val outSig        = WrapExtendChannels( outChannels, sig )
-    //              pout.ar( placeChannels( outSig ))
-    //            }
-    //          }
-    //
-    //          diff( "O-pan" + cfg.name ) {
-    //            val pspread = pControl( "spr",  ParamSpec( 0.0, 1.0 ), 0.25 ) // XXX rand
-    //            val prota   = pControl( "rota", ParamSpec( 0.0, 1.0 ), 0.0 )
-    //            val pbase   = pControl( "azi",  ParamSpec( 0.0, 360.0 ), 0.0 )
-    //            val pamp    = pAudio( "amp", ParamSpec( 0.01, 10, ExpWarp ), 1 )
-    //            val pout    = pAudioOut( "out", None )
-    //
-    //            graph { in: In =>
-    //              val baseAzi       = Lag.kr( pbase.kr, 0.5 ) + IRand( 0, 360 )
-    //              val rotaAmt       = Lag.kr( prota.kr, 0.1 )
-    //              val spread        = Lag.kr( pspread.kr, 0.5 )
-    //              val inChannels   = in.numChannels // numOutputs
-    //            val outChannels  = cfg.numChannels
-    //              val rotaSpeed     = 0.1
-    //              val inSig         = (in * Lag.ar( pamp.ar, 0.1 )) // .outputs
-    //            val noise         = LFDNoise1.kr( rotaSpeed ) * rotaAmt * 2
-    //              val altern        = false
-    //              val pos: GE       = Seq.tabulate( inChannels ) { inCh =>
-    //                val pos0 = if( altern ) {
-    //                  (baseAzi / 180) + (inCh / outChannels * 2)
-    //                } else {
-    //                  (baseAzi / 180) + (inCh / inChannels * 2)
-    //                }
-    //                pos0 + noise
-    //              }
-    //              val level         = 1
-    //              val width         = (spread * (outChannels - 2)) + 2
-    //              val outSig        = PanAz.ar( outChannels, inSig, pos, level, width, 0 )
-    //              pout.ar( placeChannels( outSig ))
-    //            }
-    //          }
-    //
-    //          diff( "O-rnd" + cfg.name ) {
-    //            val pamp  = pAudio( "amp", ParamSpec( 0.01, 10, ExpWarp ), 1 )
-    //            val pfreq = pControl( "freq", ParamSpec( 0.01, 10, ExpWarp ), 0.1 )
-    //            val ppow  = pControl( "pow", ParamSpec( 1, 10 ), 2 )
-    //            val plag  = pControl( "lag", ParamSpec( 0.1, 10 ), 1 )
-    //            val pout  = pAudioOut( "out", None )
-    //
-    //            graph { in: In =>
-    //              val sig          = (in * Lag.ar( pamp.ar, 0.1 )) // .outputs
-    //            //                  val inChannels   = in.numChannels // sig.size
-    //            val outChannels  = cfg.numChannels
-    //              val sig1          = WrapExtendChannels( outChannels, sig )
-    //              val freq         = pfreq.kr
-    //              val lag          = plag.kr
-    //              val pw           = ppow.kr
-    //              val rands        = Lag.ar( TRand.ar( 0, 1, Dust.ar( List.fill( outChannels )( freq ))).pow( pw ), lag )
-    //              val outSig       = sig1 * rands
-    //              pout.ar( placeChannels( outSig ))
-    //            }
-    //          }
-    //        }
-    //      }
-    //    }
+    masterChansOption.foreach { masterChans =>
+      val numChans          = masterChans.size
+      val masterCfg         = NamedBusConfig("", 0, numChans)
+      val masterGroupsCfg   = masterCfg +: sConfig.masterGroups
 
-    collector( "O-mute" ) { in =>
-      DC.ar(0)
+      masterGroupsCfg.zipWithIndex.foreach { case (cfg, idx) =>
+        def placeChannels(sig: GE): GE = {
+          if (cfg.numChannels == numChans) sig
+          else {
+            Seq(Silent.ar(cfg.offset),
+              Flatten(sig),
+              Silent.ar(numChans - (cfg.offset + cfg.numChannels))): GE
+          }
+        }
+
+        def WrapExtendChannels(n: Int, sig: GE): GE = Vec.tabulate(n)(sig \ _)
+
+        def mkAmp(): GE = pAudio("amp", ParamSpec(-inf, 20, DbFaderWarp), -inf).dbamp
+
+        def mkOutAll(in: GE): GE = {
+          val pAmp          = mkAmp()
+          val sig           = in * Lag.ar(pAmp, 0.1) // .outputs
+          val outChannels   = cfg.numChannels
+          val outSig        = WrapExtendChannels(outChannels, sig)
+          placeChannels(outSig)
+        }
+
+        def mkOutPan(in: GE): GE = {
+          val pSpread       = pControl("spr" , ParamSpec(0.0, 1.0), 0.25) // XXX rand
+          val pRota         = pControl("rota", ParamSpec(0.0, 1.0), 0.0)
+          val pBase         = pControl("azi" , ParamSpec(0.0, 360.0), 0.0)
+          val pAmp          = mkAmp()
+
+          val baseAzi       = Lag.kr(pBase, 0.5) + IRand(0, 360)
+          val rotaAmt       = Lag.kr(pRota, 0.1)
+          val spread        = Lag.kr(pSpread, 0.5)
+          val inChannels    = ??? : Int // in.numChannels // numOutputs
+          val outChannels   = cfg.numChannels
+          val rotaSpeed     = 0.1
+          val inSig         = in * Lag.ar(pAmp, 0.1) // .outputs
+          val noise         = LFDNoise1.kr(rotaSpeed) * rotaAmt * 2
+          val pos: GE = Seq.tabulate(inChannels) { inCh =>
+            val pos0 = (baseAzi / 180) + (inCh / inChannels * 2)
+            pos0 + noise
+          }
+          val level = 1
+          val width = (spread * (outChannels - 2)) + 2
+          //println( "PanAz : " + outChannels )
+          // XXX tricky Mix motherfucker -- is that sound processes (?) somewhere checks the
+          // num channels in a wrong way.
+          val outSig = Mix(PanAz.ar(outChannels, inSig, pos, level, width, 0))
+          placeChannels(outSig)
+        }
+
+        def mkOutRnd(in: GE): GE = {
+          val pAmp        = mkAmp()
+          val pFreq       = pControl("freq", ParamSpec(0.01, 10, ExpWarp), default = 0.1)
+          val pPow        = pControl("pow" , ParamSpec(1, 10), default = 2)
+          val pLag        = pControl("lag" , ParamSpec(0.1, 10), default = 1)
+
+          val sig         = in * Lag.ar(pAmp, 0.1) // .outputs
+          val outChannels = cfg.numChannels
+          val sig1        = WrapExtendChannels(outChannels, sig)
+          val freq        = pFreq
+          val lag         = pLag
+          val pw          = pPow
+          val rands       = Lag.ar(TRand.ar(0, 1, Dust.ar(List.fill(outChannels)(freq))).pow(pw), lag)
+          val outSig      = sig1 * rands
+          placeChannels(outSig)
+        }
+
+        if (nConfig.collector) {
+          filter(s"O-all${cfg.name}")(mkOutAll)
+          filter(s"O-pan${cfg.name}")(mkOutPan)
+          filter(s"O-rnd${cfg.name}")(mkOutRnd)
+        } else {
+          def mkDirectOut(sig0: GE): Unit = {
+            val bad = CheckBadValues.ar(sig0)
+            val sig = Gate.ar(sig0, bad sig_== 0)
+            masterChans.zipWithIndex.foreach { case (ch, i) =>
+              Out.ar(ch, sig \ i)   // XXX TODO - should go to a bus w/ limiter
+            }
+          }
+
+          collector(s"O-all${cfg.name}") { in =>
+            val sig = mkOutAll(in)
+            mkDirectOut(sig)
+          }
+
+          collector(s"O-pan${cfg.name}") { in =>
+            val sig = mkOutPan(in)
+            mkDirectOut(sig)
+          }
+
+          collector(s"O-rnd${cfg.name}") { in =>
+            val sig = mkOutRnd(in)
+            mkDirectOut(sig)
+          }
+        }
+      }
     }
+
+    collector("O-mute") { in => DC.ar(0) }
 
     //    val dfPostM = SynthDef( "post-master" ) {
     //      val masterBus = settings.frame.panel.masterBus.get // XXX ouch

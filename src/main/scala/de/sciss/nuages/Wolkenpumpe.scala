@@ -45,10 +45,10 @@ object Wolkenpumpe {
     private val current = TxnLocal[Proc.Obj[S]]()
 
     private def mkObj(name: String)(fun: => Unit)(implicit tx: S#Tx, n: Nuages[S]): Proc.Obj[S] = {
-      val p   = Proc[S]
-      val obj = Obj(Proc.Elem(p))
-      obj.name = name
-      current.set(obj )(tx.peer)
+      val p     = Proc[S]
+      val obj   = Obj(Proc.Elem(p))
+      obj.name  = name
+      current.set(obj)(tx.peer)
       p.graph() = SynthGraph { fun }
       current.set(null)(tx.peer)
       obj
@@ -97,7 +97,7 @@ object Wolkenpumpe {
 
     def collector(name: String)(fun: GE => Unit)(implicit tx: S#Tx, n: Nuages[S]): Proc.Obj[S] = {
       val obj = mkObj(name) {
-        val in  = ScanIn("in")
+        val in = ScanIn("in")
         fun(in)
       }
       obj.elem.peer.scans.add("in")
@@ -106,12 +106,77 @@ object Wolkenpumpe {
     }
   }
 
+  def mkTestProcs[S <: Sys[S]]()(implicit tx: S#Tx, nuages: Nuages[S]): Unit = {
+    val dsl = new DSL[S]
+    import dsl._
+
+    import synth._
+    import ugen._
+
+    generator("Sprink") {
+      val freq = pAudio("freq", ParamSpec(0.2, 50), 1)
+      BPZ2.ar(WhiteNoise.ar(LFPulse.ar(freq, 0, 0.25) * Seq(0.1, 0.1)))
+    }
+
+    filter("Filt") { in =>
+      val normFreq  = pAudio("freq", ParamSpec(-1, 1), 0.7)
+      val lowFreqN  = Lag.ar(Clip.ar(normFreq, -1, 0))
+      val highFreqN = Lag.ar(Clip.ar(normFreq, 0, 1))
+      val lowFreq   = LinExp.ar(lowFreqN, -1, 0, 30, 20000)
+      val highFreq  = LinExp.ar(highFreqN, 0, 1, 30, 20000)
+      val lowMix    = Clip.ar(lowFreqN * -10.0, 0, 1)
+      val highMix   = Clip.ar(highFreqN * 10.0, 0, 1)
+      val dryMix    = 1 - (lowMix + highMix)
+      val lpf       = LPF.ar(in, lowFreq) * lowMix
+      val hpf       = HPF.ar(in, highFreq) * highMix
+      val dry       = in * dryMix
+      val flt       = dry + lpf + hpf
+      val mix       = pAudio("mix", ParamSpec(0, 1), 0 /* 1 */)
+      LinXFade2.ar(in, flt, mix * 2 - 1)
+    }
+
+    filter("Achil") { in =>
+      val speed         = Lag.ar(pAudio("speed", ParamSpec(0.125, 2.3511, ExponentialWarp), 0.5), 0.1)
+      val numFrames     = 44100 // sampleRate.toInt
+      val numChannels   = 2     // in.numChannels // numOutputs
+      //println( "numChannels = " + numChannels )
+
+      // val buf           = bufEmpty(numFrames, numChannels)
+      // val bufID         = buf.id
+      val bufID         = LocalBuf(numFrames = numFrames, numChannels = numChannels)
+
+      val writeRate     = BufRateScale.kr(bufID)
+      val readRate      = writeRate * speed
+      val readPhasor    = Phasor.ar(0, readRate, 0, numFrames)
+      val read          = BufRd.ar(numChannels, bufID, readPhasor, 0, 4)
+      val writePhasor   = Phasor.ar(0, writeRate, 0, numFrames)
+      val old           = BufRd.ar(numChannels, bufID, writePhasor, 0, 1)
+      val wet0          = SinOsc.ar(0, (readPhasor - writePhasor).abs / numFrames * math.Pi)
+      val dry           = 1 - wet0.squared
+      val wet           = 1 - (1 - wet0).squared
+      BufWr.ar((old * dry) + (in * wet), bufID, writePhasor)
+
+      val mix           = pAudio("mix", ParamSpec(0, 1), 1)
+
+      LinXFade2.ar(in, read, mix * 2 - 1)
+    }
+
+    collector("Out") { in =>
+      val amp = pAudio("amp", ParamSpec(-inf, 20, DbFaderWarp), -inf).dbamp
+      val sig = in * amp
+      Out.ar(0, sig)
+    }
+  }
+
   def run[S <: Sys[S]]()(implicit cursor: stm.Cursor[S]): Unit = {
     initTypes()
 
-    val config            = Nuages.Config()
-    config.masterChannels = Some(Vector(0, 1))
-    config.recordPath     = Some("/tmp")
+    val nCfg            = Nuages.Config()
+    nCfg.masterChannels = Some(Vector(0, 1))
+    nCfg.recordPath     = Some("/tmp")
+    // nCfg.soloChannels
+    nCfg.collector      = false   // not yet fully supported
+
     /* val f = */ cursor.step { implicit tx =>
       implicit val n = Nuages.empty[S]
       val dsl = new DSL[S]
@@ -120,86 +185,28 @@ object Wolkenpumpe {
       import synth._
       import ugen._
 
-      generator("Sprink") {
-        val freq = pAudio("freq", ParamSpec(0.2, 50), 1)
-        BPZ2.ar(WhiteNoise.ar(LFPulse.ar(freq, 0, 0.25) * Seq(0.1, 0.1)))
-      }
-
-      filter("Filt") { in =>
-        val normFreq  = pAudio("freq", ParamSpec(-1, 1), 0.7)
-        val lowFreqN  = Lag.ar(Clip.ar(normFreq, -1, 0))
-        val highFreqN = Lag.ar(Clip.ar(normFreq, 0, 1))
-        val lowFreq   = LinExp.ar(lowFreqN, -1, 0, 30, 20000)
-        val highFreq  = LinExp.ar(highFreqN, 0, 1, 30, 20000)
-        val lowMix    = Clip.ar(lowFreqN * -10.0, 0, 1)
-        val highMix   = Clip.ar(highFreqN * 10.0, 0, 1)
-        val dryMix    = 1 - (lowMix + highMix)
-        val lpf       = LPF.ar(in, lowFreq) * lowMix
-        val hpf       = HPF.ar(in, highFreq) * highMix
-        val dry       = in * dryMix
-        val flt       = dry + lpf + hpf
-        val mix       = pAudio("mix", ParamSpec(0, 1), 0 /* 1 */)
-        LinXFade2.ar(in, flt, mix * 2 - 1)
-      }
-
-      filter("Achil") { in =>
-        val speed         = Lag.ar(pAudio("speed", ParamSpec(0.125, 2.3511, ExponentialWarp), 0.5), 0.1)
-        val numFrames     = 44100 // sampleRate.toInt
-        val numChannels   = 2     // in.numChannels // numOutputs
-        //println( "numChannels = " + numChannels )
-
-        // val buf           = bufEmpty(numFrames, numChannels)
-        // val bufID         = buf.id
-        val bufID         = LocalBuf(numFrames = numFrames, numChannels = numChannels)
-
-        val writeRate     = BufRateScale.kr(bufID)
-        val readRate      = writeRate * speed
-        val readPhasor    = Phasor.ar(0, readRate, 0, numFrames)
-        val read          = BufRd.ar(numChannels, bufID, readPhasor, 0, 4)
-        val writePhasor   = Phasor.ar(0, writeRate, 0, numFrames)
-        val old           = BufRd.ar(numChannels, bufID, writePhasor, 0, 1)
-        val wet0          = SinOsc.ar(0, (readPhasor - writePhasor).abs / numFrames * math.Pi)
-        val dry           = 1 - wet0.squared
-        val wet           = 1 - (1 - wet0).squared
-        BufWr.ar((old * dry) + (in * wet), bufID, writePhasor)
-
-        val mix           = pAudio("mix", ParamSpec(0, 1), 1)
-
-        LinXFade2.ar(in, read, mix * 2 - 1)
-      }
-
-      collector("Out") { in =>
-        // val pout = pAudioOut("out", None) // Some( RichBus.wrap( masterBus ))
-
-        // val amp = pAudio("amp", ParamSpec(0.01, 10, ExpWarp), 0.01 /* 1 */)
-        val amp = pAudio("amp", ParamSpec(-inf, 20, DbFaderWarp), -inf).dbamp
-        val sig = in * amp
-        // pout.ar(sig)
-        Out.ar(0, sig)
-      }
-
       implicit val aural = AuralSystem.start()
 
       val sCfg = ScissProcs.Config()
       sCfg.audioFilesFolder = Some(userHome / "Music" / "tapes")
-      ScissProcs[S](sCfg)
+      ScissProcs[S](sCfg, nCfg)
 
       import WorkspaceHandle.Implicits._
-      val p     = NuagesPanel(n, config, aural)
+      val p     = NuagesPanel(n, nCfg, aural)
       NuagesFrame(p, undecorated = true)
     }
 
-//        val recordPath = "/tmp"
-//        //            val masterBus  = new AudioBus( srv, 0, 2 )
-//        //            val soloBus    = Bus.audio( srv, 2 )
-//        //            val soloBus    = new AudioBus( srv, 6, 2 )
-//        val config = NuagesConfig(srv, Some(Vector(0, 1)), Some(Vector(2, 3)), Some(recordPath), meters = true)
-//        val f = new NuagesFrame(config)
-//        //            val p = f.panel
-//        //            p.addKeyListener( new TestKeyListener( p ))
-//        f.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE)
-//        f.setSize(640, 480)
-//        f.setVisible(true)
+    //        val recordPath = "/tmp"
+    //        //            val masterBus  = new AudioBus( srv, 0, 2 )
+    //        //            val soloBus    = Bus.audio( srv, 2 )
+    //        //            val soloBus    = new AudioBus( srv, 6, 2 )
+    //        val config = NuagesConfig(srv, Some(Vector(0, 1)), Some(Vector(2, 3)), Some(recordPath), meters = true)
+    //        val f = new NuagesFrame(config)
+    //        //            val p = f.panel
+    //        //            p.addKeyListener( new TestKeyListener( p ))
+    //        f.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE)
+    //        f.setSize(640, 480)
+    //        f.setVisible(true)
   }
 
   /** A condensed font for GUI usage. This is in 12 pt size,
