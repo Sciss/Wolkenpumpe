@@ -505,47 +505,49 @@ object ScissProcs {
       mix(in, flt, pMix)
     }
 
-    //    filter("frgmnt") { in =>
-    //      val pSpeed  = pAudio("speed", ParamSpec(0.125, 2.3511, ExpWarp), default = 1)
-    //      val pGrain  = pControl("grain", ParamSpec(0, 1), default = 0.5)
-    //      val pFeed   = pAudio("fb", ParamSpec(0, 1), default = 0)
-    //      val pMix    = mkMix()
-    //
-    //      val bufDur      = 4.0
-    //      val numFrames   = (bufDur * sampleRate).toInt
-    //      val numChannels = in.numChannels // numOutputs
-    //      val buf         = bufEmpty(numFrames, numChannels)
-    //      val bufID       = buf.id
-    //
-    //      val feedBack    = Lag.ar(pFeed.ar, 0.1)
-    //      val grain       = pGrain // Lag.kr( grainAttr.kr, 0.1 )
-    //      val maxDur      = LinExp.kr(grain, 0, 0.5, 0.01, 1.0)
-    //      val minDur      = LinExp.kr(grain, 0.5, 1, 0.01, 1.0)
-    //      val fade        = LinExp.kr(grain, 0, 1, 0.25, 4)
-    //      val rec         = (1 - feedBack).sqrt
-    //      val pre         = feedBack.sqrt
-    //      val trig        = LocalIn.kr(1)
-    //      val white       = TRand.kr(0, 1, trig)
-    //      val dur         = LinExp.kr(white, 0, 1, minDur, maxDur)
-    //      val off0        = numFrames * white
-    //      val off         = off0 - (off0 % 1.0)
-    //      val gate        = trig
-    //      val lFade       = Latch.kr(fade, trig)
-    //      val fadeIn      = lFade * 0.05
-    //      val fadeOut     = lFade * 0.15
-    //      val env         = EnvGen.ar(Env.linen(fadeIn, dur, fadeOut, 1, Curve.sine), gate, doneAction = 0)
-    //      val recLevel0   = env.sqrt
-    //      val preLevel0   = (1 - env).sqrt
-    //      val recLevel    = recLevel0 * rec
-    //      val preLevel    = preLevel0 * (1 - pre) + pre
-    //      val run         = recLevel > 0
-    //      RecordBuf.ar(in, bufID, off, recLevel, preLevel, run, 1)
-    //      LocalOut.kr(Impulse.kr(1.0 / (dur + fadeIn + fadeOut).max(0.01)))
-    //
-    //      val speed = pSpeed
-    //      val play = PlayBuf.ar(numChannels, bufID, speed, loop = 1)
-    //      mix(in, play, pMix)
-    //    }
+    filter("frgmnt") { in =>
+      val pSpeed      = pAudio  ("speed", ParamSpec(0.125, 2.3511, ExpWarp), default = 1)
+      val pGrain      = pControl("grain", ParamSpec(0, 1), default = 0.5)
+      val pFeed       = pAudio  ("fb"   , ParamSpec(0, 1), default = 0)
+      val pMix        = mkMix()
+
+      val bufDur      = 4.0
+      val numFrames   = bufDur * SampleRate.ir
+      //      val numChannels = in.numChannels // numOutputs
+      //      val buf         = bufEmpty(numFrames, numChannels)
+      //      val bufID       = buf.id
+      val buf         = LocalBuf(numFrames = numFrames, numChannels = Pad(1, in))
+
+      val feedBack    = Lag.ar(pFeed, 0.1)
+      val grain       = pGrain // Lag.kr( grainAttr.kr, 0.1 )
+      val maxDur      = LinExp.kr(grain, 0, 0.5, 0.01, 1.0)
+      val minDur      = LinExp.kr(grain, 0.5, 1, 0.01, 1.0)
+      val fade        = LinExp.kr(grain, 0, 1, 0.25, 4)
+      val rec         = (1 - feedBack).sqrt
+      val pre         = feedBack.sqrt
+      val trig        = LocalIn.kr(1)
+      val white       = TRand.kr(0, 1, trig)
+      val dur         = LinExp.kr(white, 0, 1, minDur, maxDur)
+      val off0        = numFrames * white
+      val off         = off0 - (off0 % 1.0)
+      val gate        = trig
+      val lFade       = Latch.kr(fade, trig)
+      val fadeIn      = lFade * 0.05
+      val fadeOut     = lFade * 0.15
+      val env         = EnvGen.ar(Env.linen(fadeIn, dur, fadeOut, 1, Curve.sine), gate, doneAction = 0)
+      val recLevel0   = env.sqrt
+      val preLevel0   = (1 - env).sqrt
+      val recLevel    = recLevel0 * rec
+      val preLevel    = preLevel0 * (1 - pre) + pre
+      val run         = recLevel > 0
+      RecordBuf.ar(Pad.Split(in), buf = buf, offset = off, recLevel = recLevel, preLevel = preLevel, run = run, loop = 1)
+      LocalOut.kr(Impulse.kr(1.0 / (dur + fadeIn + fadeOut).max(0.01)))
+
+      val speed       = pSpeed
+      val play0       = PlayBuf.ar(1 /* numChannels */, buf, speed, loop = 1)
+      val play        = Flatten(play0)
+      mix(in, play, pMix)
+    }
 
     //    filter("*") { in =>
     //      val pmix = mkMix
