@@ -118,6 +118,8 @@ object Wolkenpumpe {
       insertByName(folder, obj)
       obj
     }
+
+    // def prepare(obj: Obj[S])(fun: S#Tx => Obj[S] => Unit): Unit = ...
   }
 
   def mkTestProcs[S <: Sys[S]]()(implicit tx: S#Tx, nuages: Nuages[S]): Unit = {

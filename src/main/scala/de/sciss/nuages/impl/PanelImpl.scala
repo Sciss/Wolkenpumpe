@@ -29,7 +29,7 @@ import de.sciss.model.Change
 import de.sciss.span.{SpanLike, Span}
 import de.sciss.synth.ugen.Out
 import de.sciss.synth.{proc, GE, AudioBus}
-import de.sciss.synth.proc.{WorkspaceHandle, Scan, ExprImplicits, AuralSystem, Transport, Timeline, Proc, Folder, Obj}
+import de.sciss.synth.proc.{Action, WorkspaceHandle, Scan, ExprImplicits, AuralSystem, Transport, Timeline, Proc, Folder, Obj}
 import prefuse.action.{RepaintAction, ActionList}
 import prefuse.action.assignment.ColorAction
 import prefuse.action.layout.graph.ForceDirectedLayout
@@ -104,7 +104,7 @@ object PanelImpl {
                                         listGen: ListView[S, Obj[S], Obj.Update[S]],
                                         listFlt: ListView[S, Obj[S], Obj.Update[S]],
                                         listCol: ListView[S, Obj[S], Obj.Update[S]])
-                                       (implicit cursor: stm.Cursor[S])
+                                       (implicit cursor: stm.Cursor[S], workspace: WorkspaceHandle[S])
     extends NuagesPanel[S] with ComponentHolder[Component] {
     panel =>
 
@@ -815,6 +815,10 @@ object PanelImpl {
       pack(p)
     }
 
+    private def prepare(obj: Obj[S])(implicit tx: S#Tx): Unit =
+      for (Action.Obj(self) <- obj.attr.get("prepare"))
+        self.elem.peer.execute(Action.Universe(self, workspace))
+
     def createProc(tl: Timeline.Modifiable[S], genSrc: Obj[S], colSrc: Obj[S], pt: Point2D)
                   (implicit tx: S#Tx): Unit = {
       val gen = Obj.copy(genSrc)
@@ -825,11 +829,14 @@ object PanelImpl {
           val procGen = genP.elem.peer
           val procCol = colP.elem.peer
           val scanOut = procGen.scans.add("out")
-          val scanIn = procCol.scans.add("in")
+          val scanIn  = procCol.scans.add("in")
           scanOut.addSink(scanIn)
 
         case _ =>
       }
+
+      prepare(gen)
+      prepare(col)
 
       val genPt = new Point2D.Double(pt.getX, pt.getY - 30)
       val colPt = new Point2D.Double(pt.getX, pt.getY + 30)
@@ -857,16 +864,17 @@ object PanelImpl {
         case Proc.Obj(fltP) =>
           val procFlt  = fltP .elem.peer
           pred.addSink(procFlt.scans.add("in"))
+          // we may handle 'sinks' here by ignoring them when they don't have an `"out"` scan.
           procFlt.scans.get("out").foreach { fltOut =>
-            pred.removeSink(succ)
-            fltOut.addSink(succ)
+            pred  .removeSink(succ)
+            fltOut.addSink   (succ)
           }
 
         case _ =>
       }
 
+      prepare(flt)
       setLocationHint(flt, fltPt)
-
       addToTimeline(tl, flt)
     }
 

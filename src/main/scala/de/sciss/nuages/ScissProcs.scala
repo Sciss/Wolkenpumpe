@@ -15,11 +15,13 @@ package de.sciss.nuages
 
 import de.sciss.file._
 import de.sciss.lucre.artifact.ArtifactLocation
+import de.sciss.lucre.{event => evt}
 import de.sciss.lucre.synth.Sys
 import de.sciss.nuages.Wolkenpumpe.DSL
 import de.sciss.synth
 import de.sciss.synth.io.AudioFile
-import de.sciss.synth.proc.{AuralSystem, AudioGraphemeElem, ExprImplicits, Grapheme, Obj}
+import de.sciss.synth.proc.Action.Universe
+import de.sciss.synth.proc.{Action, AuralSystem, AudioGraphemeElem, ExprImplicits, Grapheme, Obj}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.language.implicitConversions
@@ -747,9 +749,23 @@ object ScissProcs {
 
     // -------------- SINKS --------------
 
-    sink("rec") { in =>
+    val sinkPrepare = new Action.Body {
+      def apply[T <: evt.Sys[T]](universe: Universe[T])(implicit tx: T#Tx): Unit = {
+        println("PREPARE")
+      }
+    }
+    Action.registerPredef("nuages-prepare-rec", sinkPrepare)
+
+    val sinkRec = sink("rec") { in =>
+      // proc.graph.
+
       Mix.mono(in).poll(1, "poll")
     }
+    sinkRec.attr.put("prepare", Obj(Action.Elem(Action.predef("nuages-prepare-rec"))))
+
+    //    prepare(sinkRec) { implicit tx =>
+    //      obj => ...
+    //    }
 
     // -------------- DIFFUSIONS --------------
 
