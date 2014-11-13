@@ -63,6 +63,8 @@ private[nuages] trait VisualData[S <: Sys[S]] {
   protected val margin2 = margin * 2
   protected val gp = new GeneralPath()
 
+  var fixed = false
+
   protected def main: NuagesPanel[S]
 
   def update(shp: Shape): Unit = {

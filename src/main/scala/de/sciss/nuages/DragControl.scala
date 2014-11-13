@@ -30,10 +30,10 @@ object DragControl {
   private val csrDefault  = Cursor.getDefaultCursor
 
   def setSmartFixed(vis: Visualization, vi: VisualItem, state: Boolean): Unit = {
-    val state1 = state /* || getVisualData(vis, vi) match {
-      case Some(vProc: VisualProc) if vProc.proc.anatomy == ProcDiff => true
+    val state1 = state || (getVisualData(vis, vi) match {
+      case Some(data) => data.fixed
       case _ => false
-    } */
+    })
     vi.setFixed(state1)
   }
 
@@ -123,6 +123,7 @@ class DragControl[S <: Sys[S]](vis: Visualization) extends ControlAdapter {
         if (data != null) {
           data.update(pr.getShape(vi))
           if (data.itemPressed(vi, e, displayPt)) return // consumed
+          if (e.getClickCount == 2) data.fixed = !data.fixed
         }
 
       // case er: EdgeRenderer =>

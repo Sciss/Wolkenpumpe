@@ -627,11 +627,16 @@ object PanelImpl {
         vn.pNode = g.addNode()
         val _vi = _vis.getVisualItem(GROUP_GRAPH, vn.pNode)
         locO.foreach { loc =>
+          //          _vi.setStartX(loc.getX)
+          //          _vi.setStartY(loc.getX)
+          //          _vi.setX   (loc.getX)
+          //          _vi.setY   (loc.getX)
           _vi.setEndX(loc.getX)
           _vi.setEndY(loc.getY)
         }
         aggr.addItem(_vi)
         _vi.set(COL_NUAGES, vn)
+        // if (vn.name.startsWith("O-")) _vi.setFixed(true)  // ...hack
         _vi
       }
 
