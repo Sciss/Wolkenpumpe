@@ -481,9 +481,9 @@ object ScissProcs {
     }
 
     filter("reso") { in =>
-      val pFreq   = pAudio("freq", ParamSpec(30, 13000, ExpWarp), default = 400) // beware of the upper frequency
-      val pFreq2  = pAudio("freq-fact", ParamSpec(0.5, 2, ExpWarp), default = 1)
-      val pq      = pAudio("q", ParamSpec(0.5, 50, ExpWarp), default = 1)
+      val pFreq   = pAudio("freq"     , ParamSpec(30  , 13000, ExpWarp), default = 400) // beware of the upper frequency
+      val pFreq2  = pAudio("freq-fact", ParamSpec( 0.5,     2, ExpWarp), default =   1)
+      val pq      = pAudio("q"        , ParamSpec( 0.5,    50, ExpWarp), default =   1)
       val pMix    = mkMix()
 
       val freq0   = pFreq

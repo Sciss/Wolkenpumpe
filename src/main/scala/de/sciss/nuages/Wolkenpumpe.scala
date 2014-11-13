@@ -188,10 +188,15 @@ object Wolkenpumpe {
     initTypes()
 
     val nCfg            = Nuages.Config()
-    nCfg.masterChannels = Some(Vector(0, 1))
+    nCfg.masterChannels = Some(0 until 5) // Vector(0, 1))
     nCfg.recordPath     = Some("/tmp")
     // nCfg.soloChannels
     nCfg.collector      = false   // not yet fully supported
+
+    val sCfg = ScissProcs.Config()
+    sCfg.audioFilesFolder = Some(userHome / "Music" / "tapes")
+    sCfg.micInputs        = Vector(NamedBusConfig("dpa"  , 0, 1))
+    sCfg.lineInputs       = Vector(NamedBusConfig("pirro", 2, 1))
 
     /* val f = */ cursor.step { implicit tx =>
       implicit val n = Nuages.empty[S]
@@ -203,8 +208,6 @@ object Wolkenpumpe {
 
       implicit val aural = AuralSystem.start()
 
-      val sCfg = ScissProcs.Config()
-      sCfg.audioFilesFolder = Some(userHome / "Music" / "tapes")
       ScissProcs[S](sCfg, nCfg)
 
       import WorkspaceHandle.Implicits._
