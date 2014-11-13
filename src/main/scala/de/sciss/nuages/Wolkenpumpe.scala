@@ -200,6 +200,10 @@ object Wolkenpumpe {
     sCfg.audioFilesFolder   = Some(userHome / "Music" / "tapes")
     sCfg.micInputs          = Vector(NamedBusConfig("dpa"  , 0, 1))
     sCfg.lineInputs         = Vector(NamedBusConfig("pirro", 2, 1))
+    sCfg.lineOutputs        = Vector(
+      NamedBusConfig("sum", 5, 1)
+      , NamedBusConfig("hp", 6, 2)  // while 'solo' doesn't work
+    )
 
     val aCfg                = SServer.Config()
     aCfg.deviceName         = Some("Wolkenpumpe")

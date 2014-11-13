@@ -19,6 +19,8 @@ import java.awt.geom.Point2D
 import javax.swing.event.{AncestorEvent, AncestorListener}
 import javax.swing.JPanel
 
+import de.sciss.desktop.{KeyStrokes, FocusType}
+import de.sciss.desktop.Implicits._
 import de.sciss.lucre.bitemp.{SpanLike => SpanLikeEx}
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.Disposable
@@ -27,6 +29,7 @@ import de.sciss.lucre.swing.impl.ComponentHolder
 import de.sciss.lucre.synth.Sys
 import de.sciss.model.Change
 import de.sciss.span.{SpanLike, Span}
+import de.sciss.swingplus.DoClickAction
 import de.sciss.synth.ugen.Out
 import de.sciss.synth.{proc, GE, AudioBus}
 import de.sciss.synth.proc.{Action, WorkspaceHandle, Scan, ExprImplicits, AuralSystem, Transport, Timeline, Proc, Folder, Obj}
@@ -44,6 +47,7 @@ import prefuse.{Constants, Display, Visualization}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm.{Ref, TxnLocal}
+import scala.swing.event.Key
 import scala.swing.{Button, Container, Orientation, SequentialContainer, BoxPanel, Panel, Swing, Component}
 
 object PanelImpl {
@@ -747,6 +751,9 @@ object PanelImpl {
       // strut.background = Color.black
       b.contents += strut
       val butAbort = /* Basic */ Button("Abort")(close(p))
+      butAbort.addAction("press", focus = FocusType.Window, action = new DoClickAction(butAbort) {
+        accelerator = Some(KeyStrokes.plain + Key.Escape)
+      })
       butAbort.focusable = false
       b.contents += butAbort
       p.contents += b

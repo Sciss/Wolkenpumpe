@@ -147,9 +147,11 @@ object ScissProcs {
     sConfig.audioFilesFolder.foreach { folder =>
       val loc = ArtifactLocation[S](folder)
 
+      def abbreviate(s: String) = if (s.length < 16) s else s"${s.take(7)}...${s.takeRight(7)}"
+
       val audioFiles = folder.children
       audioFiles.filter(AudioFile.identify(_).isDefined).foreach(f => {
-        val name = f.base
+        val name = s"t-${abbreviate(f.base)}"
 
         val procObj = generator(name) {
           val p1    = pAudio("speed", ParamSpec(0.1f, 10f, ExpWarp), 1)
@@ -861,7 +863,7 @@ object ScissProcs {
           val inSig         = in * Lag.ar(pAmp, 0.1) // .outputs
           val noise         = LFDNoise1.kr(rotaSpeed) * rotaAmt * 2
           val pos0          = ChannelIndices(in) * 2 / NumChannels(in)
-          pos0.poll(0, "pos0")
+          // pos0.poll(0, "pos0")
           val pos1          = (baseAzi / 180) + pos0
           val pos           = pos1 + noise
           val level         = 1
