@@ -13,15 +13,19 @@
 
 package de.sciss.nuages
 
+import java.text.SimpleDateFormat
+import java.util.concurrent.TimeUnit
+import java.util.{Date, Locale}
+
 import de.sciss.file._
-import de.sciss.lucre.artifact.ArtifactLocation
-import de.sciss.lucre.{event => evt}
+import de.sciss.lucre.artifact.{Artifact, ArtifactLocation}
+import de.sciss.lucre.{event => evt, stm}
 import de.sciss.lucre.synth.Sys
 import de.sciss.nuages.Wolkenpumpe.DSL
 import de.sciss.synth
 import de.sciss.synth.io.AudioFile
 import de.sciss.synth.proc.Action.Universe
-import de.sciss.synth.proc.{Action, AuralSystem, AudioGraphemeElem, ExprImplicits, Grapheme, Obj}
+import de.sciss.synth.proc.{SoundProcesses, ArtifactElem, Action, AuralSystem, AudioGraphemeElem, ExprImplicits, Grapheme, Obj}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.language.implicitConversions
@@ -83,7 +87,7 @@ object ScissProcs {
   var tapePath: Option[String] = None
 
   def apply[S <: Sys[S]](sConfig: ScissProcs.Config, nConfig: Nuages.Config)
-                        (implicit tx: S#Tx, nuages: Nuages[S], aural: AuralSystem): Unit = {
+                        (implicit tx: S#Tx, cursor: stm.Cursor[S], nuages: Nuages[S], aural: AuralSystem): Unit = {
     import synth._
     import ugen._
 
@@ -93,6 +97,9 @@ object ScissProcs {
     import imp._
 
     val masterChansOption = nConfig.masterChannels
+
+    val loc   = ArtifactLocation[S](file(sys.props("java.io.tmpdir")))
+    val locH  = tx.newHandle(loc)
 
     // -------------- GENERATORS --------------
 
@@ -177,39 +184,48 @@ object ScissProcs {
       }
     }
 
-    val loopFrames  = (sConfig.loopDuration * 44100 /* config.server.sampleRate */).toInt
+    // val loopFrames  = (sConfig.loopDuration * 44100 /* config.server.sampleRate */).toInt
     //    val loopBuffers = Vec.fill[Buffer](config.numLoops)(Buffer.alloc(config.server, loopFrames, 2))
     //    val loopBufIDs  = loopBuffers.map(_.id)
 
     //    if (settings.numLoops > 0) {
-    //      generator("loop") {
-    //        val pBuf        = pControl("buf"  , ParamSpec(0, config.numLoops - 1, LinWarp, 1), default = 0)
-    //        val pSpeed      = pAudio  ("speed", ParamSpec(0.125, 2.3511, ExpWarp), default = 1)
-    //        val pStart      = pControl("start", ParamSpec(0, 1), default = 0)
-    //        val pDur        = pControl("dur"  , ParamSpec(0, 1), default = 1)
-    //
-    //        val trig1       = LocalIn.kr(1)
-    //        val gateTrig1   = PulseDivider.kr(trig = trig1, div = 2, start = 1)
-    //        val gateTrig2   = PulseDivider.kr(trig = trig1, div = 2, start = 0)
-    //        val startFrame  = pStart * loopFrames
-    //        val numFrames   = pDur * (loopFrames - startFrame)
-    //        val lOffset     = Latch.kr(in = startFrame, trig = trig1)
-    //        val lLength     = Latch.kr(in = numFrames, trig = trig1)
-    //        val speed       = A2K.kr(pSpeed)
-    //        val duration    = lLength / (speed * SampleRate.ir) - 2
-    //        val gate1       = Trig1.kr(in = gateTrig1, dur = duration)
-    //        val env         = Env.asr(2, 1, 2, Curve.lin) // \sin
-    //        val bufID       = Select.kr(pBuf, loopBufIDs)
-    //        val play1       = PlayBuf.ar(2, bufID, speed, gateTrig1, lOffset, loop = 0)
-    //        val play2       = PlayBuf.ar(2, bufID, speed, gateTrig2, lOffset, loop = 0)
-    //        val amp0        = EnvGen.kr(env, gate1) // 0.999 = bug fix !!!
-    //        val amp2        = 1.0 - amp0.squared
-    //        val amp1        = 1.0 - (1.0 - amp0).squared
-    //        val sig         = (play1 * amp1) + (play2 * amp2)
-    //        LocalOut.kr(Impulse.kr(1.0 / duration.max(0.1)))
-    //        sig
-    //      }
-    //    }
+
+    def mkLoop(f: File)(implicit tx: S#Tx): Unit = {
+      val procObj = generator(f.base) {
+        val pSpeed      = pAudio  ("speed", ParamSpec(0.125, 2.3511, ExpWarp), default = 1)
+        val pStart      = pControl("start", ParamSpec(0, 1), default = 0)
+        val pDur        = pControl("dur"  , ParamSpec(0, 1), default = 1)
+        val bufID       = proc.graph.Buffer("file")
+        val loopFrames  = BufFrames.kr(bufID)
+
+        val trig1       = LocalIn.kr(1)
+        val gateTrig1   = PulseDivider.kr(trig = trig1, div = 2, start = 1)
+        val gateTrig2   = PulseDivider.kr(trig = trig1, div = 2, start = 0)
+        val startFrame  = pStart * loopFrames
+        val numFrames   = pDur * (loopFrames - startFrame)
+        val lOffset     = Latch.kr(in = startFrame, trig = trig1)
+        val lLength     = Latch.kr(in = numFrames, trig = trig1)
+        val speed       = A2K.kr(pSpeed)
+        val duration    = lLength / (speed * SampleRate.ir) - 2
+        val gate1       = Trig1.kr(in = gateTrig1, dur = duration)
+        val env         = Env.asr(2, 1, 2, Curve.lin) // \sin
+        // val bufID       = Select.kr(pBuf, loopBufIDs)
+        val play1       = PlayBuf.ar(2, bufID, speed, gateTrig1, lOffset, loop = 0) // XXX TODO - numChannels
+        val play2       = PlayBuf.ar(2, bufID, speed, gateTrig2, lOffset, loop = 0)
+        val amp0        = EnvGen.kr(env, gate1) // 0.999 = bug fix !!!
+        val amp2        = 1.0 - amp0.squared
+        val amp1        = 1.0 - (1.0 - amp0).squared
+        val sig         = (play1 * amp1) + (play2 * amp2)
+        LocalOut.kr(Impulse.kr(1.0 / duration.max(0.1)))
+        sig
+      }
+      val art   = locH().add(f)
+      val spec  = AudioFile.readSpec(f)
+      val gr    = Grapheme.Expr.Audio(art, spec, 0L, 1.0)
+      procObj.attr.put("file", Obj(AudioGraphemeElem(gr)))
+      // val artObj  = Obj(ArtifactElem(art))
+      // procObj.attr.put("file", artObj)
+    }
 
     //      masterBusOption.foreach { masterBus =>
     //        gen( "sum_rec" ) {
@@ -473,7 +489,7 @@ object ScissProcs {
       val freq0   = pFreq
       val freq    = freq0 :: (freq0 * pFreq2).max(30).min(13000) :: Nil
       val rq      = pq.reciprocal
-      val makeUp  = (rq + 0.5).pow(1.41) // rq.max( 1 ) // .sqrt
+      val makeUp  = pq // (rq + 0.5).pow(1.41) // rq.max( 1 ) // .sqrt
       val flt     = Resonz.ar(in, freq, rq) * makeUp
       mix(in, flt, pMix)
     }
@@ -748,20 +764,55 @@ object ScissProcs {
     }
 
     // -------------- SINKS --------------
+    val recFormat = new SimpleDateFormat("'rec_'yyMMdd'_'HHmmss'.aif'", Locale.US)
 
-    val sinkPrepare = new Action.Body {
+    val sinkRecPrepare = new Action.Body {
       def apply[T <: evt.Sys[T]](universe: Universe[T])(implicit tx: T#Tx): Unit = {
-        println("PREPARE")
+        import universe._
+        for {
+          art  <- self.attr[ArtifactElem]("file")
+          artM <- art.modifiableOption
+        } {
+          val name  = recFormat.format(new Date)
+          artM.child = Artifact.Child(name) // XXX TODO - should check that it is different from previous value
+          // println(name)
+        }
       }
     }
-    Action.registerPredef("nuages-prepare-rec", sinkPrepare)
+    Action.registerPredef("nuages-prepare-rec", sinkRecPrepare)
+
+    val sinkRecDispose = new Action.Body {
+      def apply[T <: evt.Sys[T]](universe: Universe[T])(implicit tx: T#Tx): Unit = {
+        import universe._
+        for {
+          art <- self.attr[ArtifactElem]("file")
+        } {
+          val f = art.value
+          SoundProcesses.scheduledExecutorService.schedule(new Runnable {
+            def run(): Unit = SoundProcesses.atomic[S, Unit] { implicit tx =>
+              println(f)
+              mkLoop(f)
+            }
+          }, 1000, TimeUnit.MILLISECONDS)
+        }
+      }
+    }
+    Action.registerPredef("nuages-dispose-rec", sinkRecDispose)
 
     val sinkRec = sink("rec") { in =>
-      // proc.graph.
-
-      Mix.mono(in).poll(1, "poll")
+      // val pStop = pControl("stop", ParamSpec(0, 1, step = 1), default = 0)
+      proc.graph.DiskOut.ar("file", in)
+      // Mix.mono(in).poll(1, "poll")
     }
-    sinkRec.attr.put("prepare", Obj(Action.Elem(Action.predef("nuages-prepare-rec"))))
+    val sinkPrepObj = Obj(Action.Elem(Action.predef("nuages-prepare-rec")))
+    val sinkDispObj = Obj(Action.Elem(Action.predef("nuages-dispose-rec")))
+    val artRec      = loc.add(loc.directory / "undefined")
+    val artRecObj   = Obj(ArtifactElem(artRec))
+    sinkPrepObj.attr.put("file"   , artRecObj  )
+    sinkDispObj.attr.put("file"   , artRecObj  )
+    sinkRec    .attr.put("file"   , artRecObj  )
+    sinkRec    .attr.put("nuages-prepare", sinkPrepObj)
+    sinkRec    .attr.put("nuages-dispose", sinkDispObj)
 
     //    prepare(sinkRec) { implicit tx =>
     //      obj => ...

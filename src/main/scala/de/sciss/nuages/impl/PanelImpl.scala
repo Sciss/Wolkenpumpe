@@ -573,6 +573,8 @@ object PanelImpl {
         }
 
         deferTx(visDo(removeNodeGUI(vp)))
+
+        disposeObj(obj)
       }
     }
 
@@ -815,9 +817,12 @@ object PanelImpl {
       pack(p)
     }
 
-    private def prepare(obj: Obj[S])(implicit tx: S#Tx): Unit =
-      for (Action.Obj(self) <- obj.attr.get("prepare"))
+    private def exec(obj: Obj[S], key: String)(implicit tx: S#Tx): Unit =
+      for (Action.Obj(self) <- obj.attr.get(key))
         self.elem.peer.execute(Action.Universe(self, workspace))
+
+    private def prepareObj(obj: Obj[S])(implicit tx: S#Tx): Unit = exec(obj, "nuages-prepare")
+    private def disposeObj(obj: Obj[S])(implicit tx: S#Tx): Unit = exec(obj, "nuages-dispose")
 
     def createProc(tl: Timeline.Modifiable[S], genSrc: Obj[S], colSrc: Obj[S], pt: Point2D)
                   (implicit tx: S#Tx): Unit = {
@@ -835,8 +840,8 @@ object PanelImpl {
         case _ =>
       }
 
-      prepare(gen)
-      prepare(col)
+      prepareObj(gen)
+      prepareObj(col)
 
       val genPt = new Point2D.Double(pt.getX, pt.getY - 30)
       val colPt = new Point2D.Double(pt.getX, pt.getY + 30)
@@ -873,7 +878,7 @@ object PanelImpl {
         case _ =>
       }
 
-      prepare(flt)
+      prepareObj(flt)
       setLocationHint(flt, fltPt)
       addToTimeline(tl, flt)
     }
