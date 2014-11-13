@@ -18,9 +18,9 @@ import de.sciss.lucre.synth.Sys
 import impl.{FrameImpl => Impl}
 
 object NuagesFrame {
-  def apply[S <: Sys[S]](panel: NuagesPanel[S], undecorated: Boolean = false)
+  def apply[S <: Sys[S]](panel: NuagesPanel[S], numInputChannels: Int, undecorated: Boolean = false)
                         (implicit tx: S#Tx, cursor: stm.Cursor[S]): NuagesFrame[S] =
-    Impl(panel, undecorated = undecorated)
+    Impl(panel, numInputChannels = numInputChannels, undecorated = undecorated)
 }
 trait NuagesFrame[S <: Sys[S]] {
   def view: NuagesPanel[S]

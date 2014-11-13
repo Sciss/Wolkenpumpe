@@ -31,17 +31,17 @@ import scala.swing.{GridBagPanel, BorderPanel, Orientation, Swing, Frame}
 import Swing._
 
 object FrameImpl {
-  def apply[S <: Sys[S]](panel: NuagesPanel[S], undecorated: Boolean)
+  def apply[S <: Sys[S]](panel: NuagesPanel[S], numInputChannels: Int, undecorated: Boolean)
                         (implicit tx: S#Tx, cursor: stm.Cursor[S]): NuagesFrame[S] = {
     val tlm       = TimelineModel(Span(0L, (Timeline.SampleRate * 60 * 60 * 10).toLong), Timeline.SampleRate)
     val transport = panel.transport
     val trnspView = TransportViewImpl(transport, tlm)
     transport.play()
-    new Impl(panel, trnspView, undecorated = undecorated).init()
+    new Impl(panel, trnspView, numInputChannels = numInputChannels, undecorated = undecorated).init()
   }
 
   private final class Impl[S <: Sys[S]](val view: NuagesPanel[S], transportView: View[S],
-                                        undecorated: Boolean)
+                                        numInputChannels: Int, undecorated: Boolean)
                                        (implicit cursor: stm.Cursor[S])
     extends NuagesFrame[S] { impl =>
 
@@ -81,8 +81,8 @@ object FrameImpl {
       ggSouthBox.contents += transportC
       ggSouthBox.contents += Swing.HStrut(8)
       val cConfig = ControlPanel.Config()
-      cConfig.numOutputChannels  = view.config.masterChannels.map(_.size).getOrElse(0)
-      // cConfig.numInputChannels = ...
+      cConfig.numOutputChannels = view.config.masterChannels.map(_.size).getOrElse(0)
+      cConfig.numInputChannels  = numInputChannels
       cConfig.log = false
       _controlPanel = ControlPanel(cConfig)
       ggSouthBox.contents += controlPanel

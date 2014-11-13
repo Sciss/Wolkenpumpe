@@ -860,13 +860,15 @@ object ScissProcs {
           val rotaSpeed     = 0.1
           val inSig         = in * Lag.ar(pAmp, 0.1) // .outputs
           val noise         = LFDNoise1.kr(rotaSpeed) * rotaAmt * 2
-          val pos0          = (baseAzi / 180) + (ChannelIndices(in) / NumChannels(in) * 2)
-          val pos           = pos0 + noise
+          val pos0          = ChannelIndices(in) * 2 / NumChannels(in)
+          pos0.poll(0, "pos0")
+          val pos1          = (baseAzi / 180) + pos0
+          val pos           = pos1 + noise
           val level         = 1
           val width         = (spread * (outChannels - 2)) + 2
           val panAz         = PanAz.ar(outChannels, inSig, pos, level, width, 0)
           // tricky
-          val outSig        = panAz // Mix(panAz)
+          val outSig        = Mix(panAz)
           placeChannels(outSig)
         }
 

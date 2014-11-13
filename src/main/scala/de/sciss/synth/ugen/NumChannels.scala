@@ -9,6 +9,6 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * @param in the element whose number-of-channels to produce
   */
 final case class NumChannels(in: GE) extends UGenSource.SingleOut with ScalarRated {
-  protected def makeUGens: UGenInLike = unwrap(Vector(in.expand))
+  protected def makeUGens: UGenInLike = unwrap(in.expand.outputs)
   protected def makeUGen(args: Vec[UGenIn]): UGenInLike = Constant(args.size)
 }

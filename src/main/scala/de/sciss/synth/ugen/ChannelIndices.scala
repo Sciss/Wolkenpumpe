@@ -10,8 +10,7 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * @param in the element whose indices to produce
   */
 final case class ChannelIndices(in: GE) extends UGenSource.SingleOut with ScalarRated {
-  protected def makeUGens: UGenInLike = unwrap(Vector(in.expand))
+  protected def makeUGens: UGenInLike = unwrap(in.expand.outputs)
 
-  protected def makeUGen(args: Vec[UGenIn]): UGenInLike =
-    0 until args.size: GE
+  protected def makeUGen(args: Vec[UGenIn]): UGenInLike = 0 until args.size: GE
 }

@@ -208,6 +208,7 @@ object Wolkenpumpe {
     aCfg.inputBusChannels   = 8
     aCfg.memorySize         = 256 * 1024
     aCfg.transport          = osc.TCP
+    aCfg.pickPort()
 
     /* val f = */ cursor.step { implicit tx =>
       implicit val n      = Nuages.empty[S]
@@ -217,7 +218,8 @@ object Wolkenpumpe {
 
       import WorkspaceHandle.Implicits._
       val p     = NuagesPanel(n, nCfg, aural)
-      val frame = NuagesFrame(p, undecorated = true)
+      val numIn = sCfg.lineInputs.size + sCfg.micInputs.size
+      val frame = NuagesFrame(p, numInputChannels = numIn, undecorated = true)
 
       aural.addClient(new AuralSystem.Client {
         def auralStarted(server: Server)(implicit tx: Txn): Unit =
