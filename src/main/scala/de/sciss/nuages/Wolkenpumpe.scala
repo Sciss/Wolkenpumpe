@@ -17,14 +17,17 @@ import java.awt.Font
 
 import de.sciss.file._
 import de.sciss.lucre.stm
-import de.sciss.lucre.synth.{Sys, InMemory}
+import de.sciss.lucre.swing.defer
+import de.sciss.lucre.synth.{Synth, Server, Txn, Sys, InMemory}
 import de.sciss.lucre.expr.{Double => DoubleEx}
-import de.sciss.synth
+import de.sciss.{osc, synth}
 import de.sciss.synth.proc.graph.{Attribute, ScanIn, ScanOut}
-import de.sciss.synth.{control, scalar, audio, Rate, SynthGraph, GE, proc}
+import de.sciss.synth.{Server => SServer, addAfter, control, scalar, audio, Rate, SynthGraph, GE, proc}
+import de.sciss.synth.message
 import de.sciss.synth.proc.{Folder, WorkspaceHandle, DoubleElem, AuralSystem, ExprImplicits, Obj, Proc}
 import proc.Implicits._
 
+import scala.collection.breakOut
 import scala.concurrent.stm.TxnLocal
 
 object Wolkenpumpe {
@@ -126,7 +129,7 @@ object Wolkenpumpe {
     val dsl = new DSL[S]
     import dsl._
 
-    import synth._
+    import synth.{Server => _, _}
     import ugen._
 
     generator("Sprink") {
@@ -187,32 +190,43 @@ object Wolkenpumpe {
   def run[S <: Sys[S]]()(implicit cursor: stm.Cursor[S]): Unit = {
     initTypes()
 
-    val nCfg            = Nuages.Config()
-    nCfg.masterChannels = Some(0 until 5) // Vector(0, 1))
-    nCfg.recordPath     = Some("/tmp")
+    val nCfg                = Nuages.Config()
+    nCfg.masterChannels     = Some(0 until 5) // Vector(0, 1))
+    nCfg.recordPath         = Some("/tmp")
     // nCfg.soloChannels
-    nCfg.collector      = false   // not yet fully supported
+    nCfg.collector          = false   // not yet fully supported
 
     val sCfg = ScissProcs.Config()
-    sCfg.audioFilesFolder = Some(userHome / "Music" / "tapes")
-    sCfg.micInputs        = Vector(NamedBusConfig("dpa"  , 0, 1))
-    sCfg.lineInputs       = Vector(NamedBusConfig("pirro", 2, 1))
+    sCfg.audioFilesFolder   = Some(userHome / "Music" / "tapes")
+    sCfg.micInputs          = Vector(NamedBusConfig("dpa"  , 0, 1))
+    sCfg.lineInputs         = Vector(NamedBusConfig("pirro", 2, 1))
+
+    val aCfg                = SServer.Config()
+    aCfg.deviceName         = Some("Wolkenpumpe")
+    aCfg.audioBusChannels   = 512
+    aCfg.outputBusChannels  = 8
+    aCfg.inputBusChannels   = 8
+    aCfg.memorySize         = 256 * 1024
+    aCfg.transport          = osc.TCP
 
     /* val f = */ cursor.step { implicit tx =>
-      implicit val n = Nuages.empty[S]
-      val dsl = new DSL[S]
-      import dsl._
-
-      import synth._
-      import ugen._
-
-      implicit val aural = AuralSystem.start()
+      implicit val n      = Nuages.empty[S]
+      implicit val aural  = AuralSystem()
 
       ScissProcs[S](sCfg, nCfg)
 
       import WorkspaceHandle.Implicits._
       val p     = NuagesPanel(n, nCfg, aural)
-      NuagesFrame(p, undecorated = true)
+      val frame = NuagesFrame(p, undecorated = true)
+
+      aural.addClient(new AuralSystem.Client {
+        def auralStarted(server: Server)(implicit tx: Txn): Unit =
+          installMasterSynth(server, nCfg, sCfg, frame)
+
+        def auralStopped()(implicit tx: Txn): Unit = ()
+      })
+
+      aural.start(aCfg)
     }
 
     //        val recordPath = "/tmp"
@@ -286,4 +300,65 @@ object Wolkenpumpe {
   ////         }
   ////      })
   //   }
+
+  private def installMasterSynth[S <: Sys[S]](server: Server, nConfig: Nuages.Config, sConfig: ScissProcs.Config,
+                                 frame: NuagesFrame[S])
+                                (implicit tx: Txn): Unit = {
+    val dfPostM = SynthGraph {
+      import synth._; import ugen._
+      // val masterBus = settings.frame.panel.masterBus.get // XXX ouch
+      // val sigMast = In.ar( masterBus.index, masterBus.numChannels )
+      val masterBus = nConfig.masterChannels.getOrElse(Vector.empty)
+      val sigMast: GE = masterBus.map(ch => In.ar(ch))
+      // external recorders
+      sConfig.lineOutputs.foreach { cfg =>
+        val off     = cfg.offset
+        val numOut  = cfg.numChannels
+        val numIn   = masterBus.size // numChannels
+        val sig1: GE = if (numOut == numIn) {
+          sigMast
+        } else if (numIn == 1) {
+          Seq.fill[GE](numOut)(sigMast)
+        } else {
+          val sigOut = SplayAz.ar(numOut, sigMast)
+          Limiter.ar(sigOut, (-0.2).dbamp)
+        }
+        //            assert( sig1.numOutputs == numOut )
+        Out.ar(off, sig1)
+      }
+      // master + people meters
+      val meterTr    = Impulse.kr( 20 )
+      val (peoplePeak, peopleRMS) = {
+        val groups = /* if( NuagesApp.METER_MICS ) */ sConfig.micInputs ++ sConfig.lineInputs // else sConfig.lineInputs
+        val res = groups.map { cfg =>
+          val off        = cfg.offset
+          val numIn      = cfg.numChannels
+          val pSig       = In.ar( NumOutputBuses.ir + off, numIn )
+          val peak       = Peak.kr( pSig, meterTr ) // .outputs
+          val peakM      = Reduce.max( peak )
+          val rms        = A2K.kr( Lag.ar( pSig.squared, 0.1 ))
+          val rmsM       = Mix.mono( rms ) / numIn
+          (peakM, rmsM)
+        }
+        (res.map( _._1 ): GE) -> (res.map( _._2 ): GE)  // elegant it's not
+      }
+      val masterPeak    = Peak.kr( sigMast, meterTr )
+      val masterRMS     = A2K.kr( Lag.ar( sigMast.squared, 0.1 ))
+      val peak: GE      = Flatten( Seq( masterPeak, peoplePeak ))
+      val rms: GE       = Flatten( Seq( masterRMS, peopleRMS ))
+      val meterData     = Zip( peak, rms )  // XXX correct?
+      SendReply.kr( meterTr, meterData, "/meters" )
+
+    }
+    val synPostM = Synth.play(dfPostM, Some("post-master"))(server.defaultGroup, addAction = addAfter)
+
+    val synPostMID = synPostM.peer.id
+    message.Responder.add(server.peer) {
+      case osc.Message( "/meters", `synPostMID`, 0, values @ _* ) =>
+        defer {
+          val ctrl = frame.controlPanel
+          ctrl.meterUpdate(values.map(_.asInstanceOf[Float])(breakOut))
+        }
+    }
+  }
 }

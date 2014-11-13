@@ -24,4 +24,5 @@ object NuagesFrame {
 }
 trait NuagesFrame[S <: Sys[S]] {
   def view: NuagesPanel[S]
+  def controlPanel: ControlPanel
 }

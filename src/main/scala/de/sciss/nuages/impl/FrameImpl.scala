@@ -21,14 +21,13 @@ import javax.swing.{AbstractAction, KeyStroke, JComponent}
 import de.sciss.audiowidgets.TimelineModel
 import de.sciss.lucre.stm
 import de.sciss.lucre.synth.Sys
-import de.sciss.lucre.swing.deferTx
+import de.sciss.lucre.swing.{View, deferTx}
 import de.sciss.span.Span
 import de.sciss.swingplus.CloseOperation
 import de.sciss.swingplus.Implicits._
 import de.sciss.synth.proc.Timeline
-import de.sciss.synth.proc.gui.TransportView
 
-import scala.swing.{GridBagPanel, BorderPanel, BoxPanel, Orientation, Swing, Frame}
+import scala.swing.{GridBagPanel, BorderPanel, Orientation, Swing, Frame}
 import Swing._
 
 object FrameImpl {
@@ -36,11 +35,13 @@ object FrameImpl {
                         (implicit tx: S#Tx, cursor: stm.Cursor[S]): NuagesFrame[S] = {
     val tlm       = TimelineModel(Span(0L, (Timeline.SampleRate * 60 * 60 * 10).toLong), Timeline.SampleRate)
     val transport = panel.transport
-    val trnspView = TransportView(transport, tlm, hasMillis = false, hasLoop = false)
+    val trnspView = TransportViewImpl(transport, tlm)
+    transport.play()
     new Impl(panel, trnspView, undecorated = undecorated).init()
   }
 
-  private final class Impl[S <: Sys[S]](val view: NuagesPanel[S], transportView: TransportView[S], undecorated: Boolean)
+  private final class Impl[S <: Sys[S]](val view: NuagesPanel[S], transportView: View[S],
+                                        undecorated: Boolean)
                                        (implicit cursor: stm.Cursor[S])
     extends NuagesFrame[S] { impl =>
 
@@ -63,6 +64,10 @@ object FrameImpl {
       this
     }
 
+    private var _controlPanel: ControlPanel = _
+
+    def controlPanel: ControlPanel = _controlPanel
+
     private def guiInit(): Unit = {
       val transition = new NuagesTransitionPanel(view)
       // val bottom = new BasicPanel(Orientation.Horizontal)
@@ -74,7 +79,13 @@ object FrameImpl {
       transportC.border = Swing.EmptyBorder(0, 4, 0, 4)
       // transportC.background = Color.black
       ggSouthBox.contents += transportC
-      // ggSouthBox.contents += Swing.HStrut(8)
+      ggSouthBox.contents += Swing.HStrut(8)
+      val cConfig = ControlPanel.Config()
+      cConfig.numOutputChannels  = view.config.masterChannels.map(_.size).getOrElse(0)
+      // cConfig.numInputChannels = ...
+      cConfig.log = false
+      _controlPanel = ControlPanel(cConfig)
+      ggSouthBox.contents += controlPanel
       ggSouthBox.contents += Swing.HGlue
       ggSouthBox.contents += transition
 
