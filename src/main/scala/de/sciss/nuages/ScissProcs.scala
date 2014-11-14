@@ -103,46 +103,46 @@ object ScissProcs {
 
     // -------------- GENERATORS --------------
 
-    generator("tape") {
-      val pSpeed    = pAudio  ("speed", ParamSpec(0.1, 10, ExpWarp), default = 1)
-      val pLoop     = pControl("loop" , ParamSpec(0, 1, LinWarp, 1), default = 0)
-
-      //      val pPos      = pScalar("pos"  , ParamSpec(0, 1), default = 0)
-
-      //      val path      = tapePath.getOrElse(sys.error("No audio-file selected"))
-      //      val spec      = audioFileSpec(path)
-      //      val numFrames = spec.numFrames
-      //      val startPos  = pPos.v
-      //      val startFr   = ((if (startPos < 1) startPos else 0.0) * numFrames).toLong
-      //      val b         = bufCue(path, startFrame = startFr)
-      //      val numCh     = b.numChannels
-      val speed     = A2K.kr(pSpeed) // * BufRateScale.ir(b.id)
-
-      val disk      = proc.graph.VDiskIn.ar("tape", speed = speed, loop = pLoop, maxSpeed = 10)
-
-      //      val lp0       = pLoop.v
-      //
-      //      // pos feedback
-      //      val framesRead = Integrator.kr(speed) * (SampleRate.ir / ControlRate.ir)
-
-      //      val me = Proc.local
-      //      Impulse.kr( 10 ).react( framesRead ) { smp => ProcTxn.spawnAtomic { implicit tx =>
-      //        val frame  = startFr + smp( 0 )
-      //        // not sure we can access them in this scope, so just retrieve the controls...
-      //        val ppos   = me.control( "pos" )
-      //        //               val ploop  = me.control( "loop" )
-      //        if( lp0 == 1 ) {
-      //          ppos.v = (frame % numFrames).toDouble / numFrames
-      //        } else {
-      //          val pos = (frame.toDouble / numFrames).min( 1.0 )
-      //          ppos.v = pos
-      //          if( pos == 1.0 ) me.stop
-      //        }
-      //      }}
-
-      // val disk = VDiskIn.ar(numCh, b.id, speed, loop = pLoop)
-      disk // WrapExtendChannels( 2, disk )
-    }
+    //    generator("tape") {
+    //      val pSpeed    = pAudio  ("speed", ParamSpec(0.1, 10, ExpWarp), default = 1)
+    //      val pLoop     = pControl("loop" , ParamSpec(0, 1, LinWarp, 1), default = 0)
+    //
+    //      //      val pPos      = pScalar("pos"  , ParamSpec(0, 1), default = 0)
+    //
+    //      //      val path      = tapePath.getOrElse(sys.error("No audio-file selected"))
+    //      //      val spec      = audioFileSpec(path)
+    //      //      val numFrames = spec.numFrames
+    //      //      val startPos  = pPos.v
+    //      //      val startFr   = ((if (startPos < 1) startPos else 0.0) * numFrames).toLong
+    //      //      val b         = bufCue(path, startFrame = startFr)
+    //      //      val numCh     = b.numChannels
+    //      val speed     = A2K.kr(pSpeed) // * BufRateScale.ir(b.id)
+    //
+    //      val disk      = proc.graph.VDiskIn.ar("tape", speed = speed, loop = pLoop, maxSpeed = 10)
+    //
+    //      //      val lp0       = pLoop.v
+    //      //
+    //      //      // pos feedback
+    //      //      val framesRead = Integrator.kr(speed) * (SampleRate.ir / ControlRate.ir)
+    //
+    //      //      val me = Proc.local
+    //      //      Impulse.kr( 10 ).react( framesRead ) { smp => ProcTxn.spawnAtomic { implicit tx =>
+    //      //        val frame  = startFr + smp( 0 )
+    //      //        // not sure we can access them in this scope, so just retrieve the controls...
+    //      //        val ppos   = me.control( "pos" )
+    //      //        //               val ploop  = me.control( "loop" )
+    //      //        if( lp0 == 1 ) {
+    //      //          ppos.v = (frame % numFrames).toDouble / numFrames
+    //      //        } else {
+    //      //          val pos = (frame.toDouble / numFrames).min( 1.0 )
+    //      //          ppos.v = pos
+    //      //          if( pos == 1.0 ) me.stop
+    //      //        }
+    //      //      }}
+    //
+    //      // val disk = VDiskIn.ar(numCh, b.id, speed, loop = pLoop)
+    //      disk // WrapExtendChannels( 2, disk )
+    //    }
 
     sConfig.audioFilesFolder.foreach { folder =>
       val loc = ArtifactLocation[S](folder)
@@ -562,13 +562,27 @@ object ScissProcs {
       val preLevel0   = (1 - env).sqrt
       val recLevel    = recLevel0 * rec
       val preLevel    = preLevel0 * (1 - pre) + pre
-      val run         = recLevel > 0
-      RecordBuf.ar(Pad.Split(in), buf = buf, offset = off, recLevel = recLevel, preLevel = preLevel, run = run, loop = 1)
+      // val run         = recLevel > 0
+      //      run     .poll(1, "run"      )
+      //      recLevel.poll(1, "rec-level")
+      // val ins = Pad.Split(in)
+      // ins.poll(1, "ins")
+      // RecordBuf.ar(ins, buf = buf, offset = off, recLevel = recLevel, preLevel = preLevel, run = run, loop = 1)
+      val writeIdx    = Phasor.ar(speed = 1, lo = 0, hi = numFrames)
+      val preSig      = BufRd.ar(1, buf = buf, index = writeIdx, loop = 1)
+      val writeSig    = in * recLevel + preSig * preLevel
+      // writeSig.poll(1, "write")
+      BufWr.ar(Pad.Split(writeSig), buf = buf, index = writeIdx, loop = 1)
       LocalOut.kr(Impulse.kr(1.0 / (dur + fadeIn + fadeOut).max(0.01)))
 
+      // NOTE: PlayBuf doesn't seem to work with LocalBuf !!!
+
       val speed       = pSpeed
-      val play0       = PlayBuf.ar(1 /* numChannels */, buf, speed, loop = 1)
+      // val play0       = PlayBuf.ar(1 /* numChannels */, buf, speed, loop = 1)
+      val readIdx     = Phasor.ar(speed = speed, lo = 0, hi = numFrames)
+      val play0       = BufRd.ar(1, buf = buf, index = readIdx, loop = 1)
       val play        = Flatten(play0)
+      // play.poll(1, "outs")
       mix(in, play, pMix)
     }
 
