@@ -32,6 +32,8 @@ import scala.language.implicitConversions
 
 /** This is my personal set of generators and filters. */
 object ScissProcs {
+  var FORCE_CHAN = true
+
   trait ConfigLike {
     def numLoops: Int
 
@@ -101,6 +103,10 @@ object ScissProcs {
     val loc   = ArtifactLocation[S](file(sys.props("java.io.tmpdir")))
     val locH  = tx.newHandle(loc)
 
+    def ForceChan(in: GE): GE = if (!FORCE_CHAN) in else masterChansOption.fold(in) { sq =>
+      WrapExtendChannels(sq.size, in)
+    }
+
     // -------------- GENERATORS --------------
 
     //    generator("tape") {
@@ -160,7 +166,8 @@ object ScissProcs {
           //          val b     = bufCue(path)
           //          val disk  = VDiskIn.ar(b.numChannels, b.id, p1.ar * BufRateScale.ir(b.id), loop = 1)
           // HPF.ar( disk, 30 )
-          disk
+          val sig = ForceChan(disk)
+          sig
         }
 
         val art   = loc.add(f)
@@ -296,7 +303,7 @@ object ScissProcs {
         val feed  = pFeed * 2 - 1
         val sig   = XFade2.ar(pureIn, dly, feed)
 
-        val numOut = 2 // XXX configurable
+        val numOut = masterChansOption.fold(2)(_.size)
         val sig1: GE = if (numOut == cfg.numChannels) {
             sig
           } else if (cfg.numChannels == 1) {
@@ -314,7 +321,7 @@ object ScissProcs {
 
         val boost   = pBoost
         val sig     = In.ar(NumOutputBuses.ir + cfg.offset, cfg.numChannels) * boost
-        val numOut  = 2 // XXX configurable
+        val numOut  = masterChansOption.fold(2)(_.size)
         val sig1: GE = if (numOut == cfg.numChannels) {
             sig
           } else if (cfg.numChannels == 1) {
@@ -332,13 +339,16 @@ object ScissProcs {
       val pFreq   = pAudio("freq" , ParamSpec(0.01, 1000, ExpWarp), default = 0.1 /* 1 */)
       val pDecay  = pAudio("decay", ParamSpec(0.1 ,   10, ExpWarp), default = 0.1 /* 1 */)
 
-      val freq = pFreq
-      Decay.ar(Dust.ar(freq :: freq :: Nil), pDecay)
+      val freq0 = pFreq
+      val freq  = ForceChan(freq0)
+      Decay.ar(Dust.ar(freq), pDecay)
     }
 
     generator("~gray") {
-      val pAmp = pAudio("amp", ParamSpec(0.01, 1, ExpWarp), default = 0.1)
-      GrayNoise.ar(1 :: 1 :: Nil) * pAmp
+      val pAmp  = pAudio("amp", ParamSpec(0.01, 1, ExpWarp), default = 0.1)
+      val amp0  = pAmp
+      val amp   = ForceChan(amp0)
+      GrayNoise.ar(amp)
     }
 
     generator("~sin") {
@@ -346,9 +356,15 @@ object ScissProcs {
       val pFreq2  = pAudio("freq-fact", ParamSpec(0.01,   100, ExpWarp), default =  1 /* 1 */)
       val pAmp    = pAudio("amp"      , ParamSpec(0.01,     1, ExpWarp), default =  0.1)
 
-      val f1 = pFreq1
-      val f2 = f1 * pFreq2
-      SinOsc.ar(f1 :: f2 :: Nil) * pAmp
+      val numOut = masterChansOption.fold(2)(_.size)
+
+      // val f1 = pFreq1
+      // val f2 = f1 * pFreq2
+      val freq = Vec.tabulate(numOut) { ch =>
+        val w = (ch: GE).linlin(0, (numOut - 1).max(1), 1, pFreq2)
+        (pFreq1 * w).clip(0.01, 20000)
+      }
+      SinOsc.ar(freq) * pAmp
     }
 
     generator("~pulse") {
@@ -358,17 +374,30 @@ object ScissProcs {
       val pw2     = pAudio("width2"   , ParamSpec(0.0 ,     1.0),        default =  0.5)
       val pAmp    = pAudio("amp"      , ParamSpec(0.01,     1, ExpWarp), default =  0.1)
 
-      val f1 = pFreq1
-      val f2 = f1 * pFreq2
-      val w1 = pw1
-      val w2 = pw2
-      Pulse.ar(f1 :: f2 :: Nil, w1 :: w2 :: Nil) * pAmp
+      //      val f1 = pFreq1
+      //      val f2 = f1 * pFreq2
+      //      val w1 = pw1
+      //      val w2 = pw2
+
+      val numOut = masterChansOption.fold(2)(_.size)
+
+      val sig: GE = Vec.tabulate(numOut) { ch =>
+        val freqM = (ch: GE).linlin(0, (numOut - 1).max(1), 1, pFreq2)
+        val freq  = (pFreq1 * freqM).clip(0.01, 20000)
+        val width = (ch: GE).linlin(0, (numOut - 1).max(1), pw1, pw2)
+        Pulse.ar(freq, width)
+      }
+
+      // Pulse.ar(f1 :: f2 :: Nil, w1 :: w2 :: Nil) * pAmp
+      sig * pAmp
     }
 
     // -------------- FILTERS --------------
 
     def mix(in: GE, flt: GE, mix: GE): GE = LinXFade2.ar(in, flt, mix * 2 - 1)
     def mkMix(): GE = pAudio("mix", ParamSpec(0, 1), default = 0)
+
+    def WrapExtendChannels(n: Int, sig: GE): GE = Vec.tabulate(n)(sig \ _)
 
     //    if( settings.numLoops > 0 ) {
     //      filter( ">rec" ) {
@@ -404,6 +433,28 @@ object ScissProcs {
     //        }
     //      }
     //    }
+
+    filter("staub") { in =>
+      val pAmt      = pAudio("amt" , ParamSpec(0.0, 1.0), default = 1.0)
+      val pFact     = pAudio("fact", ParamSpec(0.5, 2.0, ExpWarp), default = 1)
+      val pMix      = mkMix()
+
+      val f1        =   10
+      val f2        = 2000
+
+      val relIdx    = ChannelIndices(in) / (NumChannels(in) - 1).max(1)
+      val fade      = (pAmt * relIdx.linlin(0, 1, 1, pFact)).clip(0, 1)
+      val dustFreqS = fade.linexp(0, 1, f1, f2)
+      // val dustFreqP = fade.linexp(1, 0, f1, f2)
+
+      val decayTime = 0.01
+      val dustS     = Decay.ar(Dust.ar(dustFreqS), decayTime).min(1)
+      // val dustP = Decay.ar(Dust.ar(dustFreqP), decayTime).min(1)
+
+      val flt       = in * dustS
+
+      mix(in, flt, pMix)
+    }
 
     filter("delay") { in =>
       val pTime       = pAudio("time", ParamSpec(0.03, 30.0, ExpWarp), default = 10)
@@ -442,13 +493,19 @@ object ScissProcs {
       val writeRate   = BufRateScale.kr(bufID)
       val readRate    = writeRate * speed
       val readPhasor  = Phasor.ar(0, readRate, 0, numFrames)
-      val read        = BufRd.ar(1, bufID, readPhasor, 0, 4)
+      val read0       = BufRd.ar(1, bufID, readPhasor, 0, 4)
+      val readBad     = CheckBadValues.ar(read0, id = 1000)
+      val read        = Gate.ar(read0, readBad sig_== 0)
+
       val writePhasor = Phasor.ar(0, writeRate, 0, numFrames)
       val old         = BufRd.ar(1, bufID, writePhasor, 0, 1)
       val wet0        = SinOsc.ar(0, (readPhasor - writePhasor).abs / numFrames * math.Pi)
       val dry         = 1 - wet0.squared
       val wet         = 1 - (1 - wet0).squared
-      val writeSig    = (old * dry) + (in * wet)
+      val write0      = (old * dry) + (in * wet)
+      val writeBad    = CheckBadValues.ar(write0, id = 1001)
+      val writeSig    = Gate.ar(write0, writeBad sig_== 0)
+
       // NOTE: `writeSig :: Nil: GE` does _not_ work because single
       // element seqs are not created by that conversion.
       BufWr.ar(Pad.Split(writeSig), bufID, writePhasor)
@@ -569,8 +626,11 @@ object ScissProcs {
       // ins.poll(1, "ins")
       // RecordBuf.ar(ins, buf = buf, offset = off, recLevel = recLevel, preLevel = preLevel, run = run, loop = 1)
       val writeIdx    = Phasor.ar(speed = 1, lo = 0, hi = numFrames)
-      val preSig      = BufRd.ar(1, buf = buf, index = writeIdx, loop = 1)
-      val writeSig    = in * recLevel + preSig * preLevel
+      val preSig      = BufRd.ar(1, buf = buf, index = (writeIdx + off) % numFrames, loop = 1)
+      val write0      = in * recLevel + preSig * preLevel
+      val writeBad    = CheckBadValues.ar(write0, id = 2001)
+      val writeSig    = Gate.ar(write0, writeBad sig_== 0)
+
       // writeSig.poll(1, "write")
       BufWr.ar(Pad.Split(writeSig), buf = buf, index = writeIdx, loop = 1)
       LocalOut.kr(Impulse.kr(1.0 / (dur + fadeIn + fadeOut).max(0.01)))
@@ -580,7 +640,9 @@ object ScissProcs {
       val speed       = pSpeed
       // val play0       = PlayBuf.ar(1 /* numChannels */, buf, speed, loop = 1)
       val readIdx     = Phasor.ar(speed = speed, lo = 0, hi = numFrames)
-      val play0       = BufRd.ar(1, buf = buf, index = readIdx, loop = 1)
+      val read0       = BufRd.ar(1, buf = buf, index = readIdx, loop = 1)
+      val readBad     = CheckBadValues.ar(read0, id = 2000)
+      val play0       = Gate.ar(read0, readBad sig_== 0)
       val play        = Flatten(play0)
       // play.poll(1, "outs")
       mix(in, play, pMix)
@@ -850,8 +912,6 @@ object ScissProcs {
               Silent.ar(numChans - (cfg.offset + cfg.numChannels))): GE
           }
         }
-
-        def WrapExtendChannels(n: Int, sig: GE): GE = Vec.tabulate(n)(sig \ _)
 
         def mkAmp(): GE = pAudio("amp", ParamSpec(-inf, 20, DbFaderWarp), -inf).dbamp
 
