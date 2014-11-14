@@ -198,7 +198,10 @@ object Wolkenpumpe {
 
     val sCfg = ScissProcs.Config()
     sCfg.audioFilesFolder   = Some(userHome / "Music" / "tapes")
-    sCfg.micInputs          = Vector(NamedBusConfig("dpa"  , 0, 1))
+    sCfg.micInputs          = Vector(
+      NamedBusConfig("m-dpa"  , 0, 1),
+      NamedBusConfig("m-at "  , 3, 1)
+    )
     sCfg.lineInputs         = Vector(NamedBusConfig("pirro", 2, 1))
     sCfg.lineOutputs        = Vector(
       NamedBusConfig("sum", 5, 1)
@@ -314,8 +317,9 @@ object Wolkenpumpe {
       import synth._; import ugen._
       // val masterBus = settings.frame.panel.masterBus.get // XXX ouch
       // val sigMast = In.ar( masterBus.index, masterBus.numChannels )
-      val masterBus = nConfig.masterChannels.getOrElse(Vector.empty)
-      val sigMast: GE = masterBus.map(ch => In.ar(ch))
+      val masterBus   = nConfig.masterChannels.getOrElse(Vector.empty)
+      val sigMast0    = masterBus.map(ch => In.ar(ch))
+      val sigMast: GE = sigMast0
       // external recorders
       sConfig.lineOutputs.foreach { cfg =>
         val off     = cfg.offset
@@ -333,17 +337,17 @@ object Wolkenpumpe {
         Out.ar(off, sig1)
       }
       // master + people meters
-      val meterTr    = Impulse.kr( 20 )
+      val meterTr    = Impulse.kr(20)
       val (peoplePeak, peopleRMS) = {
         val groups = /* if( NuagesApp.METER_MICS ) */ sConfig.micInputs ++ sConfig.lineInputs // else sConfig.lineInputs
         val res = groups.map { cfg =>
           val off        = cfg.offset
           val numIn      = cfg.numChannels
-          val pSig       = In.ar( NumOutputBuses.ir + off, numIn )
-          val peak       = Peak.kr( pSig, meterTr ) // .outputs
-          val peakM      = Reduce.max( peak )
-          val rms        = A2K.kr( Lag.ar( pSig.squared, 0.1 ))
-          val rmsM       = Mix.mono( rms ) / numIn
+          val pSig       = In.ar(NumOutputBuses.ir + off, numIn)
+          val peak       = Peak.kr(pSig, meterTr) // .outputs
+          val peakM      = Reduce.max(peak)
+          val rms        = A2K.kr(Lag.ar(pSig.squared, 0.1))
+          val rmsM       = Mix.mono(rms) / numIn
           (peakM, rmsM)
         }
         (res.map( _._1 ): GE) -> (res.map( _._2 ): GE)  // elegant it's not
@@ -355,8 +359,14 @@ object Wolkenpumpe {
       val meterData     = Zip( peak, rms )  // XXX correct?
       SendReply.kr( meterTr, meterData, "/meters" )
 
+      val amp = "amp".kr(1f)
+      (masterBus zip sigMast0).foreach { case (ch, sig) =>
+        ReplaceOut.ar(ch, Limiter.ar(sig * amp))
+      }
     }
     val synPostM = Synth.play(dfPostM, Some("post-master"))(server.defaultGroup, addAction = addAfter)
+
+    frame.view.masterSynth = Some(synPostM)
 
     val synPostMID = synPostM.peer.id
     message.Responder.add(server.peer) {

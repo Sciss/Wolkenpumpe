@@ -14,7 +14,7 @@
 package de.sciss.nuages
 package impl
 
-import java.awt.{Dimension, Rectangle, LayoutManager, Point, Color}
+import java.awt.{Shape, Dimension, Rectangle, LayoutManager, Point, Color}
 import java.awt.geom.Point2D
 import javax.swing.event.{AncestorEvent, AncestorListener}
 import javax.swing.JPanel
@@ -26,7 +26,7 @@ import de.sciss.lucre.stm
 import de.sciss.lucre.stm.Disposable
 import de.sciss.lucre.swing.{ListView, deferTx, requireEDT}
 import de.sciss.lucre.swing.impl.ComponentHolder
-import de.sciss.lucre.synth.Sys
+import de.sciss.lucre.synth.{Txn, Synth, Sys}
 import de.sciss.model.Change
 import de.sciss.span.{SpanLike, Span}
 import de.sciss.swingplus.DoClickAction
@@ -258,7 +258,18 @@ object PanelImpl {
       aggrTable .addColumn(VisualItem.POLYGON, classOf[Array[Float]])
 
       val procRenderer = new NuagesProcRenderer(50)
-      val edgeRenderer = new EdgeRenderer(Constants.EDGE_TYPE_LINE, Constants.EDGE_ARROW_FORWARD)
+      val edgeRenderer = new EdgeRenderer(Constants.EDGE_TYPE_LINE, Constants.EDGE_ARROW_FORWARD) {
+        // same as original method but with much larger border to ease mouse control
+        override def locatePoint(p: Point2D, item: VisualItem): Boolean = {
+          val s = getShape(item)
+          s != null && {
+            val width     = math.max(20 /* 2 */, getLineWidth(item))
+            val halfWidth = width / 2.0
+            s.intersects(p.getX - halfWidth, p.getY - halfWidth, width, width)
+          }
+        }
+      }
+      // edgeRenderer.setDefaultLineWidth(2)
       val aggrRenderer = new PolygonRenderer(Constants.POLY_TYPE_CURVE)
       aggrRenderer.setCurveSlack(0.15f)
 
@@ -730,7 +741,15 @@ object PanelImpl {
       //    }
     }
 
-    def setMasterVolume(v: Double)(implicit tx: S#Tx): Unit = ()
+    private var _masterSynth = Ref(Option.empty[Synth])
+
+    def masterSynth(implicit tx: Txn): Option[Synth] = _masterSynth.get(tx.peer)
+    def masterSynth_=(value: Option[Synth])(implicit tx: Txn): Unit =
+      _masterSynth.set(value)(tx.peer)
+
+    def setMasterVolume(v: Double)(implicit tx: S#Tx): Unit =
+      _masterSynth.get(tx.peer).foreach(_.set(true, "amp" -> v))
+
     //    masterProc.foreach { pMaster =>
     //      // pMaster.control("amp").v = v
     //    }

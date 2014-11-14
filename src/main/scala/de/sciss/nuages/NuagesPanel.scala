@@ -15,7 +15,7 @@ package de.sciss.nuages
 
 import de.sciss.lucre.stm
 import de.sciss.lucre.swing.View
-import de.sciss.lucre.synth.Sys
+import de.sciss.lucre.synth.{Txn, Synth, Sys}
 import de.sciss.synth.proc.{WorkspaceHandle, AuralSystem, Transport}
 import impl.{PanelImpl => Impl}
 import prefuse.{Visualization, Display}
@@ -44,6 +44,9 @@ trait NuagesPanel[S <: Sys[S]] extends View[S] {
 
   def setMasterVolume(v: Double)(implicit tx: S#Tx): Unit
   def setSoloVolume  (v: Double)(implicit tx: S#Tx): Unit
+
+  def masterSynth(implicit tx: Txn): Option[Synth]
+  def masterSynth_=(value: Option[Synth])(implicit tx: Txn): Unit
 
   /** Must be called on the EDT */
   def display: Display
