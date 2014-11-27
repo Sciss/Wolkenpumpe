@@ -14,6 +14,7 @@ import de.sciss.synth.proc.{Timeline, Transport}
 import scala.swing.Swing._
 import scala.swing.{BoxPanel, Component, Orientation, Swing}
 
+// XXX TODO - I think this code exists elsewhere
 object TransportViewImpl {
   def apply[S <: Sys[S]](transport: Transport[S] /* .Realtime[S, Obj.T[S, Proc.Elem], Transport.Proc.Update[S]] */,
                          model: TimelineModel)
@@ -26,6 +27,7 @@ object TransportViewImpl {
       case Transport.Stop(_, time) => view.stoppedPlaying(time)
       case Transport.Seek(_, time, p) =>
         if (p) view.startedPlaying(time) else view.stoppedPlaying(time)
+      case _ =>
     }}
 
     val initPlaying = transport.isPlaying // .playing.value

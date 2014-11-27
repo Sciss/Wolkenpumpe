@@ -20,14 +20,15 @@ import javax.swing.{AbstractAction, KeyStroke, JComponent}
 
 import de.sciss.audiowidgets.TimelineModel
 import de.sciss.lucre.stm
-import de.sciss.lucre.synth.Sys
+import de.sciss.lucre.synth.{Txn, Server, Sys}
 import de.sciss.lucre.swing.{View, deferTx}
 import de.sciss.span.Span
 import de.sciss.swingplus.CloseOperation
 import de.sciss.swingplus.Implicits._
-import de.sciss.synth.proc.Timeline
+import de.sciss.synth.proc.{AuralSystem, Timeline}
+import de.sciss.synth.swing.j.JServerStatusPanel
 
-import scala.swing.{GridBagPanel, BorderPanel, Orientation, Swing, Frame}
+import scala.swing.{Component, GridBagPanel, BorderPanel, Orientation, Swing, Frame}
 import Swing._
 
 object FrameImpl {
@@ -43,7 +44,7 @@ object FrameImpl {
   private final class Impl[S <: Sys[S]](val view: NuagesPanel[S], transportView: View[S],
                                         numInputChannels: Int, undecorated: Boolean)
                                        (implicit cursor: stm.Cursor[S])
-    extends NuagesFrame[S] { impl =>
+    extends NuagesFrame[S] with AuralSystem.Client { impl =>
 
     private var _frame: Frame = _
     def frame: Frame = {
@@ -61,12 +62,18 @@ object FrameImpl {
 
     def init()(implicit tx: S#Tx): this.type = {
       deferTx(guiInit())
+      view.aural.serverOption.foreach(auralStarted)
+      view.aural.addClient(this)
       this
     }
 
-    private var _controlPanel: ControlPanel = _
+    private var _controlPanel: ControlPanel       = _
+    private var _serverPanel : JServerStatusPanel = _
 
     def controlPanel: ControlPanel = _controlPanel
+
+    def auralStarted(s: Server)(implicit tx: Txn): Unit = deferTx(_serverPanel.server = Some(s.peer))
+    def auralStopped()         (implicit tx: Txn): Unit = deferTx(_serverPanel.server = None        )
 
     private def guiInit(): Unit = {
       val transition = new NuagesTransitionPanel(view)
@@ -80,6 +87,9 @@ object FrameImpl {
       // transportC.background = Color.black
       ggSouthBox.contents += transportC
       ggSouthBox.contents += Swing.HStrut(8)
+      _serverPanel = new JServerStatusPanel(JServerStatusPanel.COUNTS)
+      ggSouthBox.contents += Component.wrap(_serverPanel)
+        ggSouthBox.contents += Swing.HStrut(8)
       val cConfig = ControlPanel.Config()
       cConfig.numOutputChannels = view.config.masterChannels.map(_.size).getOrElse(0)
       cConfig.numInputChannels  = numInputChannels
@@ -153,6 +163,11 @@ object FrameImpl {
           sd.setFullScreenWindow(if (sd.getFullScreenWindow == frame.peer) null else frame.peer)
         }
       })
+    }
+
+    def dispose()(implicit tx: S#Tx): Unit = {
+      view.aural.removeClient(this)
+      deferTx(_frame.dispose())
     }
 
     //    override def dispose(): Unit = {

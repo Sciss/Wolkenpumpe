@@ -14,7 +14,7 @@
 package de.sciss.nuages
 package impl
 
-import java.awt.{Shape, Dimension, Rectangle, LayoutManager, Point, Color}
+import java.awt.{RenderingHints, Graphics2D, Dimension, Rectangle, LayoutManager, Point, Color}
 import java.awt.geom.Point2D
 import javax.swing.event.{AncestorEvent, AncestorListener}
 import javax.swing.JPanel
@@ -24,15 +24,16 @@ import de.sciss.desktop.Implicits._
 import de.sciss.lucre.bitemp.{SpanLike => SpanLikeEx}
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.Disposable
-import de.sciss.lucre.swing.{ListView, deferTx, requireEDT}
+import de.sciss.lucre.swing.{ListView, defer, deferTx, requireEDT}
 import de.sciss.lucre.swing.impl.ComponentHolder
-import de.sciss.lucre.synth.{Txn, Synth, Sys}
+import de.sciss.lucre.synth.{BusNodeSetter, Txn, Synth, Sys}
 import de.sciss.model.Change
 import de.sciss.span.{SpanLike, Span}
 import de.sciss.swingplus.DoClickAction
-import de.sciss.synth.ugen.Out
-import de.sciss.synth.{proc, GE, AudioBus}
-import de.sciss.synth.proc.{Action, WorkspaceHandle, Scan, ExprImplicits, AuralSystem, Transport, Timeline, Proc, Folder, Obj}
+import de.sciss.synth
+import de.sciss.synth.{addToTail, SynthGraph, proc, AudioBus, message}
+import de.sciss.synth.proc.{AuralObj, Action, WorkspaceHandle, Scan, ExprImplicits, AuralSystem, Transport, Timeline, Proc, Folder, Obj}
+
 import prefuse.action.{RepaintAction, ActionList}
 import prefuse.action.assignment.ColorAction
 import prefuse.action.layout.graph.ForceDirectedLayout
@@ -46,7 +47,7 @@ import prefuse.visual.expression.InGroupPredicate
 import prefuse.{Constants, Display, Visualization}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
-import scala.concurrent.stm.{Ref, TxnLocal}
+import scala.concurrent.stm.{TMap, Ref, TxnLocal}
 import scala.swing.event.Key
 import scala.swing.{Button, Container, Orientation, SequentialContainer, BoxPanel, Panel, Swing, Component}
 
@@ -63,22 +64,20 @@ object PanelImpl {
     val scanMap   = tx.newInMemoryIDMap[ScanInfo [S]]
     val transport = Transport[S](aural)
     val timelineObj = nuages.timeline
-    transport.addObject(timelineObj)
+    // transport.addObject(timelineObj)
 
-    new Impl[S](nuagesH, nodeMap, scanMap, config, transport, listGen = listGen, listFlt = listFlt, listCol = listCol)
+    new Impl[S](nuagesH, nodeMap, scanMap, config, transport, aural,
+                listGen = listGen, listFlt = listFlt, listCol = listCol)
       .init(timelineObj)
   }
 
-  private final val GROUP_NODES = "graph.nodes"
-  private final val GROUP_EDGES = "graph.edges"
+  private final val GROUP_NODES   = "graph.nodes"
+  private final val GROUP_EDGES   = "graph.edges"
 
-  private final val AGGR_PROC = "aggr"
+  private final val AGGR_PROC     = "aggr"
   private final val ACTION_LAYOUT = "layout"
-  //   private val ACTION_LAYOUT_ANIM   = "layout-anim"
-  private final val ACTION_COLOR = "color"
-  //   private val ACTION_COLOR_ANIM    = "layout-anim"
-  private final val LAYOUT_TIME = 50
-  //   private val FADE_TIME            = 333
+  private final val ACTION_COLOR  = "color"
+  private final val LAYOUT_TIME   = 50
 
   private def mkListView[S <: Sys[S]](folder: Folder[S])(implicit tx: S#Tx, cursor: stm.Cursor[S]) = {
     import proc.Implicits._
@@ -87,7 +86,6 @@ object PanelImpl {
     val res = ListView[S, Obj[S], Obj.Update[S], String](folder, h)
     deferTx {
       val c = res.view
-      // c.peer.setUI(new BasicListUI)
       c.background = Color.black
       c.foreground = Color.white
       c.selectIndices(0)
@@ -100,11 +98,13 @@ object PanelImpl {
 
   private final case class ScanInfo[S <: Sys[S]](id: S#ID, key: String)
 
+  // nodeMap: uses timed-id as key
   private final class Impl[S <: Sys[S]](nuagesH: stm.Source[S#Tx, Nuages[S]],
                                         nodeMap: stm.IdentifierMap[S#ID, S#Tx, VisualObj[S]],
                                         scanMap: stm.IdentifierMap[S#ID, S#Tx, ScanInfo[S]],
-                                        val config: Nuages.Config,
+                                        val config   : Nuages.Config,
                                         val transport: Transport[S],
+                                        val aural    : AuralSystem,
                                         listGen: ListView[S, Obj[S], Obj.Update[S]],
                                         listFlt: ListView[S, Obj[S], Obj.Update[S]],
                                         listCol: ListView[S, Obj[S], Obj.Update[S]])
@@ -125,44 +125,26 @@ object PanelImpl {
 
     private var aggrTable: AggregateTable = _
 
-    //  /* private */ var procMap   = Map.empty[Proc, VisualProc]
-    //  /* private */ var edgeMap   = Map.empty[ProcEdge, Edge]
-    //  /* private */ var meterMap  = Map.empty[Proc, VisualProc]
-
     //  var transition: Double => Transition = (_) => Instant
 
-    private var meterFactory : Option[stm.Source[S#Tx, Proc.Obj[S]]] = None
     //  private var masterFactory: Option[ProcFactory]  = None
     //  private var masterProc   : Option[Proc]         = None
 
     private var masterBusVar : Option[AudioBus]     = None
 
-/*
-      private object topoListener extends ProcWorld.Listener {
-        def updated(u: ProcWorld.Update): Unit = topoUpdate(u)
-      }
-
-      private object procListener extends Proc.Listener {
-        def updated(u: Proc.Update): Unit =
-          defer(procUpdate(u))
-      }
-
-    ---- ProcFactoryProvider ----
-      val factoryManager      = new ProcFactoryViewManager(config)
-      var genFactory          = Option.empty[ProcFactory]
-      var filterFactory       = Option.empty[ProcFactory]
-      var diffFactory         = Option.empty[ProcFactory]
-      var collector           = Option.empty[Proc]
-*/
-
     private val locHintMap = TxnLocal(Map.empty[Obj[S], Point2D])
 
     private var overlay = Option.empty[Component]
 
-    private var observer: Disposable[S#Tx] = _
+    private var timelineObserver : Disposable[S#Tx] = _
+    private var transportObserver: Disposable[S#Tx] = _
+    private val auralObserver = Ref(Option.empty[Disposable[S#Tx]])
+    private val auralTimeline = Ref(Option.empty[AuralObj.Timeline[S]])
 
-    def display: Display = _dsp
-    def visualization: Visualization = _vis
+    private val auralToViewMap  = TMap.empty[AuralObj[S], VisualObj[S]]
+
+    def display      : Display        = _dsp
+    def visualization: Visualization  = _vis
 
     def masterBus: Option[AudioBus] = masterBusVar
 
@@ -172,16 +154,49 @@ object PanelImpl {
     def nuages(implicit tx: S#Tx): Nuages[S] = nuagesH()
 
     def dispose()(implicit tx: S#Tx): Unit = {
+      implicit val itx = tx.peer
       deferTx(stopAnimation())
-      observer .dispose()
+      transportObserver.dispose()
+      timelineObserver .dispose()
+      disposeAuralObserver()
       transport.dispose()
+      auralToViewMap.foreach { case (_, vp) =>
+        vp.dispose()
+      }
+      auralToViewMap.clear()
       nodeMap  .dispose()
       scanMap  .dispose()
     }
 
+    private def disposeAuralObserver()(implicit tx: S#Tx): Unit = {
+      auralTimeline.set(None)(tx.peer)
+      auralObserver.swap(None)(tx.peer).foreach(_.dispose())
+    }
+
     def init(timeline: Timeline.Obj[S])(implicit tx: S#Tx): this.type = {
       deferTx(guiInit())
-      observer = timeline.elem.peer.changed.react { implicit tx => upd =>
+      transportObserver = transport.react { implicit tx => {
+        case Transport.ViewAdded(_, auralTL: AuralObj.Timeline[S]) =>
+          val obs = auralTL.contents.react { implicit tx => {
+            case AuralObj.Timeline.ViewAdded  (_, timed, view) =>
+              if (config.meters) nodeMap.get(timed).foreach { vp =>
+                auralObjAdded(vp, view)
+              }
+            case AuralObj.Timeline.ViewRemoved(_, view) =>
+              auralObjRemoved(view)
+          }}
+          disposeAuralObserver()
+          auralTimeline.set(Some(auralTL))(tx.peer)
+          auralObserver.set(Some(obs    ))(tx.peer)
+
+        case Transport.ViewRemoved(_, auralTL: AuralObj.Timeline[S]) =>
+          disposeAuralObserver()
+
+        case _ =>
+      }}
+      transport.addObject(timeline)
+
+      timelineObserver = timeline.elem.peer.changed.react { implicit tx => upd =>
         upd.changes.foreach {
           case Timeline.Added(span, timed) =>
             if (span.contains(transport.position)) addNode(span, timed)
@@ -189,7 +204,7 @@ object PanelImpl {
 
           case Timeline.Removed(span, timed) =>
             if (span.contains(transport.position)) removeNode(span, timed)
-          // XXX TODO - update scheduler
+            // XXX TODO - update scheduler
 
           case Timeline.Element(timed, Obj.UpdateT(obj, changes)) =>
             nodeMap.get(timed.id).foreach { visObj =>
@@ -249,7 +264,13 @@ object PanelImpl {
     // ---- constructor ----
     private def guiInit(): Unit = {
       _vis  = new Visualization
-      _dsp = new Display(_vis)
+      _dsp = new Display(_vis) {
+        override def setRenderingHints(g: Graphics2D): Unit = {
+          super.setRenderingHints(g)
+          g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL,
+            if (m_highQuality) RenderingHints.VALUE_STROKE_PURE else RenderingHints.VALUE_STROKE_NORMALIZE)
+        }
+      }
 
       g     = new Graph
       vg    = _vis.addGraph(GROUP_GRAPH, g)
@@ -344,21 +365,6 @@ object PanelImpl {
             import synth._
             import ugen._
 
-            def meterGraph(sig: In): Unit = {
-              val meterTr = Impulse.kr(1000.0 / LAYOUT_TIME)
-              val peak = Peak.kr(sig, meterTr) // .outputs
-              //            val peakM      = peak.tail.foldLeft[ GE ]( peak.head )( _ max _ ) \ 0
-              val peakM = Reduce.max(peak)
-              val me = Proc.local
-              // warning: currently a bug in SendReply? if values are audio-rate,
-              // trigger needs to be audio-rate, too
-              meterTr.react(peakM /* :: rms :: Nil */) { vals =>
-                defer(meterMap.get(me).foreach { visOut =>
-                  visOut.meterUpdate(vals(0).toFloat)
-                })
-              }
-            }
-
             if (config.meters) meterFactory = Some(diff("$meter") {
               graph { sig: In =>
                 meterGraph(sig)
@@ -448,36 +454,6 @@ object PanelImpl {
           }
 */
 
-    private def efficientOuts(sig: GE, chans: Vec[Int]): Unit = {
-      //      require( sig.numOutputs == chans.size, sig.numOutputs.toString + " =! " + chans.size )
-      //if( sig.numOutputs != chans.size ) println( "WARNING: efficientOuts. sig has " + sig.numOutputs.toString + " outs, while chans has = " + chans.size )
-      if (chans.isEmpty) return
-
-      require(chans == Vec.tabulate(chans.size)(i => i + chans(0)))
-      Out.ar(chans(0), sig)
-
-/*
-            import synth._
-            import ugen._
-
-            def funky( seq: Vec[ (Int, UGenIn) ]) {
-               seq.headOption.foreach { tup =>
-                  val (idx, e1)  = tup
-                  var cnt = -1
-                  val (ja, nein) = seq.span { tup =>
-                     val (idx2, _) = tup
-                     cnt += 1
-                     idx2 == idx + cnt
-                  }
-                  Out.ar( idx, ja.map( _._2 ) : GE )
-                  funky( nein )
-               }
-            }
-
-            funky( chans.zip( sig.outputs ).sortBy( _._1 ))
-*/
-    }
-
     def showOverlayPanel(p: Component, pt: Point): Boolean = {
       if (overlay.isDefined) return false
       val pp = p.peer
@@ -540,23 +516,10 @@ object PanelImpl {
       }
 
     def addNode(span: SpanLike, timed: Timeline.Timed[S])(implicit tx: S#Tx): Unit = {
-      val id   = timed.id
-      val obj  = timed.value
-      // val n = proc.attr.expr[String](ObjKeys.attrName).fold("<unnamed>")(_.value)
-      // val n = proc.name.value
-      //            val par  = proc.par.entriesAt( time )
-      // val par = Map.empty[String, Double]
-      // val vp    = new VisualProc[S](n, par, cursor.position, tx.newHandle(proc))
-      val vp = VisualObj[S](this, timed.span, obj, pMeter = None,
-        meter = meterFactory.isDefined, solo = soloFactory.isDefined)
-      // val span = timed.span.value
-      //      map.get(id) match {
-      //        case Some(vpm) =>
-      //          map.remove(id)
-      //          map.put(id, vpm + (span -> (vp :: vpm.getOrElse(span, Nil))))
-      //        case _ =>
-      //          map.put(id, Map(span -> (vp :: Nil)))
-      //      }
+      val id    = timed.id
+      val obj   = timed.value
+      val vp    = VisualObj[S](this, timed.span, obj, pMeter = None, meter = config.meters,
+        solo = soloFactory.isDefined)
       nodeMap.put(id, vp)
       val locO = locHintMap.getAndTransform(_ - obj)(tx.peer).get(obj)
 
@@ -570,8 +533,65 @@ object PanelImpl {
         case _ => Nil
       }
 
+      if (vp.meter) for {
+        auralTL  <- auralTimeline.get(tx.peer)
+        auralObj <- auralTL.getView(timed)
+      } {
+        auralObjAdded(vp, auralObj)
+      }
+
       deferTx(visDo(addNodeGUI(vp, links, locO)))
     }
+
+    // makes the meter synth
+    private def auralObjAdded(vp: VisualObj[S], aural: AuralObj[S])(implicit tx: S#Tx): Unit = aural match {
+      case auralProc: AuralObj.Proc[S] =>
+        val d = auralProc.data
+        for {
+          either  <- d.getScan(Proc.Obj.scanMainOut)
+          nodeRef <- d.nodeOption
+        } {
+          val bus   = either.fold(identity, _.bus)
+          val node  = nodeRef.node
+          // println(s"For $aural - bus is $bus")
+          val meterGraph = SynthGraph {
+            import synth._; import ugen._
+            val meterTr = Impulse.kr(1000.0 / LAYOUT_TIME)
+            val sig     = In.ar("in".kr, bus.numChannels)
+            val peak    = Peak.kr(sig, meterTr) // .outputs
+            val peakM   = Reduce.max(peak)
+            // peakM.poll(1, "peak")
+            SendTrig.kr(meterTr, peakM)
+            // vp.meterUpdate(vals(0).toFloat)
+          }
+          val meterSynth = Synth.play(meterGraph, Some("meter"))(node.server.defaultGroup, addAction = addToTail,
+            dependencies = node :: Nil)
+          val setter = BusNodeSetter.reader("in", bus, meterSynth)
+          setter.add()
+          val NodeID = meterSynth.peer.id
+          val trigResp = message.Responder.add(node.server.peer) {
+            case m @ message.Trigger(NodeID, 0, peak: Float) =>
+              defer(vp.meterUpdate(peak))
+          }
+          // Responder.add is non-transactional. Thus, if the transaction fails, we need to remove it.
+          scala.concurrent.stm.Txn.afterRollback { _ =>
+            trigResp.remove()
+          } (tx.peer)
+          meterSynth.onEnd(trigResp.remove())
+          meterSynth.onEndTxn { implicit tx =>
+            setter.remove()
+          }
+          vp.meterSynth = Some(meterSynth)
+
+          auralToViewMap.put(aural, vp)(tx.peer)
+        }
+      case _ =>
+    }
+
+    private def auralObjRemoved(aural: AuralObj[S])(implicit tx: S#Tx): Unit =
+      auralToViewMap.remove(aural)(tx.peer).foreach { vp =>
+        vp.meterSynth = None
+      }
 
     def removeNode(span: SpanLike, timed: Timeline.Timed[S])(implicit tx: S#Tx): Unit = {
       val id   = timed.id
@@ -588,7 +608,8 @@ object PanelImpl {
         }
 
         deferTx(visDo(removeNodeGUI(vp)))
-
+        // println(s"Disposing ${vp.meterSynth}")
+        vp.dispose()
         disposeObj(obj)
       }
     }
@@ -925,150 +946,6 @@ object PanelImpl {
       fltSucc = succ
       showOverlayPanel(createFilterDialog, pt)
     }
-
-    //  private def procUpdate(u: Proc.Update): Unit = {
-    //    if (verbose) println("" + new java.util.Date() + " procUpdate: " + u)
-    //    val p = u.proc
-    //    procMap.get(p).foreach { vProc =>
-    //      if (u.state.valid) {
-    //        if (verbose) println("procUpdate : u.state = " + u.state)
-    //        val wasPlaying = vProc.state.playing
-    //        vProc.state = u.state
-    //        if (!wasPlaying && u.state.playing) {
-    //          vProc.pMeter.foreach { pm => atomic { implicit t => if (!pm.isPlaying) pm.play}}
-    //        }
-    //      }
-    //      if (u.controls              .nonEmpty) topControlsChanged(u.controls)
-    //      if (u.audioBusesConnected   .nonEmpty) topAddEdges       (u.audioBusesConnected)
-    //      if (u.audioBusesDisconnected.nonEmpty) topRemoveEdges    (u.audioBusesDisconnected)
-    //    }
-    //  }
-
-    //  private def topoUpdate(u: ProcWorld.Update): Unit = {
-    //    atomic { implicit t =>
-    //      val toRemove = u.procsRemoved.filterNot(_.name.startsWith("$"))
-    //      toRemove.foreach { p =>
-    //        p.removeListener(procListener)
-    //        procMap.get(p).flatMap(_.pMeter).foreach { pm =>
-    //          if (pm.state.valid) pm.dispose
-    //        }
-    //      }
-    //      val toAdd = u.procsAdded.filterNot(_.name.startsWith("$"))
-    //      toAdd.foreach(_.addListener(procListener))
-    //      val toAddWithMeter = toAdd.map { p =>
-    //        val pMeter = (p.params.collect {
-    //          case pParamBus: ProcParamAudioOutput if (pParamBus.name == "out") => p.audioOutput(pParamBus.name)
-    //        }).headOption.flatMap { bus =>
-    //          import DSL._
-    //          (masterFactory, masterProc) match {
-    //            case (Some(fact), Some(pMaster)) if (p.anatomy == ProcDiff) =>
-    //              val res = fact.make
-    //              // do _not_ connect to master, as currently with dispose of p
-    //              // the pMaster would be disposed, too!!!
-    //              bus ~> res // ~> pMaster
-    //              if (p.isPlaying) res.play
-    //              Some(res)
-    //            case _ => meterFactory.map { fact =>
-    //              val res = fact.make
-    //              bus ~> res
-    //              if (p.isPlaying) res.play
-    //              res
-    //            }
-    //          }
-    //        }
-    //        (p, pMeter)
-    //      }
-    //
-    //      t.afterCommit(_ => defer {
-    //        if (verbose) println("" + new java.util.Date() + " topoUpdate : " + u)
-    //        visDo {
-    //          toRemove.foreach { p => procMap.get(p).foreach(topRemoveProc(_))}
-    //          toAddWithMeter.foreach(tup => topAddProc(tup._1, tup._2))
-    //        }
-    //      })
-    //    }
-    //  }
-
-  //    private def topRemoveProc(vProc: VisualObj[S]): Unit = {
-  //      // fucking prefuse -- always trouble with the aggregates
-  //      //Thread.sleep(50)
-  //      //println( "REMOVE AGGR " + vProc.aggr )
-  //      //      vProc.aggr.removeAllItems()
-  //      aggrTable.removeTuple(vProc.aggr)
-  //      //      tryRepeatedly( aggrTable.removeTuple( vProc.aggr ))
-  //      g.removeNode(vProc.pNode)
-  ////      vProc.params.values.foreach { vParam =>
-  ////        // WE MUST NOT REMOVE THE EDGES, AS THE REMOVAL OF
-  ////        // VPROC.PNODE INCLUDES ALL THE EDGES!
-  ////        //         g.removeEdge( vParam.pEdge )
-  ////        g.removeNode(vParam.pNode)
-  ////      }
-  //      //    procMap -= vProc.proc
-  //    }
-
-    //  private def topRemoveControlMap(vControl: VisualControl, vMap: VisualMapping): Unit = {
-    //    g.removeEdge(vMap.pEdge)
-    //    vControl.mapping = None
-    //  }
-
-    //  private def topAddControlMap(vControl: VisualControl, m: ControlBusMapping): Unit = {
-    //    vControl.mapping = m match {
-    //      case ma: ControlABusMapping =>
-    //        val aout = ma.out // edge.out
-    //        procMap.get(aout.proc).flatMap(vProc2 => {
-    //          vProc2.params.get(aout.name) match {
-    //            case Some(vBus: VisualAudioOutput) =>
-    //              val pEdge = g.addEdge(vBus.pNode, vControl.pNode)
-    //              Some(VisualMapping(ma, pEdge))
-    //
-    //            case _ => None
-    //          }
-    //        })
-    //
-    //      //         case _ =>
-    //    }
-    //  }
-
-    //  private def topControlsChanged(controls: Map[ProcControl, ControlValue]): Unit = {
-    //    val byProc = controls.groupBy(_._1.proc)
-    //    byProc.foreach(tup => {
-    //      val (proc, map) = tup
-    //      procMap.get(proc).foreach(vProc => {
-    //        map.foreach(tup2 => {
-    //          val (ctrl, cv) = tup2
-    //          vProc.params.get(ctrl.name) match {
-    //            case Some(vControl: VisualControl) => {
-    //              vControl.value = cv
-    //              vControl.gliding = if (vControl.mapping.isDefined || cv.mapping.isDefined) {
-    //                vControl.mapping match {
-    //                  case Some(vMap) => if (cv.mapping != Some(vMap.mapping)) {
-    //                    topRemoveControlMap(vControl, vMap)
-    //                    cv.mapping match {
-    //                      case Some(bm: ControlBusMapping) => {
-    //                        topAddControlMap(vControl, bm); false
-    //                      }
-    //                      case Some(g: ControlGliding) => true
-    //                      case _ => false
-    //                    }
-    //                  } else false
-    //                  case None => cv.mapping match {
-    //                    case Some(bm: ControlBusMapping) => {
-    //                      topAddControlMap(vControl, bm); false
-    //                    }
-    //                    case Some(g: ControlGliding) => true
-    //                    case _ => false
-    //                  }
-    //                }
-    //              } else false
-    //            }
-    //            case _ =>
-    //          }
-    //        })
-    //        // damageReport XXX
-    //      })
-    //    })
-    //  }
-
   }
 
   private class Layout(peer: javax.swing.JComponent) extends LayoutManager {

@@ -14,17 +14,19 @@ scalaVersion       := "2.11.4"
 
 crossScalaVersions := Seq("2.11.4", "2.10.4")
 
-lazy val soundProcessesVersion  = "2.8.4-SNAPSHOT"
+lazy val soundProcessesVersion      = "2.9.0-SNAPSHOT"
 
-lazy val prefuseVersion         = "1.0.0"
+lazy val scalaColliderSwingVersion  = "1.20.1"
 
-lazy val lucreSwingVersion      = "0.6.1"
+// lazy val prefuseVersion             = "1.0.0"
 
-lazy val swingPlusVersion       = "0.2.0"
+lazy val lucreSwingVersion          = "0.6.1"
 
-lazy val intensityVersion       = "1.0.0"
+lazy val swingPlusVersion           = "0.2.0"
 
-lazy val fileUtilVersion        = "1.1.1"
+lazy val intensityVersion           = "1.0.0"
+
+lazy val fileUtilVersion            = "1.1.1"
 
 // ---- test ----
 
@@ -33,14 +35,15 @@ lazy val webLaFVersion          = "1.28"
 lazy val lucreSTMVersion        = "2.1.1"
 
 libraryDependencies ++= Seq(
-  "de.sciss" %% "soundprocesses-views"  % soundProcessesVersion,
-  "de.sciss" %% "fileutil"              % fileUtilVersion,
-  "de.sciss" %  "prefuse-core"          % prefuseVersion,
-  "de.sciss" %% "lucreswing"            % lucreSwingVersion,
-  "de.sciss" %% "swingplus"             % swingPlusVersion,
-  "de.sciss" %  "intensitypalette"      % intensityVersion,
-  "de.sciss" %% "lucrestm-bdb"          % lucreSTMVersion % "test",
-  "de.sciss" %  "weblaf"                % webLaFVersion   % "test"
+  "de.sciss" %% "soundprocesses-views"    % soundProcessesVersion,
+  "de.sciss" %% "scalacolliderswing-core" % scalaColliderSwingVersion,
+  "de.sciss" %% "fileutil"                % fileUtilVersion,
+//  "de.sciss" %  "prefuse-core"            % prefuseVersion,
+  "de.sciss" %% "lucreswing"              % lucreSwingVersion,
+  "de.sciss" %% "swingplus"               % swingPlusVersion,
+  "de.sciss" %  "intensitypalette"        % intensityVersion,
+  "de.sciss" %% "lucrestm-bdb"            % lucreSTMVersion % "test",
+  "de.sciss" %  "weblaf"                  % webLaFVersion   % "test"
 )
 
 // retrieveManaged := true

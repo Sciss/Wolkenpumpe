@@ -19,7 +19,8 @@ import de.sciss.intensitypalette.IntensityPalette
 import de.sciss.lucre.expr.{Expr, Double => DoubleEx}
 import de.sciss.lucre.bitemp.{SpanLike => SpanLikeEx}
 import de.sciss.lucre.stm
-import de.sciss.lucre.synth.Sys
+import de.sciss.lucre.stm.Disposable
+import de.sciss.lucre.synth.{Synth, Sys}
 import de.sciss.numbers
 import de.sciss.span.SpanLike
 import de.sciss.synth.proc
@@ -30,6 +31,8 @@ import java.awt.geom.{Line2D, Arc2D, Area, Point2D, Ellipse2D, GeneralPath, Rect
 import de.sciss.synth.proc.{Scan, DoubleElem, Obj, Proc}
 import scala.collection.breakOut
 import proc.Implicits._
+
+import scala.concurrent.stm.Ref
 
 private[nuages] object VisualData {
   val diam = 50
@@ -194,7 +197,7 @@ private[nuages] class VisualObj[S <: Sys[S]] private (val main: NuagesPanel[S],
                                                       /* val params: Map[String, VisualParam[S]], */
                                                       val pMeter: Option[stm.Source[S#Tx, Proc.Obj[S]]],
                                                       val meter: Boolean, val solo: Boolean)
-  extends VisualNode[S] {
+  extends VisualNode[S] with Disposable[S#Tx] {
   vProc =>
 
   import VisualData._
@@ -204,6 +207,16 @@ private[nuages] class VisualObj[S <: Sys[S]] private (val main: NuagesPanel[S],
 
   var scans   = Map.empty[String, VisualScan[S]]
   var params  = Map.empty[String, VisualControl[S]]
+
+  private var _meterSynth = Ref(Option.empty[Synth])
+
+  final def meterSynth(implicit tx: S#Tx): Option[Synth] = _meterSynth.get(tx.peer)
+  final def meterSynth_=(value: Option[Synth])(implicit tx: S#Tx): Unit = {
+    val old = _meterSynth.swap(value)(tx.peer)
+    old.foreach(_.dispose())
+  }
+
+  def dispose()(implicit tx: S#Tx): Unit = meterSynth = None
 
   //  @volatile private var stateVar = Proc.State(false)
   @volatile private var disposeAfterFade = false

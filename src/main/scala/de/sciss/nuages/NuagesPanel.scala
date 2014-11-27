@@ -38,6 +38,8 @@ object NuagesPanel {
 trait NuagesPanel[S <: Sys[S]] extends View[S] {
   def nuages(implicit tx: S#Tx): Nuages[S]
 
+  def aural: AuralSystem
+
   def transport: Transport[S]
 
   def config : Nuages.Config

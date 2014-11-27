@@ -14,6 +14,7 @@
 package de.sciss.nuages
 
 import de.sciss.lucre.stm
+import de.sciss.lucre.stm.Disposable
 import de.sciss.lucre.synth.Sys
 import impl.{FrameImpl => Impl}
 
@@ -22,7 +23,7 @@ object NuagesFrame {
                         (implicit tx: S#Tx, cursor: stm.Cursor[S]): NuagesFrame[S] =
     Impl(panel, numInputChannels = numInputChannels, undecorated = undecorated)
 }
-trait NuagesFrame[S <: Sys[S]] {
+trait NuagesFrame[S <: Sys[S]] extends Disposable[S#Tx] {
   def view: NuagesPanel[S]
   def controlPanel: ControlPanel
 }
