@@ -363,9 +363,9 @@ class Wolkenpumpe[S <: Sys[S]] {
     val numOutputs  = math.max(
       math.max(
         sCfg.lineOutputs.map(_.stopOffset).max,
-        nCfg.soloChannels  .fold(0)(_.max)
+        nCfg.soloChannels  .fold(0)(_.max + 1)
       ),
-      nCfg.masterChannels.fold(0)(_.max)
+      nCfg.masterChannels.fold(0)(_.max + 1)
     )
 
     println(s"numInputs = $numInputs, numOutputs = $numOutputs")

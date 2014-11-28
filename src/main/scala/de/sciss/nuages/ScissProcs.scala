@@ -45,6 +45,9 @@ object ScissProcs {
     def lineOutputs : Vec[NamedBusConfig]
     def masterGroups: Vec[NamedBusConfig]
 
+    // set to zero to switch off
+    def highPass: Int
+
     /** Force the number of channels in the generator, where `<= 0` indicates no forcing. */
     def generatorChannels: Int
   }
@@ -78,16 +81,19 @@ object ScissProcs {
 
     var generatorChannels = 0
 
+    var highPass = 0
+
     def build: Config = ConfigImpl(numLoops = numLoops, loopDuration = loopDuration,
       audioFilesFolder = audioFilesFolder, lineInputs = lineInputs, micInputs = micInputs,
-      lineOutputs = lineOutputs, masterGroups = masterGroups, generatorChannels = generatorChannels)
+      lineOutputs = lineOutputs, masterGroups = masterGroups, generatorChannels = generatorChannels,
+      highPass = highPass)
   }
 
   private case class ConfigImpl(numLoops: Int, loopDuration: Double,
                                 audioFilesFolder: Option[File],
                                 lineInputs : Vec[NamedBusConfig], micInputs   : Vec[NamedBusConfig],
                                 lineOutputs: Vec[NamedBusConfig], masterGroups: Vec[NamedBusConfig],
-                                generatorChannels: Int)
+                                generatorChannels: Int, highPass: Int)
     extends Config
 
   var tapePath: Option[String] = None
@@ -307,7 +313,9 @@ object ScissProcs {
         val feed  = pFeed * 2 - 1
         val sig   = XFade2.ar(pureIn, dly, feed)
 
-        val numOut = masterChansOption.fold(2)(_.size)
+        // val numOut = masterChansOption.fold(2)(_.size)
+        val numOut = if (sConfig.generatorChannels <= 0) masterChansOption.fold(2)(_.size) else sConfig.generatorChannels
+
         val sig1: GE = if (numOut == cfg.numChannels) {
             sig
           } else if (cfg.numChannels == 1) {
@@ -325,7 +333,9 @@ object ScissProcs {
 
         val boost   = pBoost
         val sig     = In.ar(NumOutputBuses.ir + cfg.offset, cfg.numChannels) * boost
-        val numOut  = masterChansOption.fold(2)(_.size)
+        // val numOut  = masterChansOption.fold(2)(_.size)
+        val numOut  = if (sConfig.generatorChannels <= 0) masterChansOption.fold(2)(_.size) else sConfig.generatorChannels
+
         val sig1: GE = if (numOut == cfg.numChannels) {
             sig
           } else if (cfg.numChannels == 1) {
@@ -360,7 +370,7 @@ object ScissProcs {
       val pFreq2  = pAudio("freq-fact", ParamSpec(0.01,   100, ExpWarp), default =  1 /* 1 */)
       val pAmp    = pAudio("amp"      , ParamSpec(0.01,     1, ExpWarp), default =  0.1)
 
-      val numOut = masterChansOption.fold(2)(_.size)
+      val numOut  = if (sConfig.generatorChannels <= 0) masterChansOption.fold(2)(_.size) else sConfig.generatorChannels
 
       // val f1 = pFreq1
       // val f2 = f1 * pFreq2
@@ -383,7 +393,8 @@ object ScissProcs {
       //      val w1 = pw1
       //      val w2 = pw2
 
-      val numOut = masterChansOption.fold(2)(_.size)
+      // val numOut = masterChansOption.fold(2)(_.size)
+      val numOut  = if (sConfig.generatorChannels <= 0) masterChansOption.fold(2)(_.size) else sConfig.generatorChannels
 
       val sig: GE = Vec.tabulate(numOut) { ch =>
         val freqM = (ch: GE).linlin(0, (numOut - 1).max(1), 1, pFreq2)
@@ -978,7 +989,10 @@ object ScissProcs {
             val bad = CheckBadValues.ar(sig0)
             val sig = Gate.ar(sig0, bad sig_== 0)
             masterChans.zipWithIndex.foreach { case (ch, i) =>
-              Out.ar(ch, sig \ i)   // XXX TODO - should go to a bus w/ limiter
+              val sig0 = sig \ i
+              val hpf  = sConfig.highPass
+              val sig1 = if (hpf >= 16 && hpf < 20000) HPF.ar(sig0, hpf) else sig0
+              Out.ar(ch, sig1)   // XXX TODO - should go to a bus w/ limiter
             }
           }
 
