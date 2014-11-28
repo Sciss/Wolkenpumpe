@@ -32,8 +32,6 @@ import scala.language.implicitConversions
 
 /** This is my personal set of generators and filters. */
 object ScissProcs {
-  var FORCE_CHAN = true
-
   trait ConfigLike {
     def numLoops: Int
 
@@ -46,6 +44,9 @@ object ScissProcs {
     def micInputs   : Vec[NamedBusConfig]
     def lineOutputs : Vec[NamedBusConfig]
     def masterGroups: Vec[NamedBusConfig]
+
+    /** Force the number of channels in the generator, where `<= 0` indicates no forcing. */
+    def generatorChannels: Int
   }
 
   object Config {
@@ -75,15 +76,18 @@ object ScissProcs {
     var lineOutputs : Vec[NamedBusConfig] = Vec.empty
     var masterGroups: Vec[NamedBusConfig] = Vec.empty
 
+    var generatorChannels = 0
+
     def build: Config = ConfigImpl(numLoops = numLoops, loopDuration = loopDuration,
       audioFilesFolder = audioFilesFolder, lineInputs = lineInputs, micInputs = micInputs,
-      lineOutputs = lineOutputs, masterGroups = masterGroups)
+      lineOutputs = lineOutputs, masterGroups = masterGroups, generatorChannels = generatorChannels)
   }
 
   private case class ConfigImpl(numLoops: Int, loopDuration: Double,
                                 audioFilesFolder: Option[File],
                                 lineInputs : Vec[NamedBusConfig], micInputs   : Vec[NamedBusConfig],
-                                lineOutputs: Vec[NamedBusConfig], masterGroups: Vec[NamedBusConfig])
+                                lineOutputs: Vec[NamedBusConfig], masterGroups: Vec[NamedBusConfig],
+                                generatorChannels: Int)
     extends Config
 
   var tapePath: Option[String] = None
@@ -103,8 +107,8 @@ object ScissProcs {
     val loc   = ArtifactLocation[S](file(sys.props("java.io.tmpdir")))
     val locH  = tx.newHandle(loc)
 
-    def ForceChan(in: GE): GE = if (!FORCE_CHAN) in else masterChansOption.fold(in) { sq =>
-      WrapExtendChannels(sq.size, in)
+    def ForceChan(in: GE): GE = if (sConfig.generatorChannels <= 0) in else {
+      WrapExtendChannels(sConfig.generatorChannels, in)
     }
 
     // -------------- GENERATORS --------------

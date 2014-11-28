@@ -694,7 +694,7 @@ object PanelImpl {
     }
 
     private def clearSolo()(implicit tx: S#Tx): Unit = {
-      val oldInfo = soloInfo.swap(None)
+      val oldInfo = soloInfo.swap(None)(tx.peer)
       oldInfo.foreach { case (oldVP, oldSynth) =>
         oldSynth.dispose()
         deferTx(oldVP.soloed = false)

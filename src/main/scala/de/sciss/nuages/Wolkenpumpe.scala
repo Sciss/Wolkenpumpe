@@ -34,7 +34,8 @@ object Wolkenpumpe {
   def main(args: Array[String]): Unit = {
     type S = InMemory
     implicit val system = InMemory()
-    run[S]()
+    val w = new Wolkenpumpe[S]
+    w.run()
   }
 
   def initTypes(): Unit = {
@@ -187,70 +188,6 @@ object Wolkenpumpe {
     }
   }
 
-  def run[S <: Sys[S]]()(implicit cursor: stm.Cursor[S]): Unit = {
-    initTypes()
-
-    val nCfg                = Nuages.Config()
-    nCfg.masterChannels     = Some(0 until 5) // Vector(0, 1))
-    nCfg.recordPath         = Some("/tmp")
-    nCfg.soloChannels       = Some(0 to 1)
-    nCfg.collector          = false   // not yet fully supported
-
-    val sCfg = ScissProcs.Config()
-    sCfg.audioFilesFolder   = Some(userHome / "Music" / "tapes")
-    sCfg.micInputs          = Vector(
-      NamedBusConfig("m-dpa"  , 0, 1),
-      NamedBusConfig("m-at "  , 3, 1)
-    )
-    sCfg.lineInputs         = Vector(NamedBusConfig("pirro", 2, 1))
-    sCfg.lineOutputs        = Vector(
-      NamedBusConfig("sum", 5, 1)
-      , NamedBusConfig("hp", 6, 2)  // while 'solo' doesn't work
-    )
-
-    val aCfg                = SServer.Config()
-    aCfg.deviceName         = Some("Wolkenpumpe")
-    aCfg.audioBusChannels   = 512
-    aCfg.outputBusChannels  = 8
-    aCfg.inputBusChannels   = 8
-    aCfg.memorySize         = 256 * 1024
-    aCfg.transport          = osc.TCP
-    aCfg.pickPort()
-
-    /* val f = */ cursor.step { implicit tx =>
-      implicit val n      = Nuages.empty[S]
-      implicit val aural  = AuralSystem()
-
-      ScissProcs[S](sCfg, nCfg)
-
-      import WorkspaceHandle.Implicits._
-      val p     = NuagesPanel(n, nCfg, aural)
-      val numIn = sCfg.lineInputs.size + sCfg.micInputs.size
-      val frame = NuagesFrame(p, numInputChannels = numIn, undecorated = true)
-
-      aural.addClient(new AuralSystem.Client {
-        def auralStarted(server: Server)(implicit tx: Txn): Unit =
-          installMasterSynth(server, nCfg, sCfg, frame)
-
-        def auralStopped()(implicit tx: Txn): Unit = ()
-      })
-
-      aural.start(aCfg)
-    }
-
-    //        val recordPath = "/tmp"
-    //        //            val masterBus  = new AudioBus( srv, 0, 2 )
-    //        //            val soloBus    = Bus.audio( srv, 2 )
-    //        //            val soloBus    = new AudioBus( srv, 6, 2 )
-    //        val config = NuagesConfig(srv, Some(Vector(0, 1)), Some(Vector(2, 3)), Some(recordPath), meters = true)
-    //        val f = new NuagesFrame(config)
-    //        //            val p = f.panel
-    //        //            p.addKeyListener( new TestKeyListener( p ))
-    //        f.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE)
-    //        f.setSize(640, 480)
-    //        f.setVisible(true)
-  }
-
   /** A condensed font for GUI usage. This is in 12 pt size,
     * so consumers must rescale.
     */
@@ -375,6 +312,86 @@ object Wolkenpumpe {
           val ctrl = frame.controlPanel
           ctrl.meterUpdate(values.map(_.asInstanceOf[Float])(breakOut))
         }
+    }
+  }
+}
+class Wolkenpumpe[S <: Sys[S]] {
+  /** Subclasses may want to override this. */
+  protected def configure(sCfg: ScissProcs.ConfigBuilder, nCfg: Nuages.ConfigBuilder,
+                          aCfg: SServer.ConfigBuilder): Unit = {
+    nCfg.masterChannels     = Some(0 until 5) // Vector(0, 1))
+    nCfg.soloChannels       = Some(0 to 1)
+
+    sCfg.audioFilesFolder   = Some(userHome / "Music" / "tapes")
+    sCfg.micInputs          = Vector(
+      NamedBusConfig("m-dpa"  , 0, 1),
+      NamedBusConfig("m-at "  , 3, 1)
+    )
+    sCfg.lineInputs         = Vector(NamedBusConfig("pirro", 2, 1))
+    sCfg.lineOutputs        = Vector(
+      NamedBusConfig("sum", 5, 1)
+      // , NamedBusConfig("hp", 6, 2)  // while 'solo' doesn't work
+    )
+  }
+
+  /** Subclasses may want to override this. */
+  protected def registerProcesses(sCfg: ScissProcs.Config, nCfg: Nuages.Config)
+                                 (implicit tx: S#Tx, cursor: stm.Cursor[S], nuages: Nuages[S],
+                                  aural: AuralSystem): Unit = {
+    ScissProcs[S](sCfg, nCfg)
+  }
+
+  def run()(implicit cursor: stm.Cursor[S]): Unit = {
+    Wolkenpumpe.initTypes()
+
+    val nCfg                = Nuages    .Config()
+    val sCfg                = ScissProcs.Config()
+    val aCfg                = SServer   .Config()
+
+    nCfg.recordPath         = Option(sys.props("java.io.tmpdir"))
+    nCfg.collector          = false   // not yet fully supported
+
+    aCfg.deviceName         = Some("Wolkenpumpe")
+    aCfg.audioBusChannels   = 512
+    aCfg.memorySize         = 256 * 1024
+    aCfg.transport          = osc.TCP
+    aCfg.pickPort()
+
+    configure(sCfg, nCfg, aCfg)
+
+    val numInputs   = (sCfg.lineInputs ++ sCfg.micInputs).map(_.stopOffset).max
+    val numOutputs  = math.max(
+      math.max(
+        sCfg.lineOutputs.map(_.stopOffset).max,
+        nCfg.soloChannels  .fold(0)(_.max)
+      ),
+      nCfg.masterChannels.fold(0)(_.max)
+    )
+
+    println(s"numInputs = $numInputs, numOutputs = $numOutputs")
+
+    aCfg.outputBusChannels  = numOutputs
+    aCfg.inputBusChannels   = numInputs
+
+    /* val f = */ cursor.step { implicit tx =>
+      implicit val n      = Nuages.empty[S]
+      implicit val aural  = AuralSystem()
+
+      registerProcesses(sCfg, nCfg)
+
+      import WorkspaceHandle.Implicits._
+      val p     = NuagesPanel(n, nCfg, aural)
+      val numIn = sCfg.lineInputs.size + sCfg.micInputs.size
+      val frame = NuagesFrame(p, numInputChannels = numIn, undecorated = true)
+
+      aural.addClient(new AuralSystem.Client {
+        def auralStarted(server: Server)(implicit tx: Txn): Unit =
+          Wolkenpumpe.installMasterSynth(server, nCfg, sCfg, frame)
+
+        def auralStopped()(implicit tx: Txn): Unit = ()
+      })
+
+      aural.start(aCfg)
     }
   }
 }

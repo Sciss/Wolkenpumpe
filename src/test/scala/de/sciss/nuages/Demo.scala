@@ -15,11 +15,13 @@ object Demo extends SwingApplication {
       type S = Durable
       val factory = BerkeleyDB.tmp()
       implicit val system = Durable(factory)
-      Wolkenpumpe.run[S]()
+      val w = new Wolkenpumpe[S]
+      w.run()
     } else {
       type S = InMemory
       implicit val system = InMemory()
-      Wolkenpumpe.run[S]()
+      val w = new Wolkenpumpe[S]
+      w.run()
     }
   }
 }
