@@ -44,6 +44,8 @@ trait NuagesPanel[S <: Sys[S]] extends View[S] {
 
   def config : Nuages.Config
 
+  def setSolo(vp: VisualObj[S], onOff: Boolean): Unit
+
   def setMasterVolume(v: Double)(implicit tx: S#Tx): Unit
   def setSoloVolume  (v: Double)(implicit tx: S#Tx): Unit
 

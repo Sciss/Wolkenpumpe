@@ -14,13 +14,13 @@ scalaVersion       := "2.11.4"
 
 crossScalaVersions := Seq("2.11.4", "2.10.4")
 
-lazy val soundProcessesVersion      = "2.9.0-SNAPSHOT"
+lazy val soundProcessesVersion      = "2.9.0"
 
-lazy val scalaColliderSwingVersion  = "1.20.1"
+lazy val scalaColliderSwingVersion  = "1.20.2"
 
 // lazy val prefuseVersion             = "1.0.0"
 
-lazy val lucreSwingVersion          = "0.6.1"
+lazy val lucreSwingVersion          = "0.6.2"
 
 lazy val swingPlusVersion           = "0.2.0"
 
@@ -30,9 +30,9 @@ lazy val fileUtilVersion            = "1.1.1"
 
 // ---- test ----
 
-lazy val webLaFVersion          = "1.28"
+lazy val webLaFVersion              = "1.28"
 
-lazy val lucreSTMVersion        = "2.1.1"
+lazy val lucreSTMVersion            = "2.1.1"
 
 libraryDependencies ++= Seq(
   "de.sciss" %% "soundprocesses-views"    % soundProcessesVersion,

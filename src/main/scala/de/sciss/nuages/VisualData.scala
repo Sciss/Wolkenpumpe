@@ -313,7 +313,7 @@ private[nuages] class VisualObj[S <: Sys[S]] private (val main: NuagesPanel[S],
 //      }
       true
     } else if (solo && soloArea.contains(xt, yt)) {
-      // main.setSolo(vproc, !soloed)
+      main.setSolo(this, !soloed)
       true
 
     } else if (outerE.contains(xt, yt) & e.isAltDown) {

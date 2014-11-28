@@ -4,7 +4,7 @@ general
 [OK]    - server status / CPU
         - glide, fade
         - multiple scan-ins, "mapping"
-        - soloing
+[OK]    - soloing
 [OK]    - metering
         - keyboard control
         - group selection and filtering

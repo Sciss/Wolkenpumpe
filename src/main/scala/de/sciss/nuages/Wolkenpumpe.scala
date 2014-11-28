@@ -193,7 +193,7 @@ object Wolkenpumpe {
     val nCfg                = Nuages.Config()
     nCfg.masterChannels     = Some(0 until 5) // Vector(0, 1))
     nCfg.recordPath         = Some("/tmp")
-    // nCfg.soloChannels
+    nCfg.soloChannels       = Some(0 to 1)
     nCfg.collector          = false   // not yet fully supported
 
     val sCfg = ScissProcs.Config()

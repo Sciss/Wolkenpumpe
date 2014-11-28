@@ -26,12 +26,12 @@ import de.sciss.lucre.stm
 import de.sciss.lucre.stm.Disposable
 import de.sciss.lucre.swing.{ListView, defer, deferTx, requireEDT}
 import de.sciss.lucre.swing.impl.ComponentHolder
-import de.sciss.lucre.synth.{BusNodeSetter, Txn, Synth, Sys}
+import de.sciss.lucre.synth.{AudioBus, Node, Txn, Synth, Sys}
 import de.sciss.model.Change
 import de.sciss.span.{SpanLike, Span}
 import de.sciss.swingplus.DoClickAction
 import de.sciss.synth
-import de.sciss.synth.{addToTail, SynthGraph, proc, AudioBus, message}
+import de.sciss.synth.{addToTail, SynthGraph, proc, AudioBus => SAudioBus, message}
 import de.sciss.synth.proc.{AuralObj, Action, WorkspaceHandle, Scan, ExprImplicits, AuralSystem, Transport, Timeline, Proc, Folder, Obj}
 
 import prefuse.action.{RepaintAction, ActionList}
@@ -116,21 +116,15 @@ object PanelImpl {
     import cursor.{step => atomic}
 
     private var _vis: Visualization = _
-    private var _dsp: Display = _
-
-    private var soloFactory: Option[stm.Source[S#Tx, Proc.Obj[S]]] = None
-
-    private var g: Graph = _
-    private var vg: VisualGraph = _
+    private var _dsp: Display       = _
+    private var g   : Graph         = _
+    private var vg  : VisualGraph   = _
 
     private var aggrTable: AggregateTable = _
 
     //  var transition: Double => Transition = (_) => Instant
 
-    //  private var masterFactory: Option[ProcFactory]  = None
-    //  private var masterProc   : Option[Proc]         = None
-
-    private var masterBusVar : Option[AudioBus]     = None
+    private var masterBusVar : Option[SAudioBus] = None
 
     private val locHintMap = TxnLocal(Map.empty[Obj[S], Point2D])
 
@@ -142,11 +136,12 @@ object PanelImpl {
     private val auralTimeline = Ref(Option.empty[AuralObj.Timeline[S]])
 
     private val auralToViewMap  = TMap.empty[AuralObj[S], VisualObj[S]]
+    private val viewToAuralMap  = TMap.empty[VisualObj[S], AuralObj[S]]
 
     def display      : Display        = _dsp
     def visualization: Visualization  = _vis
 
-    def masterBus: Option[AudioBus] = masterBusVar
+    def masterBus: Option[SAudioBus] = masterBusVar
 
     def setLocationHint(p: Obj[S], loc: Point2D)(implicit tx: S#Tx): Unit =
       locHintMap.transform(_ + (p -> loc))(tx.peer)
@@ -156,6 +151,7 @@ object PanelImpl {
     def dispose()(implicit tx: S#Tx): Unit = {
       implicit val itx = tx.peer
       deferTx(stopAnimation())
+      clearSolo()
       transportObserver.dispose()
       timelineObserver .dispose()
       disposeAuralObserver()
@@ -163,6 +159,7 @@ object PanelImpl {
       auralToViewMap.foreach { case (_, vp) =>
         vp.dispose()
       }
+      viewToAuralMap.clear()
       auralToViewMap.clear()
       nodeMap  .dispose()
       scanMap  .dispose()
@@ -330,7 +327,7 @@ object PanelImpl {
       // ------------------------------------------------
 
       // initialize the display
-      _dsp.setSize(800, 600)
+      _dsp.setSize(960, 640)
       _dsp.addControlListener(new ZoomControl())
       _dsp.addControlListener(new WheelZoomControl())
       _dsp.addControlListener(new PanControl())
@@ -420,38 +417,6 @@ object PanelImpl {
               factoryManager.startListening
               if (verbose) println(" ok")
             }
-
-            soloFactory = config.soloChannels.map { chans => diff("$solo") {
-              val pAmp = pControl("amp", soloAmpSpec._1, soloAmpSpec._2)
-
-              graph { sig: In =>
-                //               val numIn   = sig.numOutputs
-                val numOut = chans.size
-                //               val sigOut  = Array.fill[ GE ]( numOut )( 0.0f )
-                //               val sca     = (numOut - 1).toFloat / (numIn - 1)
-
-                val sigOut = SplayAz.ar(numOut, sig) // , spread, center, level, width, orient
-
-                //               sig.outputs.zipWithIndex.foreach { tup =>
-                //                  val (sigIn, inCh) = tup
-                //                  val outCh         = inCh * sca
-                //                  val fr            = outCh % 1f
-                //                  val outChI        = outCh.toInt
-                //                  if( fr == 0f ) {
-                //                     sigOut( outChI ) += sigIn
-                //                  } else {
-                //                     sigOut( outChI )     += sigIn * (1 - fr).sqrt
-                //                     sigOut( outChI + 1 ) += sigIn * fr.sqrt
-                //                  }
-                //               }
-                efficientOuts(sigOut /*.toSeq */ * pAmp.kr, chans)
-                0.0
-              }
-            }
-            }
-
-            world.addListener(topoListener)
-          }
 */
 
     def showOverlayPanel(p: Component, pt: Point): Boolean = {
@@ -519,7 +484,7 @@ object PanelImpl {
       val id    = timed.id
       val obj   = timed.value
       val vp    = VisualObj[S](this, timed.span, obj, pMeter = None, meter = config.meters,
-        solo = soloFactory.isDefined)
+        solo = config.soloChannels.isDefined)
       nodeMap.put(id, vp)
       val locO = locHintMap.getAndTransform(_ - obj)(tx.peer).get(obj)
 
@@ -544,54 +509,44 @@ object PanelImpl {
     }
 
     // makes the meter synth
-    private def auralObjAdded(vp: VisualObj[S], aural: AuralObj[S])(implicit tx: S#Tx): Unit = aural match {
-      case auralProc: AuralObj.Proc[S] =>
-        val d = auralProc.data
-        for {
-          either  <- d.getScan(Proc.Obj.scanMainOut)
-          nodeRef <- d.nodeOption
-        } {
-          val bus   = either.fold(identity, _.bus)
-          val node  = nodeRef.node
-          // println(s"For $aural - bus is $bus")
-          val meterGraph = SynthGraph {
-            import synth._; import ugen._
-            val meterTr = Impulse.kr(1000.0 / LAYOUT_TIME)
-            val sig     = In.ar("in".kr, bus.numChannels)
-            val peak    = Peak.kr(sig, meterTr) // .outputs
-            val peakM   = Reduce.max(peak)
-            // peakM.poll(1, "peak")
-            SendTrig.kr(meterTr, peakM)
-            // vp.meterUpdate(vals(0).toFloat)
-          }
-          val meterSynth = Synth.play(meterGraph, Some("meter"))(node.server.defaultGroup, addAction = addToTail,
-            dependencies = node :: Nil)
-          val setter = BusNodeSetter.reader("in", bus, meterSynth)
-          setter.add()
-          val NodeID = meterSynth.peer.id
-          val trigResp = message.Responder.add(node.server.peer) {
-            case m @ message.Trigger(NodeID, 0, peak: Float) =>
-              defer(vp.meterUpdate(peak))
-          }
-          // Responder.add is non-transactional. Thus, if the transaction fails, we need to remove it.
-          scala.concurrent.stm.Txn.afterRollback { _ =>
-            trigResp.remove()
-          } (tx.peer)
-          meterSynth.onEnd(trigResp.remove())
-          meterSynth.onEndTxn { implicit tx =>
-            setter.remove()
-          }
-          vp.meterSynth = Some(meterSynth)
-
-          auralToViewMap.put(aural, vp)(tx.peer)
+    private def auralObjAdded(vp: VisualObj[S], aural: AuralObj[S])(implicit tx: S#Tx): Unit =
+      getScanOutData(aural).foreach { case (bus, node) =>
+        // println(s"For $aural - bus is $bus")
+        val meterGraph = SynthGraph {
+          import synth._; import ugen._
+          val meterTr = Impulse.kr(1000.0 / LAYOUT_TIME)
+          val sig     = In.ar("in".kr, bus.numChannels)
+          val peak    = Peak.kr(sig, meterTr) // .outputs
+          val peakM   = Reduce.max(peak)
+          // peakM.poll(1, "peak")
+          SendTrig.kr(meterTr, peakM)
+          // vp.meterUpdate(vals(0).toFloat)
         }
-      case _ =>
+        val meterSynth = Synth.play(meterGraph, Some("meter"))(node.server.defaultGroup, addAction = addToTail,
+          dependencies = node :: Nil)
+        meterSynth.read(bus -> "in")
+        val NodeID = meterSynth.peer.id
+        val trigResp = message.Responder.add(node.server.peer) {
+          case m @ message.Trigger(NodeID, 0, peak: Float) =>
+            defer(vp.meterUpdate(peak))
+        }
+        // Responder.add is non-transactional. Thus, if the transaction fails, we need to remove it.
+        scala.concurrent.stm.Txn.afterRollback { _ =>
+          trigResp.remove()
+        } (tx.peer)
+        meterSynth.onEnd(trigResp.remove())
+        vp.meterSynth = Some(meterSynth)
+
+        auralToViewMap.put(aural, vp)(tx.peer)
+        viewToAuralMap.put(vp, aural)(tx.peer)
     }
 
-    private def auralObjRemoved(aural: AuralObj[S])(implicit tx: S#Tx): Unit =
+    private def auralObjRemoved(aural: AuralObj[S])(implicit tx: S#Tx): Unit = {
       auralToViewMap.remove(aural)(tx.peer).foreach { vp =>
+        viewToAuralMap.remove(vp)(tx.peer)
         vp.meterSynth = None
       }
+    }
 
     def removeNode(span: SpanLike, timed: Timeline.Timed[S])(implicit tx: S#Tx): Unit = {
       val id   = timed.id
@@ -611,6 +566,12 @@ object PanelImpl {
         // println(s"Disposing ${vp.meterSynth}")
         vp.dispose()
         disposeObj(obj)
+
+        // note: we could look for `solo` and clear it
+        // if relevant; but the bus-reader will automatically
+        // go to dummy, so let's just save the effort.
+        // orphaned solo will be cleared when calling
+        // `setSolo` another time or upon frame disposal.
       }
     }
 
@@ -691,12 +652,6 @@ object PanelImpl {
         // vi.set(COL_NUAGES, vParam)
       }
 
-      //      pMeter.foreach { pm => meterMap += pm -> res}
-      // vi.set(COL_NUAGES, vp)
-      // XXX this doesn't work. the vProc needs initial layout...
-      //      if( p.anatomy == ProcDiff ) vi.setFixed( true )
-      // procMap += p -> vProc
-
       links.foreach { link =>
         for {
           sourceVisScan <- link.source.scans.get(link.sourceKey)
@@ -720,49 +675,64 @@ object PanelImpl {
         g.removeEdge(pEdge)
       }
 
-    //      val res = VisualProc(panel, p, pNode, aggr, vParams, pMeter, meterFactory.isDefined, soloFactory.isDefined)
-    //      pMeter.foreach { pm => meterMap += pm -> res}
-    //      res
-    //    }
-    //
-    //    vi.set(COL_NUAGES, vProc)
-    //    // XXX this doesn't work. the vProc needs initial layout...
-    //    //      if( p.anatomy == ProcDiff ) vi.setFixed( true )
-    //    procMap += p -> vProc
-    //  }
-
     private val soloVolume  = Ref(soloAmpSpec._2)  // 0.5
-    // private val soloInfo    = Ref(Option.empty[(VisualProc, Proc)])
 
-    def setSolo(vp: VisualObj[S], onOff: Boolean): Unit = {
-      //    // import DSL._
-      //    if (!EventQueue.isDispatchThread) error("Must be called in event thread")
-      //    soloFactory.foreach { fact => atomic { implicit t =>
-      //      val info = soloInfo.swap(None)
-      //      val sameProc = Some(vp) == info.map(_._1)
-      //      if (sameProc && onOff) return
-      //
-      //      info.foreach { tup =>
-      //        val (soloVP, soloP) = tup
-      //        if (soloP.state.valid) {
-      //          soloVP.proc ~/> soloP
-      //          soloP.dispose
-      //        }
-      //        if (!sameProc) t.afterCommit { _ => soloVP.soloed = false}
-      //      }
-      //      if (onOff) {
-      //        val soloP = fact.make
-      //        soloP.control("amp").v = soloVolume()
-      //        vp.proc ~> soloP
-      //        soloP.play
-      //        soloInfo.set(Some(vp -> soloP))
-      //      }
-      //      t.afterCommit { vp.soloed = onOff }
-      //    }
-      //    }
+    private val soloInfo    = Ref(Option.empty[(VisualObj[S], Synth)])
+
+    private def getScanOutData(aural: AuralObj[S])(implicit tx: S#Tx): Option[(AudioBus, Node)] = aural match {
+      case ap: AuralObj.Proc[S] =>
+        val d = ap.data
+        for {
+          either  <- d.getScan(Proc.Obj.scanMainOut)
+          nodeRef <- d.nodeOption
+        } yield {
+          val bus   = either.fold(identity, _.bus)
+          val node  = nodeRef.node
+          (bus, node)
+        }
+      case _ => None
     }
 
-    private var _masterSynth = Ref(Option.empty[Synth])
+    private def clearSolo()(implicit tx: S#Tx): Unit = {
+      val oldInfo = soloInfo.swap(None)
+      oldInfo.foreach { case (oldVP, oldSynth) =>
+        oldSynth.dispose()
+        deferTx(oldVP.soloed = false)
+      }
+    }
+
+    def setSolo(vp: VisualObj[S], onOff: Boolean): Unit = config.soloChannels.foreach { outChans =>
+      requireEDT()
+      atomic { implicit tx =>
+        implicit val itx = tx.peer
+        clearSolo()
+        if (onOff) for {
+          auralProc   <- viewToAuralMap.get(vp)
+          (bus, node) <- getScanOutData(auralProc)
+        } {
+          val sg = SynthGraph {
+            import synth._; import ugen._
+            val numIn     = bus.numChannels
+            val numOut    = outChans.size
+            // println(s"numIn = $numIn, numOut = $numOut")
+            val in        = In.ar("in".kr, numIn)
+            val amp       = "amp".kr(1f)
+            val sigOut    = SplayAz.ar(numOut, in)
+            val mix       = sigOut * amp
+            outChans.zipWithIndex.foreach { case (ch, idx) =>
+              ReplaceOut.ar(ch, mix \ idx)
+            }
+          }
+          val soloSynth = Synth.play(sg, Some("solo"))(target = node.server.defaultGroup, addAction = addToTail,
+            args = "amp" -> soloVolume() :: Nil, dependencies = node :: Nil)
+          soloSynth.read(bus -> "in")
+          soloInfo.set(Some(vp -> soloSynth))
+        }
+        deferTx(vp.soloed = onOff)
+      }
+    }
+
+    private val _masterSynth = Ref(Option.empty[Synth])
 
     def masterSynth(implicit tx: Txn): Option[Synth] = _masterSynth.get(tx.peer)
     def masterSynth_=(value: Option[Synth])(implicit tx: Txn): Unit =
@@ -776,9 +746,10 @@ object PanelImpl {
     //    }
 
     def setSoloVolume(v: Double)(implicit tx: S#Tx): Unit = {
-      val oldV = soloVolume.swap(v)(tx.peer)
+      implicit val itx = tx.peer
+      val oldV = soloVolume.swap(v)
       if (v == oldV) return
-      // soloInfo().foreach(_._2.control("amp").v = v)
+      soloInfo().foreach(_._2.set(true, "amp" -> v))
     }
 
     private def pack(p: Panel): p.type = {
