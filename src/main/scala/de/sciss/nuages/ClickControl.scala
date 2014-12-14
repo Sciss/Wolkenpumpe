@@ -55,10 +55,18 @@ class ClickControl[S <: Sys[S]](main: NuagesPanel[S]) extends ControlAdapter {
   }
 
   override def itemPressed(vi: VisualItem, e: MouseEvent): Unit = {
-    if (e.isAltDown) return
+    if (e.isAltDown) {
+      vi match {
+        case ei: EdgeItem => deleteEdge(ei)
+        case _ =>
+      }
+      return
+    }
     if (e.isMetaDown) {
       zoom(e, vi.getBounds)
-    } else if (e.getClickCount == 2) doubleClick(vi, e)
+    } else {
+      if (e.getClickCount == 2) doubleClick(vi, e)
+    }
   }
 
   private def zoomToFit(e: MouseEvent): Unit = {
@@ -99,6 +107,36 @@ class ClickControl[S <: Sys[S]](main: NuagesPanel[S]) extends ControlAdapter {
 
       case _ =>
     }
+
+  private def deleteEdge(ei: EdgeItem): Unit = {
+    val nSrc = ei.getSourceItem
+    val nTgt = ei.getTargetItem
+    val vis  = main.visualization
+    (vis.getRenderer(nSrc), vis.getRenderer(nTgt)) match {
+      case (_: NuagesProcRenderer[_], _: NuagesProcRenderer[_]) =>
+        val srcData = nSrc.get(COL_NUAGES).asInstanceOf[VisualData[S]]
+        val tgtData = nTgt.get(COL_NUAGES).asInstanceOf[VisualData[S]]
+        if (srcData != null && tgtData != null)
+          (srcData, tgtData) match {
+            case (srcVScan: VisualScan[S], tgtVScan: VisualScan[S]) =>
+              main.cursor.step { implicit tx =>
+                val srcObj   = srcVScan.parent.objH()
+                val tgtObj   = tgtVScan.parent.objH()
+                for {
+                  srcProc <- Proc.Obj.unapply(srcObj)
+                  tgtProc <- Proc.Obj.unapply(tgtObj)
+                  srcScan <- srcProc.elem.peer.scans.get(srcVScan.key)
+                  tgtScan <- tgtProc.elem.peer.scans.get(tgtVScan.key)
+                } {
+                  srcScan.removeSink(Scan.Link.Scan(tgtScan))
+                }
+              }
+            case _ =>
+          }
+
+      case _ =>
+    }
+  }
 
   @inline private def getDisplay(e: MouseEvent) = e.getComponent.asInstanceOf[Display]
 }

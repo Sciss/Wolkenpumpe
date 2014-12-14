@@ -42,6 +42,8 @@ trait NuagesPanel[S <: Sys[S]] extends View[S] {
 
   def transport: Transport[S]
 
+  def cursor: stm.Cursor[S]
+
   def config : Nuages.Config
 
   def setSolo(vp: VisualObj[S], onOff: Boolean): Unit

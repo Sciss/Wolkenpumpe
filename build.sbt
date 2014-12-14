@@ -14,9 +14,9 @@ scalaVersion       := "2.11.4"
 
 crossScalaVersions := Seq("2.11.4", "2.10.4")
 
-lazy val soundProcessesVersion      = "2.9.0"
+lazy val soundProcessesVersion      = "2.10.0"
 
-lazy val scalaColliderSwingVersion  = "1.20.2"
+lazy val scalaColliderSwingVersion  = "1.21.0"
 
 // lazy val prefuseVersion             = "1.0.0"
 

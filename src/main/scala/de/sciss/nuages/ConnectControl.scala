@@ -14,30 +14,31 @@
 package de.sciss.nuages
 
 import de.sciss.lucre.synth.Sys
+import de.sciss.synth.proc.{Scan, Proc}
 import prefuse.controls.ControlAdapter
 import prefuse.visual.{NodeItem, VisualItem}
 import java.awt.event.MouseEvent
 import prefuse.util.display.PaintListener
 import java.awt.{Color, Graphics2D}
 import java.awt.geom.{Line2D, Point2D}
-import prefuse.{Visualization, Display}
+import prefuse.Display
 
 object ConnectControl {
-  private final case class DragSource(vi: VisualItem /*, visual: VisualAudioOutput */)
+  private final case class DragSource[S <: Sys[S]](vi: VisualItem, visual: VisualScan[S])
 
   private final case class DragTarget[S <: Sys[S]](vi: VisualItem, visual: VisualParam[S])
 
-  private final class Drag[S <: Sys[S]](val source: DragSource, val targetLoc: Point2D,
+  private final class Drag[S <: Sys[S]](val source: DragSource[S], val targetLoc: Point2D,
                                         var target: Option[DragTarget[S]])
 }
-class ConnectControl[S <: Sys[S]](vis: Visualization)
+class ConnectControl[S <: Sys[S]](main: NuagesPanel[S])
   extends ControlAdapter with PaintListener {
   control =>
 
   import ConnectControl._
-
-
   import NuagesPanel._
+
+  import main.{visualization => vis}
 
   private var drag: Option[Drag[S]] = None
 
@@ -63,12 +64,12 @@ class ConnectControl[S <: Sys[S]](vis: Visualization)
         val data = ni.get(COL_NUAGES).asInstanceOf[VisualData[S]]
         if (data == null) return
         data match {
-//          case vBus: VisualAudioOutput =>
-//            val d         = getDisplay(e)
-//            val displayPt = d.getAbsoluteCoordinate(e.getPoint, null)
-//            val dr        = new Drag(DragSource(vi, vBus), displayPt, None)
-//            d.addPaintListener(control)
-//            drag          = Some(dr)
+          case vBus: VisualScan[S] =>
+            val d         = getDisplay(e)
+            val displayPt = d.getAbsoluteCoordinate(e.getPoint, null)
+            val dr        = new Drag(DragSource(vi, vBus), displayPt, None)
+            d.addPaintListener(control)
+            drag          = Some(dr)
 
           case _ =>
         }
@@ -101,8 +102,8 @@ class ConnectControl[S <: Sys[S]](vis: Visualization)
         val data = vi.get(COL_NUAGES).asInstanceOf[VisualData[S]]
         if (data == null) None
         else data match {
-//          case vBus: VisualAudioInput if vBus.bus.proc != dr.source.visual.bus.proc =>
-//            Some(DragTarget(vi, vBus))
+          case vBus: VisualScan[S] if vBus.parent != dr.source.visual.parent =>
+            Some(DragTarget(vi, vBus))
 //          case vControl: VisualControl if vControl.mapping == None && vControl.control.isMapable =>
 //            Some(DragTarget(vi, vControl))
           case _ => None
@@ -127,13 +128,25 @@ class ConnectControl[S <: Sys[S]](vis: Visualization)
      drag = None
      dr.target.foreach { tgt =>
        DragControl.setSmartFixed(vis, tgt.vi, state = false)
-//       tgt.visual match {
-//         case vBus: VisualAudioInput =>
-//           ProcTxn.atomic { implicit t => dr.source.visual.bus.~>(vBus.bus)}
-//
+       tgt.visual match {
+         case tgtVScan: VisualScan[S] =>
+           main.cursor.step { implicit tx =>
+             val srcVScan = dr.source.visual
+             val srcObj   = srcVScan.parent.objH()
+             val tgtObj   = tgtVScan.parent.objH()
+             for {
+               srcProc <- Proc.Obj.unapply(srcObj)
+               tgtProc <- Proc.Obj.unapply(tgtObj)
+               srcScan <- srcProc.elem.peer.scans.get(srcVScan.key)
+               tgtScan <- tgtProc.elem.peer.scans.get(tgtVScan.key)
+             } {
+               srcScan.addSink(Scan.Link.Scan(tgtScan))
+             }
+           }
+
 //         case vControl: VisualControl =>
 //           ProcTxn.atomic { implicit t => dr.source.visual.bus.~>(vControl.control)}
-//       }
+       }
      }
    }
 

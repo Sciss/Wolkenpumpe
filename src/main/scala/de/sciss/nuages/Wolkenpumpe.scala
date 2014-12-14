@@ -21,7 +21,7 @@ import de.sciss.lucre.swing.defer
 import de.sciss.lucre.synth.{Synth, Server, Txn, Sys, InMemory}
 import de.sciss.lucre.expr.{Double => DoubleEx}
 import de.sciss.{osc, synth}
-import de.sciss.synth.proc.graph.{Attribute, ScanIn, ScanOut}
+import de.sciss.synth.proc.graph.{ScanInFix, Attribute, ScanIn, ScanOut}
 import de.sciss.synth.{Server => SServer, addAfter, control, scalar, audio, Rate, SynthGraph, GE, proc}
 import de.sciss.synth.message
 import de.sciss.synth.proc.{Folder, WorkspaceHandle, DoubleElem, AuralSystem, ExprImplicits, Obj, Proc}
@@ -66,6 +66,13 @@ object Wolkenpumpe {
 
     def pScalar(key: String, spec: ParamSpec, default: Double)(implicit tx: S#Tx): GE =
       mkPar(scalar, key = key, spec = spec, default = default)
+
+    def pAudioIn(key: String, numChannels: Int, spec: ParamSpec)(implicit tx: S#Tx): GE = {
+      val obj       = current.get(tx.peer)
+      val sig       = ScanInFix(key, numChannels)
+      obj.elem.peer.scans.add(key)
+      spec.map(sig.clip(0, 1))
+    }
 
     private def mkPar(rate: Rate, key: String, spec: ParamSpec, default: Double)(implicit tx: S#Tx): GE = {
       val obj       = current.get(tx.peer)

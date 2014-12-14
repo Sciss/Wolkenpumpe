@@ -8,9 +8,5 @@ general
 [OK]    - metering
         - keyboard control
         - group selection and filtering
-
-turbulence
-
-        - specific diffs
-        - input num-ch versus output num-ch
-        - use sensors? how?
+        - fscape procs
+        - avoid gaps with new synth-defs

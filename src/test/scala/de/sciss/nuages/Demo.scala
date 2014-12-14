@@ -1,10 +1,13 @@
 package de.sciss.nuages
 
 import com.alee.laf.WebLookAndFeel
+import de.sciss.lucre.stm.Cursor
 import de.sciss.lucre.stm.store.BerkeleyDB
 import de.sciss.lucre.synth.InMemory
+import de.sciss.synth
 import de.sciss.synth.Server
-import de.sciss.synth.proc.Durable
+import de.sciss.synth.proc.graph.{ScanInFix, ScanIn}
+import de.sciss.synth.proc.{AuralSystem, Durable}
 
 import scala.swing.SwingApplication
 
@@ -24,6 +27,38 @@ object Demo extends SwingApplication {
       type S = InMemory
       implicit val system = InMemory()
       val w = new Wolkenpumpe[S] {
+        /** Subclasses may want to override this. */
+        override protected def registerProcesses(sCfg: ScissProcs.Config, nCfg: Nuages.Config)
+                                                (implicit tx: S#Tx, cursor: Cursor[S], nuages: Nuages[S],
+                                                 aural: AuralSystem): Unit = {
+          super.registerProcesses(sCfg, nCfg)
+          val dsl = new Wolkenpumpe.DSL[S]
+          import dsl._
+
+          generator("a~pulse") {
+            import synth._
+            import ugen._
+
+            val pFreq   = pAudio("freq"     , ParamSpec(0.1 , 10000, ExpWarp), default = 15 /* 1 */)
+            val pw      = pAudio("width"    , ParamSpec(0.0 ,     1.0),        default =  0.5)
+            val pAmp    = pAudio("amp"      , ParamSpec(0.01,     1, ExpWarp), default =  0.1)
+            val pFreqMix= pAudio("freq-src" , ParamSpec(0, 1, step = 1), default = 0)
+
+            val inFreq  = pAudioIn("in-freq", 1, ParamSpec(0.1 , 10000, ExpWarp))
+
+            val freq  = LinXFade2.ar(pFreq, inFreq, pFreqMix)
+            val width = pw
+            val sig   = Pulse.ar(freq, width)
+
+            sig * pAmp
+          }
+
+          generator("a~DC") {
+            val sig = pAudio("value", ParamSpec(0, 1), default = 0)
+            sig
+          }
+        }
+
         /** Subclasses may want to override this. */
         override protected def configure(sCfg: ScissProcs.ConfigBuilder, nCfg: Nuages.ConfigBuilder,
                                          aCfg: Server.ConfigBuilder): Unit = {

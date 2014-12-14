@@ -108,7 +108,7 @@ object PanelImpl {
                                         listGen: ListView[S, Obj[S], Obj.Update[S]],
                                         listFlt: ListView[S, Obj[S], Obj.Update[S]],
                                         listCol: ListView[S, Obj[S], Obj.Update[S]])
-                                       (implicit cursor: stm.Cursor[S], workspace: WorkspaceHandle[S])
+                                       (implicit val cursor: stm.Cursor[S], workspace: WorkspaceHandle[S])
     extends NuagesPanel[S] with ComponentHolder[Component] {
     panel =>
 
@@ -333,7 +333,7 @@ object PanelImpl {
       _dsp.addControlListener(new PanControl())
       _dsp.addControlListener(new DragControl(_vis))
       _dsp.addControlListener(new ClickControl(this))
-      _dsp.addControlListener(new ConnectControl(_vis))
+      _dsp.addControlListener(new ConnectControl(this))
       _dsp.setHighQuality(true)
 
       // ------------------------------------------------
