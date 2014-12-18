@@ -739,7 +739,7 @@ object PanelImpl {
       _masterSynth.set(value)(tx.peer)
 
     def setMasterVolume(v: Double)(implicit tx: S#Tx): Unit =
-      _masterSynth.get(tx.peer).foreach(_.set(true, "amp" -> v))
+      _masterSynth.get(tx.peer).foreach(_.set("amp" -> v))
 
     //    masterProc.foreach { pMaster =>
     //      // pMaster.control("amp").v = v
@@ -749,7 +749,7 @@ object PanelImpl {
       implicit val itx = tx.peer
       val oldV = soloVolume.swap(v)
       if (v == oldV) return
-      soloInfo().foreach(_._2.set(true, "amp" -> v))
+      soloInfo().foreach(_._2.set("amp" -> v))
     }
 
     private def pack(p: Panel): p.type = {

@@ -14,7 +14,7 @@
 package de.sciss.nuages
 
 import de.sciss.lucre.synth.Sys
-import de.sciss.synth.proc.{Scan, Proc}
+import de.sciss.synth.proc.{Obj, Scan, Proc}
 import prefuse.controls.ControlAdapter
 import prefuse.visual.{NodeItem, VisualItem}
 import java.awt.event.MouseEvent
@@ -24,8 +24,7 @@ import java.awt.geom.{Line2D, Point2D}
 import prefuse.Display
 
 object ConnectControl {
-  private final case class DragSource[S <: Sys[S]](vi: VisualItem, visual: VisualScan[S])
-
+  private final case class DragSource[S <: Sys[S]](vi: VisualItem, visual: VisualScan [S])
   private final case class DragTarget[S <: Sys[S]](vi: VisualItem, visual: VisualParam[S])
 
   private final class Drag[S <: Sys[S]](val source: DragSource[S], val targetLoc: Point2D,
@@ -102,10 +101,10 @@ class ConnectControl[S <: Sys[S]](main: NuagesPanel[S])
         val data = vi.get(COL_NUAGES).asInstanceOf[VisualData[S]]
         if (data == null) None
         else data match {
-          case vBus: VisualScan[S] if vBus.parent != dr.source.visual.parent =>
+          case vBus: VisualScan   [S] if vBus.parent != dr.source.visual.parent =>
             Some(DragTarget(vi, vBus))
-//          case vControl: VisualControl if vControl.mapping == None && vControl.control.isMapable =>
-//            Some(DragTarget(vi, vControl))
+          case vCtl: VisualControl[S] if vCtl.parent != dr.source.visual.parent =>
+            Some(DragTarget(vi, vCtl))
           case _ => None
         }
 
@@ -120,35 +119,33 @@ class ConnectControl[S <: Sys[S]](main: NuagesPanel[S])
 
   override def itemReleased(vi: VisualItem, e: MouseEvent): Unit = checkRelease(e)
 
-   private def checkRelease( e: MouseEvent ): Unit = drag.foreach { dr =>
-     //println( "REMOVE EDGE" )
-     //         g.removeEdge( edge )
-     val d = getDisplay(e)
-     d.removePaintListener(control)
-     drag = None
-     dr.target.foreach { tgt =>
-       DragControl.setSmartFixed(vis, tgt.vi, state = false)
-       tgt.visual match {
-         case tgtVScan: VisualScan[S] =>
-           main.cursor.step { implicit tx =>
-             val srcVScan = dr.source.visual
-             val srcObj   = srcVScan.parent.objH()
-             val tgtObj   = tgtVScan.parent.objH()
-             for {
-               srcProc <- Proc.Obj.unapply(srcObj)
-               tgtProc <- Proc.Obj.unapply(tgtObj)
-               srcScan <- srcProc.elem.peer.scans.get(srcVScan.key)
-               tgtScan <- tgtProc.elem.peer.scans.get(tgtVScan.key)
-             } {
-               srcScan.addSink(Scan.Link.Scan(tgtScan))
-             }
-           }
-
-//         case vControl: VisualControl =>
-//           ProcTxn.atomic { implicit t => dr.source.visual.bus.~>(vControl.control)}
-       }
-     }
-   }
+  private def checkRelease(e: MouseEvent): Unit = drag.foreach { dr =>
+    val d = getDisplay(e)
+    d.removePaintListener(control)
+    drag = None
+    dr.target.foreach { tgt =>
+      val tgtV = tgt.visual
+      DragControl.setSmartFixed(vis, tgt.vi, state = false)
+      main.cursor.step { implicit tx =>
+        val srcVScan = dr.source.visual
+        val srcObj   = srcVScan.parent.objH()
+        val tgtObj   = tgtV    .parent.objH()
+        for {
+          srcProc <- Proc.Obj.unapply(srcObj)
+          tgtProc <- Proc.Obj.unapply(tgtObj)
+          srcScan <- srcProc.elem.peer.scans.get(srcVScan.key)
+        } {
+          tgtV match {
+            case tgtVScan: VisualScan[S] =>
+              for (tgtScan <- tgtProc.elem.peer.scans.get(tgtVScan.key))
+                srcScan.addSink(Scan.Link.Scan(tgtScan))
+            case vCtl: VisualControl[S] =>
+              tgtObj.attr.put(vCtl.key, Obj(Scan.Elem(srcScan)))
+          }
+        }
+      }
+    }
+  }
 
   @inline private def getDisplay(e: MouseEvent) = e.getComponent.asInstanceOf[Display]
 }
