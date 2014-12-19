@@ -21,7 +21,6 @@ import de.sciss.lucre.bitemp.{SpanLike => SpanLikeEx}
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.Disposable
 import de.sciss.lucre.synth.{Synth, Sys}
-import de.sciss.numbers
 import de.sciss.span.SpanLike
 import de.sciss.synth.proc
 import prefuse.util.ColorLib
@@ -180,12 +179,11 @@ object VisualObj {
         res.scans = scans.keys.map { key => key -> new VisualScan(res, key) } (breakOut)
         res.params = objT.attr.iterator.flatMap {
           case (key, DoubleElem.Obj(dObj)) =>
-            val value = dObj.elem.peer.value
-            import numbers.Implicits._
-            val spec = dObj.attr[ParamSpec.Elem](ParamSpec.Key).map(_.value)
-              .getOrElse(ParamSpec(math.min(0.0, value), math.max(1.0, value.roundUpTo(1))))
-            // val spec  = ParamSpec(math.min(0.0, value), math.max(1.0, value))
-            Some(key -> new VisualControl(res, key, spec, value))
+            val vc = VisualControl.scalar(res, key, dObj)
+            Some(key -> vc)
+          case (key, Scan.Obj(sObj)) =>
+            val vc = VisualControl.scan(res, key, sObj)
+            Some(key -> vc)
           case _ =>
             None
         } .toMap
@@ -478,8 +476,39 @@ private[nuages] class VisualScan[S <: Sys[S]](val parent: VisualObj[S], val key:
 
 private[nuages] final case class VisualMapping(/* mapping: ControlBusMapping, */ pEdge: Edge)
 
-private[nuages] final class VisualControl[S <: Sys[S]](val parent: VisualObj[S], val key: String,
-                                                       var spec: ParamSpec, var value: Double)
+private[nuages] object VisualControl {
+  private val defaultSpec = ParamSpec()
+
+  private def getSpec[S <: Sys[S]](parent: VisualObj[S], key: String)(implicit tx: S#Tx): ParamSpec =
+    parent.objH().attr[ParamSpec.Elem](s"$key-${ParamSpec.Key}").map(_.value).getOrElse(defaultSpec)
+
+  def scalar[S <: Sys[S]](parent: VisualObj[S], key: String,
+                         dObj: DoubleElem.Obj[S])(implicit tx: S#Tx): VisualControl[S] = {
+    val value = dObj.elem.peer.value
+    val spec  = getSpec(parent, key)
+    new VisualControl(parent, key, spec, value, mapping = None)
+  }
+
+  def scan[S <: Sys[S]](parent: VisualObj[S], key: String,
+                         sObj: Scan.Obj[S])(implicit tx: S#Tx): VisualControl[S] = {
+    val value = 0.0
+    val spec  = getSpec(parent, key)
+    new VisualControl(parent, key, spec, value, mapping = Some(VisualMapping(null)))  // XXX TODO
+  }
+
+  //  def add[S <: Sys[S]](parent: VisualObj[S], key: String,
+  //                       dObj: DoubleElem.Obj[S])(implicit tx: S#Tx): VisualControl[S] = {
+  //    val res = apply(parent, key, dObj)
+  //    deferTx {
+  //      visDo {
+  //        ...
+  //      }
+  //    }
+  //  }
+}
+private[nuages] final class VisualControl[S <: Sys[S]] private(val parent: VisualObj[S], val key: String,
+                                                       var spec: ParamSpec, var value: Double,
+                                                       val mapping: Option[VisualMapping])
   extends VisualParam[S] {
 
   import VisualData._
@@ -487,12 +516,11 @@ private[nuages] final class VisualControl[S <: Sys[S]](val parent: VisualObj[S],
   // var value: ControlValue = null
 
   //      var mapped  = false
-  var gliding = false
-  var mapping: Option[VisualMapping] = None
+  // var gliding = false
 
   private var renderedValue = Double.NaN
   private val containerArea = new Area()
-  private val valueArea = new Area()
+  private val valueArea     = new Area()
 
   private var drag: Option[Drag] = None
 
@@ -589,7 +617,7 @@ private[nuages] final class VisualControl[S <: Sys[S]](val parent: VisualObj[S],
     val v = value // .currentApprox
     if (renderedValue != v) updateRenderValue(v)
 
-    g.setColor(if (mapping.isDefined) colrMapped else if (gliding) colrGliding else colrManual)
+    g.setColor(if (mapping.isDefined) colrMapped else /* if (gliding) colrGliding else */ colrManual)
     g.fill(valueArea)
     drag foreach { dr =>
       if (!dr.instant) {

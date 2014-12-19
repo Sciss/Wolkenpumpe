@@ -79,9 +79,9 @@ object Wolkenpumpe {
       val defaultN  = spec.inverseMap(default)
       val paramObj  = Obj(DoubleElem(DoubleEx.newVar(DoubleEx.newConst[S](defaultN))))
       val specObj   = Obj(ParamSpec.Elem(ParamSpec.Expr.newConst[S](spec)))
-      paramObj.attr.put(ParamSpec.Key, specObj)
+      // paramObj.attr.put(ParamSpec.Key, specObj)
       obj     .attr.put(key, paramObj)
-      // obj     .attr.put(s"$key-spec", specObj)
+      obj     .attr.put(s"$key-${ParamSpec.Key}", specObj)
       val sig       = Attribute(rate, key, default)
       spec.map(sig.clip(0, 1))
     }

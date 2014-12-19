@@ -32,7 +32,7 @@ import de.sciss.span.{SpanLike, Span}
 import de.sciss.swingplus.DoClickAction
 import de.sciss.synth
 import de.sciss.synth.{addToTail, SynthGraph, proc, AudioBus => SAudioBus, message}
-import de.sciss.synth.proc.{AuralObj, Action, WorkspaceHandle, Scan, ExprImplicits, AuralSystem, Transport, Timeline, Proc, Folder, Obj}
+import de.sciss.synth.proc.{DoubleElem, AuralObj, Action, WorkspaceHandle, Scan, ExprImplicits, AuralSystem, Transport, Timeline, Proc, Folder, Obj}
 
 import prefuse.action.{RepaintAction, ActionList}
 import prefuse.action.assignment.ColorAction
@@ -47,7 +47,7 @@ import prefuse.visual.expression.InGroupPredicate
 import prefuse.{Constants, Display, Visualization}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
-import scala.concurrent.stm.{TMap, Ref, TxnLocal}
+import scala.concurrent.stm.{TxnExecutor, InTxn, TMap, Ref, TxnLocal}
 import scala.swing.event.Key
 import scala.swing.{Button, Container, Orientation, SequentialContainer, BoxPanel, Panel, Swing, Component}
 
@@ -126,7 +126,7 @@ object PanelImpl {
 
     private var masterBusVar : Option[SAudioBus] = None
 
-    private val locHintMap = TxnLocal(Map.empty[Obj[S], Point2D])
+    private val locHintMap = TxnLocal(Map.empty[Any, Point2D])
 
     private var overlay = Option.empty[Component]
 
@@ -145,6 +145,9 @@ object PanelImpl {
 
     def setLocationHint(p: Obj[S], loc: Point2D)(implicit tx: S#Tx): Unit =
       locHintMap.transform(_ + (p -> loc))(tx.peer)
+
+    private def setLocationHint(p: Any, loc: Point2D)(implicit tx: InTxn): Unit =
+      locHintMap.transform(_ + (p -> loc))
 
     def nuages(implicit tx: S#Tx): Nuages[S] = nuagesH()
 
@@ -246,6 +249,22 @@ object PanelImpl {
                       }
 
                     case other => if (DEBUG) println(s"OBSERVED: Timeline.Element - ProcChange($other)")
+                  }
+
+                case Obj.AttrRemoved(key, elem) =>
+                  deferTx {
+                    visObj.params.get(key).foreach { vc =>
+                      visDo {
+                        removeControlGUI(visObj, vc)
+                      }
+                    }
+                  }
+
+                case Obj.AttrAdded(key, elem) =>
+                  elem match {
+                    case DoubleElem.Obj(dObj) => addScalarControl(visObj, key, dObj)
+                    case Scan      .Obj(sObj) => addScanControl  (visObj, key, sObj)
+                    case _ =>
                   }
 
                 case other => if (DEBUG) println(s"OBSERVED: Timeline.Element - $other")
@@ -508,6 +527,21 @@ object PanelImpl {
       deferTx(visDo(addNodeGUI(vp, links, locO)))
     }
 
+    def addScalarControl(visObj: VisualObj[S], key: String, dObj: DoubleElem.Obj[S])(implicit tx: S#Tx): Unit = {
+      val vc = VisualControl.scalar(visObj, key, dObj)
+      addControl(visObj, vc)
+    }
+
+    def addScanControl(visObj: VisualObj[S], key: String, sObj: Scan.Obj[S])(implicit tx: S#Tx): Unit = {
+      val vc = VisualControl.scan(visObj, key, sObj)
+      addControl(visObj, vc)
+    }
+
+    private def addControl(visObj: VisualObj[S], vc: VisualControl[S])(implicit tx: S#Tx): Unit = {
+      val locOpt  = locHintMap.get(tx.peer).get(visObj -> vc.key)
+      deferTx(visDo(addControlGUI(visObj, vc, locOpt)))
+    }
+
     // makes the meter synth
     private def auralObjAdded(vp: VisualObj[S], aural: AuralObj[S])(implicit tx: S#Tx): Unit =
       getScanOutData(aural).foreach { case (bus, node) =>
@@ -612,44 +646,39 @@ object PanelImpl {
       }
     }
 
+    private def createNodeGUI(obj: VisualObj[S], vn: VisualNode[S], locO: Option[Point2D]): VisualItem = {
+      val pNode = g.addNode()
+      vn.pNode  = pNode
+      val _vi   = _vis.getVisualItem(GROUP_GRAPH, pNode)
+      locO.foreach { loc =>
+        //          _vi.setStartX(loc.getX)
+        //          _vi.setStartY(loc.getX)
+        //          _vi.setX   (loc.getX)
+        //          _vi.setY   (loc.getX)
+        _vi.setEndX(loc.getX)
+        _vi.setEndY(loc.getY)
+      }
+      obj.aggr.addItem(_vi)
+      _vi.set(COL_NUAGES, vn)
+
+      if (vn != obj) {
+        g.addEdge(obj.pNode, pNode)
+      }
+      _vi
+    }
+
     private def addNodeGUI(vp: VisualObj[S], links: List[VisualLink[S]], locO: Option[Point2D]): Unit = {
       val aggr  = aggrTable.addItem().asInstanceOf[AggregateItem]
       vp.aggr   = aggr
-
-      def createNode(vn: VisualNode[S]): VisualItem = {
-        vn.pNode = g.addNode()
-        val _vi = _vis.getVisualItem(GROUP_GRAPH, vn.pNode)
-        locO.foreach { loc =>
-          //          _vi.setStartX(loc.getX)
-          //          _vi.setStartY(loc.getX)
-          //          _vi.setX   (loc.getX)
-          //          _vi.setY   (loc.getX)
-          _vi.setEndX(loc.getX)
-          _vi.setEndY(loc.getY)
-        }
-        aggr.addItem(_vi)
-        _vi.set(COL_NUAGES, vn)
-        // if (vn.name.startsWith("O-")) _vi.setFixed(true)  // ...hack
-        _vi
-      }
-
-      val vi = createNode(vp)
-
-      def createChildNode(vc: VisualNode[S]): VisualItem = {
-        val _vi = createNode(vc)
-        /* val pParamEdge = */ g.addEdge(vp.pNode, vc.pNode)
-        _vi
-      }
+      createNodeGUI(vp, vp, locO)
 
       vp.scans.foreach { case (_, vScan) =>
-        val vi = createChildNode(vScan)
+        val vi = createNodeGUI(vp, vScan, locO)
         vi.set(VisualItem.SIZE, 0.33333f)
-        // vi.set(COL_NUAGES, vScan)
       }
 
       vp.params.foreach { case (_, vParam) =>
-        /* val vi = */ createChildNode(vParam)
-        // vi.set(COL_NUAGES, vParam)
+        createNodeGUI(vp, vParam, locO)
       }
 
       links.foreach { link =>
@@ -660,6 +689,25 @@ object PanelImpl {
           addEdgeGUI(sourceVisScan, sinkVisScan)
         }
       }
+    }
+
+    private def addControlGUI(vp: VisualObj[S], vc: VisualControl[S], locO: Option[Point2D]): Unit = {
+      createNodeGUI(vp, vc, locO)
+      val old = vp.params.get(vc.key)
+      vp.params += vc.key -> vc
+      old.foreach(removeControlGUI(vp, _))
+    }
+
+    def removeControlGUI(visObj: VisualObj[S], vc: VisualControl[S]): Unit = {
+      val key = vc.key
+      visObj.params -= vc.key
+      val _vi = _vis.getVisualItem(GROUP_GRAPH, vc.pNode)
+      visObj.aggr.removeItem(_vi)
+      val loc = new Point2D.Double(_vi.getX, _vi.getY)
+      TxnExecutor.defaultAtomic { implicit itx =>
+        setLocationHint(visObj -> key, loc)
+      }
+      g.removeNode(vc.pNode)
     }
 
     def addEdgeGUI(source: VisualScan[S], sink: VisualScan[S]): Unit = {

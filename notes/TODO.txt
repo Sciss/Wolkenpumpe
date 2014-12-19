@@ -14,3 +14,4 @@ general
 :::::::::::::::::::::::::::::
 
 [OK]    - the diffs (all, pan, rnd) report NaNs upon initialisation // SuperCollider bug
+        - missing labels on VisualControl instances until display zoom changes
