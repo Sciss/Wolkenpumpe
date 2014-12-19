@@ -31,7 +31,7 @@ import de.sciss.model.Change
 import de.sciss.span.{SpanLike, Span}
 import de.sciss.swingplus.DoClickAction
 import de.sciss.synth
-import de.sciss.synth.{addToTail, SynthGraph, proc, AudioBus => SAudioBus, message}
+import de.sciss.synth.{addToTail, SynthGraph, proc, message}
 import de.sciss.synth.proc.{DoubleElem, AuralObj, Action, WorkspaceHandle, Scan, ExprImplicits, AuralSystem, Transport, Timeline, Proc, Folder, Obj}
 
 import prefuse.action.{RepaintAction, ActionList}
@@ -97,7 +97,7 @@ object PanelImpl {
                                               val sink  : VisualObj[S], val sinkKey  : String)
 
   /* Contains the `id` of the parent `timed` object, and the scan key */
-  private final case class ScanInfo[S <: Sys[S]](id: S#ID, key: String)
+  private final case class ScanInfo[S <: Sys[S]](timedID: S#ID, key: String)
 
   // nodeMap: uses timed-id as key
   private final class Impl[S <: Sys[S]](nuagesH: stm.Source[S#Tx, Nuages[S]],
@@ -125,7 +125,7 @@ object PanelImpl {
 
     //  var transition: Double => Transition = (_) => Instant
 
-    private var masterBusVar : Option[SAudioBus] = None
+    // private var masterBusVar : Option[SAudioBus] = None
 
     private val locHintMap = TxnLocal(Map.empty[Any, Point2D])
 
@@ -142,7 +142,7 @@ object PanelImpl {
     def display      : Display        = _dsp
     def visualization: Visualization  = _vis
 
-    def masterBus: Option[SAudioBus] = masterBusVar
+    // def masterBus: Option[SAudioBus] = masterBusVar
 
     def setLocationHint(p: Obj[S], loc: Point2D)(implicit tx: S#Tx): Unit =
       locHintMap.transform(_ + (p -> loc))(tx.peer)
@@ -180,7 +180,7 @@ object PanelImpl {
         case Transport.ViewAdded(_, auralTL: AuralObj.Timeline[S]) =>
           val obs = auralTL.contents.react { implicit tx => {
             case AuralObj.Timeline.ViewAdded  (_, timed, view) =>
-              if (config.meters) nodeMap.get(timed).foreach { vp =>
+              nodeMap.get(timed).foreach { vp =>
                 auralObjAdded(vp, view)
               }
             case AuralObj.Timeline.ViewRemoved(_, view) =>
@@ -233,7 +233,7 @@ object PanelImpl {
                       def withScans(sink: Scan.Link[S])(fun: (VisualScan[S], VisualScan[S]) => Unit): Unit =
                         for {
                           sinkInfo <- scanMap.get(sink.id)
-                          sinkVis  <- nodeMap.get(sinkInfo.id)
+                          sinkVis  <- nodeMap.get(sinkInfo.timedID)
                         } deferTx {
                           for {
                             sourceVisScan <- visObj .scans.get(key)
@@ -360,8 +360,8 @@ object PanelImpl {
 
       edgeRenderer.setHorizontalAlignment1(Constants.CENTER)
       edgeRenderer.setHorizontalAlignment2(Constants.CENTER)
-      edgeRenderer.setVerticalAlignment1(Constants.CENTER)
-      edgeRenderer.setVerticalAlignment2(Constants.CENTER)
+      edgeRenderer.setVerticalAlignment1  (Constants.CENTER)
+      edgeRenderer.setVerticalAlignment2  (Constants.CENTER)
 
       _dsp.setForeground(Color.WHITE)
       _dsp.setBackground(Color.BLACK)
@@ -376,68 +376,6 @@ object PanelImpl {
 
       component = Component.wrap(p)
     }
-
-/*
-            // import DSL._
-            import synth._
-            import ugen._
-
-            if (config.meters) meterFactory = Some(diff("$meter") {
-              graph { sig: In =>
-                meterGraph(sig)
-                0.0
-              }
-            })
-
-            if (config.collector) {
-              if (verbose) Console.print("Creating collector...")
-              val p = (filter("_+")(graph((x: In) => x))).make
-              collector = Some(p)
-              if (verbose) println(" ok")
-            }
-
-            config.masterChannels.foreach { chans =>
-              if (verbose) Console.print("Creating master...")
-              val name = if (config.collector) "_master" else "$master"
-              val pMaster = (diff(name) {
-                val pAmp = pControl("amp", masterAmpSpec._1, masterAmpSpec._2)
-                /* val pIn = */ pAudioIn("in", None)
-                graph { (sig: In) => efficientOuts(Limiter.ar(sig * pAmp.kr, (-0.2).dbamp), chans); 0.0}
-              }).make
-              pMaster.control("amp").v = masterAmpSpec._2
-              // XXX bus should be freed in panel disposal
-
-              val b = Bus.audio(config.server, chans.size)
-              collector match {
-                case Some(pColl) =>
-                  val b2 = Bus.audio(config.server, chans.size)
-                  pColl.audioInput("in").bus = Some(RichBus.wrap(b2))
-                  pColl ~> pMaster
-                  pColl.play
-                case None =>
-              }
-              pMaster.audioInput("in").bus = Some(RichBus.wrap(b))
-
-              val g = RichGroup(Group(config.server))
-              g.play(RichGroup.default(config.server), addToTail)
-              pMaster.group = g
-              pMaster.play
-              masterProc = Some(pMaster)
-              masterBusVar = Some(b)
-
-              masterFactory = Some(diff("$diff") {
-                graph { (sig: In) =>
-                  //                  require( sig.numOutputs == b.numChannels )
-                  if (sig.numChannels != b.numChannels) println("Warning - masterFactory. sig has " + sig.numChannels + " outputs, but bus has " + b.numChannels + " channels ")
-                  if (config.meters) meterGraph(sig)
-                  Out.ar(b.index, sig)
-                }
-              })
-
-              factoryManager.startListening
-              if (verbose) println(" ok")
-            }
-*/
 
     def showOverlayPanel(p: Component, pt: Point): Boolean = {
       if (overlay.isDefined) return false
@@ -471,15 +409,15 @@ object PanelImpl {
 
       if (config.collector) println("WARNING! NuagesPanel.dispose -- doesn't handle the collector yet")
 
-      atomic { implicit t =>
-        //      factoryManager.stopListening
-        //      world.removeListener(topoListener)
-        //      masterProc.foreach { pMaster =>
-        //        pMaster.dispose
-        //        pMaster.group.free(true)
-        //      }
-        masterBus.foreach(_.free())
-      }
+      //      atomic { implicit t =>
+      //        //      factoryManager.stopListening
+      //        //      world.removeListener(topoListener)
+      //        //      masterProc.foreach { pMaster =>
+      //        //        pMaster.dispose
+      //        //        pMaster.group.free(true)
+      //        //      }
+      //        // masterBus.foreach(_.free())
+      //      }
     }
 
     private def stopAnimation(): Unit = {
@@ -503,10 +441,9 @@ object PanelImpl {
     def addNode(span: SpanLike, timed: Timeline.Timed[S])(implicit tx: S#Tx): Unit = {
       val id    = timed.id
       val obj   = timed.value
-      val vp    = VisualObj[S](this, timed.span, obj, pMeter = None, meter = config.meters,
-        solo = config.soloChannels.isDefined)
+      val vp    = VisualObj[S](this, timed.span, obj, meter = config.meters, solo = config.soloChannels.isDefined)
       nodeMap.put(id, vp)
-      val locO = locHintMap.getAndTransform(_ - obj)(tx.peer).get(obj)
+      val locO  = locHintMap.getAndTransform(_ - obj)(tx.peer).get(obj)
 
       val links: List[VisualLink[S]] = obj match {
         case Proc.Obj(objT) =>
@@ -518,7 +455,7 @@ object PanelImpl {
         case _ => Nil
       }
 
-      if (vp.meter) for {
+      for {
         auralTL  <- auralTimeline.get(tx.peer)
         auralObj <- auralTL.getView(timed)
       } {
@@ -538,11 +475,44 @@ object PanelImpl {
       val scan  = sObj.elem.peer
       val vScan = for {
         info <- scanMap.get(scan.id)
-        vObj <- nodeMap.get(info.id)
+        vObj <- nodeMap.get(info.timedID)
         res  <- vObj.scans.get(info.key)
-      } yield res
+      } yield {
+        for {
+          aural <- viewToAuralMap.get(vObj)(tx.peer)
+          (bus, node) <- getAuralScanData(aural, info.key)
+        } {
+          mkMeter(bus, node)(vc.value = _)
+        }
+        res
+      }
       vc.mapping.foreach(_.source = vScan)
       addControl(visObj, vc)
+    }
+
+    private def mkMeter(bus: AudioBus, node: Node)(fun: Float => Unit)(implicit tx: S#Tx): Synth = {
+      val meterGraph = SynthGraph {
+        import synth._; import ugen._
+        val meterTr = Impulse.kr(1000.0 / LAYOUT_TIME)
+        val sig     = In.ar("in".kr, bus.numChannels)
+        val peak    = Peak.kr(sig, meterTr) // .outputs
+        val peakM   = Reduce.max(peak)
+        SendTrig.kr(meterTr, peakM)
+      }
+      val meterSynth = Synth.play(meterGraph, Some("meter"))(node.server.defaultGroup, addAction = addToTail,
+        dependencies = node :: Nil)
+      meterSynth.read(bus -> "in")
+      val NodeID = meterSynth.peer.id
+      val trigResp = message.Responder.add(node.server.peer) {
+        case m @ message.Trigger(NodeID, 0, peak: Float) =>
+          defer(fun(peak))
+      }
+      // Responder.add is non-transactional. Thus, if the transaction fails, we need to remove it.
+      scala.concurrent.stm.Txn.afterRollback { _ =>
+        trigResp.remove()
+      } (tx.peer)
+      meterSynth.onEnd(trigResp.remove())
+      meterSynth
     }
 
     private def addControl(visObj: VisualObj[S], vc: VisualControl[S])(implicit tx: S#Tx): Unit = {
@@ -551,36 +521,13 @@ object PanelImpl {
     }
 
     // makes the meter synth
-    private def auralObjAdded(vp: VisualObj[S], aural: AuralObj[S])(implicit tx: S#Tx): Unit =
-      getScanOutData(aural).foreach { case (bus, node) =>
-        // println(s"For $aural - bus is $bus")
-        val meterGraph = SynthGraph {
-          import synth._; import ugen._
-          val meterTr = Impulse.kr(1000.0 / LAYOUT_TIME)
-          val sig     = In.ar("in".kr, bus.numChannels)
-          val peak    = Peak.kr(sig, meterTr) // .outputs
-          val peakM   = Reduce.max(peak)
-          // peakM.poll(1, "peak")
-          SendTrig.kr(meterTr, peakM)
-          // vp.meterUpdate(vals(0).toFloat)
-        }
-        val meterSynth = Synth.play(meterGraph, Some("meter"))(node.server.defaultGroup, addAction = addToTail,
-          dependencies = node :: Nil)
-        meterSynth.read(bus -> "in")
-        val NodeID = meterSynth.peer.id
-        val trigResp = message.Responder.add(node.server.peer) {
-          case m @ message.Trigger(NodeID, 0, peak: Float) =>
-            defer(vp.meterUpdate(peak))
-        }
-        // Responder.add is non-transactional. Thus, if the transaction fails, we need to remove it.
-        scala.concurrent.stm.Txn.afterRollback { _ =>
-          trigResp.remove()
-        } (tx.peer)
-        meterSynth.onEnd(trigResp.remove())
+    private def auralObjAdded(vp: VisualObj[S], aural: AuralObj[S])(implicit tx: S#Tx): Unit = {
+      if (config.meters) getAuralScanData(aural).foreach { case (bus, node) =>
+        val meterSynth = mkMeter(bus, node)(vp.meterUpdate)
         vp.meterSynth = Some(meterSynth)
-
-        auralToViewMap.put(aural, vp)(tx.peer)
-        viewToAuralMap.put(vp, aural)(tx.peer)
+      }
+      auralToViewMap.put(aural, vp)(tx.peer)
+      viewToAuralMap.put(vp, aural)(tx.peer)
     }
 
     private def auralObjRemoved(aural: AuralObj[S])(implicit tx: S#Tx): Unit = {
@@ -744,11 +691,12 @@ object PanelImpl {
 
     private val soloInfo    = Ref(Option.empty[(VisualObj[S], Synth)])
 
-    private def getScanOutData(aural: AuralObj[S])(implicit tx: S#Tx): Option[(AudioBus, Node)] = aural match {
+    private def getAuralScanData(aural: AuralObj[S], key: String = Proc.Obj.scanMainOut)
+                                (implicit tx: S#Tx): Option[(AudioBus, Node)] = aural match {
       case ap: AuralObj.Proc[S] =>
         val d = ap.data
         for {
-          either  <- d.getScan(Proc.Obj.scanMainOut)
+          either  <- d.getScan(key)
           nodeRef <- d.nodeOption
         } yield {
           val bus   = either.fold(identity, _.bus)
@@ -773,7 +721,7 @@ object PanelImpl {
         clearSolo()
         if (onOff) for {
           auralProc   <- viewToAuralMap.get(vp)
-          (bus, node) <- getScanOutData(auralProc)
+          (bus, node) <- getAuralScanData(auralProc)
         } {
           val sg = SynthGraph {
             import synth._; import ugen._

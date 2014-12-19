@@ -168,11 +168,10 @@ object VisualObj {
   private val colrPeak = Array.tabulate(91)(ang => new Color(IntensityPalette.apply(ang / 90f)))
 
   def apply[S <: Sys[S]](main: NuagesPanel[S], span: Expr[S, SpanLike], obj: Obj[S],
-                         pMeter: Option[stm.Source[S#Tx, Proc.Obj[S]]],
                          meter: Boolean, solo: Boolean)
                         (implicit tx: S#Tx): VisualObj[S] = {
     import SpanLikeEx.serializer
-    val res = new VisualObj(main, tx.newHandle(span), tx.newHandle(obj), obj.name, pMeter, meter = meter, solo = solo)
+    val res = new VisualObj(main, tx.newHandle(span), tx.newHandle(obj), obj.name, meter = meter, solo = solo)
     obj match {
       case Proc.Obj(objT) =>
         val scans = objT.elem.peer.scans
@@ -205,7 +204,6 @@ private[nuages] class VisualObj[S <: Sys[S]] private (val main: NuagesPanel[S],
                                                       val objH: stm.Source[S#Tx, Obj[S]],
                                                       var name: String,
                                                       /* val params: Map[String, VisualParam[S]], */
-                                                      val pMeter: Option[stm.Source[S#Tx, Proc.Obj[S]]],
                                                       val meter: Boolean, val solo: Boolean)
   extends VisualNode[S] with Disposable[S#Tx] {
   vProc =>
@@ -215,7 +213,7 @@ private[nuages] class VisualObj[S <: Sys[S]] private (val main: NuagesPanel[S],
 
   var aggr  : AggregateItem = _
 
-  var scans   = Map.empty[String, VisualScan[S]]
+  var scans   = Map.empty[String, VisualScan   [S]]
   var params  = Map.empty[String, VisualControl[S]]
 
   private val _meterSynth = Ref(Option.empty[Synth])
