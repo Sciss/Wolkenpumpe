@@ -76,11 +76,14 @@ object Wolkenpumpe {
 
     private def mkPar(rate: Rate, key: String, spec: ParamSpec, default: Double)(implicit tx: S#Tx): GE = {
       val obj       = current.get(tx.peer)
-      val paramObj  = Obj(DoubleElem(DoubleEx.newVar(DoubleEx.newConst[S](default))))
+      val defaultN  = spec.inverseMap(default)
+      val paramObj  = Obj(DoubleElem(DoubleEx.newVar(DoubleEx.newConst[S](defaultN))))
       val specObj   = Obj(ParamSpec.Elem(ParamSpec.Expr.newConst[S](spec)))
       paramObj.attr.put(ParamSpec.Key, specObj)
       obj     .attr.put(key, paramObj)
-      Attribute(rate, key, default)
+      // obj     .attr.put(s"$key-spec", specObj)
+      val sig       = Attribute(rate, key, default)
+      spec.map(sig.clip(0, 1))
     }
 
     private def insertByName(folder: Folder[S], elem: Obj[S])(implicit tx: S#Tx): Unit = {

@@ -928,7 +928,13 @@ object ScissProcs {
           }
         }
 
-        def mkAmp(): GE = pAudio("amp", ParamSpec(-inf, 20, DbFaderWarp), -inf).dbamp
+        def mkAmp(): GE = {
+          val db0 = pAudio("amp", ParamSpec(-inf, 20, DbFaderWarp), -inf)
+          val db  = db0 - 10 * (db0 < -764)  // FUCKING BUG IN SUPERCOLLIDER. HELL WHY ARE PEOPLE WRITING C CODE. SHIT LANGUAGE
+          val res = db.dbamp
+          CheckBadValues.ar(res, id = 666)
+          res
+        }
 
         def mkOutAll(in: GE): GE = {
           val pAmp          = mkAmp()

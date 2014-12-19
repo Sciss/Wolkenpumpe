@@ -10,3 +10,7 @@ general
         - group selection and filtering
         - fscape procs
         - avoid gaps with new synth-defs
+
+:::::::::::::::::::::::::::::
+
+[OK]    - the diffs (all, pan, rnd) report NaNs upon initialisation // SuperCollider bug

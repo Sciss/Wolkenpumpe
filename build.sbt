@@ -1,4 +1,4 @@
-name               := "wolkenpumpe"
+name               := "Wolkenpumpe"
 
 version            := "1.0.0-SNAPSHOT"
 

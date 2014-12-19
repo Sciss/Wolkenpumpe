@@ -22,13 +22,14 @@ import de.sciss.audiowidgets.TimelineModel
 import de.sciss.lucre.stm
 import de.sciss.lucre.synth.{Txn, Server, Sys}
 import de.sciss.lucre.swing.{View, deferTx}
+import de.sciss.osc
 import de.sciss.span.Span
 import de.sciss.swingplus.CloseOperation
 import de.sciss.swingplus.Implicits._
 import de.sciss.synth.proc.{AuralSystem, Timeline}
 import de.sciss.synth.swing.j.JServerStatusPanel
 
-import scala.swing.{Component, GridBagPanel, BorderPanel, Orientation, Swing, Frame}
+import scala.swing.{Button, Component, GridBagPanel, BorderPanel, Orientation, Swing, Frame}
 import Swing._
 
 object FrameImpl {
@@ -96,6 +97,11 @@ object FrameImpl {
       cConfig.log = false
       _controlPanel = ControlPanel(cConfig)
       ggSouthBox.contents += controlPanel
+
+//ggSouthBox.contents += Button("DEBUG") {
+//  de.sciss.synth.Server.default ! osc.Message("/n_trace", 1003)
+//}
+
       ggSouthBox.contents += Swing.HGlue
       ggSouthBox.contents += transition
 
