@@ -474,7 +474,10 @@ private[nuages] class VisualScan[S <: Sys[S]](val parent: VisualObj[S], val key:
     drawName(g, vi, diam * vi.getSize.toFloat * 0.5f)
 }
 
-private[nuages] final case class VisualMapping(/* mapping: ControlBusMapping, */ pEdge: Edge)
+private[nuages] final class VisualMapping[S <: Sys[S]] {
+  var pEdge   = Option.empty[Edge]
+  var source  = Option.empty[VisualScan[S]]
+}
 
 private[nuages] object VisualControl {
   private val defaultSpec = ParamSpec()
@@ -491,9 +494,9 @@ private[nuages] object VisualControl {
 
   def scan[S <: Sys[S]](parent: VisualObj[S], key: String,
                          sObj: Scan.Obj[S])(implicit tx: S#Tx): VisualControl[S] = {
-    val value = 0.0
+    val value = 0.5 // XXX TODO
     val spec  = getSpec(parent, key)
-    new VisualControl(parent, key, spec, value, mapping = Some(VisualMapping(null)))  // XXX TODO
+    new VisualControl(parent, key, spec, value, mapping = Some(new VisualMapping))
   }
 
   //  def add[S <: Sys[S]](parent: VisualObj[S], key: String,
@@ -508,15 +511,15 @@ private[nuages] object VisualControl {
 }
 private[nuages] final class VisualControl[S <: Sys[S]] private(val parent: VisualObj[S], val key: String,
                                                        var spec: ParamSpec, var value: Double,
-                                                       val mapping: Option[VisualMapping])
+                                                       val mapping: Option[VisualMapping[S]])
   extends VisualParam[S] {
 
   import VisualData._
 
   // var value: ControlValue = null
-
-  //      var mapped  = false
   // var gliding = false
+
+  private val mapped: Boolean = mapping.isDefined
 
   private var renderedValue = Double.NaN
   private val containerArea = new Area()
@@ -528,6 +531,7 @@ private[nuages] final class VisualControl[S <: Sys[S]] private(val parent: Visua
 
   override def itemPressed(vi: VisualItem, e: MouseEvent, pt: Point2D): Boolean = {
     // if (!vProc.isAlive) return false
+    if (mapped) return false
 
     //         if( super.itemPressed( vi, e, pt )) return true
 
@@ -617,7 +621,7 @@ private[nuages] final class VisualControl[S <: Sys[S]] private(val parent: Visua
     val v = value // .currentApprox
     if (renderedValue != v) updateRenderValue(v)
 
-    g.setColor(if (mapping.isDefined) colrMapped else /* if (gliding) colrGliding else */ colrManual)
+    g.setColor(if (mapped) colrMapped else /* if (gliding) colrGliding else */ colrManual)
     g.fill(valueArea)
     drag foreach { dr =>
       if (!dr.instant) {

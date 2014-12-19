@@ -96,6 +96,7 @@ object PanelImpl {
   private final class VisualLink[S <: Sys[S]](val source: VisualObj[S], val sourceKey: String,
                                               val sink  : VisualObj[S], val sinkKey  : String)
 
+  /* Contains the `id` of the parent `timed` object, and the scan key */
   private final case class ScanInfo[S <: Sys[S]](id: S#ID, key: String)
 
   // nodeMap: uses timed-id as key
@@ -533,12 +534,19 @@ object PanelImpl {
     }
 
     def addScanControl(visObj: VisualObj[S], key: String, sObj: Scan.Obj[S])(implicit tx: S#Tx): Unit = {
-      val vc = VisualControl.scan(visObj, key, sObj)
+      val vc    = VisualControl.scan(visObj, key, sObj)
+      val scan  = sObj.elem.peer
+      val vScan = for {
+        info <- scanMap.get(scan.id)
+        vObj <- nodeMap.get(info.id)
+        res  <- vObj.scans.get(info.key)
+      } yield res
+      vc.mapping.foreach(_.source = vScan)
       addControl(visObj, vc)
     }
 
     private def addControl(visObj: VisualObj[S], vc: VisualControl[S])(implicit tx: S#Tx): Unit = {
-      val locOpt  = locHintMap.get(tx.peer).get(visObj -> vc.key)
+      val locOpt = locHintMap.get(tx.peer).get(visObj -> vc.key)
       deferTx(visDo(addControlGUI(visObj, vc, locOpt)))
     }
 
@@ -695,6 +703,15 @@ object PanelImpl {
       createNodeGUI(vp, vc, locO)
       val old = vp.params.get(vc.key)
       vp.params += vc.key -> vc
+      for {
+        m    <- vc.mapping
+        vSrc <- m.source
+      } {
+        val pEdge = g.addEdge(vSrc.pNode, vc.pNode)
+        // XXX TODO - should we do this:
+        // vSrc.sinks += pEdge
+        m.pEdge = Some(pEdge)
+      }
       old.foreach(removeControlGUI(vp, _))
     }
 
