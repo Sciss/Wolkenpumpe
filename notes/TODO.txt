@@ -1,11 +1,11 @@
 [OK]    - server status / CPU
-        - glide, fade
-[wip]   - multiple scan-ins, "mapping"
+[OK]    - multiple scan-ins, "mapping"
 [OK]    - soloing
 [OK]    - metering
+[OK]    - the diffs (all, pan, rnd) report NaNs upon initialisation // SuperCollider bug
+[OK]    - missing labels on VisualControl instances until display zoom changes
+        - glide, fade
         - keyboard control
         - group selection and filtering
         - fscape procs
         - avoid gaps with new synth-defs
-[OK]    - the diffs (all, pan, rnd) report NaNs upon initialisation // SuperCollider bug
-[OK]    - missing labels on VisualControl instances until display zoom changes

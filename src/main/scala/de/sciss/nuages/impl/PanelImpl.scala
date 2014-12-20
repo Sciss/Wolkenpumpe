@@ -127,7 +127,7 @@ object PanelImpl {
 
     // private var masterBusVar : Option[SAudioBus] = None
 
-    private val locHintMap = TxnLocal(Map.empty[Any, Point2D])
+    private val locHintMap = TxnLocal(Map.empty[Obj[S], Point2D])
 
     private var overlay = Option.empty[Component]
 
@@ -147,8 +147,8 @@ object PanelImpl {
     def setLocationHint(p: Obj[S], loc: Point2D)(implicit tx: S#Tx): Unit =
       locHintMap.transform(_ + (p -> loc))(tx.peer)
 
-    private def setLocationHint(p: Any, loc: Point2D)(implicit tx: InTxn): Unit =
-      locHintMap.transform(_ + (p -> loc))
+    //    private def setLocationHint(p: Any, loc: Point2D)(implicit tx: InTxn): Unit =
+    //      locHintMap.transform(_ + (p -> loc))
 
     def nuages(implicit tx: S#Tx): Nuages[S] = nuagesH()
 
@@ -526,9 +526,9 @@ object PanelImpl {
 
     private def addControl(visObj: VisualObj[S], vc: VisualControl[S])(implicit tx: S#Tx): Unit = {
       val key     = vc.key
-      val locOpt  = locHintMap.get(tx.peer).get(visObj -> key)
-      println(s"locHintMap($visObj -> $key) = $locOpt")
-      deferTx(visDo(addControlGUI(visObj, vc, locOpt)))
+      // val locOpt  = locHintMap.get(tx.peer).get(visObj -> key)
+      // println(s"locHintMap($visObj -> $key) = $locOpt")
+      deferTx(visDo(addControlGUI(visObj, vc /* , locOpt */)))
     }
 
     // makes the meter synth
@@ -616,20 +616,21 @@ object PanelImpl {
       val pNode = g.addNode()
       vn.pNode  = pNode
       val _vi   = _vis.getVisualItem(GROUP_GRAPH, pNode)
-      locO.foreach { loc =>
-        //          _vi.setStartX(loc.getX)
-        //          _vi.setStartY(loc.getX)
-        //          _vi.setX   (loc.getX)
-        //          _vi.setY   (loc.getX)
+      val same  = vn == obj
+      locO.fold {
+        if (!same) {
+          val _vi1 = _vis.getVisualItem(GROUP_GRAPH, obj.pNode)
+          _vi.setEndX(_vi1.getX)
+          _vi.setEndY(_vi1.getY)
+        }
+      } { loc =>
         _vi.setEndX(loc.getX)
         _vi.setEndY(loc.getY)
       }
       obj.aggr.addItem(_vi)
       _vi.set(COL_NUAGES, vn)
 
-      if (vn != obj) {
-        g.addEdge(obj.pNode, pNode)
-      }
+      if (!same) g.addEdge(obj.pNode, pNode)
       _vi
     }
 
@@ -657,8 +658,8 @@ object PanelImpl {
       }
     }
 
-    private def addControlGUI(vp: VisualObj[S], vc: VisualControl[S], locO: Option[Point2D]): Unit = {
-      createNodeGUI(vp, vc, locO)
+    private def addControlGUI(vp: VisualObj[S], vc: VisualControl[S] /* , locO: Option[Point2D] */): Unit = {
+      createNodeGUI(vp, vc, None /* locO */)
       val old = vp.params.get(vc.key)
       vp.params += vc.key -> vc
       for {
@@ -679,8 +680,8 @@ object PanelImpl {
       visObj.aggr.removeItem(_vi)
       val loc = new Point2D.Double(_vi.getX, _vi.getY)
       TxnExecutor.defaultAtomic { implicit itx =>
-        println(s"setLocationHint($visObj -> $key, $loc)")
-        setLocationHint(visObj -> key, loc)
+        // println(s"setLocationHint($visObj -> $key, $loc)")
+        // setLocationHint(visObj -> key, loc)
         vc.mapping.foreach { m =>
           m.synth.swap(None).foreach { synth =>
             implicit val tx = Txn.wrap(itx)
