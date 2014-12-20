@@ -92,7 +92,7 @@ class ClickControl[S <: Sys[S]](main: NuagesPanel[S]) extends ControlAdapter {
         val nTgt = ei.getTargetItem
         val vis  = main.visualization
         (vis.getRenderer(nSrc), vis.getRenderer(nTgt)) match {
-          case (_: NuagesProcRenderer[_], _: NuagesProcRenderer[_]) =>
+          case (_: NuagesShapeRenderer[_], _: NuagesShapeRenderer[_]) =>
             val srcData = nSrc.get(COL_NUAGES).asInstanceOf[VisualData[S]]
             val tgtData = nTgt.get(COL_NUAGES).asInstanceOf[VisualData[S]]
             if (srcData != null && tgtData != null)
@@ -113,7 +113,7 @@ class ClickControl[S <: Sys[S]](main: NuagesPanel[S]) extends ControlAdapter {
     val nTgt = ei.getTargetItem
     val vis  = main.visualization
     (vis.getRenderer(nSrc), vis.getRenderer(nTgt)) match {
-      case (_: NuagesProcRenderer[_], _: NuagesProcRenderer[_]) =>
+      case (_: NuagesShapeRenderer[_], _: NuagesShapeRenderer[_]) =>
         val srcData = nSrc.get(COL_NUAGES).asInstanceOf[VisualData[S]]
         val tgtData = nTgt.get(COL_NUAGES).asInstanceOf[VisualData[S]]
         if (srcData != null && tgtData != null)

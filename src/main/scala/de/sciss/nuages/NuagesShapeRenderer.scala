@@ -19,7 +19,7 @@ import java.awt._
 import geom._
 import prefuse.render.AbstractShapeRenderer
 
-class NuagesProcRenderer[S <: Sys[S]](size: Int)
+class NuagesShapeRenderer[S <: Sys[S]](size: Int)
   extends AbstractShapeRenderer {
 
   import NuagesPanel._

@@ -23,22 +23,25 @@ import prefuse.visual.AggregateItem
 
 object VisualObj {
   def apply[S <: Sys[S]](main: NuagesPanel[S], span: Expr[S, SpanLike], obj: Obj[S],
-                         meter: Boolean, solo: Boolean)
+                         hasMeter: Boolean, hasSolo: Boolean)
                         (implicit tx: S#Tx): VisualObj[S] =
-    impl.VisualObjImpl(main, span, obj, meter = meter, solo = solo)
+    impl.VisualObjImpl(main, span, obj, hasMeter = hasMeter, hasSolo = hasSolo)
 }
 
+/** The GUI representation of a `proc.Obj`.
+  *
+  * @see [[de.sciss.synth.proc.Obj]]
+  */
 trait VisualObj[S <: Sys[S]]
   extends VisualNode[S] with Disposable[S#Tx] {
 
   def main: NuagesPanel[S]
+  
   def spanH: stm.Source[S#Tx, Expr[S, SpanLike]]
-  def objH: stm.Source[S#Tx, Obj[S]]
+  def objH : stm.Source[S#Tx, Obj[S]]
 
+  /** GUI property: name of the object to display. */
   var name: String
-
-  def meter: Boolean
-  def solo : Boolean
 
   var aggr: AggregateItem
 
@@ -48,6 +51,7 @@ trait VisualObj[S <: Sys[S]]
   def meterSynth(implicit tx: S#Tx): Option[Synth]
   def meterSynth_=(value: Option[Synth])(implicit tx: S#Tx): Unit
 
+  /** GUI property: whether the object is heard through the solo function or not. */
   var soloed: Boolean
 
   def meterUpdate(newPeak: Float): Unit

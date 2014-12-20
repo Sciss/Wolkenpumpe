@@ -39,7 +39,7 @@ object DragControl {
 
   def getVisualData[S <: Sys[S]](vis: Visualization, vi: VisualItem): Option[VisualData[S]] =
     vis.getRenderer(vi) match {
-      case pr: NuagesProcRenderer[_] =>
+      case pr: NuagesShapeRenderer[_] =>
         val data = vi.get(COL_NUAGES).asInstanceOf[VisualData[S]]
         if (data != null) Some(data) else None
 
@@ -60,7 +60,7 @@ class DragControl[S <: Sys[S]](vis: Visualization) extends ControlAdapter {
 
   override def itemEntered(vi: VisualItem, e: MouseEvent): Unit = {
     vis.getRenderer(vi) match {
-      case pr: NuagesProcRenderer[_] =>
+      case pr: NuagesShapeRenderer[_] =>
         val data = vi.get(COL_NUAGES).asInstanceOf[VisualData[S]]
         if (data != null) {
           val d = getDisplay(e)
@@ -89,7 +89,7 @@ class DragControl[S <: Sys[S]](vis: Visualization) extends ControlAdapter {
 
   override def itemExited(vi: VisualItem, e: MouseEvent): Unit = {
     vis.getRenderer(vi) match {
-      case pr: NuagesProcRenderer[_] =>
+      case pr: NuagesShapeRenderer[_] =>
         val data = vi.get(COL_NUAGES).asInstanceOf[VisualData[S]]
         if (data != null) {
           val d = getDisplay(e)
@@ -118,7 +118,7 @@ class DragControl[S <: Sys[S]](vis: Visualization) extends ControlAdapter {
     val d = getDisplay(e)
     val displayPt = d.getAbsoluteCoordinate(e.getPoint, null)
     vis.getRenderer(vi) match {
-      case pr: NuagesProcRenderer[_] =>
+      case pr: NuagesShapeRenderer[_] =>
         val data = vi.get(COL_NUAGES).asInstanceOf[VisualData[S]]
         if (data != null) {
           data.update(pr.getShape(vi))
@@ -137,7 +137,7 @@ class DragControl[S <: Sys[S]](vis: Visualization) extends ControlAdapter {
 
   override def itemReleased(vi: VisualItem, e: MouseEvent): Unit = {
     vis.getRenderer(vi) match {
-      case pr: NuagesProcRenderer[_] =>
+      case pr: NuagesShapeRenderer[_] =>
         val data = vi.get(COL_NUAGES).asInstanceOf[VisualData[S]]
         if (data != null) {
           val d = getDisplay(e)
@@ -158,7 +158,7 @@ class DragControl[S <: Sys[S]](vis: Visualization) extends ControlAdapter {
     val d = getDisplay(e)
     val newPt = d.getAbsoluteCoordinate(e.getPoint, null)
     vis.getRenderer(vi) match {
-      case pr: NuagesProcRenderer[_] =>
+      case pr: NuagesShapeRenderer[_] =>
         val data = vi.get(COL_NUAGES).asInstanceOf[VisualData[S]]
         if (data != null) {
           data.update(pr.getShape(vi))

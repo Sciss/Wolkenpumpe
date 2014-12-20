@@ -295,7 +295,7 @@ object PanelImpl {
       aggrTable = _vis.addAggregates(AGGR_PROC)
       aggrTable .addColumn(VisualItem.POLYGON, classOf[Array[Float]])
 
-      val procRenderer = new NuagesProcRenderer(50)
+      val procRenderer = new NuagesShapeRenderer(50)
       val edgeRenderer = new EdgeRenderer(Constants.EDGE_TYPE_LINE, Constants.EDGE_ARROW_FORWARD) {
         // same as original method but with much larger border to ease mouse control
         override def locatePoint(p: Point2D, item: VisualItem): Boolean = {
@@ -441,7 +441,7 @@ object PanelImpl {
     def addNode(span: SpanLike, timed: Timeline.Timed[S])(implicit tx: S#Tx): Unit = {
       val id    = timed.id
       val obj   = timed.value
-      val vp    = VisualObj[S](this, timed.span, obj, meter = config.meters, solo = config.soloChannels.isDefined)
+      val vp    = VisualObj[S](this, timed.span, obj, hasMeter = config.meters, hasSolo = config.soloChannels.isDefined)
       nodeMap.put(id, vp)
       val locO  = locHintMap.getAndTransform(_ - obj)(tx.peer).get(obj)
 

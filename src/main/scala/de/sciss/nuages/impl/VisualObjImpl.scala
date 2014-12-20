@@ -37,10 +37,10 @@ object VisualObjImpl {
   private val colrPeak = Array.tabulate(91)(ang => new Color(IntensityPalette.apply(ang / 90f)))
 
   def apply[S <: Sys[S]](main: NuagesPanel[S], span: Expr[S, SpanLike], obj: Obj[S],
-                         meter: Boolean, solo: Boolean)
+                         hasMeter: Boolean, hasSolo: Boolean)
                         (implicit tx: S#Tx): VisualObj[S] = {
     import SpanLikeEx.serializer
-    val res = new VisualObjImpl(main, tx.newHandle(span), tx.newHandle(obj), obj.name, meter = meter, solo = solo)
+    val res = new VisualObjImpl(main, tx.newHandle(span), tx.newHandle(obj), obj.name, hasMeter = hasMeter, hasSolo = hasSolo)
     obj match {
       case Proc.Obj(objT) =>
         val scans = objT.elem.peer.scans
@@ -62,10 +62,10 @@ object VisualObjImpl {
   }
 }
 final class VisualObjImpl[S <: Sys[S]] private (val main: NuagesPanel[S],
-                                                      val spanH: stm.Source[S#Tx, Expr[S, SpanLike]],
-                                                      val objH: stm.Source[S#Tx, Obj[S]],
-                                                      var name: String,
-                                                      val meter: Boolean, val solo: Boolean)
+                                                val spanH: stm.Source[S#Tx, Expr[S, SpanLike]],
+                                                val objH : stm.Source[S#Tx, Obj[S]],
+                                                var name: String,
+                                                hasMeter: Boolean, hasSolo: Boolean)
   extends VisualNodeImpl[S] with VisualObj[S] {
   vProc =>
 
@@ -87,18 +87,17 @@ final class VisualObjImpl[S <: Sys[S]] private (val main: NuagesPanel[S],
 
   def dispose()(implicit tx: S#Tx): Unit = meterSynth = None
 
-  //  @volatile private var stateVar = Proc.State(false)
-  // @volatile private var disposeAfterFade = false
-
   private val playArea = new Area()
   private val soloArea = new Area()
 
   private var peak = 0f
-  //   private var rms         = 0f
   private var peakToPaint = -160f
-  //   private var rmsToPaint	= -160f
   private var peakNorm = 0f
+
+  //   private var rms         = 0f
+  //   private var rmsToPaint	= -160f
   //   private var rmsNorm     = 0f
+
   private var lastUpdate = System.currentTimeMillis()
 
   @volatile var soloed = false
@@ -145,7 +144,7 @@ final class VisualObjImpl[S <: Sys[S]] private (val main: NuagesPanel[S],
     val yt = pt.getY - r.getY
     if (playArea.contains(xt, yt)) {
       true
-    } else if (solo && soloArea.contains(xt, yt)) {
+    } else if (hasSolo && soloArea.contains(xt, yt)) {
       main.setSolo(this, !soloed)
       true
 
@@ -200,7 +199,7 @@ final class VisualObjImpl[S <: Sys[S]] private (val main: NuagesPanel[S],
     playArea.subtract(new Area(innerE))
     gp.append(playArea, false)
 
-    if (solo) {
+    if (hasSolo) {
       gArc.setAngleStart(45)
       soloArea.reset()
       soloArea.add(new Area(gArc))
@@ -208,7 +207,7 @@ final class VisualObjImpl[S <: Sys[S]] private (val main: NuagesPanel[S],
       gp.append(soloArea, false)
     }
 
-    if (meter) {
+    if (hasMeter) {
       gArc.setAngleStart(-45)
       val meterArea = new Area(gArc)
       meterArea.subtract(new Area(innerE))
@@ -220,14 +219,13 @@ final class VisualObjImpl[S <: Sys[S]] private (val main: NuagesPanel[S],
     g.setColor(colrPlaying)
     g.fill(playArea)
 
-    if (solo) {
+    if (hasSolo) {
       g.setColor(if (soloed) colrSoloed else colrStopped)
       g.fill(soloArea)
     }
 
-    if (meter) {
+    if (hasMeter) {
       val angExtent = (math.max(0f, peakNorm) * 90).toInt
-      // val pValArc   = new Arc2D.Double(0, 0, r.getWidth, r.getHeight, -45, angExtent, Arc2D.PIE)
       gArc.setArc(0, 0, r.getWidth, r.getHeight, -45, angExtent, Arc2D.PIE)
       val peakArea  = new Area(gArc)
       peakArea.subtract(new Area(innerE))
