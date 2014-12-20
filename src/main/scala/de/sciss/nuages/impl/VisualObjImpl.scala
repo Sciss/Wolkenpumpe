@@ -22,6 +22,7 @@ import de.sciss.lucre.bitemp.{SpanLike => SpanLikeEx}
 import de.sciss.intensitypalette.IntensityPalette
 import de.sciss.lucre.expr.Expr
 import de.sciss.lucre.stm
+import de.sciss.lucre.swing.requireEDT
 import de.sciss.lucre.synth.{Synth, Sys}
 import de.sciss.span.SpanLike
 import de.sciss.synth.proc.{DoubleElem, Scan, Proc, Obj}
@@ -72,12 +73,25 @@ final class VisualObjImpl[S <: Sys[S]] private (val main: NuagesPanel[S],
   import VisualDataImpl._
   import VisualObjImpl._
 
-  var aggr  : AggregateItem = _
+  protected def nodeSize = 1f
+
+  private var _aggr: AggregateItem = _
 
   var scans   = Map.empty[String, VisualScan   [S]]
   var params  = Map.empty[String, VisualControl[S]]
 
   private val _meterSynth = Ref(Option.empty[Synth])
+
+  def parent: VisualObj[S] = this
+
+  def aggr: AggregateItem = _aggr
+
+  def initGUI(): Unit = {
+    requireEDT()
+    // important: this must be this first step
+    _aggr = main.aggrTable.addItem().asInstanceOf[AggregateItem]
+    mkPNode()
+  }
 
   def meterSynth(implicit tx: S#Tx): Option[Synth] = _meterSynth.get(tx.peer)
   def meterSynth_=(value: Option[Synth])(implicit tx: S#Tx): Unit = {

@@ -16,9 +16,30 @@ package impl
 
 import de.sciss.lucre.synth.Sys
 import prefuse.data.{Node => PNode}
+import prefuse.visual.VisualItem
 
 trait VisualNodeImpl[S <: Sys[S]] extends VisualDataImpl[S] with VisualNode[S] {
-  var pNode: PNode = _
+  private[this] var _pNode: PNode = _
 
-  final protected def atomic[A](fun: S#Tx => A): A = main.transport.scheduler.cursor.step(fun)
+  protected def parent: VisualObj[S]
+
+  protected def nodeSize: Float
+
+  final def pNode: PNode = {
+    if (_pNode == null) throw new IllegalStateException(s"Component $this has no initialized GUI")
+    _pNode
+  }
+
+  protected final def mkPNode(): Unit = {
+    if (_pNode != null) throw new IllegalStateException(s"Component $this has already been initialized")
+    _pNode  = main.graph.addNode()
+    val vis = main.visualization
+    val vi  = vis.getVisualItem(NuagesPanel.GROUP_GRAPH, _pNode)
+    vi.set(NuagesPanel.COL_NUAGES, this)
+    val sz  = nodeSize
+    if (sz != 1.0f) vi.set(VisualItem.SIZE, sz)
+    parent.aggr.addItem(vi)
+  }
+
+  protected final def atomic[A](fun: S#Tx => A): A = main.transport.scheduler.cursor.step(fun)
 }

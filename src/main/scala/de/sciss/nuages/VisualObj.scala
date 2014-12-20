@@ -36,23 +36,27 @@ trait VisualObj[S <: Sys[S]]
   extends VisualNode[S] with Disposable[S#Tx] {
 
   def main: NuagesPanel[S]
-  
+
   def spanH: stm.Source[S#Tx, Expr[S, SpanLike]]
   def objH : stm.Source[S#Tx, Obj[S]]
+
+  // ---- methods to be called on the EDT ----
 
   /** GUI property: name of the object to display. */
   var name: String
 
-  var aggr: AggregateItem
+  def aggr: AggregateItem
 
   var scans : Map[String, VisualScan   [S]]
   var params: Map[String, VisualControl[S]]
-
-  def meterSynth(implicit tx: S#Tx): Option[Synth]
-  def meterSynth_=(value: Option[Synth])(implicit tx: S#Tx): Unit
 
   /** GUI property: whether the object is heard through the solo function or not. */
   var soloed: Boolean
 
   def meterUpdate(newPeak: Float): Unit
+
+  // ---- transactional methods ----
+
+  def meterSynth(implicit tx: S#Tx): Option[Synth]
+  def meterSynth_=(value: Option[Synth])(implicit tx: S#Tx): Unit
 }

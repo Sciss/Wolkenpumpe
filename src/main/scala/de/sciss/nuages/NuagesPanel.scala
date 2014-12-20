@@ -18,6 +18,8 @@ import de.sciss.lucre.swing.View
 import de.sciss.lucre.synth.{Txn, Synth, Sys}
 import de.sciss.synth.proc.{WorkspaceHandle, AuralSystem, Transport}
 import impl.{PanelImpl => Impl}
+import prefuse.data.Graph
+import prefuse.visual.AggregateTable
 import prefuse.{Visualization, Display}
 
 import scala.swing.Point
@@ -36,7 +38,6 @@ object NuagesPanel {
     Impl(nuages, config, aural)
 }
 trait NuagesPanel[S <: Sys[S]] extends View[S] {
-  def nuages(implicit tx: S#Tx): Nuages[S]
 
   def aural: AuralSystem
 
@@ -46,23 +47,29 @@ trait NuagesPanel[S <: Sys[S]] extends View[S] {
 
   def config : Nuages.Config
 
+  // ---- methods to be called on the EDT ----
+
+  def display: Display
+
+  def visualization: Visualization
+
+  def graph: Graph
+
+  def aggrTable: AggregateTable
+
+  def showCreateGenDialog(pt: Point): Boolean
+
+  def showCreateFilterDialog(vOut: VisualScan[S], vIn: VisualScan[S], pt: Point): Boolean
+
   def setSolo(vp: VisualObj[S], onOff: Boolean): Unit
+
+  // ---- transactional methods ----
+
+  def nuages(implicit tx: S#Tx): Nuages[S]
 
   def setMasterVolume(v: Double)(implicit tx: S#Tx): Unit
   def setSoloVolume  (v: Double)(implicit tx: S#Tx): Unit
 
   def masterSynth(implicit tx: Txn): Option[Synth]
   def masterSynth_=(value: Option[Synth])(implicit tx: Txn): Unit
-
-  /** Must be called on the EDT */
-  def display: Display
-
-  /** Must be called on the EDT */
-  def visualization: Visualization
-
-  /** Must be called on the EDT */
-  def showCreateGenDialog(pt: Point): Boolean
-
-  /** Must be called on the EDT */
-  def showCreateFilterDialog(vOut: VisualScan[S], vIn: VisualScan[S], pt: Point): Boolean
 }

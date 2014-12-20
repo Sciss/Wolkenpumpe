@@ -118,10 +118,10 @@ object PanelImpl {
 
     private var _vis: Visualization = _
     private var _dsp: Display       = _
-    private var g   : Graph         = _
+    private var _g  : Graph         = _
     private var vg  : VisualGraph   = _
 
-    private var aggrTable: AggregateTable = _
+    private var _aggrTable: AggregateTable = _
 
     //  var transition: Double => Transition = (_) => Instant
 
@@ -141,6 +141,8 @@ object PanelImpl {
 
     def display      : Display        = _dsp
     def visualization: Visualization  = _vis
+    def graph        : Graph          = _g
+    def aggrTable    : AggregateTable = _aggrTable
 
     // def masterBus: Option[SAudioBus] = masterBusVar
 
@@ -289,11 +291,11 @@ object PanelImpl {
         }
       }
 
-      g     = new Graph
-      vg    = _vis.addGraph(GROUP_GRAPH, g)
+      _g     = new Graph
+      vg    = _vis.addGraph(GROUP_GRAPH, _g)
       vg.addColumn(COL_NUAGES, classOf[AnyRef])
-      aggrTable = _vis.addAggregates(AGGR_PROC)
-      aggrTable .addColumn(VisualItem.POLYGON, classOf[Array[Float]])
+      _aggrTable = _vis.addAggregates(AGGR_PROC)
+      _aggrTable .addColumn(VisualItem.POLYGON, classOf[Array[Float]])
 
       val procRenderer = new NuagesShapeRenderer(50)
       val edgeRenderer = new EdgeRenderer(Constants.EDGE_TYPE_LINE, Constants.EDGE_ARROW_FORWARD) {
@@ -602,19 +604,19 @@ object PanelImpl {
     }
 
     private def removeNodeGUI(vp: VisualObj[S]): Unit = {
-      aggrTable.removeTuple(vp.aggr)
-      g.removeNode(vp.pNode)
+      _aggrTable.removeTuple(vp.aggr)
+      _g.removeNode(vp.pNode)
       vp.scans.foreach { case (_, vs) =>
-        g.removeNode(vs.pNode)
+        _g.removeNode(vs.pNode)
       }
       vp.params.foreach { case (_, vc) =>
-        g.removeNode(vc.pNode)
+        _g.removeNode(vc.pNode)
       }
     }
 
-    private def createNodeGUI(obj: VisualObj[S], vn: VisualNode[S], locO: Option[Point2D]): VisualItem = {
-      val pNode = g.addNode()
-      vn.pNode  = pNode
+    private def initNodeGUI(obj: VisualObj[S], vn: VisualNode[S], locO: Option[Point2D]): VisualItem = {
+      vn.initGUI()
+      val pNode = vn.pNode
       val _vi   = _vis.getVisualItem(GROUP_GRAPH, pNode)
       val same  = vn == obj
       locO.fold {
@@ -627,25 +629,18 @@ object PanelImpl {
         _vi.setEndX(loc.getX)
         _vi.setEndY(loc.getY)
       }
-      obj.aggr.addItem(_vi)
-      _vi.set(COL_NUAGES, vn)
-
-      if (!same) g.addEdge(obj.pNode, pNode)
       _vi
     }
 
     private def addNodeGUI(vp: VisualObj[S], links: List[VisualLink[S]], locO: Option[Point2D]): Unit = {
-      val aggr  = aggrTable.addItem().asInstanceOf[AggregateItem]
-      vp.aggr   = aggr
-      createNodeGUI(vp, vp, locO)
+      initNodeGUI(vp, vp, locO)
 
       vp.scans.foreach { case (_, vScan) =>
-        val vi = createNodeGUI(vp, vScan, locO)
-        vi.set(VisualItem.SIZE, 0.33333f)
+        initNodeGUI(vp, vScan, locO)
       }
 
       vp.params.foreach { case (_, vParam) =>
-        createNodeGUI(vp, vParam, locO)
+        initNodeGUI(vp, vParam, locO)
       }
 
       links.foreach { link =>
@@ -659,14 +654,14 @@ object PanelImpl {
     }
 
     private def addControlGUI(vp: VisualObj[S], vc: VisualControl[S] /* , locO: Option[Point2D] */): Unit = {
-      createNodeGUI(vp, vc, None /* locO */)
+      initNodeGUI(vp, vc, None /* locO */)
       val old = vp.params.get(vc.key)
       vp.params += vc.key -> vc
       for {
         m    <- vc.mapping
         vSrc <- m.source
       } {
-        /* val pEdge = */ g.addEdge(vSrc.pNode, vc.pNode)
+        /* val pEdge = */ _g.addEdge(vSrc.pNode, vc.pNode)
         vSrc.mappings += vc
         // m.pEdge = Some(pEdge)
       }
@@ -675,10 +670,10 @@ object PanelImpl {
 
     def removeControlGUI(visObj: VisualObj[S], vc: VisualControl[S]): Unit = {
       val key = vc.key
-      visObj.params -= vc.key
+      visObj.params -= key
       val _vi = _vis.getVisualItem(GROUP_GRAPH, vc.pNode)
       visObj.aggr.removeItem(_vi)
-      val loc = new Point2D.Double(_vi.getX, _vi.getY)
+      // val loc = new Point2D.Double(_vi.getX, _vi.getY)
       TxnExecutor.defaultAtomic { implicit itx =>
         // println(s"setLocationHint($visObj -> $key, $loc)")
         // setLocationHint(visObj -> key, loc)
@@ -689,11 +684,11 @@ object PanelImpl {
           }
         }
       }
-      g.removeNode(vc.pNode)
+      _g.removeNode(vc.pNode)
     }
 
     def addEdgeGUI(source: VisualScan[S], sink: VisualScan[S]): Unit = {
-      val pEdge = g.addEdge(source.pNode, sink.pNode)
+      val pEdge = _g.addEdge(source.pNode, sink.pNode)
       source.sinks   += pEdge
       sink  .sources += pEdge
     }
@@ -702,7 +697,7 @@ object PanelImpl {
       source.sinks.find(_.getTargetNode == sink.pNode).foreach { pEdge =>
         source.sinks   -= pEdge
         sink  .sources -= pEdge
-        g.removeEdge(pEdge)
+        _g.removeEdge(pEdge)
       }
 
     private val soloVolume  = Ref(soloAmpSpec._2)  // 0.5

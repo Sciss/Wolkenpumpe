@@ -19,6 +19,7 @@ import java.awt.event.MouseEvent
 import java.awt.geom.{Arc2D, Point2D, Area}
 
 import de.sciss.lucre.expr.{Expr, Double => DoubleEx}
+import de.sciss.lucre.swing.requireEDT
 import de.sciss.lucre.synth.{Synth, Sys}
 import de.sciss.synth.proc.{Obj, Scan, DoubleElem}
 import prefuse.util.ColorLib
@@ -63,6 +64,8 @@ final class VisualControlImpl[S <: Sys[S]] private(val parent: VisualObj[S], val
   import VisualDataImpl._
   import VisualControlImpl.Drag
 
+  protected def nodeSize = 1f
+
   private val mapped: Boolean = mapping.isDefined
 
   private var renderedValue = Double.NaN
@@ -71,7 +74,10 @@ final class VisualControlImpl[S <: Sys[S]] private(val parent: VisualObj[S], val
 
   private var drag: Option[Drag] = None
 
-  //      private def isValid = vProc.isValid
+  def initGUI(): Unit = {
+    requireEDT()
+    mkPNodeAndEdge()
+  }
 
   override def itemPressed(vi: VisualItem, e: MouseEvent, pt: Point2D): Boolean = {
     // if (!vProc.isAlive) return false
@@ -80,19 +86,19 @@ final class VisualControlImpl[S <: Sys[S]] private(val parent: VisualObj[S], val
     //         if( super.itemPressed( vi, e, pt )) return true
 
     if (containerArea.contains(pt.getX - r.getX, pt.getY - r.getY)) {
-      val dy = r.getCenterY - pt.getY
-      val dx = pt.getX - r.getCenterX
-      val ang = math.max(0.0, math.min(1.0, (((-math.atan2(dy, dx) / math.Pi + 3.5) % 2.0) - 0.25) / 1.5))
+      val dy      = r.getCenterY - pt.getY
+      val dx      = pt.getX - r.getCenterX
+      val ang     = math.max(0.0, math.min(1.0, (((-math.atan2(dy, dx) / math.Pi + 3.5) % 2.0) - 0.25) / 1.5))
       val instant = true // !vProc.state.playing || vProc.state.bypassed || main.transition(0) == Instant
-      val vStart = if (e.isAltDown) {
+      val vStart  = if (e.isAltDown) {
           //               val res = math.min( 1.0f, (((ang / math.Pi + 3.25) % 2.0) / 1.5).toFloat )
           //               if( ang != value ) {
           // val m = /* control. */ spec.map(ang)
           if (instant) setControl(/* control, */ ang /* m */, instant = true)
           ang
         } else /* control. */ value // spec.inverseMap(value /* .currentApprox */)
-      val dr = new Drag(ang, vStart, instant)
-      drag = Some(dr)
+      val dr      = new Drag(ang, vStart, instant)
+      drag        = Some(dr)
       true
     } else false
   }

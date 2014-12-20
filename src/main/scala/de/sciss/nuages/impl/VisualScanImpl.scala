@@ -16,6 +16,7 @@ package impl
 
 import java.awt.Graphics2D
 
+import de.sciss.lucre.swing.requireEDT
 import de.sciss.lucre.synth.Sys
 import prefuse.data.Edge
 import prefuse.visual.VisualItem
@@ -29,9 +30,16 @@ final class VisualScanImpl[S <: Sys[S]] private(val parent: VisualObj[S], val ke
 
   import VisualDataImpl._
 
+  protected def nodeSize = 0.333333f
+
   var sources   = Set.empty[Edge]
   var sinks     = Set.empty[Edge]
   var mappings  = Set.empty[VisualControl[S]]
+
+  def initGUI(): Unit = {
+    requireEDT()
+    mkPNodeAndEdge()
+  }
 
   protected def boundsResized() = ()
 

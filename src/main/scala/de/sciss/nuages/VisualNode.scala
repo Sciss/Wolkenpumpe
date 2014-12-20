@@ -25,6 +25,9 @@ import prefuse.data.{Node => PNode}
   * @see [[VisualParam]]
   */
 trait VisualNode[S <: Sys[S]] extends VisualData[S] {
-  var pNode: PNode
+  // ---- methods to be called on the EDT ----
+
+  /** The corresponding Prefuse node. */
+  def pNode: PNode
 }
 
