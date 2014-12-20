@@ -131,6 +131,17 @@ class ClickControl[S <: Sys[S]](main: NuagesPanel[S]) extends ControlAdapter {
                   srcScan.removeSink(Scan.Link.Scan(tgtScan))
                 }
               }
+
+            case (srcVScan: VisualScan[S], tgtCtl: VisualControl[S]) =>
+              main.cursor.step { implicit tx =>
+                tgtCtl.mapping.foreach { m =>
+                  // make sure there are no more /tr updates
+                  m.synth.swap(None)(tx.peer).foreach(_.dispose())
+                }
+                // this causes AttrRemoved and AttrAdded succession
+                tgtCtl.removeMapping()
+              }
+
             case _ =>
           }
 

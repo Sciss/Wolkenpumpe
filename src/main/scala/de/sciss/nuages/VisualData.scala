@@ -26,7 +26,7 @@ import de.sciss.synth.proc
 import prefuse.util.ColorLib
 import prefuse.data.{Edge, Node => PNode}
 import prefuse.visual.{AggregateItem, VisualItem}
-import java.awt.geom.{Line2D, Arc2D, Area, Point2D, Ellipse2D, GeneralPath, Rectangle2D}
+import java.awt.geom.{AffineTransform, Line2D, Arc2D, Area, Point2D, Ellipse2D, GeneralPath, Rectangle2D}
 import de.sciss.synth.proc.{Scan, DoubleElem, Obj, Proc}
 import scala.collection.breakOut
 import proc.Implicits._
@@ -118,41 +118,55 @@ private[nuages] trait VisualData[S <: Sys[S]] {
   def itemReleased(vi: VisualItem, e: MouseEvent, pt: Point2D) = ()
   def itemDragged (vi: VisualItem, e: MouseEvent, pt: Point2D) = ()
 
+  private[this] var lastFontT: AffineTransform = _
+  private[this] var nameShape: Shape = _
+
   protected def drawName(g: Graphics2D, vi: VisualItem, fontSize: Float): Unit = {
-    // println(s"drawName($name)")
     if (_fontSize != fontSize) {
       _fontSize = fontSize
       _font = Wolkenpumpe.condensedFont.deriveFont(fontSize)
     }
 
     g.setColor(ColorLib.getColor(vi.getTextColor))
+    val n = name
+
     if (main.display.isHighQuality) {
-      drawNameHQ(g, vi, _font)
+      val frc   = g.getFontRenderContext
+      val frcT  = frc.getTransform
+      if (frcT != lastFontT) {  // only calculate glyph vector if zoom level changes
+        val v = _font.createGlyphVector(frc, n)
+        // NOTE: there is a bug, at least with the BellySansCondensed font,
+        // regarding `getVisualBounds`; it returns almost infinite width
+        // for certain strings such as `"freq"`. Instead, using `getPixelBounds`
+        // seems to resolve the issue.
+        //
+        // val vvb = v.getVisualBounds
+
+        // NOTE: the getPixelBounds somehow incorporates wrong zoom factors.
+        // The problem with `getVisualBounds` seems to originate from the
+        // initial font-render-context.
+        val vvb = if (frc.isTransformed) v.getVisualBounds else v.getPixelBounds(frc, 0f, 0f)
+
+        // if (name == "freq") println(s"w = ${vvb.getWidth}, h = ${vvb.getHeight}; t? ${frc.isTransformed}")
+
+        // for PDF output, drawGlyphVector gives correct font rendering,
+        // while drawString only does with particular fonts.
+        //         g.drawGlyphVector( v, ((r.getWidth() - vb.getWidth()) * 0.5).toFloat,
+        //                           ((r.getHeight() + (fm.getAscent() - fm.getLeading())) * 0.5).toFloat )
+        //         g.drawGlyphVector( v, ((r.getWidth() - vb.getWidth()) * 0.5).toFloat,
+        //                               ((r.getHeight() - vb.getHeight()) * 0.5).toFloat )
+        nameShape = v.getOutline(((r.getWidth - vvb.getWidth) * 0.5).toFloat,
+          ((r.getHeight + vvb.getHeight) * 0.5).toFloat)
+        lastFontT = frcT
+      }
+      g.fill(nameShape)
+
     } else {
       val cx = r.getWidth  / 2
       val cy = r.getHeight / 2
-      g.setFont(_font)
       val fm = g.getFontMetrics
-      val n  = name
       g.drawString(n, (cx - (fm.stringWidth(n) * 0.5)).toInt, (cy + ((fm.getAscent - fm.getLeading) * 0.5)).toInt)
     }
-  }
-
-  private def drawNameHQ(g: Graphics2D, vi: VisualItem, font: Font): Unit = {
-    val n   = name
-    val v   = font.createGlyphVector(g.getFontRenderContext, n)
-    val vvb = v.getVisualBounds
-    //      val vlb = v.getLogicalBounds
-
-    // for PDF output, drawGlyphVector gives correct font rendering,
-    // while drawString only does with particular fonts.
-    //         g.drawGlyphVector( v, ((r.getWidth() - vb.getWidth()) * 0.5).toFloat,
-    //                           ((r.getHeight() + (fm.getAscent() - fm.getLeading())) * 0.5).toFloat )
-    //         g.drawGlyphVector( v, ((r.getWidth() - vb.getWidth()) * 0.5).toFloat,
-    //                               ((r.getHeight() - vb.getHeight()) * 0.5).toFloat )
-    val shp = v.getOutline(((r.getWidth - vvb.getWidth) * 0.5).toFloat,
-      ((r.getHeight + vvb.getHeight) * 0.5).toFloat)
-    g.fill(shp)
   }
 
   def name: String
@@ -327,8 +341,13 @@ private[nuages] class VisualObj[S <: Sys[S]] private (val main: NuagesPanel[S],
     } else if (outerE.contains(xt, yt) & e.isAltDown) {
       // val instant = !stateVar.playing || stateVar.bypassed || (main.transition(0) == Instant)
       val scanKeys = scans.keySet
+      val mappings = scans.valuesIterator.flatMap(_.mappings)
       atomic { implicit tx =>
         if (scanKeys.nonEmpty) {
+          mappings.foreach { vc =>
+            vc.removeMapping()
+          }
+
           val obj = objH()
           obj match {
             case Proc.Obj(objT) =>
@@ -463,8 +482,9 @@ private[nuages] class VisualScan[S <: Sys[S]](val parent: VisualObj[S], val key:
 
   import VisualData._
 
-  var sources = Set.empty[Edge]
-  var sinks   = Set.empty[Edge]
+  var sources   = Set.empty[Edge]
+  var sinks     = Set.empty[Edge]
+  var mappings  = Set.empty[VisualControl[S]]
 
   protected def boundsResized() = ()
 
@@ -473,7 +493,9 @@ private[nuages] class VisualScan[S <: Sys[S]](val parent: VisualObj[S], val key:
 }
 
 private[nuages] final class VisualMapping[S <: Sys[S]] {
-  var pEdge   = Option.empty[Edge]
+  /** The metering synth that via `SendTrig` updates the control's current value. */
+  val synth   = Ref(Option.empty[Synth])
+  // var pEdge   = Option.empty[Edge]
   var source  = Option.empty[VisualScan[S]]
 }
 
@@ -508,7 +530,7 @@ private[nuages] object VisualControl {
   //  }
 }
 private[nuages] final class VisualControl[S <: Sys[S]] private(val parent: VisualObj[S], val key: String,
-                                                       var spec: ParamSpec, var value: Double,
+                                                       val /* var */ spec: ParamSpec, @volatile var value: Double,
                                                        val mapping: Option[VisualMapping[S]])
   extends VisualParam[S] {
 
@@ -529,7 +551,7 @@ private[nuages] final class VisualControl[S <: Sys[S]] private(val parent: Visua
 
   override def itemPressed(vi: VisualItem, e: MouseEvent, pt: Point2D): Boolean = {
     // if (!vProc.isAlive) return false
-    if (mapped) return false
+    if (mapped) return true
 
     //         if( super.itemPressed( vi, e, pt )) return true
 
@@ -551,21 +573,25 @@ private[nuages] final class VisualControl[S <: Sys[S]] private(val parent: Visua
     } else false
   }
 
-  private def setControl(/* c: ProcControl, */ v: Double, instant: Boolean): Unit =
+  def removeMapping()(implicit tx: S#Tx): Unit = setControlTxn(value)
+
+  private def setControl(v: Double, instant: Boolean): Unit =
     atomic { implicit t =>
       if (instant) {
-        // c.v = v
-        val attr = parent.objH().attr
-        val vc   = DoubleEx.newConst[S](v)
-        attr[DoubleElem](key) match {
-          case Some(Expr.Var(vr)) => vr() = vc
-          case _ => attr.put(key, Obj(DoubleElem(DoubleEx.newVar(vc))))
-        }
-
+        setControlTxn(v)
       // } else t.withTransition(main.transition(t.time)) {
       //  c.v = v
       }
     }
+
+  private def setControlTxn(v: Double)(implicit tx: S#Tx): Unit = {
+    val attr = parent.objH().attr
+    val vc   = DoubleEx.newConst[S](v)
+    attr[DoubleElem](key) match {
+      case Some(Expr.Var(vr)) => vr() = vc
+      case _ => attr.put(key, Obj(DoubleElem(DoubleEx.newVar(vc))))
+    }
+  }
 
   override def itemDragged(vi: VisualItem, e: MouseEvent, pt: Point2D): Unit =
     drag.foreach { dr =>

@@ -471,34 +471,43 @@ object PanelImpl {
     }
 
     def addScanControl(visObj: VisualObj[S], key: String, sObj: Scan.Obj[S])(implicit tx: S#Tx): Unit = {
+      implicit val itx = tx.peer
       val vc    = VisualControl.scan(visObj, key, sObj)
       val scan  = sObj.elem.peer
-      val vScan = for {
-        info <- scanMap.get(scan.id)
-        vObj <- nodeMap.get(info.timedID)
-        res  <- vObj.scans.get(info.key)
-      } yield {
+      for {
+        info    <- scanMap.get(scan.id)
+        vObj    <- nodeMap.get(info.timedID)
+        vScan   <- vObj.scans.get(info.key)
+        m       <- vc.mapping
+      } {
+        m.source = Some(vScan)
         for {
-          aural <- viewToAuralMap.get(vObj)(tx.peer)
+          aural <- viewToAuralMap.get(vObj)
           (bus, node) <- getAuralScanData(aural, info.key)
         } {
-          mkMeter(bus, node)(vc.value = _)
+          m.synth() = Some(mkMeter(bus, node)(vc.value = _))
         }
-        res
       }
-      vc.mapping.foreach(_.source = vScan)
       addControl(visObj, vc)
     }
 
+    // simple cache from num-channels to graph
+    private var meterGraphMap = Map.empty[Int, SynthGraph]
+
     private def mkMeter(bus: AudioBus, node: Node)(fun: Float => Unit)(implicit tx: S#Tx): Synth = {
-      val meterGraph = SynthGraph {
-        import synth._; import ugen._
-        val meterTr = Impulse.kr(1000.0 / LAYOUT_TIME)
-        val sig     = In.ar("in".kr, bus.numChannels)
-        val peak    = Peak.kr(sig, meterTr) // .outputs
-        val peakM   = Reduce.max(peak)
-        SendTrig.kr(meterTr, peakM)
-      }
+      val numCh       = bus.numChannels
+      val meterGraph  = meterGraphMap.getOrElse(numCh, {
+        val res = SynthGraph {
+          import synth._; import ugen._
+          val meterTr = Impulse.kr(1000.0 / LAYOUT_TIME)
+          val sig     = In.ar("in".kr, numCh)
+          val peak    = Peak.kr(sig, meterTr) // .outputs
+          val peakM   = Reduce.max(peak)
+          SendTrig.kr(meterTr, peakM)
+        }
+        meterGraphMap += numCh -> res
+        res
+      })
       val meterSynth = Synth.play(meterGraph, Some("meter"))(node.server.defaultGroup, addAction = addToTail,
         dependencies = node :: Nil)
       meterSynth.read(bus -> "in")
@@ -516,7 +525,9 @@ object PanelImpl {
     }
 
     private def addControl(visObj: VisualObj[S], vc: VisualControl[S])(implicit tx: S#Tx): Unit = {
-      val locOpt = locHintMap.get(tx.peer).get(visObj -> vc.key)
+      val key     = vc.key
+      val locOpt  = locHintMap.get(tx.peer).get(visObj -> key)
+      println(s"locHintMap($visObj -> $key) = $locOpt")
       deferTx(visDo(addControlGUI(visObj, vc, locOpt)))
     }
 
@@ -654,10 +665,9 @@ object PanelImpl {
         m    <- vc.mapping
         vSrc <- m.source
       } {
-        val pEdge = g.addEdge(vSrc.pNode, vc.pNode)
-        // XXX TODO - should we do this:
-        // vSrc.sinks += pEdge
-        m.pEdge = Some(pEdge)
+        /* val pEdge = */ g.addEdge(vSrc.pNode, vc.pNode)
+        vSrc.mappings += vc
+        // m.pEdge = Some(pEdge)
       }
       old.foreach(removeControlGUI(vp, _))
     }
@@ -669,7 +679,14 @@ object PanelImpl {
       visObj.aggr.removeItem(_vi)
       val loc = new Point2D.Double(_vi.getX, _vi.getY)
       TxnExecutor.defaultAtomic { implicit itx =>
+        println(s"setLocationHint($visObj -> $key, $loc)")
         setLocationHint(visObj -> key, loc)
+        vc.mapping.foreach { m =>
+          m.synth.swap(None).foreach { synth =>
+            implicit val tx = Txn.wrap(itx)
+            synth.dispose()
+          }
+        }
       }
       g.removeNode(vc.pNode)
     }
