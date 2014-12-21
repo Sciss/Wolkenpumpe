@@ -22,8 +22,11 @@ import prefuse.data.Edge
 import prefuse.visual.VisualItem
 
 object VisualScanImpl {
-  def apply[S <: Sys[S]](parent: VisualObj[S], key: String): VisualScanImpl[S] =
-    new VisualScanImpl(parent, key)
+  def apply[S <: Sys[S]](parent: VisualObj[S], key: String)(implicit tx: S#Tx): VisualScanImpl[S] = {
+    val res = new VisualScanImpl(parent, key)
+    parent.main.deferVisTx(res.initGUI())
+    res
+  }
 }
 final class VisualScanImpl[S <: Sys[S]] private(val parent: VisualObj[S], val key: String)
   extends VisualParamImpl[S] with VisualScan[S] {

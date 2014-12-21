@@ -17,7 +17,7 @@ import de.sciss.lucre.synth.Sys
 import prefuse.data.Edge
 
 object VisualScan {
-  def apply[S <: Sys[S]](parent: VisualObj[S], key: String): VisualScan[S] =
+  def apply[S <: Sys[S]](parent: VisualObj[S], key: String)(implicit tx: S#Tx): VisualScan[S] =
     impl.VisualScanImpl(parent, key)
 }
 trait VisualScan[S <: Sys[S]] extends VisualParam[S] {

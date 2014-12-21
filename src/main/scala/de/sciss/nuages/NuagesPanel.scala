@@ -14,6 +14,7 @@
 package de.sciss.nuages
 
 import de.sciss.lucre.stm
+import de.sciss.lucre.stm.TxnLike
 import de.sciss.lucre.swing.View
 import de.sciss.lucre.synth.{Txn, Synth, Sys}
 import de.sciss.synth.proc.{WorkspaceHandle, AuralSystem, Transport}
@@ -72,4 +73,9 @@ trait NuagesPanel[S <: Sys[S]] extends View[S] {
 
   def masterSynth(implicit tx: Txn): Option[Synth]
   def masterSynth_=(value: Option[Synth])(implicit tx: Txn): Unit
+
+  /** Schedule code to be executed during paused visualization animation
+    * on the EDT after the commit of the transaction.
+    */
+  def deferVisTx(thunk: => Unit)(implicit tx: TxnLike): Unit
 }

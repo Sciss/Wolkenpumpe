@@ -23,7 +23,7 @@ import de.sciss.desktop.{KeyStrokes, FocusType}
 import de.sciss.desktop.Implicits._
 import de.sciss.lucre.bitemp.{SpanLike => SpanLikeEx}
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.Disposable
+import de.sciss.lucre.stm.{TxnLike, Disposable}
 import de.sciss.lucre.swing.{ListView, defer, deferTx, requireEDT}
 import de.sciss.lucre.swing.impl.ComponentHolder
 import de.sciss.lucre.synth.{AudioBus, Node, Txn, Synth, Sys}
@@ -42,14 +42,15 @@ import prefuse.controls.{PanControl, WheelZoomControl, ZoomControl}
 import prefuse.data.Graph
 import prefuse.render.{DefaultRendererFactory, PolygonRenderer, EdgeRenderer}
 import prefuse.util.ColorLib
-import prefuse.visual.{AggregateItem, AggregateTable, VisualGraph, VisualItem}
+import prefuse.visual.{AggregateTable, VisualGraph, VisualItem}
 import prefuse.visual.expression.InGroupPredicate
 import prefuse.{Constants, Display, Visualization}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
-import scala.concurrent.stm.{TxnExecutor, InTxn, TMap, Ref, TxnLocal}
+import scala.concurrent.stm.{TxnExecutor, TMap, Ref, TxnLocal}
 import scala.swing.event.Key
 import scala.swing.{Button, Container, Orientation, SequentialContainer, BoxPanel, Panel, Swing, Component}
+import scala.util.control.NonFatal
 
 object PanelImpl {
   var DEBUG = true
@@ -236,11 +237,11 @@ object PanelImpl {
                         for {
                           sinkInfo <- scanMap.get(sink.id)
                           sinkVis  <- nodeMap.get(sinkInfo.timedID)
-                        } deferTx {
+                        } deferVisTx {
                           for {
                             sourceVisScan <- visObj .scans.get(key)
                             sinkVisScan   <- sinkVis.scans.get(sinkInfo.key)
-                          } visDo {
+                          } {
                             fun(sourceVisScan, sinkVisScan)
                           }
                         }
@@ -255,11 +256,9 @@ object PanelImpl {
                   }
 
                 case Obj.AttrRemoved(key, elem) =>
-                  deferTx {
+                  deferVisTx {
                     visObj.params.get(key).foreach { vc =>
-                      visDo {
-                        removeControlGUI(visObj, vc)
-                      }
+                      removeControlGUI(visObj, vc)
                     }
                   }
 
@@ -422,23 +421,44 @@ object PanelImpl {
       //      }
     }
 
-    private def stopAnimation(): Unit = {
+    private[this] val guiCode = TxnLocal(init = Vector.empty[() => Unit], afterCommit = handleGUI)
+
+    private[this] def handleGUI(seq: Vec[() => Unit]): Unit = {
+      def exec(): Unit = _vis.synchronized {
+        stopAnimation()
+        seq.foreach { fun =>
+          try {
+            fun()
+          } catch {
+            case NonFatal(e) => e.printStackTrace()
+          }
+        }
+        startAnimation()
+      }
+
+      defer(exec())
+    }
+
+    def deferVisTx(thunk: => Unit)(implicit tx: TxnLike): Unit =
+      guiCode.transform(_ :+ (() => thunk))(tx.peer)
+
+    @inline private def stopAnimation(): Unit = {
       _vis.cancel(ACTION_COLOR)
       _vis.cancel(ACTION_LAYOUT)
     }
 
-    private def startAnimation(): Unit =
+    @inline private def startAnimation(): Unit =
       _vis.run(ACTION_COLOR)
 
-    private def visDo[A](code: => A): A =
-      _vis.synchronized {
-        stopAnimation()
-        try {
-          code
-        } finally {
-          startAnimation()
-        }
-      }
+    //    private def visDo[A](code: => A): A =
+    //      _vis.synchronized {
+    //        stopAnimation()
+    //        try {
+    //          code
+    //        } finally {
+    //          startAnimation()
+    //        }
+    //      }
 
     def addNode(span: SpanLike, timed: Timeline.Timed[S])(implicit tx: S#Tx): Unit = {
       val id    = timed.id
@@ -464,7 +484,7 @@ object PanelImpl {
         auralObjAdded(vp, auralObj)
       }
 
-      deferTx(visDo(addNodeGUI(vp, links, locO)))
+      deferVisTx(addNodeGUI(vp, links, locO))
     }
 
     def addScalarControl(visObj: VisualObj[S], key: String, dObj: DoubleElem.Obj[S])(implicit tx: S#Tx): Unit = {
@@ -527,10 +547,10 @@ object PanelImpl {
     }
 
     private def addControl(visObj: VisualObj[S], vc: VisualControl[S])(implicit tx: S#Tx): Unit = {
-      val key     = vc.key
+      // val key     = vc.key
       // val locOpt  = locHintMap.get(tx.peer).get(visObj -> key)
       // println(s"locHintMap($visObj -> $key) = $locOpt")
-      deferTx(visDo(addControlGUI(visObj, vc /* , locOpt */)))
+      deferVisTx(addControlGUI(visObj, vc /* , locOpt */))
     }
 
     // makes the meter synth
@@ -564,7 +584,7 @@ object PanelImpl {
           case _ =>
         }
 
-        deferTx(visDo(removeNodeGUI(vp)))
+        deferVisTx(removeNodeGUI(vp))
         // println(s"Disposing ${vp.meterSynth}")
         vp.dispose()
         disposeObj(obj)
@@ -615,7 +635,6 @@ object PanelImpl {
     }
 
     private def initNodeGUI(obj: VisualObj[S], vn: VisualNode[S], locO: Option[Point2D]): VisualItem = {
-      vn.initGUI()
       val pNode = vn.pNode
       val _vi   = _vis.getVisualItem(GROUP_GRAPH, pNode)
       val same  = vn == obj

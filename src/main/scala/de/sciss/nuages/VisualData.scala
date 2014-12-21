@@ -29,12 +29,6 @@ import java.awt.geom.Point2D
 trait VisualData[S <: Sys[S]] {
   // ---- methods to be called on the EDT ----
 
-  /** Tells the component to initializes its GUI state
-    * and Prefuse data. This must will pause the
-    * Prefuse layout animation. It must be called on the EDT.
-    */
-  def initGUI(): Unit
-
   /** GUI property: whether the node is allowed to move around
     * as part of the dynamic layout (`false`) or not (`true`).
     */

@@ -37,14 +37,22 @@ object VisualControlImpl {
                           dObj: DoubleElem.Obj[S])(implicit tx: S#Tx): VisualControl[S] = {
     val value = dObj.elem.peer.value
     val spec  = getSpec(parent, key)
-    new VisualControlImpl(parent, key, spec, value, mapping = None)
+    apply(parent, key = key, spec = spec, value = value, mapping = None)
   }
 
   def scan[S <: Sys[S]](parent: VisualObj[S], key: String,
                         sObj: Scan.Obj[S])(implicit tx: S#Tx): VisualControl[S] = {
     val value = 0.5 // XXX TODO
     val spec  = getSpec(parent, key)
-    new VisualControlImpl(parent, key, spec, value, mapping = Some(new MappingImpl))
+    apply(parent, key = key, spec = spec, value = value, mapping = Some(new MappingImpl))
+  }
+
+  private def apply[S <: Sys[S]](parent: VisualObj[S], key: String, spec: ParamSpec, value: Double,
+                                 mapping: Option[VisualControl.Mapping[S]])
+                                (implicit tx: S#Tx): VisualControl[S] = {
+    val res   = new VisualControlImpl(parent, key = key, spec = spec, value = value, mapping = mapping)
+    res.main.deferVisTx(res.initGUI())
+    res
   }
 
   private final class Drag(val angStart: Double, val valueStart: Double, val instant: Boolean) {

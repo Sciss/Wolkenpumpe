@@ -42,6 +42,7 @@ object VisualObjImpl {
                         (implicit tx: S#Tx): VisualObj[S] = {
     import SpanLikeEx.serializer
     val res = new VisualObjImpl(main, tx.newHandle(span), tx.newHandle(obj), obj.name, hasMeter = hasMeter, hasSolo = hasSolo)
+    main.deferVisTx(res.initGUI())
     obj match {
       case Proc.Obj(objT) =>
         val scans = objT.elem.peer.scans
