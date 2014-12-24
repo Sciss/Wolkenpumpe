@@ -8,7 +8,7 @@
         - keyboard control
         - group selection and filtering
         - fscape procs
-        - avoid gaps with new synth-defs
+[high]  - avoid gaps with new synth-defs
         - main recorder
 [low]   - REPL
         - split screen; split versions; split time

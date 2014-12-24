@@ -14,7 +14,7 @@ scalaVersion       := "2.11.4"
 
 crossScalaVersions := Seq("2.11.4", "2.10.4")
 
-lazy val soundProcessesVersion      = "2.11.0-SNAPSHOT"
+lazy val soundProcessesVersion      = "2.11.0"
 
 lazy val scalaColliderSwingVersion  = "1.21.0"
 
@@ -45,8 +45,6 @@ libraryDependencies ++= Seq(
   "de.sciss" %% "lucrestm-bdb"            % lucreSTMVersion % "test",
   "de.sciss" %  "weblaf"                  % webLaFVersion   % "test"
 )
-
-// retrieveManaged := true
 
 scalacOptions ++= Seq("-deprecation", "-unchecked", "-feature", "-encoding", "utf8", "-Xfuture")
 
