@@ -14,6 +14,7 @@
 package de.sciss.nuages
 
 import de.sciss.lucre.synth.Sys
+import de.sciss.synth.proc.Scan
 import prefuse.data.Edge
 
 object VisualScan {
@@ -24,4 +25,6 @@ trait VisualScan[S <: Sys[S]] extends VisualParam[S] {
   var sources : Set[Edge]
   var sinks   : Set[Edge]
   var mappings: Set[VisualControl[S]]
+
+  def scan(implicit tx: S#Tx): Option[Scan[S]]
 }

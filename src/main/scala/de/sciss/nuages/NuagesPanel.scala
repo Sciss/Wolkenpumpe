@@ -13,11 +13,13 @@
 
 package de.sciss.nuages
 
+import java.awt.geom.Point2D
+
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.TxnLike
 import de.sciss.lucre.swing.View
 import de.sciss.lucre.synth.{Txn, Synth, Sys}
-import de.sciss.synth.proc.{WorkspaceHandle, AuralSystem, Transport}
+import de.sciss.synth.proc.{Scan, Obj, WorkspaceHandle, AuralSystem, Transport}
 import impl.{PanelImpl => Impl}
 import prefuse.data.Graph
 import prefuse.visual.AggregateTable
@@ -78,4 +80,8 @@ trait NuagesPanel[S <: Sys[S]] extends View[S] {
     * on the EDT after the commit of the transaction.
     */
   def deferVisTx(thunk: => Unit)(implicit tx: TxnLike): Unit
+
+  def createGenerator(source: Obj[S], pt: Point2D)(implicit tx: S#Tx): Unit
+
+  def createFilter(pred: Scan[S], succ: Scan[S], source: Obj[S], pt: Point2D)(implicit tx: S#Tx): Unit
 }

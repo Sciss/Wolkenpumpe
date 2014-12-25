@@ -874,7 +874,6 @@ object PanelImpl {
             val nuages = nuagesH()
             for {
               Proc.Obj(flt) <- nuages.filters.get(fltIdx)
-              tl <- nuages.timeline.elem.peer.modifiableOption
             } {
               (fltPred.parent.objH(), fltSucc.parent.objH()) match {
                 case (Proc.Obj(pred), Proc.Obj(succ)) =>
@@ -882,7 +881,7 @@ object PanelImpl {
                     predScan <- pred.elem.peer.scans.get(fltPred.key)
                     succScan <- succ.elem.peer.scans.get(fltSucc.key)
                   } {
-                    createFilter(tl, predScan, succScan, flt, displayPt)
+                    createFilter(predScan, succScan, flt, displayPt)
                   }
                 case _ =>
               }
@@ -900,7 +899,16 @@ object PanelImpl {
     private def prepareObj(obj: Obj[S])(implicit tx: S#Tx): Unit = exec(obj, "nuages-prepare")
     private def disposeObj(obj: Obj[S])(implicit tx: S#Tx): Unit = exec(obj, "nuages-dispose")
 
-    def createProc(tl: Timeline.Modifiable[S], genSrc: Obj[S], colSrc: Obj[S], pt: Point2D)
+    def createGenerator(source: Obj[S], pt: Point2D)(implicit tx: S#Tx): Unit =
+      for (tl <- nuages.timeline.elem.peer.modifiableOption) {
+        val gen = Obj.copy(source)
+        prepareObj(gen)
+        val genPt = new Point2D.Double(pt.getX, pt.getY - 30)
+        setLocationHint(gen, genPt)
+        addToTimeline(tl, gen)
+      }
+
+    private def createProc(tl: Timeline.Modifiable[S], genSrc: Obj[S], colSrc: Obj[S], pt: Point2D)
                   (implicit tx: S#Tx): Unit = {
       val gen = Obj.copy(genSrc)
       val col = Obj.copy(colSrc)
@@ -937,27 +945,27 @@ object PanelImpl {
       tl.add(spanEx, obj)
     }
 
-    def createFilter(tl: Timeline.Modifiable[S], pred: Scan[S], succ: Scan[S], fltSrc: Obj[S], fltPt: Point2D)
-                  (implicit tx: S#Tx): Unit = {
-      val flt = Obj.copy(fltSrc)
+    def createFilter(pred: Scan[S], succ: Scan[S], fltSrc: Obj[S], fltPt: Point2D)(implicit tx: S#Tx): Unit =
+      for (tl <- nuages.timeline.elem.peer.modifiableOption) {
+        val flt = Obj.copy(fltSrc)
 
-      flt match {
-        case Proc.Obj(fltP) =>
-          val procFlt  = fltP .elem.peer
-          pred.addSink(procFlt.scans.add("in"))
-          // we may handle 'sinks' here by ignoring them when they don't have an `"out"` scan.
-          procFlt.scans.get("out").foreach { fltOut =>
-            pred  .removeSink(succ)
-            fltOut.addSink   (succ)
-          }
+        flt match {
+          case Proc.Obj(fltP) =>
+            val procFlt  = fltP .elem.peer
+            pred.addSink(procFlt.scans.add("in"))
+            // we may handle 'sinks' here by ignoring them when they don't have an `"out"` scan.
+            procFlt.scans.get("out").foreach { fltOut =>
+              pred  .removeSink(succ)
+              fltOut.addSink   (succ)
+            }
 
-        case _ =>
+          case _ =>
+        }
+
+        prepareObj(flt)
+        setLocationHint(flt, fltPt)
+        addToTimeline(tl, flt)
       }
-
-      prepareObj(flt)
-      setLocationHint(flt, fltPt)
-      addToTimeline(tl, flt)
-    }
 
     def showCreateGenDialog(pt: Point): Boolean = {
       requireEDT()

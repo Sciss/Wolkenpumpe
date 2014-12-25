@@ -110,8 +110,15 @@ object KeyControl {
                     case (vOut: VisualScan[S], vIn: VisualScan[S]) =>
                       val r  = ve.getBounds
                       val pt = new Point2D.Double(r.getCenterX, r.getCenterY)
-                      println("TODO: Insert Filter")
-                      // main.showCreateFilterDialog(/* nSrc, nTgt, */ vOut, vIn, pt)
+                      // println("TODO: Insert Filter")
+                      main.cursor.step { implicit tx =>
+                        for {
+                          pred <- vOut.scan
+                          succ <- vIn .scan
+                        } {
+                          main.createFilter(pred = pred, succ = succ, source = objH(), pt = pt)
+                        }
+                      }
                     case _ =>
                   }
 
