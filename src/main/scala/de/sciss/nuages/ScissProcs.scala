@@ -499,6 +499,7 @@ object ScissProcs {
     }
 
     filter("achil") { in =>
+      shortcut = "A"
       val pSpeed  = pAudio("speed", ParamSpec(0.125, 2.3511, ExpWarp), default = 0.5)
       val pMix    = mkMix()
 
@@ -545,6 +546,7 @@ object ScissProcs {
     }
 
     filter("hilbert") { in =>
+      shortcut = "H"
       val pFreq = pAudio("freq", ParamSpec(-1, 1), 0.0)
       val pMix  = mkMix()
 
@@ -570,6 +572,7 @@ object ScissProcs {
     }
 
     filter("notch") { in =>
+      shortcut = "N"
       val pFreq   = pAudio("freq", ParamSpec(30, 16000, ExpWarp), default = 400)
       val pFreq2  = pAudio("freq-fact", ParamSpec(0.5, 2, ExpWarp), default = 1)
       val pq      = pAudio("q", ParamSpec(1, 50, ExpWarp), default = 1) // beware of the lower q
@@ -583,6 +586,7 @@ object ScissProcs {
     }
 
     filter("filt") { in =>
+      shortcut = "F"
       val pFreq = pAudio("freq", ParamSpec(-1, 1), default = 0.54)
       val pMix  = mkMix()
 
@@ -674,6 +678,7 @@ object ScissProcs {
     //    }
 
     filter("gain") { in =>
+      shortcut = "G"
       val pGain = pAudio("gain", ParamSpec(-30, 30), default = 0)
       val pMix  = mkMix()
 
