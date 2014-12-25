@@ -30,7 +30,10 @@ import java.awt.geom.{Rectangle2D, Point2D}
   *
   * Methods are guaranteed to be called in the awt
   * event thread.
+  *
+  * XXX TODO: remove this
   */
+@deprecated("this trait is not used any longer", "1.0.1")
 trait ProcFactoryProvider[S <: Sys[S]] {
   type PrH = stm.Source[S#Tx, Obj[S]]
 

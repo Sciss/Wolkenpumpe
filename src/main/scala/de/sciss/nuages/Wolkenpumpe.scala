@@ -19,12 +19,12 @@ import de.sciss.file._
 import de.sciss.lucre.stm
 import de.sciss.lucre.swing.defer
 import de.sciss.lucre.synth.{Synth, Server, Txn, Sys, InMemory}
-import de.sciss.lucre.expr.{Double => DoubleEx}
+import de.sciss.lucre.expr.{Double => DoubleEx, String => StringEx}
 import de.sciss.{osc, synth}
 import de.sciss.synth.proc.graph.{ScanInFix, Attribute, ScanIn, ScanOut}
 import de.sciss.synth.{Server => SServer, addAfter, control, scalar, audio, Rate, SynthGraph, GE, proc}
 import de.sciss.synth.message
-import de.sciss.synth.proc.{Folder, WorkspaceHandle, DoubleElem, AuralSystem, ExprImplicits, Obj, Proc}
+import de.sciss.synth.proc.{StringElem, Folder, WorkspaceHandle, DoubleElem, AuralSystem, ExprImplicits, Obj, Proc}
 import proc.Implicits._
 
 import scala.collection.breakOut
@@ -72,6 +72,20 @@ object Wolkenpumpe {
       val sig       = ScanInFix(key, numChannels)
       obj.elem.peer.scans.add(key)
       spec.map(sig.clip(0, 1))
+    }
+
+    def shortcut(implicit tx: S#Tx): String = {
+      val obj = current.get(tx.peer)
+      obj.attr.apply[StringElem](Nuages.KeyShortcut).map(_.value).getOrElse("")
+    }
+    def shortcut_=(value: String)(implicit tx: S#Tx): Unit = {
+      val obj       = current.get(tx.peer)
+      if (value.isEmpty) {
+        obj.attr.remove(Nuages.KeyShortcut)
+      } else {
+        val paramObj = Obj(StringElem(StringEx.newConst[S](value)))
+        obj.attr.put(Nuages.KeyShortcut, paramObj)
+      }
     }
 
     private def mkPar(rate: Rate, key: String, spec: ParamSpec, default: Double)(implicit tx: S#Tx): GE = {
@@ -198,18 +212,26 @@ object Wolkenpumpe {
     }
   }
 
-  /** A condensed font for GUI usage. This is in 12 pt size,
-    * so consumers must rescale.
-    */
-  /*lazy val*/ var condensedFont: Font = {
-    // NOT ANY MORE: createFont doesn't properly create the spacing. fucking hell...
-    val is = Wolkenpumpe.getClass.getResourceAsStream("BellySansCondensed.ttf")
+  private lazy val _initFont: Font = {
+    val is  = Wolkenpumpe.getClass.getResourceAsStream("BellySansCondensed.ttf")
     val res = Font.createFont(Font.TRUETYPE_FONT, is)
     is.close()
     res
     //      // "SF Movie Poster Condensed"
     //      new Font( "BellySansCondensed", Font.PLAIN, 12 )
   }
+
+  private var _condensedFont: Font = _
+
+  /** A condensed font for GUI usage. This is in 12 pt size,
+    * so consumers must rescale.
+    */
+  def condensedFont: Font = {
+    if (_condensedFont == null) _condensedFont = _initFont
+    _condensedFont
+  }
+  def condensedFont_=(value: Font): Unit =
+    _condensedFont = value
 
   //   private class TestKeyListener( p: NuagesPanel ) extends KeyAdapter {
   ////      println( "TestKeyListener" )

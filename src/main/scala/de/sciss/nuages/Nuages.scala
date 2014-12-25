@@ -110,6 +110,14 @@ object Nuages {
   ) extends Config {
     override def productPrefix = "Nuages.Config"
   }
+
+  /** Attribute key for placing a key short cut. The value
+    * is supposed to be a `String` adhering to the format
+    * expected by `KeyStroke.getKeyStroke`
+    *
+    * @see [[javax.swing.KeyStroke#getKeyStroke(String)]]
+    */
+  final val KeyShortcut = "nuages-shortcut"
 }
 trait Nuages[S <: Sys[S]] extends Writable with Disposable[S#Tx] {
   def generators: Folder[S]

@@ -103,7 +103,8 @@ object FrameImpl {
 //}
 
       ggSouthBox.contents += Swing.HGlue
-      ggSouthBox.contents += transition
+      // currently not working:
+      // ggSouthBox.contents += transition
 
       val ggFaderBox    = new GridBagPanel
       val gridCon       = new ggFaderBox.Constraints()

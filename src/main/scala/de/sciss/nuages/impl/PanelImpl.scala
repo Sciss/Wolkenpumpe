@@ -38,7 +38,7 @@ import prefuse.action.{RepaintAction, ActionList}
 import prefuse.action.assignment.ColorAction
 import prefuse.action.layout.graph.ForceDirectedLayout
 import prefuse.activity.Activity
-import prefuse.controls.{PanControl, WheelZoomControl, ZoomControl}
+import prefuse.controls.{Control, PanControl, WheelZoomControl, ZoomControl}
 import prefuse.data.Graph
 import prefuse.render.{DefaultRendererFactory, PolygonRenderer, EdgeRenderer}
 import prefuse.util.ColorLib
@@ -155,6 +155,8 @@ object PanelImpl {
 
     def nuages(implicit tx: S#Tx): Nuages[S] = nuagesH()
 
+    private var keyControl: Control with Disposable[S#Tx] = _
+
     def dispose()(implicit tx: S#Tx): Unit = {
       implicit val itx = tx.peer
       deferTx(stopAnimation())
@@ -170,6 +172,8 @@ object PanelImpl {
       auralToViewMap.clear()
       nodeMap  .dispose()
       scanMap  .dispose()
+
+      keyControl.dispose()
     }
 
     private def disposeAuralObserver()(implicit tx: S#Tx): Unit = {
@@ -178,6 +182,7 @@ object PanelImpl {
     }
 
     def init(timeline: Timeline.Obj[S])(implicit tx: S#Tx): this.type = {
+      keyControl = KeyControl(this)
       deferTx(guiInit())
       transportObserver = transport.react { implicit tx => {
         case Transport.ViewAdded(_, auralTL: AuralObj.Timeline[S]) =>
@@ -281,8 +286,10 @@ object PanelImpl {
 
     // ---- constructor ----
     private def guiInit(): Unit = {
-      _vis  = new Visualization
+      _vis = new Visualization
       _dsp = new Display(_vis) {
+        // setFocusable(true)
+
         override def setRenderingHints(g: Graphics2D): Unit = {
           super.setRenderingHints(g)
           g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL,
@@ -349,12 +356,13 @@ object PanelImpl {
 
       // initialize the display
       _dsp.setSize(960, 640)
-      _dsp.addControlListener(new ZoomControl())
+      _dsp.addControlListener(new ZoomControl     ())
       _dsp.addControlListener(new WheelZoomControl())
-      _dsp.addControlListener(new PanControl())
-      _dsp.addControlListener(new DragControl(_vis))
-      _dsp.addControlListener(new ClickControl(this))
-      _dsp.addControlListener(new ConnectControl(this))
+      _dsp.addControlListener(new PanControl      ())
+      _dsp.addControlListener(new DragControl     (_vis))
+      _dsp.addControlListener(new ClickControl    (this))
+      _dsp.addControlListener(new ConnectControl  (this))
+      _dsp.addControlListener(keyControl)
       _dsp.setHighQuality(true)
 
       // ------------------------------------------------
