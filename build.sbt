@@ -10,13 +10,13 @@ description        := "A Prefuse based visual interface for SoundProcesses, a so
 
 licenses           := Seq("GPL v2+" -> url( "http://www.gnu.org/licenses/gpl-2.0.txt"))
 
-scalaVersion       := "2.11.4"
+scalaVersion       := "2.11.5"
 
-crossScalaVersions := Seq("2.11.4", "2.10.4")
+crossScalaVersions := Seq("2.11.5", "2.10.4")
 
-lazy val soundProcessesVersion      = "2.11.0"
+lazy val soundProcessesVersion      = "2.12.0"
 
-lazy val scalaColliderSwingVersion  = "1.21.0"
+lazy val scalaColliderSwingVersion  = "1.22.0"
 
 // lazy val prefuseVersion             = "1.0.0"
 
