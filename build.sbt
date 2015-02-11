@@ -14,13 +14,11 @@ scalaVersion       := "2.11.5"
 
 crossScalaVersions := Seq("2.11.5", "2.10.4")
 
-lazy val soundProcessesVersion      = "2.12.0"
+lazy val soundProcessesVersion      = "2.15.1-SNAPSHOT"
 
-lazy val scalaColliderSwingVersion  = "1.22.0"
+lazy val scalaColliderSwingVersion  = "1.25.0"
 
-// lazy val prefuseVersion             = "1.0.0"
-
-lazy val lucreSwingVersion          = "0.6.2"
+lazy val lucreSwingVersion          = "0.8.0"
 
 lazy val swingPlusVersion           = "0.2.0"
 
@@ -38,7 +36,6 @@ libraryDependencies ++= Seq(
   "de.sciss" %% "soundprocesses-views"    % soundProcessesVersion,
   "de.sciss" %% "scalacolliderswing-core" % scalaColliderSwingVersion,
   "de.sciss" %% "fileutil"                % fileUtilVersion,
-//  "de.sciss" %  "prefuse-core"            % prefuseVersion,
   "de.sciss" %% "lucreswing"              % lucreSwingVersion,
   "de.sciss" %% "swingplus"               % swingPlusVersion,
   "de.sciss" %  "intensitypalette"        % intensityVersion,

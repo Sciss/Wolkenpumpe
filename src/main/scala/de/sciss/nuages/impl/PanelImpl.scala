@@ -2,7 +2,7 @@
  *  PanelImpl.scala
  *  (Wolkenpumpe)
  *
- *  Copyright (c) 2008-2014 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2008-2015 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v2+
  *
@@ -305,6 +305,11 @@ object PanelImpl {
 
       val procRenderer = new NuagesShapeRenderer(50)
       val edgeRenderer = new EdgeRenderer(Constants.EDGE_TYPE_LINE, Constants.EDGE_ARROW_FORWARD) {
+//        override def render(g: Graphics2D, item: VisualItem): Unit = {
+//          g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE)
+//          super.render(g, item)
+//        }
+
         // same as original method but with much larger border to ease mouse control
         override def locatePoint(p: Point2D, item: VisualItem): Boolean = {
           val s = getShape(item)

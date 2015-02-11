@@ -2,7 +2,7 @@
  *  VisualScanImpl.scala
  *  (Wolkenpumpe)
  *
- *  Copyright (c) 2008-2014 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2008-2015 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v2+
  *
