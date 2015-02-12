@@ -1,5 +1,8 @@
 # Wolkenpumpe
 
+[![Flattr this](http://api.flattr.com/button/flattr-badge-large.png)](https://flattr.com/submit/auto?user_id=sciss&url=https%3A%2F%2Fgithub.com%2FSciss%2FWolkenpumpe&title=Wolkenpumpe&language=Scala&tags=github&category=software)
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/de.sciss/wolkenpumpe_2.11/badge.svg)](https://maven-badges.herokuapp.com/maven-central/de.sciss/wolkenpumpe_2.11)
+
 ## statement
 
 Wolkenpumpe is a live improvisation interface based on ScalaCollider / SoundProcesses / Prefuse. It is (C)opyright 2008-2014 by Hanns Holger Rutz. All rights reserved. Wolkenpumpe is released under the [GNU General Public License](http://github.com/Sciss/Wolkenpumpe/blob/master/licenses/Wolkenpumpe-License.txt) and comes with absolutely no warranties. To contact the author, send an email to `contact at sciss.de`.
