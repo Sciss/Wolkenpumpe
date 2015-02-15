@@ -14,13 +14,14 @@
 package de.sciss.nuages
 package impl
 
-import java.awt.Graphics2D
+import java.awt.{Shape, Graphics2D}
 import java.awt.event.MouseEvent
-import java.awt.geom.{Arc2D, Point2D, Area}
+import java.awt.geom.{GeneralPath, Arc2D, Point2D, Area}
 
 import de.sciss.lucre.expr.{Expr, Double => DoubleEx}
 import de.sciss.lucre.swing.requireEDT
 import de.sciss.lucre.synth.{Synth, Sys}
+import de.sciss.numbers
 import de.sciss.synth.proc.{Obj, Scan, DoubleElem}
 import prefuse.util.ColorLib
 import prefuse.visual.VisualItem
@@ -80,7 +81,26 @@ final class VisualControlImpl[S <: Sys[S]] private(val parent: VisualObj[S], val
   private val containerArea = new Area()
   private val valueArea     = new Area()
 
-  private var drag: Option[Drag] = None
+  private var drag: Drag = null
+
+  private val spikes: Shape = if (spec.warp == IntWarp) {
+    import numbers.Implicits._
+    val loInt = spec.map(0.0).toInt
+    val hiInt = spec.map(1.0).toInt
+    val sz    = hiInt - loInt
+    if (sz > 1 && sz <= 33) { // at least one spike and ignore if too many
+      val res = new GeneralPath
+      var i = loInt + 1
+      while (i < hiInt) {
+        val v = spec.inverseMap(i)
+        println(s"spike($i) = $v")
+        setSpine(v)
+        res.append(gLine, false)
+        i += 1
+      }
+      res
+    } else null
+  } else null
 
   def initGUI(): Unit = {
     requireEDT()
@@ -96,7 +116,8 @@ final class VisualControlImpl[S <: Sys[S]] private(val parent: VisualObj[S], val
     if (containerArea.contains(pt.getX - r.getX, pt.getY - r.getY)) {
       val dy      = r.getCenterY - pt.getY
       val dx      = pt.getX - r.getCenterX
-      val ang     = math.max(0.0, math.min(1.0, (((-math.atan2(dy, dx) / math.Pi + 3.5) % 2.0) - 0.25) / 1.5))
+      val ang0    = math.max(0.0, math.min(1.0, (((-math.atan2(dy, dx) / math.Pi + 3.5) % 2.0) - 0.25) / 1.5))
+      val ang     = if (spec.warp == IntWarp) spec.inverseMap(spec.map(ang0)) else ang0
       val instant = true // !vProc.state.playing || vProc.state.bypassed || main.transition(0) == Instant
       val vStart  = if (e.isAltDown) {
           //               val res = math.min( 1.0f, (((ang / math.Pi + 3.25) % 2.0) / 1.5).toFloat )
@@ -105,8 +126,7 @@ final class VisualControlImpl[S <: Sys[S]] private(val parent: VisualObj[S], val
           if (instant) setControl(/* control, */ ang /* m */, instant = true)
           ang
         } else /* control. */ value // spec.inverseMap(value /* .currentApprox */)
-      val dr      = new Drag(ang, vStart, instant)
-      drag        = Some(dr)
+      drag = new Drag(ang, vStart, instant)
       true
     } else false
   }
@@ -132,28 +152,29 @@ final class VisualControlImpl[S <: Sys[S]] private(val parent: VisualObj[S], val
   }
 
   override def itemDragged(vi: VisualItem, e: MouseEvent, pt: Point2D): Unit =
-    drag.foreach { dr =>
+    if (drag != null) {
       val dy = r.getCenterY - pt.getY
       val dx = pt.getX - r.getCenterX
       //            val ang  = -math.atan2( dy, dx )
-      val ang = (((-math.atan2(dy, dx) / math.Pi + 3.5) % 2.0) - 0.25) / 1.5
-      val vEff = math.max(0.0, math.min(1.0, dr.valueStart + (ang - dr.angStart)))
+      val ang   = (((-math.atan2(dy, dx) / math.Pi + 3.5) % 2.0) - 0.25) / 1.5
+      val vEff0 = math.max(0.0, math.min(1.0, drag.valueStart + (ang - drag.angStart)))
+      val vEff  = if (spec.warp == IntWarp) spec.inverseMap(spec.map(vEff0)) else vEff0
       //            if( vEff != value ) {
       // val m = /* control. */ spec.map(vEff)
-      if (dr.instant) {
+      if (drag.instant) {
         setControl(/* control, */ vEff /* m */, instant = true)
       } else {
-        dr.dragValue = vEff // m
+        drag.dragValue = vEff // m
       }
       //            }
     }
 
   override def itemReleased(vi: VisualItem, e: MouseEvent, pt: Point2D): Unit =
-    drag foreach { dr =>
-      if (!dr.instant) {
-        setControl(/* control, */ dr.dragValue, instant = false)
+    if (drag != null) {
+      if (!drag.instant) {
+        setControl(/* control, */ drag.dragValue, instant = false)
       }
-      drag = None
+      drag = null
     }
 
   protected def boundsResized(): Unit = {
@@ -179,22 +200,26 @@ final class VisualControlImpl[S <: Sys[S]] private(val parent: VisualObj[S], val
     valueArea.subtract(new Area(innerE))
   }
 
+  // changes `gLine`
+  private def setSpine(v: Double): Unit = {
+    val ang   = ((1.0 - v) * 1.5 - 0.25) * math.Pi
+    val cos   = math.cos(ang)
+    val sin   = math.sin(ang)
+    val x0    = (1 + cos) * diam05
+    val y0    = (1 - sin) * diam05
+    gLine.setLine(x0, y0, x0 - (cos * diam * 0.2), y0 + (sin * diam * 0.2))
+  }
+
   protected def renderDetail(g: Graphics2D, vi: VisualItem): Unit = {
     val v = value // .currentApprox
     if (renderedValue != v) updateRenderValue(v)
 
     g.setColor(if (mapped) colrMapped else /* if (gliding) colrGliding else */ colrManual)
     g.fill(valueArea)
-    drag foreach { dr =>
-      if (!dr.instant) {
+    if (drag != null) {
+      if (!drag.instant) {
         g.setColor(colrAdjust)
-        val ang   = ((1.0 - /* control. */ dr.dragValue /* spec.inverseMap(dr.dragValue) */) * 1.5 - 0.25) * math.Pi
-        val cos   = math.cos(ang)
-        val sin   = math.sin(ang)
-        val x0    = (1 + cos) * diam05
-        val y0    = (1 - sin) * diam05
-        // val lin = new Line2D.Double(x0, y0, x0 - (cos * diam * 0.2), y0 + (sin * diam * 0.2))
-        gLine.setLine(x0, y0, x0 - (cos * diam * 0.2), y0 + (sin * diam * 0.2))
+        setSpine(drag.dragValue)
         val strkOrig = g.getStroke
         g.setStroke(strkThick)
         g.draw(gLine)
@@ -203,6 +228,13 @@ final class VisualControlImpl[S <: Sys[S]] private(val parent: VisualObj[S], val
     }
     g.setColor(ColorLib.getColor(vi.getStrokeColor))
     g.draw(gp)
+
+    if (spikes != null) {
+      val strkOrig = g.getStroke
+      g.setStroke(strkDotted)
+      g.draw(spikes)
+      g.setStroke(strkOrig)
+    }
 
     drawName(g, vi, diam * vi.getSize.toFloat * 0.33333f)
   }

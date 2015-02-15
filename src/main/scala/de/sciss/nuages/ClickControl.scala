@@ -13,7 +13,6 @@
 
 package de.sciss.nuages
 
-import de.sciss.lucre.stm
 import de.sciss.lucre.synth.Sys
 import prefuse.controls.ControlAdapter
 import java.awt.event.MouseEvent
@@ -22,28 +21,28 @@ import de.sciss.synth.proc._
 import prefuse.visual.{VisualItem, EdgeItem}
 import prefuse.util.GraphicsLib
 import prefuse.util.display.DisplayLib
-import java.awt.geom.{Rectangle2D, Point2D}
+import java.awt.geom.Rectangle2D
 
-/** Simple interface to query currently selected
-  * proc factory and to feedback on-display positions
-  * for newly created procs.
-  *
-  * Methods are guaranteed to be called in the awt
-  * event thread.
-  *
-  * XXX TODO: remove this
-  */
-@deprecated("this trait is not used any longer", "1.0.1")
-trait ProcFactoryProvider[S <: Sys[S]] {
-  type PrH = stm.Source[S#Tx, Obj[S]]
-
-  def genFactory:      Option[PrH]
-  def filterFactory:   Option[PrH]
-  def diffFactory:     Option[PrH]
-  def collector:       Option[PrH]
-
-  def setLocationHint(p: Obj[S], loc: Point2D)(implicit tx: S#Tx): Unit
-}
+///** Simple interface to query currently selected
+//  * proc factory and to feedback on-display positions
+//  * for newly created procs.
+//  *
+//  * Methods are guaranteed to be called in the awt
+//  * event thread.
+//  *
+//  * XXX TODO: remove this
+//  */
+//@deprecated("this trait is not used any longer", "1.0.1")
+//trait ProcFactoryProvider[S <: Sys[S]] {
+//  type PrH = stm.Source[S#Tx, Obj[S]]
+//
+//  def genFactory:      Option[PrH]
+//  def filterFactory:   Option[PrH]
+//  def diffFactory:     Option[PrH]
+//  def collector:       Option[PrH]
+//
+//  def setLocationHint(p: Obj[S], loc: Point2D)(implicit tx: S#Tx): Unit
+//}
 
 class ClickControl[S <: Sys[S]](main: NuagesPanel[S]) extends ControlAdapter {
 

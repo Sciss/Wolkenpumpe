@@ -38,6 +38,7 @@ object Warp {
         case SineWarp       .id => SineWarp
         case FaderWarp      .id => FaderWarp
         case DbFaderWarp    .id => DbFaderWarp
+        case IntWarp        .id => IntWarp
       }
     }
 
@@ -252,6 +253,18 @@ case object DbFaderWarp extends Warp {
     else
       1 - (1 - ((value.dbamp - loDb) / rangeDb)).sqrt
   }
+
+  def write(out: DataOutput): Unit = out.writeShort(id)
+}
+
+case object IntWarp extends Warp {
+  final val id = 7
+
+  def map       (spec: ParamSpec, value: Double): Double  = (value * spec.range + spec.lo).roundTo(1.0)
+  def map       (spec: ParamSpec, value: GE    ): GE      = (value * spec.range + spec.lo).roundTo(1.0)
+
+  def inverseMap(spec: ParamSpec, value: Double): Double  = (value - spec.lo) / spec.range
+  def inverseMap(spec: ParamSpec, value: GE    ): GE      = (value - spec.lo) / spec.range
 
   def write(out: DataOutput): Unit = out.writeShort(id)
 }

@@ -41,7 +41,7 @@ object ParamSpec {
     def lo  (implicit tx: S#Tx): _Expr[S, Double]
     def hi  (implicit tx: S#Tx): _Expr[S, Double]
     def warp(implicit tx: S#Tx): _Expr[S, Warp  ]
-    def step(implicit tx: S#Tx): _Expr[S, Double]
+    // def step(implicit tx: S#Tx): _Expr[S, Double]
     def unit(implicit tx: S#Tx): _Expr[S, String]
   }
 
@@ -72,7 +72,7 @@ object ParamSpec {
 
   type Obj[S <: Sys[S]] = proc.Obj.T[S, ParamSpec.Elem]
 }
-final case class ParamSpec(lo: Double = 0.0, hi: Double = 1.0, warp: Warp = LinearWarp, step: Double = 0.0,
+final case class ParamSpec(lo: Double = 0.0, hi: Double = 1.0, warp: Warp = LinearWarp, // step: Double = 0.0,
                            unit: String = "")
   extends Writable {
 
@@ -88,7 +88,7 @@ final case class ParamSpec(lo: Double = 0.0, hi: Double = 1.0, warp: Warp = Line
     */
   def map(value: Double): Double = {
     val w = warp.map(this, value)
-    if (step <= 0.0) w else w.roundTo(step)
+    w // if (step <= 0.0) w else w.roundTo(step)
   }
 
   def inverseMap(value: Double): Double = warp.inverseMap(this, value)
@@ -99,7 +99,7 @@ final case class ParamSpec(lo: Double = 0.0, hi: Double = 1.0, warp: Warp = Line
     */
   def map(value: GE): GE = {
     val w = warp.map(this, value)
-    if (step <= 0.0) w else w.roundTo(step)
+    w // if (step <= 0.0) w else w.roundTo(step)
   }
 
   def inverseMap(value: GE): GE = warp.inverseMap(this, value)

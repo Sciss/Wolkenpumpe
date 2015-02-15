@@ -37,7 +37,7 @@ object ParamSpecExprImpl
 
   def typeID = ParamSpec.typeID
 
-  private[this] final val COOKIE = 0x505300 // "PS\0"
+  private[this] final val COOKIE = 0x505301 // "PS\1"
 
   // ---- yeah, fuck you Scala, we cannot implement TypeImpl1 because of initializer problems ----
   final protected val extTag = reflect.classTag[Type.Extension1[Repr]]
@@ -67,9 +67,9 @@ object ParamSpecExprImpl
     val lo    = in.readDouble()
     val hi    = in.readDouble()
     val warp  = Warp.read(in)
-    val step  = in.readDouble()
+    // val step  = in.readDouble()
     val unit  = in.readUTF()
-    ParamSpec(lo = lo, hi = hi, warp = warp, step = step, unit = unit)
+    ParamSpec(lo = lo, hi = hi, warp = warp, /* step = step, */ unit = unit)
   }
 
   def writeValue(value: ParamSpec, out: DataOutput): Unit = {
@@ -78,7 +78,7 @@ object ParamSpecExprImpl
     out.writeDouble(lo)
     out.writeDouble(hi)
     warp.write(out)
-    out.writeDouble(step)
+    // out.writeDouble(step)
     out.writeUTF(unit)
   }
 
@@ -96,11 +96,11 @@ object ParamSpecExprImpl
                          step: Expr[S, Double], unit: Expr[S, String])(implicit tx: S#Tx): Repr[S] =
     (lo, hi, warp, step, unit) match {
       case (Expr.Const(loC), Expr.Const(hiC), Expr.Const(warpC), Expr.Const(stepC), Expr.Const(unitC)) =>
-        val v = ParamSpec(lo = loC, hi = hiC, warp = warpC, step = stepC, unit = unitC)
+        val v = ParamSpec(lo = loC, hi = hiC, warp = warpC, /* step = stepC, */ unit = unitC)
         newConst[S](v)
       case _ =>
         val targets = evt.Targets[S]
-        new Apply[S](targets, loEx = lo, hiEx = hi, warpEx = warp, stepEx = step, unitEx = unit)
+        new Apply[S](targets, loEx = lo, hiEx = hi, warpEx = warp, /* stepEx = step, */ unitEx = unit)
     }
 
   implicit def serializer[S <: Sys[S]]: evt.Serializer[S, Repr[S]] = anySer.asInstanceOf[Ser[S]]
@@ -137,7 +137,7 @@ object ParamSpecExprImpl
     def lo  (implicit tx: S#Tx): Expr[S, Double] = DoubleEx .newConst(constValue.lo  )
     def hi  (implicit tx: S#Tx): Expr[S, Double] = DoubleEx .newConst(constValue.hi  )
     def warp(implicit tx: S#Tx): Expr[S, Warp  ] = Warp.Expr.newConst(constValue.warp)
-    def step(implicit tx: S#Tx): Expr[S, Double] = DoubleEx .newConst(constValue.step)
+    // def step(implicit tx: S#Tx): Expr[S, Double] = DoubleEx .newConst(constValue.step)
     def unit(implicit tx: S#Tx): Expr[S, String] = StringEx .newConst(constValue.unit)
 
     protected def writeData(out: DataOutput): Unit = writeValue(constValue, out)
@@ -149,9 +149,9 @@ object ParamSpecExprImpl
       val lo    = DoubleEx .read(in, access)
       val hi    = DoubleEx .read(in, access)
       val warp  = Warp.Expr.read(in, access)
-      val step  = DoubleEx .read(in, access)
+      // val step  = DoubleEx .read(in, access)
       val unit  = StringEx .read(in, access)
-      new Apply(targets, loEx = lo, hiEx = hi, warpEx = warp, stepEx = step, unitEx = unit)
+      new Apply(targets, loEx = lo, hiEx = hi, warpEx = warp, /* stepEx = step, */ unitEx = unit)
     }
 
     def name: String = "Apply"
@@ -161,7 +161,7 @@ object ParamSpecExprImpl
   }
   private[this] final class Apply[S <: Sys[S]](protected val targets: evt.Targets[S],
                                                loEx: Expr[S, Double], hiEx: Expr[S, Double],
-                                               warpEx: Expr[S, Warp], stepEx: Expr[S, Double],
+                                               warpEx: Expr[S, Warp], // stepEx: Expr[S, Double],
                                                unitEx: Expr[S, String])
     extends Repr[S]
     with evt.impl.StandaloneLike  [S, Change[ParamSpec], Repr[S]]
@@ -174,7 +174,7 @@ object ParamSpecExprImpl
       loEx  .write(out)
       hiEx  .write(out)
       warpEx.write(out)
-      stepEx.write(out)
+      // stepEx.write(out)
       unitEx.write(out)
     }
 
@@ -184,15 +184,15 @@ object ParamSpecExprImpl
       val loC   = loEx.value
       val hiC   = hiEx.value
       val warpC = warpEx.value
-      val stepC = stepEx.value
+      // val stepC = stepEx.value
       val unitC = unitEx.value
-      ParamSpec(lo = loC, hi = hiC, warp = warpC, step = stepC, unit = unitC)
+      ParamSpec(lo = loC, hi = hiC, warp = warpC, /* step = stepC, */ unit = unitC)
     }
 
     def lo  (implicit tx: S#Tx): Expr[S, Double] = loEx
     def hi  (implicit tx: S#Tx): Expr[S, Double] = hiEx
     def warp(implicit tx: S#Tx): Expr[S, Warp  ] = warpEx
-    def step(implicit tx: S#Tx): Expr[S, Double] = stepEx
+    // def step(implicit tx: S#Tx): Expr[S, Double] = stepEx
     def unit(implicit tx: S#Tx): Expr[S, String] = unitEx
 
     // ---- event ----
@@ -201,7 +201,7 @@ object ParamSpecExprImpl
       loEx  .changed ---> this
       hiEx  .changed ---> this
       warpEx.changed ---> this
-      stepEx.changed ---> this
+      // stepEx.changed ---> this
       unitEx.changed ---> this
     }
 
@@ -209,7 +209,7 @@ object ParamSpecExprImpl
       loEx  .changed -/-> this
       hiEx  .changed -/-> this
       warpEx.changed -/-> this
-      stepEx.changed -/-> this
+      // stepEx.changed -/-> this
       unitEx.changed -/-> this
     }
 
@@ -229,20 +229,18 @@ object ParamSpecExprImpl
         val warpV = warpEx.value
         Change(warpV, warpV)
       }
-      val stepEvt = stepEx.changed
-      val stepCh = (if (pull.contains(stepEvt)) pull(stepEvt) else None).getOrElse {
-        val stepV = stepEx.value
-        Change(stepV, stepV)
-      }
+      //      val stepEvt = stepEx.changed
+      //      val stepCh = (if (pull.contains(stepEvt)) pull(stepEvt) else None).getOrElse {
+      //        val stepV = stepEx.value
+      //        Change(stepV, stepV)
+      //      }
       val unitEvt = unitEx.changed
       val unitCh  = (if (pull.contains(unitEvt)) pull(unitEvt) else None).getOrElse {
         val unitV = unitEx.value
         Change(unitV, unitV)
       }
-      val before = ParamSpec(lo = loCh.before, hi = hiCh.before, warp = warpCh.before,
-        step = stepCh.before, unit = unitCh.before)
-      val now    = ParamSpec(lo = loCh.now   , hi = hiCh.now   , warp = warpCh.now   ,
-        step = stepCh.now   , unit = unitCh.now   )
+      val before = ParamSpec(lo = loCh.before, hi = hiCh.before, warp = warpCh.before, /* step = stepCh.before, */ unit = unitCh.before)
+      val now    = ParamSpec(lo = loCh.now   , hi = hiCh.now   , warp = warpCh.now   , /* step = stepCh.now   , */ unit = unitCh.now   )
       Some(Change(before, now))
     }
 
@@ -281,7 +279,7 @@ object ParamSpecExprImpl
     def lo  (implicit tx: S#Tx): Expr[S, Double] = mkTuple1(this, DoubleExtensions.Lo)
     def hi  (implicit tx: S#Tx): Expr[S, Double] = mkTuple1(this, DoubleExtensions.Hi)
     def warp(implicit tx: S#Tx): Expr[S, Warp  ] = mkTuple1(this, WarpExtensions.Warp)
-    def step(implicit tx: S#Tx): Expr[S, Double] = mkTuple1(this, DoubleExtensions.Step)
+    // def step(implicit tx: S#Tx): Expr[S, Double] = mkTuple1(this, DoubleExtensions.Step)
     def unit(implicit tx: S#Tx): Expr[S, String] = mkTuple1(this, StringExtensions.Unit)
 
     def changed: EventLike[S, Change[ParamSpec]] = this
@@ -313,7 +311,7 @@ object ParamSpecExprImpl
 
     final val arity = 1
     final val opLo  = Lo  .id
-    final val opHi  = Step.id
+    final val opHi  = Hi /* Step */.id
 
     val name = "ParamSpec-Double Ops"
 
@@ -322,7 +320,7 @@ object ParamSpecExprImpl
       val op: Tuple1Op[Double] = (opID: @switch) match {
         case Lo  .id => Lo
         case Hi  .id => Hi
-        case Step.id => Step
+        // case Step.id => Step
         case _ => sys.error(s"Invalid operation id $opID")
       }
       val _1 = read(in, access)
@@ -345,11 +343,11 @@ object ParamSpecExprImpl
       def value(a: ParamSpec) = a.hi
     }
 
-    object Step extends Op {
-      final val id = 1002
-
-      def value(a: ParamSpec) = a.step
-    }
+    //    object Step extends Op {
+    //      final val id = 1002
+    //
+    //      def value(a: ParamSpec) = a.step
+    //    }
   }
 
   object StringExtensions

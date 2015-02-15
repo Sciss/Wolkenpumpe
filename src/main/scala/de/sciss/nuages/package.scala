@@ -14,6 +14,7 @@
 package de.sciss
 
 package object nuages {
-  def ExpWarp = ExponentialWarp
-  def LinWarp = LinearWarp
+  def ExpWarp   = ExponentialWarp
+  def LinWarp   = LinearWarp
+  val TrigSpec  = ParamSpec(0, 1, IntWarp)
 }

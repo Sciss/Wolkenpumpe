@@ -39,6 +39,7 @@ object VisualDataImpl {
 
   final val strkThick     = new BasicStroke(2f)
   final val strkVeryThick = new BasicStroke(4f)
+  final val strkDotted    = new BasicStroke(1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10f, Array(1f, 1f), 0f)
 
   final val gArc          = new Arc2D.Double
   final val gLine         = new Line2D.Double

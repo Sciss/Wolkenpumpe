@@ -12,3 +12,14 @@
         - main recorder
 [low]   - REPL
         - split screen; split versions; split time
+        - auto-mono reduction for patching into params
+        - creation without diff
+        - creation on sinks without insert
+        - creation of attr-link inserts
+[OK]    - raster param spec on mouse input
+[OK]    - visualize steps if discrete and small num
+        - special vis for trigger (0 or 1) signals
+        - keyboard new-object input (typing parts of a name)
+        - param value hovers; value keyboard input
+        - undo/redo
+        - envelope generator with specific GUI

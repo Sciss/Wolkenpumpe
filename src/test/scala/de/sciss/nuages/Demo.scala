@@ -6,7 +6,6 @@ import de.sciss.lucre.stm.store.BerkeleyDB
 import de.sciss.lucre.synth.InMemory
 import de.sciss.synth
 import de.sciss.synth.Server
-import de.sciss.synth.proc.graph.{ScanInFix, ScanIn}
 import de.sciss.synth.proc.{AuralSystem, Durable}
 
 import scala.swing.SwingApplication
@@ -42,7 +41,7 @@ object Demo extends SwingApplication {
             val pFreq   = pAudio("freq"     , ParamSpec(0.1 , 10000, ExpWarp), default = 15 /* 1 */)
             val pw      = pAudio("width"    , ParamSpec(0.0 ,     1.0),        default =  0.5)
             val pAmp    = pAudio("amp"      , ParamSpec(0.01,     1, ExpWarp), default =  0.1)
-            val pFreqMix= pAudio("freq-src" , ParamSpec(0, 1, step = 1), default = 0)
+            val pFreqMix= pAudio("freq-src" , TrigSpec, default = 0)
 
             val inFreq  = pAudioIn("in-freq", 1, ParamSpec(0.1 , 10000, ExpWarp))
 

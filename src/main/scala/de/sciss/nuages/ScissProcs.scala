@@ -191,9 +191,9 @@ object ScissProcs {
       val numChans = masterChans.size
 
       generator("(test)") {
-        val pAmp  = pControl("amp" , ParamSpec(0.01,  1.0, ExpWarp),    default = 1)
-        val pSig  = pControl("sig" , ParamSpec(0   ,  1  , LinWarp, 1), default = 0)
-        val pFreq = pControl("freq", ParamSpec(0.1 , 10  , ExpWarp),    default = 1)
+        val pAmp  = pControl("amp" , ParamSpec(0.01,  1.0, ExpWarp),  default = 1)
+        val pSig  = pControl("sig" , /* ParamSpec(0, 2, IntWarp) */ TrigSpec, default = 0)
+        val pFreq = pControl("freq", ParamSpec(0.1 , 10  , ExpWarp),  default = 1)
 
         val idx       = Stepper.kr(Impulse.kr(pFreq), lo = 0, hi = numChans)
         val sig0: GE  = Seq(WhiteNoise.ar(1), SinOsc.ar(441))
@@ -491,7 +491,7 @@ object ScissProcs {
     }
 
     filter("mantissa") { in =>
-      val pBits = pAudio("bits", ParamSpec(2, 14, LinWarp, 1), default = 14)
+      val pBits = pAudio("bits", ParamSpec(2, 14, IntWarp), default = 14)
       val pMix  = mkMix()
 
       val flt = MantissaMask.ar(in, pBits)
@@ -847,7 +847,7 @@ object ScissProcs {
 
     filter("zero") { in =>
       val pWidth  = pAudio("width", ParamSpec(0, 1), default = 0.5)
-      val pDiv    = pAudio("div"  , ParamSpec(1, 10, LinWarp, 1), default = 1)
+      val pDiv    = pAudio("div"  , ParamSpec(1, 10, IntWarp), default = 1)
       val pLag    = pAudio("lag"  , ParamSpec(0.001, 0.1, ExpWarp), default = 0.01)
       val pMix    = mkMix()
 
