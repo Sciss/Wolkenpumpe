@@ -17,6 +17,7 @@ package impl
 import java.awt.event.MouseEvent
 import java.awt.geom.{AffineTransform, Point2D, GeneralPath, Ellipse2D, Rectangle2D, Line2D, Arc2D}
 import java.awt.{Graphics2D, Font, Shape, BasicStroke, Color}
+import java.math.{RoundingMode, MathContext}
 
 import de.sciss.lucre.synth.Sys
 import prefuse.util.ColorLib
@@ -46,6 +47,8 @@ object VisualDataImpl {
 
   final val margin        = diam * 0.2
   final val margin2       = margin * 2
+
+  final val threeDigits   = new MathContext(3, RoundingMode.HALF_UP)
 }
 trait VisualDataImpl[S <: Sys[S]] extends VisualData[S] {
 
@@ -107,22 +110,25 @@ trait VisualDataImpl[S <: Sys[S]] extends VisualData[S] {
   def itemDragged (vi: VisualItem, e: MouseEvent, pt: Point2D) = ()
 
   private[this] var lastFontT: AffineTransform = _
-  private[this] var nameShape: Shape = _
+  private[this] var lastLabel: String = _
+  private[this] var labelShape: Shape = _
 
-  protected def drawName(g: Graphics2D, vi: VisualItem, fontSize: Float): Unit = {
+  protected def drawName(g: Graphics2D, vi: VisualItem, fontSize: Float): Unit =
+    drawLabel(g, vi, fontSize, name)
+  
+  protected def drawLabel(g: Graphics2D, vi: VisualItem, fontSize: Float, text: String): Unit = {
     if (_fontSize != fontSize) {
       _fontSize = fontSize
       _font = Wolkenpumpe.condensedFont.deriveFont(fontSize)
     }
 
     g.setColor(ColorLib.getColor(vi.getTextColor))
-    val n = name
 
     if (main.display.isHighQuality) {
       val frc   = g.getFontRenderContext
       val frcT  = frc.getTransform
-      if (frcT != lastFontT) {  // only calculate glyph vector if zoom level changes
-      val v = _font.createGlyphVector(frc, n)
+      if (frcT != lastFontT || text != lastLabel) {  // only calculate glyph vector if zoom level changes
+      val v = _font.createGlyphVector(frc, text)
         // NOTE: there is a bug, at least with the BellySansCondensed font,
         // regarding `getVisualBounds`; it returns almost infinite width
         // for certain strings such as `"freq"`. Instead, using `getPixelBounds`
@@ -143,17 +149,18 @@ trait VisualDataImpl[S <: Sys[S]] extends VisualData[S] {
         //                           ((r.getHeight() + (fm.getAscent() - fm.getLeading())) * 0.5).toFloat )
         //         g.drawGlyphVector( v, ((r.getWidth() - vb.getWidth()) * 0.5).toFloat,
         //                               ((r.getHeight() - vb.getHeight()) * 0.5).toFloat )
-        nameShape = v.getOutline(((r.getWidth - vvb.getWidth) * 0.5).toFloat,
+        labelShape = v.getOutline(((r.getWidth - vvb.getWidth) * 0.5).toFloat,
           ((r.getHeight + vvb.getHeight) * 0.5).toFloat)
         lastFontT = frcT
+        lastLabel = text
       }
-      g.fill(nameShape)
+      g.fill(labelShape)
 
     } else {
       val cx = r.getWidth  / 2
       val cy = r.getHeight / 2
       val fm = g.getFontMetrics
-      g.drawString(n, (cx - (fm.stringWidth(n) * 0.5)).toInt, (cy + ((fm.getAscent - fm.getLeading) * 0.5)).toInt)
+      g.drawString(text, (cx - (fm.stringWidth(text) * 0.5)).toInt, (cy + ((fm.getAscent - fm.getLeading) * 0.5)).toInt)
     }
   }
 

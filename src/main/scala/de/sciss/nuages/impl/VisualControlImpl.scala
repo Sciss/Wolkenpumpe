@@ -93,7 +93,7 @@ final class VisualControlImpl[S <: Sys[S]] private(val parent: VisualObj[S], val
       var i = loInt + 1
       while (i < hiInt) {
         val v = spec.inverseMap(i)
-        println(s"spike($i) = $v")
+        // println(s"spike($i) = $v")
         setSpine(v)
         res.append(gLine, false)
         i += 1
@@ -118,7 +118,7 @@ final class VisualControlImpl[S <: Sys[S]] private(val parent: VisualObj[S], val
       val dx      = pt.getX - r.getCenterX
       val ang0    = math.max(0.0, math.min(1.0, (((-math.atan2(dy, dx) / math.Pi + 3.5) % 2.0) - 0.25) / 1.5))
       val ang     = if (spec.warp == IntWarp) spec.inverseMap(spec.map(ang0)) else ang0
-      val instant = true // !vProc.state.playing || vProc.state.bypassed || main.transition(0) == Instant
+      val instant = !e.isShiftDown // true // !vProc.state.playing || vProc.state.bypassed || main.transition(0) == Instant
       val vStart  = if (e.isAltDown) {
           //               val res = math.min( 1.0f, (((ang / math.Pi + 3.25) % 2.0) / 1.5).toFloat )
           //               if( ang != value ) {
@@ -126,7 +126,7 @@ final class VisualControlImpl[S <: Sys[S]] private(val parent: VisualObj[S], val
           if (instant) setControl(/* control, */ ang /* m */, instant = true)
           ang
         } else /* control. */ value // spec.inverseMap(value /* .currentApprox */)
-      drag = new Drag(ang, vStart, instant)
+      drag = new Drag(ang, vStart, instant = instant)
       true
     } else false
   }
@@ -135,11 +135,11 @@ final class VisualControlImpl[S <: Sys[S]] private(val parent: VisualObj[S], val
 
   private def setControl(v: Double, instant: Boolean): Unit =
     atomic { implicit t =>
-      if (instant) {
+      // if (instant) {
         setControlTxn(v)
         // } else t.withTransition(main.transition(t.time)) {
         //  c.v = v
-      }
+      // }
     }
 
   private def setControlTxn(v: Double)(implicit tx: S#Tx): Unit = {
@@ -163,10 +163,8 @@ final class VisualControlImpl[S <: Sys[S]] private(val parent: VisualObj[S], val
       // val m = /* control. */ spec.map(vEff)
       if (drag.instant) {
         setControl(/* control, */ vEff /* m */, instant = true)
-      } else {
-        drag.dragValue = vEff // m
       }
-      //            }
+      drag.dragValue = vEff // m
     }
 
   override def itemReleased(vi: VisualItem, e: MouseEvent, pt: Point2D): Unit =
@@ -216,7 +214,8 @@ final class VisualControlImpl[S <: Sys[S]] private(val parent: VisualObj[S], val
 
     g.setColor(if (mapped) colrMapped else /* if (gliding) colrGliding else */ colrManual)
     g.fill(valueArea)
-    if (drag != null) {
+    val isDrag = drag != null
+    if (isDrag) {
       if (!drag.instant) {
         g.setColor(colrAdjust)
         setSpine(drag.dragValue)
@@ -236,6 +235,18 @@ final class VisualControlImpl[S <: Sys[S]] private(val parent: VisualObj[S], val
       g.setStroke(strkOrig)
     }
 
-    drawName(g, vi, diam * vi.getSize.toFloat * 0.33333f)
+    drawLabel(g, vi, diam * vi.getSize.toFloat * 0.33333f, if (isDrag) valueText(drag.dragValue) else name)
+  }
+
+
+  private def valueText(v: Double): String = {
+    val m = spec.map(v)
+    if (spec.warp == IntWarp) m.toInt.toString
+    else {
+      if (m == Double.PositiveInfinity) "Inf"
+      else if (m == Double.NegativeInfinity) "-Inf"
+      else if (java.lang.Double.isNaN(m)) "NaN"
+      else new java.math.BigDecimal(m, threeDigits).toPlainString
+    }
   }
 }
