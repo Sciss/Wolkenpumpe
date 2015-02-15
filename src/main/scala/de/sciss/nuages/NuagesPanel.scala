@@ -62,7 +62,9 @@ trait NuagesPanel[S <: Sys[S]] extends View[S] {
 
   def showCreateGenDialog(pt: Point): Boolean
 
-  def showCreateFilterDialog(vOut: VisualScan[S], vIn: VisualScan[S], pt: Point): Boolean
+  def showInsertFilterDialog(vOut: VisualScan[S], vIn: VisualScan[S], pt: Point): Boolean
+
+  def showAppendFilterDialog(vOut: VisualScan[S], pt: Point): Boolean
 
   def setSolo(vp: VisualObj[S], onOff: Boolean): Unit
 
@@ -81,7 +83,9 @@ trait NuagesPanel[S <: Sys[S]] extends View[S] {
     */
   def deferVisTx(thunk: => Unit)(implicit tx: TxnLike): Unit
 
-  def createGenerator(source: Obj[S], pt: Point2D)(implicit tx: S#Tx): Unit
+  def createGenerator(gen: Obj[S], colOpt: Option[Obj[S]], pt: Point2D)(implicit tx: S#Tx): Unit
 
-  def createFilter(pred: Scan[S], succ: Scan[S], source: Obj[S], pt: Point2D)(implicit tx: S#Tx): Unit
+  def insertFilter(pred: Scan[S], succ: Scan[S], flt: Obj[S], pt: Point2D)(implicit tx: S#Tx): Unit
+
+  def appendFilter(pred: Scan[S], flt: Obj[S], colOpt: Option[Obj[S]], pt: Point2D)(implicit tx: S#Tx): Unit
 }

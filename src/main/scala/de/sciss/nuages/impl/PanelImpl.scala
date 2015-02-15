@@ -59,8 +59,10 @@ object PanelImpl {
                         (implicit tx: S#Tx, cursor: stm.Cursor[S], workspace: WorkspaceHandle[S]): NuagesPanel[S] = {
     val nuagesH   = tx.newHandle(nuages)
     val listGen   = mkListView(nuages.generators)
-    val listFlt   = mkListView(nuages.filters   )
-    val listCol   = mkListView(nuages.collectors)
+    val listFlt1  = mkListView(nuages.filters   )
+    val listCol1  = mkListView(nuages.collectors)
+    val listFlt2  = mkListView(nuages.filters   )
+    val listCol2  = mkListView(nuages.collectors)
     val nodeMap   = tx.newInMemoryIDMap[VisualObj[S]]
     val scanMap   = tx.newInMemoryIDMap[ScanInfo [S]]
     val transport = Transport[S](aural)
@@ -68,7 +70,7 @@ object PanelImpl {
     // transport.addObject(timelineObj)
 
     new Impl[S](nuagesH, nodeMap, scanMap, config, transport, aural,
-                listGen = listGen, listFlt = listFlt, listCol = listCol)
+                listGen = listGen, listFlt1 = listFlt1, listCol1 = listCol1, listFlt2 = listFlt2, listCol2 = listCol2)
       .init(timelineObj)
   }
 
@@ -107,9 +109,11 @@ object PanelImpl {
                                         val config   : Nuages.Config,
                                         val transport: Transport[S],
                                         val aural    : AuralSystem,
-                                        listGen: ListView[S, Obj[S], Obj.Update[S]],
-                                        listFlt: ListView[S, Obj[S], Obj.Update[S]],
-                                        listCol: ListView[S, Obj[S], Obj.Update[S]])
+                                        listGen : ListView[S, Obj[S], Obj.Update[S]],
+                                        listFlt1: ListView[S, Obj[S], Obj.Update[S]],
+                                        listCol1: ListView[S, Obj[S], Obj.Update[S]],
+                                        listFlt2: ListView[S, Obj[S], Obj.Update[S]],
+                                        listCol2: ListView[S, Obj[S], Obj.Update[S]])
                                        (implicit val cursor: stm.Cursor[S], workspace: WorkspaceHandle[S])
     extends NuagesPanel[S] with ComponentHolder[Component] {
     panel =>
@@ -840,22 +844,21 @@ object PanelImpl {
       val p = new OverlayPanel()
       p.contents += listGen.component
       p.contents += Swing.VStrut(4)
-      p.contents += listCol.component
+      p.contents += listCol1.component
       p.contents += Swing.VStrut(4)
       createAbortBar(p) {
         listGen.guiSelection match {
           case Vec(genIdx) =>
-            val colIdxOpt = listCol.guiSelection.headOption
+            val colIdxOpt = listCol1.guiSelection.headOption
             close(p)
             val displayPt = display.getAbsoluteCoordinate(p.location, null)
             atomic { implicit tx =>
               val nuages = nuagesH()
               for {
                 gen <- nuages.generators.get(genIdx)
-                tl  <- nuages.timeline.elem.peer.modifiableOption
               } {
                 val colOpt = colIdxOpt.flatMap(nuages.collectors.get)
-                createProc(tl, gen, colOpt, displayPt)
+                createGenerator(gen, colOpt, displayPt)
               }
             }
           case _ =>
@@ -867,19 +870,19 @@ object PanelImpl {
     private var fltPred: VisualScan[S] = _
     private var fltSucc: VisualScan[S] = _
 
-    private lazy val createFilterDialog = {
+    private lazy val createFilterInsertDialog = {
       val p = new OverlayPanel()
-      p.contents += listFlt.component
+      p.contents += listFlt1.component
       p.contents += Swing.VStrut(4)
       createAbortBar(p) {
-        listFlt.guiSelection match {
+        listFlt1.guiSelection match {
           case Vec(fltIdx) =>
           close(p)
           val displayPt = display.getAbsoluteCoordinate(p.location, null)
           atomic { implicit tx =>
             val nuages = nuagesH()
             for {
-              Proc.Obj(flt) <- nuages.filters.get(fltIdx)
+              Proc.Obj(flt)  <- nuages.filters.get(fltIdx)
             } {
               (fltPred.parent.objH(), fltSucc.parent.objH()) match {
                 case (Proc.Obj(pred), Proc.Obj(succ)) =>
@@ -887,12 +890,76 @@ object PanelImpl {
                     predScan <- pred.elem.peer.scans.get(fltPred.key)
                     succScan <- succ.elem.peer.scans.get(fltSucc.key)
                   } {
-                    createFilter(predScan, succScan, flt, displayPt)
+                    insertFilter(predScan, succScan, flt, displayPt)
                   }
                 case _ =>
               }
             }
           }
+        }
+      }
+      pack(p)
+    }
+
+    private def createFilterOnlyFromDialog(p: Container)(objFun: S#Tx => Option[Obj[S]]): Unit = {
+      close(p)
+      val displayPt = display.getAbsoluteCoordinate(p.location, null)
+      atomic { implicit tx =>
+        for {
+          Proc.Obj(flt) <- objFun(tx)
+        } {
+          fltPred.parent.objH() match {
+            case Proc.Obj(pred) =>
+              for {
+                predScan <- pred.elem.peer.scans.get(fltPred.key)
+              } {
+                appendFilter(predScan, flt, None, displayPt)
+              }
+            case _ =>
+          }
+        }
+      }
+    }
+
+    private lazy val createFilterAppendDialog = {
+      val p = new OverlayPanel()
+      p.contents += listFlt2.component
+      p.contents += Swing.VStrut(4)
+      p.contents += listCol2.component
+      p.contents += Swing.VStrut(4)
+      createAbortBar(p) {
+        (listFlt2.guiSelection.headOption, listCol2.guiSelection.headOption) match {
+          case (Some(fltIdx), None) =>
+            createFilterOnlyFromDialog(p) { implicit tx =>
+              nuages.filters.get(fltIdx)
+            }
+
+          case (None, Some(colIdx)) =>
+            createFilterOnlyFromDialog(p) { implicit tx =>
+              nuages.collectors.get(colIdx)
+            }
+
+          case (Some(fltIdx), Some(colIdx)) =>
+            close(p)
+            val displayPt = display.getAbsoluteCoordinate(p.location, null)
+            atomic { implicit tx =>
+              for {
+                Proc.Obj(flt) <- nuages.filters   .get(fltIdx)
+                Proc.Obj(col) <- nuages.collectors.get(colIdx)
+              } {
+                fltPred.parent.objH() match {
+                  case Proc.Obj(pred) =>
+                    for {
+                      predScan <- pred.elem.peer.scans.get(fltPred.key)
+                    } {
+                      appendFilter(predScan, flt, Some(col), displayPt)
+                    }
+                  case _ =>
+                }
+              }
+            }
+
+          case _ =>
         }
       }
       pack(p)
@@ -905,41 +972,35 @@ object PanelImpl {
     private def prepareObj(obj: Obj[S])(implicit tx: S#Tx): Unit = exec(obj, "nuages-prepare")
     private def disposeObj(obj: Obj[S])(implicit tx: S#Tx): Unit = exec(obj, "nuages-dispose")
 
-    def createGenerator(source: Obj[S], pt: Point2D)(implicit tx: S#Tx): Unit =
+    private def finalizeProcAndCollector(proc: Obj[S], colSrcOpt: Option[Obj[S]], pt: Point2D)
+                                        (implicit tx: S#Tx): Unit =
       for (tl <- nuages.timeline.elem.peer.modifiableOption) {
-        val gen = Obj.copy(source)
-        prepareObj(gen)
-        val genPt = new Point2D.Double(pt.getX, pt.getY - 30)
-        setLocationHint(gen, genPt)
-        addToTimeline(tl, gen)
+        val colOpt = colSrcOpt.map(Obj.copy[S])
+
+        (proc, colOpt) match {
+          case (Proc.Obj(genP), Some(Proc.Obj(colP))) =>
+            val procGen = genP.elem.peer
+            val procCol = colP.elem.peer
+            val scanOut = procGen.scans.add("out")
+            val scanIn  = procCol.scans.add("in")
+            scanOut.addSink(scanIn)
+
+          case _ =>
+        }
+
+        prepareObj(proc)
+        colOpt.foreach(prepareObj)
+
+        setLocationHint(proc, if (colOpt.isEmpty) pt else new Point2D.Double(pt.getX, pt.getY - 30))
+        colOpt.foreach(setLocationHint(_, new Point2D.Double(pt.getX, pt.getY + 30)))
+
+        addToTimeline(tl, proc)
+        colOpt.foreach(addToTimeline(tl, _))
       }
 
-    private def createProc(tl: Timeline.Modifiable[S], genSrc: Obj[S], colSrcOpt: Option[Obj[S]], pt: Point2D)
-                  (implicit tx: S#Tx): Unit = {
-      val gen    = Obj.copy(genSrc)
-      val colOpt = colSrcOpt.map(Obj.copy[S])
-
-      (gen, colOpt) match {
-        case (Proc.Obj(genP), Some(Proc.Obj(colP))) =>
-          val procGen = genP.elem.peer
-          val procCol = colP.elem.peer
-          val scanOut = procGen.scans.add("out")
-          val scanIn  = procCol.scans.add("in")
-          scanOut.addSink(scanIn)
-
-        case _ =>
-      }
-
-      prepareObj(gen)
-      colOpt.foreach(prepareObj)
-
-      val genPt = new Point2D.Double(pt.getX, pt.getY - 30)
-      val colPt = new Point2D.Double(pt.getX, pt.getY + 30)
-      setLocationHint(gen, genPt)
-      colOpt.foreach(setLocationHint(_, colPt))
-
-      addToTimeline(tl, gen)
-      colOpt.foreach(addToTimeline(tl, _))
+    def createGenerator(genSrc: Obj[S], colSrcOpt: Option[Obj[S]], pt: Point2D)(implicit tx: S#Tx): Unit = {
+      val gen = Obj.copy(genSrc)
+      finalizeProcAndCollector(gen, colSrcOpt, pt)
     }
 
     private def addToTimeline(tl: Timeline.Modifiable[S], obj: Obj[S])(implicit tx: S#Tx): Unit = {
@@ -951,38 +1012,57 @@ object PanelImpl {
       tl.add(spanEx, obj)
     }
 
-    def createFilter(pred: Scan[S], succ: Scan[S], fltSrc: Obj[S], fltPt: Point2D)(implicit tx: S#Tx): Unit =
-      for (tl <- nuages.timeline.elem.peer.modifiableOption) {
-        val flt = Obj.copy(fltSrc)
+    def insertFilter(pred: Scan[S], succ: Scan[S], fltSrc: Obj[S], fltPt: Point2D)(implicit tx: S#Tx): Unit = {
+      val flt = Obj.copy(fltSrc)
 
-        flt match {
-          case Proc.Obj(fltP) =>
-            val procFlt  = fltP .elem.peer
-            pred.addSink(procFlt.scans.add("in"))
-            // we may handle 'sinks' here by ignoring them when they don't have an `"out"` scan.
-            procFlt.scans.get("out").foreach { fltOut =>
-              pred  .removeSink(succ)
-              fltOut.addSink   (succ)
-            }
+      flt match {
+        case Proc.Obj(fltP) =>
+          val procFlt  = fltP .elem.peer
+          pred.addSink(procFlt.scans.add("in"))
+          // we may handle 'sinks' here by ignoring them when they don't have an `"out"` scan.
+          for {
+            fltOut <- procFlt.scans.get("out")
+          } {
+            pred  .removeSink(succ)
+            fltOut.addSink   (succ)
+          }
 
-          case _ =>
-        }
-
-        prepareObj(flt)
-        setLocationHint(flt, fltPt)
-        addToTimeline(tl, flt)
+        case _ =>
       }
+
+      finalizeProcAndCollector(flt, None, fltPt)
+    }
+
+    def appendFilter(pred: Scan[S], fltSrc: Obj[S], colSrcOpt: Option[Obj[S]], fltPt: Point2D)
+                    (implicit tx: S#Tx): Unit = {
+      val flt = Obj.copy(fltSrc)
+
+      flt match {
+        case Proc.Obj(fltP) =>
+          val procFlt  = fltP .elem.peer
+          pred.addSink(procFlt.scans.add("in"))
+        case _ =>
+      }
+
+      finalizeProcAndCollector(flt, colSrcOpt, fltPt)
+    }
 
     def showCreateGenDialog(pt: Point): Boolean = {
       requireEDT()
       showOverlayPanel(createGenDialog, pt)
     }
 
-    def showCreateFilterDialog(pred: VisualScan[S], succ: VisualScan[S], pt: Point): Boolean = {
+    def showInsertFilterDialog(pred: VisualScan[S], succ: VisualScan[S], pt: Point): Boolean = {
       requireEDT()
       fltPred = pred
       fltSucc = succ
-      showOverlayPanel(createFilterDialog, pt)
+      showOverlayPanel(createFilterInsertDialog, pt)
+    }
+
+    def showAppendFilterDialog(pred: VisualScan[S], pt: Point): Boolean = {
+      requireEDT()
+      fltPred = pred
+      showOverlayPanel(createFilterAppendDialog, pt)
     }
   }
 

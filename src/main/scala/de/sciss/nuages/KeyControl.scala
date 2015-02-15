@@ -116,7 +116,7 @@ object KeyControl {
                           pred <- vOut.scan
                           succ <- vIn .scan
                         } {
-                          main.createFilter(pred = pred, succ = succ, source = objH(), pt = pt)
+                          main.insertFilter(pred = pred, succ = succ, flt = objH(), pt = pt)
                         }
                       }
                     case _ =>

@@ -100,7 +100,7 @@ class ClickControl[S <: Sys[S]](main: NuagesPanel[S]) extends ControlAdapter {
             if (srcData != null && tgtData != null)
               (srcData, tgtData) match {
                 case (vOut: VisualScan[S], vIn: VisualScan[S]) =>
-                  main.showCreateFilterDialog(/* nSrc, nTgt, */ vOut, vIn, e.getPoint)
+                  main.showInsertFilterDialog(vOut, vIn, e.getPoint)
                 case _ =>
               }
 

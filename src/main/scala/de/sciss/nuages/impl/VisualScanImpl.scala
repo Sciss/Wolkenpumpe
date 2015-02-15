@@ -15,6 +15,8 @@ package de.sciss.nuages
 package impl
 
 import java.awt.Graphics2D
+import java.awt.event.MouseEvent
+import java.awt.geom.Point2D
 
 import de.sciss.lucre.swing.requireEDT
 import de.sciss.lucre.synth.Sys
@@ -48,6 +50,14 @@ final class VisualScanImpl[S <: Sys[S]] private(val parent: VisualObj[S], val ke
   def initGUI(): Unit = {
     requireEDT()
     mkPNodeAndEdge()
+  }
+
+  override def itemPressed(vi: VisualItem, e: MouseEvent, pt: Point2D): Boolean = (key == "out") && {
+    // println("itemPressed")
+    if (e.getClickCount == 2) {
+      parent.main.showAppendFilterDialog(this, e.getPoint)
+    }
+    true
   }
 
   protected def boundsResized() = ()
