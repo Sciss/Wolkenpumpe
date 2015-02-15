@@ -843,18 +843,19 @@ object PanelImpl {
       p.contents += listCol.component
       p.contents += Swing.VStrut(4)
       createAbortBar(p) {
-        (listGen.guiSelection, listCol.guiSelection) match {
-          case (Vec(genIdx), Vec(colIdx)) =>
+        listGen.guiSelection match {
+          case Vec(genIdx) =>
+            val colIdxOpt = listCol.guiSelection.headOption
             close(p)
             val displayPt = display.getAbsoluteCoordinate(p.location, null)
             atomic { implicit tx =>
               val nuages = nuagesH()
               for {
                 gen <- nuages.generators.get(genIdx)
-                col <- nuages.collectors.get(colIdx)
                 tl  <- nuages.timeline.elem.peer.modifiableOption
               } {
-                createProc(tl, gen, col, displayPt)
+                val colOpt = colIdxOpt.flatMap(nuages.collectors.get)
+                createProc(tl, gen, colOpt, displayPt)
               }
             }
           case _ =>
@@ -913,13 +914,13 @@ object PanelImpl {
         addToTimeline(tl, gen)
       }
 
-    private def createProc(tl: Timeline.Modifiable[S], genSrc: Obj[S], colSrc: Obj[S], pt: Point2D)
+    private def createProc(tl: Timeline.Modifiable[S], genSrc: Obj[S], colSrcOpt: Option[Obj[S]], pt: Point2D)
                   (implicit tx: S#Tx): Unit = {
-      val gen = Obj.copy(genSrc)
-      val col = Obj.copy(colSrc)
+      val gen    = Obj.copy(genSrc)
+      val colOpt = colSrcOpt.map(Obj.copy[S])
 
-      (gen, col) match {
-        case (Proc.Obj(genP), Proc.Obj(colP)) =>
+      (gen, colOpt) match {
+        case (Proc.Obj(genP), Some(Proc.Obj(colP))) =>
           val procGen = genP.elem.peer
           val procCol = colP.elem.peer
           val scanOut = procGen.scans.add("out")
@@ -930,15 +931,15 @@ object PanelImpl {
       }
 
       prepareObj(gen)
-      prepareObj(col)
+      colOpt.foreach(prepareObj)
 
       val genPt = new Point2D.Double(pt.getX, pt.getY - 30)
       val colPt = new Point2D.Double(pt.getX, pt.getY + 30)
       setLocationHint(gen, genPt)
-      setLocationHint(col, colPt)
+      colOpt.foreach(setLocationHint(_, colPt))
 
       addToTimeline(tl, gen)
-      addToTimeline(tl, col)
+      colOpt.foreach(addToTimeline(tl, _))
     }
 
     private def addToTimeline(tl: Timeline.Modifiable[S], obj: Obj[S])(implicit tx: S#Tx): Unit = {
