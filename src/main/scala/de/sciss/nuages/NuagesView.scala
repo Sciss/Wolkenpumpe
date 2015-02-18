@@ -25,10 +25,10 @@ object NuagesView {
                          cursor: stm.Cursor[S]): NuagesView[S] =
     Impl(nuages, nuagesConfig, scissConfig)
 }
-trait NuagesView[S <: Sys[S]] extends View[S] {
+trait NuagesView[S <: Sys[S]] extends View.Cursor[S] {
   def panel: NuagesPanel[S]
   def controlPanel: ControlPanel
 
-  def installFullScreenKey(frame: java.awt.Window): Unit
+  def installFullScreenKey(frame: scala.swing.Window): Unit
 
 }

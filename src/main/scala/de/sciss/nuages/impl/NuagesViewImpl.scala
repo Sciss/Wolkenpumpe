@@ -47,7 +47,7 @@ object NuagesViewImpl {
 
   private final class Impl[S <: Sys[S]](val panel: NuagesPanel[S], transportView: View[S],
                                         sConfig: ScissProcs.Config)
-                                       (implicit cursor: stm.Cursor[S])
+                                       (implicit val cursor: stm.Cursor[S])
     extends NuagesView[S] with ComponentHolder[Component] with AuralSystem.Client { impl =>
 
     import cursor.{step => atomic}
@@ -74,7 +74,7 @@ object NuagesViewImpl {
       _serverPanel.server = None
     }
 
-    def installFullScreenKey(frame: java.awt.Window): Unit = {
+    def installFullScreenKey(frame: scala.swing.Window): Unit = {
       val display = panel.display
       val iMap    = display.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
       val aMap    = display.getActionMap
@@ -83,9 +83,9 @@ object NuagesViewImpl {
         InputEvent.SHIFT_MASK), fsName)
       aMap.put(fsName, new AbstractAction(fsName) {
         def actionPerformed(e: ActionEvent): Unit = {
-          val gc = frame.getGraphicsConfiguration
+          val gc = frame.peer.getGraphicsConfiguration
           val sd = gc.getDevice
-          sd.setFullScreenWindow(if (sd.getFullScreenWindow == frame) null else frame)
+          sd.setFullScreenWindow(if (sd.getFullScreenWindow == frame.peer) null else frame.peer)
         }
       })
     }

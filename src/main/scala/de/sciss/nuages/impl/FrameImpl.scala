@@ -62,7 +62,7 @@ object FrameImpl {
       }
 
       val panel = view.panel
-      if (panel.config.fullScreenKey) view.installFullScreenKey(frame.peer)
+      if (panel.config.fullScreenKey) view.installFullScreenKey(frame)
     }
 
     def dispose()(implicit tx: S#Tx): Unit = {
