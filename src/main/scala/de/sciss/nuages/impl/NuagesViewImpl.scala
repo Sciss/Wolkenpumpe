@@ -160,8 +160,10 @@ object NuagesViewImpl {
 
     def dispose()(implicit tx: S#Tx): Unit = {
       panel.aural.removeClient(this)
+      val synth = panel.masterSynth
+      panel.masterSynth = None
       panel.dispose()
-      // deferTx(_frame.dispose())
+      synth.foreach(_.dispose())
     }
 
     private def installMasterSynth(server: Server)
