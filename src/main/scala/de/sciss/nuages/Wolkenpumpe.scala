@@ -110,24 +110,30 @@ object Wolkenpumpe {
     def generator(name: String)(fun: => GE)(implicit tx: S#Tx, n: Nuages[S]): Proc.Obj[S] = {
       val obj = mkObj(name) {
         val out = fun
-        ScanOut("out", out)
+        ScanOut(Proc.Obj.scanMainOut, out)
       }
-      obj.elem.peer.scans.add("out")
+      obj.elem.peer.scans.add(Proc.Obj.scanMainOut)
       insertByName(n.generators, obj)
       obj
     }
 
     def filter(name: String)(fun: GE => GE)(implicit tx: S#Tx, n: Nuages[S]): Proc.Obj[S] = {
       val obj = mkObj(name) {
-        val in  = ScanIn("in")
+        val in  = ScanIn(Proc.Obj.scanMainIn)
         val out = fun(in)
-        ScanOut("out", out)
+        ScanOut(Proc.Obj.scanMainOut, out)
       }
       val scans = obj.elem.peer.scans
-      scans.add("in" )
-      scans.add("out")
+      scans.add(Proc.Obj.scanMainIn )
+      scans.add(Proc.Obj.scanMainOut)
       insertByName(n.filters, obj)
       obj
+    }
+
+    def pAudioOut(key: String, sig: GE)(implicit tx: S#Tx): Unit = {
+      val obj = current.get(tx.peer)
+      ScanOut(key, sig)
+      obj.elem.peer.scans.add(key)
     }
 
     def sink(name: String)(fun: GE => Unit)(implicit tx: S#Tx, n: Nuages[S]): Proc.Obj[S] =
@@ -139,10 +145,10 @@ object Wolkenpumpe {
     private def sinkLike(folder: Folder[S], name: String, fun: GE => Unit)
                         (implicit tx: S#Tx, nuages: Nuages[S]): Proc.Obj[S] = {
       val obj = mkObj(name) {
-        val in = ScanIn("in")
+        val in = ScanIn(Proc.Obj.scanMainIn)
         fun(in)
       }
-      obj.elem.peer.scans.add("in")
+      obj.elem.peer.scans.add(Proc.Obj.scanMainIn)
       insertByName(folder, obj)
       obj
     }

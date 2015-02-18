@@ -981,8 +981,8 @@ object PanelImpl {
           case (Proc.Obj(genP), Some(Proc.Obj(colP))) =>
             val procGen = genP.elem.peer
             val procCol = colP.elem.peer
-            val scanOut = procGen.scans.add("out")
-            val scanIn  = procCol.scans.add("in")
+            val scanOut = procGen.scans.add(Proc.Obj.scanMainOut)
+            val scanIn  = procCol.scans.add(Proc.Obj.scanMainIn )
             scanOut.addSink(scanIn)
 
           case _ =>
@@ -1018,10 +1018,10 @@ object PanelImpl {
       flt match {
         case Proc.Obj(fltP) =>
           val procFlt  = fltP .elem.peer
-          pred.addSink(procFlt.scans.add("in"))
+          pred.addSink(procFlt.scans.add(Proc.Obj.scanMainIn))
           // we may handle 'sinks' here by ignoring them when they don't have an `"out"` scan.
           for {
-            fltOut <- procFlt.scans.get("out")
+            fltOut <- procFlt.scans.get(Proc.Obj.scanMainOut)
           } {
             pred  .removeSink(succ)
             fltOut.addSink   (succ)

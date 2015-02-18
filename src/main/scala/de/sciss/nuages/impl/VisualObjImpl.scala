@@ -177,8 +177,8 @@ final class VisualObjImpl[S <: Sys[S]] private (val main: NuagesPanel[S],
           obj match {
             case Proc.Obj(objT) =>
               val scans = objT.elem.peer.scans
-              val ins   = scans.get("in" ).fold(List.empty[Scan[S]])(_.sources.collect { case Scan.Link.Scan(source) => source } .toList)
-              val outs  = scans.get("out").fold(List.empty[Scan[S]])(_.sinks  .collect { case Scan.Link.Scan(sink  ) => sink   } .toList)
+              val ins   = scans.get(Proc.Obj.scanMainIn ).fold(List.empty[Scan[S]])(_.sources.collect { case Scan.Link.Scan(source) => source } .toList)
+              val outs  = scans.get(Proc.Obj.scanMainOut).fold(List.empty[Scan[S]])(_.sinks  .collect { case Scan.Link.Scan(sink  ) => sink   } .toList)
               scanKeys.foreach { key =>
                 scans.get(key).foreach { scan =>
                   scan.sinks  .toList.foreach(scan.removeSink  )

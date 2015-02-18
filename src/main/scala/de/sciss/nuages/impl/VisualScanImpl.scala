@@ -52,7 +52,7 @@ final class VisualScanImpl[S <: Sys[S]] private(val parent: VisualObj[S], val ke
     mkPNodeAndEdge()
   }
 
-  override def itemPressed(vi: VisualItem, e: MouseEvent, pt: Point2D): Boolean = (key == "out") && {
+  override def itemPressed(vi: VisualItem, e: MouseEvent, pt: Point2D): Boolean = (key != "in") && {
     // println("itemPressed")
     if (e.getClickCount == 2) {
       parent.main.showAppendFilterDialog(this, e.getPoint)
