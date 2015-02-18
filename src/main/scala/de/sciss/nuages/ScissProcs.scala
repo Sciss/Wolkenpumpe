@@ -33,10 +33,10 @@ import scala.language.implicitConversions
 /** This is my personal set of generators and filters. */
 object ScissProcs {
   trait ConfigLike {
-    def numLoops: Int
-
-    /** Maximum duration in seconds. */
-    def loopDuration: Double
+    //    def numLoops: Int
+    //
+    //    /** Maximum duration in seconds. */
+    //    def loopDuration: Double
 
     def audioFilesFolder: Option[File]
 
@@ -61,16 +61,16 @@ object ScissProcs {
   sealed trait Config extends ConfigLike
 
   final class ConfigBuilder private[ScissProcs]() extends ConfigLike {
-    private var numLoopsVar: Int = 7
-
-    def numLoops: Int = numLoopsVar
-
-    def numLoops_=(n: Int): Unit = {
-      require(n >= 0)
-      numLoopsVar = n
-    }
-
-    var loopDuration: Double = 30.0
+    //    private var numLoopsVar: Int = 7
+    //
+    //    def numLoops: Int = numLoopsVar
+    //
+    //    def numLoops_=(n: Int): Unit = {
+    //      require(n >= 0)
+    //      numLoopsVar = n
+    //    }
+    //
+    //    var loopDuration: Double = 30.0
 
     var audioFilesFolder: Option[File] = None
 
@@ -83,13 +83,13 @@ object ScissProcs {
 
     var highPass = 0
 
-    def build: Config = ConfigImpl(numLoops = numLoops, loopDuration = loopDuration,
+    def build: Config = ConfigImpl(/* numLoops = numLoops, loopDuration = loopDuration, */
       audioFilesFolder = audioFilesFolder, lineInputs = lineInputs, micInputs = micInputs,
       lineOutputs = lineOutputs, masterGroups = masterGroups, generatorChannels = generatorChannels,
       highPass = highPass)
   }
 
-  private case class ConfigImpl(numLoops: Int, loopDuration: Double,
+  private case class ConfigImpl(// numLoops: Int, loopDuration: Double,
                                 audioFilesFolder: Option[File],
                                 lineInputs : Vec[NamedBusConfig], micInputs   : Vec[NamedBusConfig],
                                 lineOutputs: Vec[NamedBusConfig], masterGroups: Vec[NamedBusConfig],

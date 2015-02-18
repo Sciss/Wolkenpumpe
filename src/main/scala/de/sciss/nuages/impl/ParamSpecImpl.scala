@@ -32,8 +32,7 @@ object ParamSpecExprImpl
   // ---- yeah, fuck you Scala, we cannot implement TypeImpl1 because of initializer problems ----
   // with TypeImpl1[ParamSpec.Expr]
   with Type1[ParamSpec.Expr]
-  with TypeImplLike[Type.Extension1[ParamSpec.Expr]]
-  {
+  with TypeImplLike[Type.Extension1[ParamSpec.Expr]] {
 
   def typeID = ParamSpec.typeID
 
@@ -44,10 +43,13 @@ object ParamSpecExprImpl
   private[this] type Ext = Type.Extension1[Repr]
   private[this] var exts = new Array[Ext](0)
 
-  DoubleEx .registerExtension(1, DoubleExtensions)
-  StringEx .registerExtension(1, StringExtensions)
-  Warp.Expr.registerExtension(1, WarpExtensions)
-  this     .registerExtension(Apply)
+  private lazy val _init: Unit = {
+    DoubleEx .registerExtension(1, DoubleExtensions)
+    StringEx .registerExtension(1, StringExtensions)
+    Warp.Expr.registerExtension(1, WarpExtensions)
+    this     .registerExtension(Apply)
+  }
+  def init(): Unit = _init
 
   final def registerExtension(ext: Ext): Unit = exts = addExtension(exts, ext)
 
@@ -469,7 +471,8 @@ object ParamSpecExprImpl
 object ParamSpecElemImpl extends proc.impl.ElemCompanionImpl[ParamSpec.Elem] {
   def typeID = ParamSpec.typeID
 
-  Elem.registerExtension(this)
+  private lazy val _init: Unit = Elem.registerExtension(this)
+  def init(): Unit = _init
 
   def apply[S <: Sys[S]](peer: ParamSpec.Expr[S])(implicit tx: S#Tx): ParamSpec.Elem[S] = {
     val targets = evt.Targets[S]

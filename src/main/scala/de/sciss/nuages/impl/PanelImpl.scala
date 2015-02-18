@@ -56,8 +56,9 @@ import scala.util.control.NonFatal
 object PanelImpl {
   var DEBUG = true
 
-  def apply[S <: Sys[S]](nuages: Nuages[S], config: Nuages.Config, aural: AuralSystem)
-                        (implicit tx: S#Tx, cursor: stm.Cursor[S], workspace: WorkspaceHandle[S]): NuagesPanel[S] = {
+  def apply[S <: Sys[S]](nuages: Nuages[S], config: Nuages.Config)
+                        (implicit tx: S#Tx, aural: AuralSystem, cursor: stm.Cursor[S],
+                         workspace: WorkspaceHandle[S]): NuagesPanel[S] = {
     val nuagesH   = tx.newHandle(nuages)
 
     val listGen   = mkListView(nuages.generators)

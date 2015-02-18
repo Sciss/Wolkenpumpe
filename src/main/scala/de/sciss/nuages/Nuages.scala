@@ -87,7 +87,7 @@ object Nuages {
     var recordPath    : Option[String]   = None
 
     var meters        : Boolean = true
-    var collector     : Boolean = true
+    var collector     : Boolean = false
     var fullScreenKey : Boolean = true
 
     def build: Config = ConfigImpl(

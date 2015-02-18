@@ -13,8 +13,15 @@
 
 package de.sciss
 
+import de.sciss.nuages.impl.NuagesImpl
+
 package object nuages {
   def ExpWarp   = ExponentialWarp
   def LinWarp   = LinearWarp
   val TrigSpec  = ParamSpec(0, 1, IntWarp)
+
+  def initTypes(): Unit = {
+    ParamSpec .init()
+    NuagesImpl.init()
+  }
 }

@@ -19,7 +19,7 @@ import de.sciss.lucre.event.{EventLike, Sys}
 import de.sciss.lucre.synth.InMemory
 import de.sciss.serial.{DataOutput, DataInput, Serializer}
 import de.sciss.synth.proc
-import de.sciss.synth.proc.{FolderElem, Obj, Timeline, Folder}
+import de.sciss.synth.proc.{Elem, FolderElem, Obj, Timeline, Folder}
 import de.sciss.synth.proc.Implicits._
 
 object NuagesImpl {
@@ -126,4 +126,7 @@ object NuagesImpl {
       Nuages.Elem(copy)
     }
   }
+
+  private lazy val _init: Unit = Elem.registerExtension(ElemImpl)
+  def init(): Unit = _init
 }

@@ -38,10 +38,6 @@ object Wolkenpumpe {
     w.run()
   }
 
-  def initTypes(): Unit = {
-    ParamSpec
-  }
-
   class DSL[S <: Sys[S]] {
     val imp = ExprImplicits[S]
     import imp._
@@ -239,53 +235,7 @@ object Wolkenpumpe {
   def condensedFont_=(value: Font): Unit =
     _condensedFont = value
 
-  //   private class TestKeyListener( p: NuagesPanel ) extends KeyAdapter {
-  ////      println( "TestKeyListener" )
-  //      val imap = p.display.getInputMap( JComponent.WHEN_IN_FOCUSED_WINDOW )
-  //      val amap = p.display.getActionMap
-  //      p.requestFocus
-  //      var paneO = Option.empty[ JPanel ]
-  //      imap.put( KeyStroke.getKeyStroke( InputEvent.VK_F ))
-  //
-  ////      imap.put( KeyStroke.getKeyStroke( ' ' ), "pop" )
-  ////      amap.put( "pop", new AbstractAction( "popup" ) {
-  ////         def actionPerformed( e: ActionEvent ) {
-  //////            println( "POP!" )
-  ////            if( paneO.isDefined ) return
-  ////            val pane = new JPanel( new BorderLayout() ) {
-  ////               import AWTEvent._
-  ////               val masks = MOUSE_EVENT_MASK | MOUSE_MOTION_EVENT_MASK | MOUSE_WHEEL_EVENT_MASK
-  ////               enableEvents( masks )
-  ////               override protected def processEvent( e: AWTEvent ) {
-  ////                  val id = e.getID
-  ////                  if( (id & masks) == 0 ) {
-  ////                     super.processEvent( e )
-  ////                  }
-  ////               }
-  ////            }
-  ////            pane.setOpaque( true )
-  ////            pane.setBorder( BorderFactory.createCompoundBorder( BorderFactory.createMatteBorder( 1, 1, 1, 1, Color.white ),
-  ////               BorderFactory.createEmptyBorder( 4, 4, 4, 4 )))
-  ////            val lb = new JLabel( "Hallo Welt" )
-  ////            pane.add( lb, BorderLayout.NORTH )
-  ////            val but = new JButton( "Close" )
-  ////            but.setFocusable( false )
-  ////            pane.add( but, BorderLayout.SOUTH )
-  ////            pane.setSize( pane.getPreferredSize )
-  ////            pane.setLocation( 200, 200 )
-  ////            p.add( pane, 0 )
-  ////            paneO = Some( pane )
-  ////            but.addActionListener( new ActionListener {
-  ////               def actionPerformed( e: ActionEvent ) {
-  ////                  p.remove( pane )
-  ////                  paneO = None
-  ////               }
-  ////            })
-  ////         }
-  ////      })
-  //   }
-
-  private def installMasterSynth[S <: Sys[S]](server: Server, nConfig: Nuages.Config, sConfig: ScissProcs.Config,
+  def installMasterSynth[S <: Sys[S]](server: Server, nConfig: Nuages.Config, sConfig: ScissProcs.Config,
                                  frame: NuagesFrame[S])
                                 (implicit tx: Txn): Unit = {
     val dfPostM = SynthGraph {
@@ -341,13 +291,13 @@ object Wolkenpumpe {
     }
     val synPostM = Synth.play(dfPostM, Some("post-master"))(server.defaultGroup, addAction = addAfter)
 
-    frame.view.masterSynth = Some(synPostM)
+    frame.view.panel.masterSynth = Some(synPostM)
 
     val synPostMID = synPostM.peer.id
     message.Responder.add(server.peer) {
       case osc.Message( "/meters", `synPostMID`, 0, values @ _* ) =>
         defer {
-          val ctrl = frame.controlPanel
+          val ctrl = frame.view.controlPanel
           ctrl.meterUpdate(values.map(_.asInstanceOf[Float])(breakOut))
         }
     }
@@ -380,15 +330,13 @@ class Wolkenpumpe[S <: Sys[S]] {
   }
 
   def run()(implicit cursor: stm.Cursor[S]): Unit = {
-    Wolkenpumpe.initTypes()
+    de.sciss.nuages.initTypes()
 
     val nCfg                = Nuages    .Config()
     val sCfg                = ScissProcs.Config()
     val aCfg                = SServer   .Config()
 
     nCfg.recordPath         = Option(sys.props("java.io.tmpdir"))
-    nCfg.collector          = false   // not yet fully supported
-
     aCfg.deviceName         = Some("Wolkenpumpe")
     aCfg.audioBusChannels   = 512
     aCfg.memorySize         = 256 * 1024
@@ -397,8 +345,8 @@ class Wolkenpumpe[S <: Sys[S]] {
 
     configure(sCfg, nCfg, aCfg)
 
-    val numInputs   = (sCfg.lineInputs ++ sCfg.micInputs).map(_.stopOffset).max
-    val numOutputs  = math.max(
+    val maxInputs   = (sCfg.lineInputs ++ sCfg.micInputs).map(_.stopOffset).max
+    val maxOutputs  = math.max(
       math.max(
         sCfg.lineOutputs.map(_.stopOffset).max,
         nCfg.soloChannels  .fold(0)(_.max + 1)
@@ -406,10 +354,10 @@ class Wolkenpumpe[S <: Sys[S]] {
       nCfg.masterChannels.fold(0)(_.max + 1)
     )
 
-    println(s"numInputs = $numInputs, numOutputs = $numOutputs")
+    println(s"numInputs = $maxInputs, numOutputs = $maxOutputs")
 
-    aCfg.outputBusChannels  = numOutputs
-    aCfg.inputBusChannels   = numInputs
+    aCfg.outputBusChannels  = maxOutputs
+    aCfg.inputBusChannels   = maxInputs
 
     /* val f = */ cursor.step { implicit tx =>
       implicit val n      = Nuages[S]
@@ -418,9 +366,9 @@ class Wolkenpumpe[S <: Sys[S]] {
       registerProcesses(sCfg, nCfg)
 
       import WorkspaceHandle.Implicits._
-      val p     = NuagesPanel(n, nCfg, aural)
       val numIn = sCfg.lineInputs.size + sCfg.micInputs.size
-      val frame = NuagesFrame(p, numInputChannels = numIn, undecorated = true)
+      val view  = NuagesView(n, nCfg, numInputChannels = numIn)
+      val frame = NuagesFrame(view, undecorated = true)
 
       aural.addClient(new AuralSystem.Client {
         def auralStarted(server: Server)(implicit tx: Txn): Unit =

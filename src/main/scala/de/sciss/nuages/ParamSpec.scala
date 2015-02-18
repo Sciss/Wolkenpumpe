@@ -26,9 +26,11 @@ object ParamSpec {
 
   final val Key = "spec"
 
-  // ---- init types ----
-  ExprImpl
-  ElemImpl
+  private lazy val _init: Unit = {
+    ExprImpl.init()
+    ElemImpl.init()
+  }
+  private[nuages] def init(): Unit = _init
 
   trait ExprCompanion extends ExprLikeType[ParamSpec, Expr] {
     def apply[S <: Sys[S]](lo: _Expr[S, Double], hi: _Expr[S, Double], warp: _Expr[S, Warp],
