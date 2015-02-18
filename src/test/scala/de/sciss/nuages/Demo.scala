@@ -31,7 +31,7 @@ object Demo extends SwingApplication {
                                                 (implicit tx: S#Tx, cursor: Cursor[S], nuages: Nuages[S],
                                                  aural: AuralSystem): Unit = {
           super.registerProcesses(sCfg, nCfg)
-          val dsl = new Wolkenpumpe.DSL[S]
+          val dsl = new DSL[S]
           import dsl._
 
           generator("a~pulse") {

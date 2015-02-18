@@ -20,12 +20,15 @@ import de.sciss.synth.proc.{WorkspaceHandle, AuralSystem}
 import impl.{NuagesViewImpl => Impl}
 
 object NuagesView {
-  def apply[S <: Sys[S]](nuages: Nuages[S], config: Nuages.Config, numInputChannels: Int)
+  def apply[S <: Sys[S]](nuages: Nuages[S], nuagesConfig: Nuages.Config, scissConfig: ScissProcs.Config)
                         (implicit tx: S#Tx, aural: AuralSystem, workspace: WorkspaceHandle[S],
                          cursor: stm.Cursor[S]): NuagesView[S] =
-    Impl(nuages, config, numInputChannels = numInputChannels)
+    Impl(nuages, nuagesConfig, scissConfig)
 }
 trait NuagesView[S <: Sys[S]] extends View[S] {
   def panel: NuagesPanel[S]
   def controlPanel: ControlPanel
+
+  def installFullScreenKey(frame: java.awt.Window): Unit
+
 }

@@ -14,15 +14,10 @@
 package de.sciss.nuages
 package impl
 
-import java.awt.Toolkit
-import java.awt.event.{ActionEvent, InputEvent, KeyEvent}
-import javax.swing.{AbstractAction, JComponent, KeyStroke}
-
 import de.sciss.lucre.swing.deferTx
 import de.sciss.lucre.synth.Sys
 import de.sciss.swingplus.CloseOperation
 import de.sciss.swingplus.Implicits._
-import prefuse.Display
 
 import scala.swing.Frame
 import scala.swing.Swing._
@@ -33,21 +28,6 @@ object FrameImpl {
     val transport = view.panel.transport
     transport.play()
     new Impl(view, undecorated = undecorated).init()
-  }
-
-  def installFullScreenKey(frame: Frame, display: Display): Unit = {
-    val iMap    = display.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
-    val aMap    = display.getActionMap
-    val fsName  = "fullscreen"
-    iMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_F, Toolkit.getDefaultToolkit.getMenuShortcutKeyMask |
-      InputEvent.SHIFT_MASK), fsName)
-    aMap.put(fsName, new AbstractAction(fsName) {
-      def actionPerformed(e: ActionEvent): Unit = {
-        val gc = frame.peer.getGraphicsConfiguration
-        val sd = gc.getDevice
-        sd.setFullScreenWindow(if (sd.getFullScreenWindow == frame.peer) null else frame.peer)
-      }
-    })
   }
 
   private final class Impl[S <: Sys[S]](val view: NuagesView[S], undecorated: Boolean)
@@ -82,7 +62,7 @@ object FrameImpl {
       }
 
       val panel = view.panel
-      if (panel.config.fullScreenKey) installFullScreenKey(frame, panel.display)
+      if (panel.config.fullScreenKey) view.installFullScreenKey(frame.peer)
     }
 
     def dispose()(implicit tx: S#Tx): Unit = {

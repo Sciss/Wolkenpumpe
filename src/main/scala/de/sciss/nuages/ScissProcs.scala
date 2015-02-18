@@ -21,7 +21,6 @@ import de.sciss.file._
 import de.sciss.lucre.artifact.{Artifact, ArtifactLocation}
 import de.sciss.lucre.{event => evt, stm}
 import de.sciss.lucre.synth.Sys
-import de.sciss.nuages.Wolkenpumpe.DSL
 import de.sciss.synth
 import de.sciss.synth.io.AudioFile
 import de.sciss.synth.proc.Action.Universe

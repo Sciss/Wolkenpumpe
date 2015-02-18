@@ -14,32 +14,39 @@
 package de.sciss.nuages
 package impl
 
-import java.awt.Color
+import java.awt.{Toolkit, Color}
+import java.awt.event.{ActionEvent, InputEvent, KeyEvent}
+import javax.swing.{AbstractAction, KeyStroke, JComponent}
 
 import de.sciss.audiowidgets.TimelineModel
 import de.sciss.lucre.stm
 import de.sciss.lucre.swing.impl.ComponentHolder
-import de.sciss.lucre.swing.{View, deferTx}
-import de.sciss.lucre.synth.{Server, Sys, Txn}
+import de.sciss.lucre.swing.{View, defer, deferTx}
+import de.sciss.lucre.synth.{Synth, Server, Sys, Txn}
 import de.sciss.span.Span
+import de.sciss.{osc, synth}
+import de.sciss.synth.{addAfter, SynthGraph}
+import de.sciss.synth.message
 import de.sciss.synth.proc.{Timeline, WorkspaceHandle, AuralSystem}
 import de.sciss.synth.swing.j.JServerStatusPanel
 
+import scala.collection.breakOut
 import scala.swing.{BorderPanel, Component, GridBagPanel, Orientation, Swing}
 
 object NuagesViewImpl {
-  def apply[S <: Sys[S]](nuages: Nuages[S], config: Nuages.Config, numInputChannels: Int)
+  def apply[S <: Sys[S]](nuages: Nuages[S], nuagesConfig: Nuages.Config, scissConfig: ScissProcs.Config)
                         (implicit tx: S#Tx, aural: AuralSystem, workspace: WorkspaceHandle[S],
                          cursor: stm.Cursor[S]): NuagesView[S] = {
-    val panel     = NuagesPanel(nuages, config)
+    val panel     = NuagesPanel(nuages, nuagesConfig)
     val tlm       = TimelineModel(Span(0L, (Timeline.SampleRate * 60 * 60 * 10).toLong), Timeline.SampleRate)
     val transport = panel.transport
     val trnspView = TransportViewImpl(transport, tlm)
-    val res       = new Impl[S](panel, trnspView, numInputChannels = numInputChannels).init()
+    val res       = new Impl[S](panel, trnspView, scissConfig).init()
     res
   }
 
-  private final class Impl[S <: Sys[S]](val panel: NuagesPanel[S], transportView: View[S], numInputChannels: Int)
+  private final class Impl[S <: Sys[S]](val panel: NuagesPanel[S], transportView: View[S],
+                                        sConfig: ScissProcs.Config)
                                        (implicit cursor: stm.Cursor[S])
     extends NuagesView[S] with ComponentHolder[Component] with AuralSystem.Client { impl =>
 
@@ -58,8 +65,31 @@ object NuagesViewImpl {
 
     def controlPanel: ControlPanel = _controlPanel
 
-    def auralStarted(s: Server)(implicit tx: Txn): Unit = deferTx(_serverPanel.server = Some(s.peer))
-    def auralStopped()         (implicit tx: Txn): Unit = deferTx(_serverPanel.server = None        )
+    def auralStarted(s: Server)(implicit tx: Txn): Unit = {
+      deferTx(_serverPanel.server = Some(s.peer))
+      installMasterSynth(s)
+    }
+
+    def auralStopped()(implicit tx: Txn): Unit = deferTx {
+      _serverPanel.server = None
+    }
+
+    def installFullScreenKey(frame: java.awt.Window): Unit = {
+      val display = panel.display
+      val iMap    = display.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
+      val aMap    = display.getActionMap
+      val fsName  = "fullscreen"
+      iMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_F, Toolkit.getDefaultToolkit.getMenuShortcutKeyMask |
+        InputEvent.SHIFT_MASK), fsName)
+      aMap.put(fsName, new AbstractAction(fsName) {
+        def actionPerformed(e: ActionEvent): Unit = {
+          val gc = frame.getGraphicsConfiguration
+          val sd = gc.getDevice
+          sd.setFullScreenWindow(if (sd.getFullScreenWindow == frame) null else frame)
+        }
+      })
+    }
+
 
     private def guiInit(): Unit = {
       // val transition = new NuagesTransitionPanel(view)
@@ -78,6 +108,7 @@ object NuagesViewImpl {
       ggSouthBox.contents += Swing.HStrut(8)
       val cConfig = ControlPanel.Config()
       cConfig.numOutputChannels = panel.config.masterChannels.map(_.size).getOrElse(0)
+      val numInputChannels = sConfig.lineInputs.size + sConfig.micInputs.size
       cConfig.numInputChannels  = numInputChannels
       cConfig.log = false
       _controlPanel = ControlPanel(cConfig)
@@ -131,6 +162,73 @@ object NuagesViewImpl {
       panel.aural.removeClient(this)
       panel.dispose()
       // deferTx(_frame.dispose())
+    }
+
+    private def installMasterSynth(server: Server)
+                                  (implicit tx: Txn): Unit = {
+      val dfPostM = SynthGraph {
+        import synth._; import ugen._
+        // val masterBus = settings.frame.panel.masterBus.get // XXX ouch
+        // val sigMast = In.ar( masterBus.index, masterBus.numChannels )
+        import panel.{config => nConfig}
+        val masterBus   = nConfig.masterChannels.getOrElse(Vector.empty)
+        val sigMast0    = masterBus.map(ch => In.ar(ch))
+        val sigMast: GE = sigMast0
+        // external recorders
+        sConfig.lineOutputs.foreach { cfg =>
+          val off     = cfg.offset
+          val numOut  = cfg.numChannels
+          val numIn   = masterBus.size // numChannels
+        val sig1: GE = if (numOut == numIn) {
+            sigMast
+          } else if (numIn == 1) {
+            Seq.fill[GE](numOut)(sigMast)
+          } else {
+            val sigOut = SplayAz.ar(numOut, sigMast)
+            Limiter.ar(sigOut, (-0.2).dbamp)
+          }
+          //            assert( sig1.numOutputs == numOut )
+          Out.ar(off, sig1)
+        }
+        // master + people meters
+        val meterTr    = Impulse.kr(20)
+        val (peoplePeak, peopleRMS) = {
+          val groups = /* if( NuagesApp.METER_MICS ) */ sConfig.micInputs ++ sConfig.lineInputs // else sConfig.lineInputs
+          val res = groups.map { cfg =>
+              val off        = cfg.offset
+              val numIn      = cfg.numChannels
+              val pSig       = In.ar(NumOutputBuses.ir + off, numIn)
+              val peak       = Peak.kr(pSig, meterTr) // .outputs
+            val peakM      = Reduce.max(peak)
+              val rms        = A2K.kr(Lag.ar(pSig.squared, 0.1))
+              val rmsM       = Mix.mono(rms) / numIn
+              (peakM, rmsM)
+            }
+          (res.map( _._1 ): GE) -> (res.map( _._2 ): GE)  // elegant it's not
+        }
+        val masterPeak    = Peak.kr( sigMast, meterTr )
+        val masterRMS     = A2K.kr( Lag.ar( sigMast.squared, 0.1 ))
+        val peak: GE      = Flatten( Seq( masterPeak, peoplePeak ))
+        val rms: GE       = Flatten( Seq( masterRMS, peopleRMS ))
+        val meterData     = Zip( peak, rms )  // XXX correct?
+        SendReply.kr( meterTr, meterData, "/meters" )
+
+        val amp = "amp".kr(1f)
+        (masterBus zip sigMast0).foreach { case (ch, sig) =>
+          ReplaceOut.ar(ch, Limiter.ar(sig * amp))
+        }
+      }
+      val synPostM = Synth.play(dfPostM, Some("post-master"))(server.defaultGroup, addAction = addAfter)
+
+      panel.masterSynth = Some(synPostM)
+
+      val synPostMID = synPostM.peer.id
+      message.Responder.add(server.peer) {
+        case osc.Message( "/meters", `synPostMID`, 0, values @ _* ) =>
+          defer {
+            _controlPanel.meterUpdate(values.map(_.asInstanceOf[Float])(breakOut))
+          }
+      }
     }
   }
 }
