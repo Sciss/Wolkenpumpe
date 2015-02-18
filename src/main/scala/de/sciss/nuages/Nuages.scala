@@ -13,23 +13,23 @@
 
 package de.sciss.nuages
 
+import de.sciss.lucre.{event => evt}
+import evt.Sys
 import de.sciss.lucre.stm.Disposable
-import de.sciss.lucre.synth.Sys
 import de.sciss.serial.{DataInput, Serializer, Writable}
-import de.sciss.synth.proc.{Obj, Timeline, Folder}
+import de.sciss.synth.proc
+import de.sciss.synth.proc.{Timeline, Folder}
 import impl.{NuagesImpl => Impl}
 
 import collection.immutable.{IndexedSeq => Vec}
 import language.implicitConversions
 
 object Nuages {
-  def apply[S <: Sys[S]](generators: Folder[S], filters: Folder[S], collectors: Folder[S],
-                         timeline: Timeline.Obj[S])
-                        (implicit tx: S#Tx): Nuages[S] =
-    Impl(generators = generators, filters = filters, collectors = collectors, timeline = timeline)
+  def apply[S <: Sys[S]]()(implicit tx: S#Tx): Nuages[S] =
+    Impl[S]
 
-  def empty[S <: Sys[S]](implicit tx: S#Tx): Nuages[S] =
-    apply(Folder[S], Folder[S], Folder[S], Obj(Timeline.Elem(Timeline[S])))
+  //  def empty[S <: Sys[S]](implicit tx: S#Tx): Nuages[S] =
+  //    apply(Folder[S], Folder[S], Folder[S], Obj(Timeline.Elem(Timeline[S])))
 
   implicit def serializer[S <: Sys[S]]: Serializer[S#Tx, S#Acc, Nuages[S]] = Impl.serializer[S]
 
@@ -118,11 +118,46 @@ object Nuages {
     * @see [[javax.swing.KeyStroke#getKeyStroke(String)]]
     */
   final val KeyShortcut = "nuages-shortcut"
+
+  final val NameFilters     = "filters"
+  final val NameGenerators  = "generators"
+  final val NameCollectors  = "collectors"
+
+  final val typeID = 0x1000A
+
+  // ---- Elem ----
+
+  implicit object Elem extends proc.Elem.Companion[Elem] {
+    def typeID = Nuages.typeID
+
+    def apply[S <: Sys[S]](peer: Nuages[S])(implicit tx: S#Tx): Nuages.Elem[S] = Impl.ElemImpl(peer)
+
+    implicit def serializer[S <: Sys[S]]: Serializer[S#Tx, S#Acc, Nuages.Elem[S]] = Impl.ElemImpl.serializer[S]
+  }
+  trait Elem[S <: Sys[S]] extends proc.Elem[S] {
+    type Peer       = Nuages[S]
+    type PeerUpdate = Nuages.Update[S]
+  }
+
+  /** Convenient short-cut */
+
+  object Obj {
+    def unapply[S <: Sys[S]](obj: proc.Obj[S]): Option[Nuages.Obj[S]] =
+      if (obj.elem.isInstanceOf[Nuages.Elem[S]]) Some(obj.asInstanceOf[Nuages.Obj[S]])
+      else None
+  }
+  type Obj[S <: Sys[S]] = proc.Obj.T[S, Nuages.Elem]
+
+  // ---- event ----
+
+  trait Update[S <: Sys[S]]
 }
-trait Nuages[S <: Sys[S]] extends Writable with Disposable[S#Tx] {
-  def generators: Folder[S]
-  def filters   : Folder[S]
-  def collectors: Folder[S]
+trait Nuages[S <: Sys[S]] extends Writable with Disposable[S#Tx] with evt.Publisher[S, Nuages.Update[S]] {
+  def folder(implicit tx: S#Tx): Folder[S]
+
+  def generators(implicit tx: S#Tx): Option[Folder[S]]
+  def filters   (implicit tx: S#Tx): Option[Folder[S]]
+  def collectors(implicit tx: S#Tx): Option[Folder[S]]
 
   def timeline  : Timeline.Obj[S]
 }

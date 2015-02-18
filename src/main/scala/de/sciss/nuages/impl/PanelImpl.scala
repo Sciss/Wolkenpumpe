@@ -32,7 +32,8 @@ import de.sciss.span.{SpanLike, Span}
 import de.sciss.swingplus.DoClickAction
 import de.sciss.synth
 import de.sciss.synth.{addToTail, SynthGraph, proc, message}
-import de.sciss.synth.proc.{DoubleElem, AuralObj, Action, WorkspaceHandle, Scan, ExprImplicits, AuralSystem, Transport, Timeline, Proc, Folder, Obj}
+import de.sciss.synth.proc.{Folder, FolderElem, DoubleElem, AuralObj, Action, WorkspaceHandle, Scan, ExprImplicits, AuralSystem, Transport, Timeline, Proc, Obj}
+import de.sciss.synth.proc.Implicits._
 
 import prefuse.action.{RepaintAction, ActionList}
 import prefuse.action.assignment.ColorAction
@@ -58,11 +59,13 @@ object PanelImpl {
   def apply[S <: Sys[S]](nuages: Nuages[S], config: Nuages.Config, aural: AuralSystem)
                         (implicit tx: S#Tx, cursor: stm.Cursor[S], workspace: WorkspaceHandle[S]): NuagesPanel[S] = {
     val nuagesH   = tx.newHandle(nuages)
+
     val listGen   = mkListView(nuages.generators)
     val listFlt1  = mkListView(nuages.filters   )
     val listCol1  = mkListView(nuages.collectors)
     val listFlt2  = mkListView(nuages.filters   )
     val listCol2  = mkListView(nuages.collectors)
+
     val nodeMap   = tx.newInMemoryIDMap[VisualObj[S]]
     val scanMap   = tx.newInMemoryIDMap[ScanInfo [S]]
     val transport = Transport[S](aural)
@@ -82,17 +85,19 @@ object PanelImpl {
   private final val ACTION_COLOR  = "color"
   private final val LAYOUT_TIME   = 50
 
-  private def mkListView[S <: Sys[S]](folder: Folder[S])(implicit tx: S#Tx, cursor: stm.Cursor[S]) = {
+  private def mkListView[S <: Sys[S]](folderOpt: Option[Folder[S]])(implicit tx: S#Tx, cursor: stm.Cursor[S]) = {
     import proc.Implicits._
     val h = ListView.Handler[S, Obj[S], Obj.Update[S]] { implicit tx => obj => obj.name } (_ => (_, _) => None)
     implicit val ser = de.sciss.lucre.expr.List.serializer[S, Obj[S], Obj.Update[S]]
-    val res = ListView[S, Obj[S], Obj.Update[S], String](folder, h)
+    // val res = ListView[S, Obj[S], Obj.Update[S], String](folder, h)
+    val res = ListView.empty[S, Obj[S], Obj.Update[S], String](h)
     deferTx {
       val c = res.view
       c.background = Color.black
       c.foreground = Color.white
       c.selectIndices(0)
     }
+    res.list = folderOpt
     res
   }
 
@@ -853,11 +858,18 @@ object PanelImpl {
             close(p)
             val displayPt = display.getAbsoluteCoordinate(p.location, null)
             atomic { implicit tx =>
-              val nuages = nuagesH()
+              // val nuages = nuagesH()
               for {
-                gen <- nuages.generators.get(genIdx)
+                genList <- listGen.list
+                gen <- genList.get(genIdx) // nuages.generators.get(genIdx)
               } {
-                val colOpt = colIdxOpt.flatMap(nuages.collectors.get)
+                // val colOpt = colIdxOpt.flatMap(nuages.collectors.get)
+                val colOpt = for {
+                  colIdx  <- colIdxOpt
+                  colList <- listCol1.list
+                  col     <- colList.get(colIdx)
+                } yield col
+
                 createGenerator(gen, colOpt, displayPt)
               }
             }
@@ -880,9 +892,10 @@ object PanelImpl {
           close(p)
           val displayPt = display.getAbsoluteCoordinate(p.location, null)
           atomic { implicit tx =>
-            val nuages = nuagesH()
+            // val nuages = nuagesH()
             for {
-              Proc.Obj(flt)  <- nuages.filters.get(fltIdx)
+              fltList       <- listFlt1.list
+              Proc.Obj(flt) <- fltList.get(fltIdx) // nuages.filters.get(fltIdx)
             } {
               (fltPred.parent.objH(), fltSucc.parent.objH()) match {
                 case (Proc.Obj(pred), Proc.Obj(succ)) =>
@@ -931,12 +944,20 @@ object PanelImpl {
         (listFlt2.guiSelection.headOption, listCol2.guiSelection.headOption) match {
           case (Some(fltIdx), None) =>
             createFilterOnlyFromDialog(p) { implicit tx =>
-              nuages.filters.get(fltIdx)
+              for {
+                fltList <- listFlt2.list
+                flt     <- fltList.get(fltIdx)
+              } yield flt
+              // nuages.filters.get(fltIdx)
             }
 
           case (None, Some(colIdx)) =>
             createFilterOnlyFromDialog(p) { implicit tx =>
-              nuages.collectors.get(colIdx)
+              for {
+                colList <- listCol2.list
+                col     <- colList.get(colIdx)
+              } yield col
+              // nuages.collectors.get(colIdx)
             }
 
           case (Some(fltIdx), Some(colIdx)) =>
@@ -944,8 +965,12 @@ object PanelImpl {
             val displayPt = display.getAbsoluteCoordinate(p.location, null)
             atomic { implicit tx =>
               for {
-                Proc.Obj(flt) <- nuages.filters   .get(fltIdx)
-                Proc.Obj(col) <- nuages.collectors.get(colIdx)
+                fltList       <- listFlt2.list
+                colList       <- listCol2.list
+                Proc.Obj(flt) <- fltList.get(fltIdx)
+                Proc.Obj(col) <- colList.get(colIdx)
+                // Proc.Obj(flt) <- nuages.filters   .get(fltIdx)
+                // Proc.Obj(col) <- nuages.collectors.get(colIdx)
               } {
                 fltPred.parent.objH() match {
                   case Proc.Obj(pred) =>

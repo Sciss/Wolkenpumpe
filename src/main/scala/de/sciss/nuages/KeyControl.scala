@@ -34,7 +34,11 @@ object KeyControl {
     res
   }
 
-  private abstract class Category[S <: Sys[S]] {
+  private trait Category[S <: Sys[S]] extends Disposable[S#Tx] {
+    def get(ks: KeyStroke): Option[stm.Source[S#Tx, Obj[S]]]
+  }
+
+  private abstract class CategoryImpl[S <: Sys[S]] extends Category[S] {
     protected def observer: Disposable[S#Tx]
     protected def idMap: IdentifierMap[S#ID, S#Tx, KeyStroke]
 
@@ -61,7 +65,12 @@ object KeyControl {
   private class Impl[S <: Sys[S]](main: NuagesPanel[S]) extends ControlAdapter with Disposable[S#Tx] {
     private var filters: Category[S] = _
 
-    private def mkCategory(f: Folder[S])(implicit tx: S#Tx): Category[S] = new Category[S] {
+    private def mkEmptyCategory()(implicit tx: S#Tx): Category[S] = new Category[S] {
+      def dispose()(implicit tx: S#Tx) = ()
+      def get(ks: KeyStroke): Option[stm.Source[S#Tx, Obj[S]]] = None
+    }
+
+    private def mkCategory(f: Folder[S])(implicit tx: S#Tx): Category[S] = new CategoryImpl[S] {
       protected val idMap = tx.newInMemoryIDMap[KeyStroke]
 
       protected val observer = f.changed.react { implicit tx => upd =>
@@ -78,7 +87,7 @@ object KeyControl {
 
     def init()(implicit tx: S#Tx): Unit = {
       val n = main.nuages
-      filters = mkCategory(n.filters)
+      filters = n.filters.fold(mkEmptyCategory())(mkCategory)
     }
 
     override def mousePressed(e: MouseEvent): Unit = {

@@ -113,7 +113,7 @@ object Wolkenpumpe {
         ScanOut(Proc.Obj.scanMainOut, out)
       }
       obj.elem.peer.scans.add(Proc.Obj.scanMainOut)
-      insertByName(n.generators, obj)
+      insertByName(n.generators.get, obj)
       obj
     }
 
@@ -126,7 +126,7 @@ object Wolkenpumpe {
       val scans = obj.elem.peer.scans
       scans.add(Proc.Obj.scanMainIn )
       scans.add(Proc.Obj.scanMainOut)
-      insertByName(n.filters, obj)
+      insertByName(n.filters.get, obj)
       obj
     }
 
@@ -137,10 +137,10 @@ object Wolkenpumpe {
     }
 
     def sink(name: String)(fun: GE => Unit)(implicit tx: S#Tx, n: Nuages[S]): Proc.Obj[S] =
-      sinkLike(n.filters, name, fun)
+      sinkLike(n.filters.get, name, fun)
 
     def collector(name: String)(fun: GE => Unit)(implicit tx: S#Tx, n: Nuages[S]): Proc.Obj[S] =
-      sinkLike(n.collectors, name, fun)
+      sinkLike(n.collectors.get, name, fun)
 
     private def sinkLike(folder: Folder[S], name: String, fun: GE => Unit)
                         (implicit tx: S#Tx, nuages: Nuages[S]): Proc.Obj[S] = {
@@ -412,7 +412,7 @@ class Wolkenpumpe[S <: Sys[S]] {
     aCfg.inputBusChannels   = numInputs
 
     /* val f = */ cursor.step { implicit tx =>
-      implicit val n      = Nuages.empty[S]
+      implicit val n      = Nuages[S]
       implicit val aural  = AuralSystem()
 
       registerProcesses(sCfg, nCfg)
