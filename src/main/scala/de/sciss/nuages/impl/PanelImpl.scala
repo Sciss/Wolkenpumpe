@@ -191,7 +191,7 @@ object PanelImpl {
       auralObserver.swap(None)(tx.peer).foreach(_.dispose())
     }
 
-    def init(timeline: Timeline.Obj[S])(implicit tx: S#Tx): this.type = {
+    def init(tlObj: Timeline.Obj[S])(implicit tx: S#Tx): this.type = {
       keyControl = KeyControl(this)
       deferTx(guiInit())
       transportObserver = transport.react { implicit tx => {
@@ -213,9 +213,10 @@ object PanelImpl {
 
         case _ =>
       }}
-      transport.addObject(timeline)
+      transport.addObject(tlObj)
 
-      timelineObserver = timeline.elem.peer.changed.react { implicit tx => upd =>
+      val tl = tlObj.elem.peer
+      timelineObserver = tl.changed.react { implicit tx => upd =>
         upd.changes.foreach {
           case Timeline.Added(span, timed) =>
             if (span.contains(transport.position)) addNode(span, timed)
@@ -290,6 +291,10 @@ object PanelImpl {
 
           case other => if (DEBUG) println(s"OBSERVED: $other")
         }
+      }
+
+      tl.intersect(transport.position).foreach { case (span, elems) =>
+        elems.foreach(addNode(span, _))
       }
       this
     }
