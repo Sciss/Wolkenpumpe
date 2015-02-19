@@ -27,6 +27,7 @@ import de.sciss.lucre.synth.{Synth, Sys}
 import de.sciss.span.SpanLike
 import de.sciss.synth.proc.{DoubleElem, Scan, Proc, Obj}
 import de.sciss.synth.proc.Implicits._
+import prefuse.util.ColorLib
 import prefuse.visual.{VisualItem, AggregateItem}
 
 import scala.collection.breakOut
@@ -251,7 +252,9 @@ final class VisualObjImpl[S <: Sys[S]] private (val main: NuagesPanel[S],
       //      rmsToPaint	= -160f
     }
 
-    g.setColor(/* if (disposeAfterFade) Color.red else */ Color.white)
+    // if (vi.isHighlighted) println(s"HIGHLIGHT ${name}")
+    // g.setColor(if (vi.isHighlighted) Color.yellow else Color.white)
+    g.setColor(ColorLib.getColor(vi.getStrokeColor))
     g.draw(gp)
 
     drawName(g, vi, diam * vi.getSize.toFloat * 0.33333f)

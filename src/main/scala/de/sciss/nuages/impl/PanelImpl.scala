@@ -14,10 +14,11 @@
 package de.sciss.nuages
 package impl
 
+import java.awt.event.MouseEvent
 import java.awt.{RenderingHints, Graphics2D, Dimension, Rectangle, LayoutManager, Point, Color}
-import java.awt.geom.Point2D
+import java.awt.geom.{Rectangle2D, Point2D}
 import javax.swing.event.{AncestorEvent, AncestorListener}
-import javax.swing.JPanel
+import javax.swing.{SwingUtilities, JPanel}
 
 import de.sciss.desktop.{KeyStrokes, FocusType}
 import de.sciss.desktop.Implicits._
@@ -39,8 +40,10 @@ import prefuse.action.{RepaintAction, ActionList}
 import prefuse.action.assignment.ColorAction
 import prefuse.action.layout.graph.ForceDirectedLayout
 import prefuse.activity.Activity
-import prefuse.controls.{Control, PanControl, WheelZoomControl, ZoomControl}
-import prefuse.data.Graph
+import prefuse.controls.{ControlAdapter, Control, PanControl, WheelZoomControl, ZoomControl}
+import prefuse.data.event.TupleSetListener
+import prefuse.data.tuple.{DefaultTupleSet, TupleSet}
+import prefuse.data.{Table, Tuple, Graph}
 import prefuse.render.{DefaultRendererFactory, PolygonRenderer, EdgeRenderer}
 import prefuse.util.ColorLib
 import prefuse.visual.{AggregateTable, VisualGraph, VisualItem}
@@ -78,7 +81,7 @@ object PanelImpl {
       .init(timelineObj)
   }
 
-  private final val GROUP_NODES   = "graph.nodes"
+  final         val GROUP_NODES   = "graph.nodes"
   private final val GROUP_EDGES   = "graph.edges"
 
   private final val AGGR_PROC     = "aggr"
@@ -346,11 +349,15 @@ object PanelImpl {
 
       // colors
       val actionNodeStroke  = new ColorAction(GROUP_NODES, VisualItem.STROKECOLOR, ColorLib.rgb(255, 255, 255))
+      actionNodeStroke.add(VisualItem.HIGHLIGHT, ColorLib.rgb(255, 255, 0))
+      // actionNodeStroke.add(VisualItem.HIGHLIGHT, ColorLib.rgb(220, 220, 0))
       val actionNodeFill    = new ColorAction(GROUP_NODES, VisualItem.FILLCOLOR  , ColorLib.rgb(0, 0, 0))
+      actionNodeFill.add(VisualItem.HIGHLIGHT, ColorLib.rgb(63, 63, 0))
       val actionTextColor   = new ColorAction(GROUP_NODES, VisualItem.TEXTCOLOR  , ColorLib.rgb(255, 255, 255))
 
       val actionEdgeColor   = new ColorAction(GROUP_EDGES, VisualItem.STROKECOLOR, ColorLib.rgb(255, 255, 255))
       val actionAggrFill    = new ColorAction(AGGR_PROC  , VisualItem.FILLCOLOR  , ColorLib.rgb(80, 80, 80))
+      // actionAggrFill.add(VisualItem.HIGHLIGHT, ColorLib.rgb(220, 220, 0))
       val actionAggrStroke  = new ColorAction(AGGR_PROC  , VisualItem.STROKECOLOR, ColorLib.rgb(255, 255, 255))
 
       val lay = new ForceDirectedLayout(GROUP_GRAPH)
@@ -368,6 +375,7 @@ object PanelImpl {
       val actionLayout = new ActionList(Activity.INFINITY, LAYOUT_TIME)
       actionLayout.add(lay)
       actionLayout.add(new PrefuseAggregateLayout(AGGR_PROC))
+      // actionLayout.add(actionNodeFill)
       actionLayout.add(new RepaintAction())
       _vis.putAction(ACTION_LAYOUT, actionLayout)
       _vis.alwaysRunAfter(ACTION_COLOR, ACTION_LAYOUT)
@@ -378,12 +386,15 @@ object PanelImpl {
       _dsp.setSize(960, 640)
       _dsp.addControlListener(new ZoomControl     ())
       _dsp.addControlListener(new WheelZoomControl())
-      _dsp.addControlListener(new PanControl      ())
+      _dsp.addControlListener(new MyPanControl    )
       _dsp.addControlListener(new DragControl     (_vis))
       _dsp.addControlListener(new ClickControl    (this))
       _dsp.addControlListener(new ConnectControl  (this))
       _dsp.addControlListener(keyControl)
       _dsp.setHighQuality(true)
+
+      // ---- rubber band test ----
+      mkRubberBand(rf)
 
       // ------------------------------------------------
 
@@ -404,6 +415,37 @@ object PanelImpl {
       _vis.run(ACTION_COLOR)
 
       component = Component.wrap(p)
+    }
+
+    private def mkRubberBand(rf: DefaultRendererFactory): Unit = {
+      val selectedItems = new DefaultTupleSet
+      _vis.addFocusGroup("sel", selectedItems)
+      val focusGroup = _vis.getGroup("sel")
+      focusGroup.addTupleSetListener(new TupleSetListener {
+        def tupleSetChanged(ts: TupleSet, add: Array[Tuple], remove: Array[Tuple]): Unit = {
+          add.foreach {
+            case vi: VisualItem => vi.setHighlighted(true)
+          }
+          remove.foreach {
+            case vi: VisualItem => vi.setHighlighted(false)
+          }
+          _vis.run(ACTION_COLOR)
+        }
+      })
+
+      val rubberBandTable = new Table
+      rubberBandTable.addColumn(VisualItem.POLYGON, classOf[Array[Float]])
+      rubberBandTable.addRow()
+      _vis.add("rubber", rubberBandTable)
+      val rubberBand = _vis.getVisualGroup("rubber").tuples().next().asInstanceOf[VisualItem]
+      rubberBand.set(VisualItem.POLYGON, new Array[Float](8))
+      rubberBand.setStrokeColor(ColorLib.color(ColorLib.getColor(255, 0, 0)))
+
+      // render the rubber band with the default polygon renderer
+      val rubberBandRenderer = new PolygonRenderer(Constants.POLY_TYPE_LINE)
+      rf.add(new InGroupPredicate("rubber"), rubberBandRenderer)
+
+      _dsp.addControlListener(new RubberBandSelect(rubberBand))
     }
 
     def showOverlayPanel(p: Component, pt: Point): Boolean = {
