@@ -16,16 +16,11 @@ package de.sciss.nuages
 import java.awt.Font
 
 import de.sciss.file._
-import de.sciss.lucre.expr.{Double => DoubleEx, String => StringEx}
 import de.sciss.lucre.stm
 import de.sciss.lucre.synth.{InMemory, Sys}
 import de.sciss.osc
-import de.sciss.synth.proc.Implicits._
-import de.sciss.synth.proc.graph.{Attribute, ScanIn, ScanInFix, ScanOut}
-import de.sciss.synth.proc.{AuralSystem, DoubleElem, ExprImplicits, Folder, Obj, Proc, StringElem}
-import de.sciss.synth.{GE, Rate, Server => SServer, SynthGraph, audio, control, scalar}
-
-import scala.concurrent.stm.TxnLocal
+import de.sciss.synth.proc.AuralSystem
+import de.sciss.synth.{Server => SServer}
 
 object Wolkenpumpe {
   def main(args: Array[String]): Unit = {

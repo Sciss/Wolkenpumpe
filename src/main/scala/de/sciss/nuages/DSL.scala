@@ -81,8 +81,13 @@ class DSL[S <: Sys[S]] {
   }
 
   private def insertByName(folder: Folder[S], elem: Obj[S])(implicit tx: S#Tx): Unit = {
-    val nameL = elem.name.toLowerCase
-    val idx0  = folder.iterator.toList.indexWhere(_.name.toLowerCase.compareTo(nameL) > 0)
+    val name  = elem.name
+    val nameL = name.toLowerCase
+    val idx0  = folder.iterator.toList.indexWhere(_.name.toLowerCase.compareTo(nameL) >= 0)
+    // replace existing items
+    if (idx0 >= 0 && folder.get(idx0).exists(_.name == name)) {
+      folder.removeAt(idx0)
+    }
     val idx   = if (idx0 >= 0) idx0 else folder.size
     folder.insert(idx, elem)
   }

@@ -201,19 +201,19 @@ object NuagesViewImpl {
               val numIn      = cfg.numChannels
               val pSig       = In.ar(NumOutputBuses.ir + off, numIn)
               val peak       = Peak.kr(pSig, meterTr) // .outputs
-            val peakM      = Reduce.max(peak)
+              val peakM      = Reduce.max(peak)
               val rms        = A2K.kr(Lag.ar(pSig.squared, 0.1))
               val rmsM       = Mix.mono(rms) / numIn
               (peakM, rmsM)
             }
           (res.map( _._1 ): GE) -> (res.map( _._2 ): GE)  // elegant it's not
         }
-        val masterPeak    = Peak.kr( sigMast, meterTr )
-        val masterRMS     = A2K.kr( Lag.ar( sigMast.squared, 0.1 ))
-        val peak: GE      = Flatten( Seq( masterPeak, peoplePeak ))
-        val rms: GE       = Flatten( Seq( masterRMS, peopleRMS ))
-        val meterData     = Zip( peak, rms )  // XXX correct?
-        SendReply.kr( meterTr, meterData, "/meters" )
+        val masterPeak    = Peak.kr(sigMast, meterTr)
+        val masterRMS     = A2K.kr(Lag.ar(sigMast.squared, 0.1))
+        val peak: GE      = Flatten(Seq(masterPeak, peoplePeak))
+        val rms: GE       = Flatten(Seq(masterRMS, peopleRMS))
+        val meterData     = Zip(peak, rms) // XXX correct?
+        SendReply.kr(meterTr, meterData, "/meters")
 
         val amp = "amp".kr(1f)
         (masterBus zip sigMast0).foreach { case (ch, sig) =>
