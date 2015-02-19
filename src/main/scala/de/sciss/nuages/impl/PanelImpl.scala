@@ -998,7 +998,7 @@ object PanelImpl {
 
     private def exec(obj: Obj[S], key: String)(implicit tx: S#Tx): Unit =
       for (Action.Obj(self) <- obj.attr.get(key))
-        self.elem.peer.execute(Action.Universe(self, workspace))
+        self.elem.peer.execute(Action.Universe(self, workspace, invoker = Some(obj)))
 
     private def prepareObj(obj: Obj[S])(implicit tx: S#Tx): Unit = exec(obj, "nuages-prepare")
     private def disposeObj(obj: Obj[S])(implicit tx: S#Tx): Unit = exec(obj, "nuages-dispose")
