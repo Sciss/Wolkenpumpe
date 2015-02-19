@@ -137,6 +137,7 @@ object Nuages {
   trait Elem[S <: Sys[S]] extends proc.Elem[S] {
     type Peer       = Nuages[S]
     type PeerUpdate = Nuages.Update[S]
+    type This       = Elem[S]
   }
 
   /** Convenient short-cut */

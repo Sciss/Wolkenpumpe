@@ -62,8 +62,7 @@ object ParamSpec {
   trait Elem[S <: Sys[S]] extends proc.Elem[S] {
     type Peer         = ParamSpec.Expr[S]
     type PeerUpdate   = Change[ParamSpec]
-
-    def mkCopy()(implicit tx: S#Tx): Elem[S]
+    type This         = Elem[S]
   }
 
   object Obj {

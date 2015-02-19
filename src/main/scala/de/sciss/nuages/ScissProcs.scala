@@ -881,7 +881,7 @@ object ScissProcs {
 
     val sinkRecDispose = new Action.Body {
       def apply[T <: evt.Sys[T]](universe: Universe[T])(implicit tx: T#Tx): Unit = {
-        import universe._
+        import universe.{cursor => _, _}
         for {
           art <- self.attr[ArtifactElem]("file")
         } {
