@@ -384,7 +384,7 @@ object PanelImpl {
 
       // initialize the display
       _dsp.setSize(960, 640)
-      _dsp.addControlListener(new ZoomControl     ())
+      _dsp.addControlListener(new MyZoomControl   )
       _dsp.addControlListener(new WheelZoomControl())
       _dsp.addControlListener(new MyPanControl    )
       _dsp.addControlListener(new DragControl     (_vis))
