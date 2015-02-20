@@ -30,6 +30,7 @@ object NuagesImpl {
     folder.addLast(mkFolderObj(Nuages.NameGenerators))
     folder.addLast(mkFolderObj(Nuages.NameFilters   ))
     folder.addLast(mkFolderObj(Nuages.NameCollectors))
+    folder.addLast(mkFolderObj(Nuages.NameMacros    ))
     val res       = new Impl(_folder = folder, timeline = timeline)
     res
   }
@@ -72,6 +73,7 @@ object NuagesImpl {
     def filters   (implicit tx: S#Tx): Option[Folder[S]] = findChild(Nuages.NameFilters   )
     def generators(implicit tx: S#Tx): Option[Folder[S]] = findChild(Nuages.NameGenerators)
     def collectors(implicit tx: S#Tx): Option[Folder[S]] = findChild(Nuages.NameCollectors)
+    def macros    (implicit tx: S#Tx): Option[Folder[S]] = findChild(Nuages.NameMacros    )
 
     private def findChild(name: String)(implicit tx: S#Tx): Option[Folder[S]] = {
       val it = _folder.iterator.collect {

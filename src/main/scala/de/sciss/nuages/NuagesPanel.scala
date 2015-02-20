@@ -25,13 +25,14 @@ import prefuse.data.Graph
 import prefuse.visual.AggregateTable
 import prefuse.{Visualization, Display}
 
-import scala.swing.Point
+import scala.swing.{Component, Point}
 
 object NuagesPanel {
   var verbose = false
 
-  private[nuages] val GROUP_GRAPH = "graph"
-  private[nuages] val COL_NUAGES  = "nuages"
+  private[nuages] val GROUP_GRAPH     = "graph"
+  private[nuages] val COL_NUAGES      = "nuages"
+  private[nuages] val GROUP_SELECTION = "sel"
 
   final val masterAmpSpec       = ParamSpec(0.01, 10.0, ExponentialWarp) -> 1.0
   final val soloAmpSpec         = ParamSpec(0.10, 10.0, ExponentialWarp) -> 0.5
@@ -67,7 +68,15 @@ trait NuagesPanel[S <: Sys[S]] extends View[S] {
 
   def showAppendFilterDialog(vOut: VisualScan[S], pt: Point): Boolean
 
+  def showInsertMacroDialog(): Boolean
+
+  def showOverlayPanel(p: OverlayPanel, pt: Option[Point] = None): Boolean
+
   def setSolo(vp: VisualObj[S], onOff: Boolean): Unit
+
+  def selection: Set[VisualNode[S]]
+
+  def saveMacro(name: String, obj: Set[VisualObj[S]]): Unit
 
   // ---- transactional methods ----
 

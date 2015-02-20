@@ -46,10 +46,11 @@ import prefuse.data.tuple.{DefaultTupleSet, TupleSet}
 import prefuse.data.{Table, Tuple, Graph}
 import prefuse.render.{DefaultRendererFactory, PolygonRenderer, EdgeRenderer}
 import prefuse.util.ColorLib
-import prefuse.visual.{AggregateTable, VisualGraph, VisualItem}
+import prefuse.visual.{NodeItem, AggregateTable, VisualGraph, VisualItem}
 import prefuse.visual.expression.InGroupPredicate
 import prefuse.{Constants, Display, Visualization}
 
+import scala.collection.JavaConversions
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm.{TxnExecutor, TMap, Ref, TxnLocal}
 import scala.swing.event.Key
@@ -69,6 +70,7 @@ object PanelImpl {
     val listCol1  = mkListView(nuages.collectors)
     val listFlt2  = mkListView(nuages.filters   )
     val listCol2  = mkListView(nuages.collectors)
+    val listMacro = mkListView(nuages.macros    )
 
     val nodeMap   = tx.newInMemoryIDMap[VisualObj[S]]
     val scanMap   = tx.newInMemoryIDMap[ScanInfo [S]]
@@ -77,7 +79,8 @@ object PanelImpl {
     // transport.addObject(timelineObj)
 
     new Impl[S](nuagesH, nodeMap, scanMap, config, transport, aural,
-                listGen = listGen, listFlt1 = listFlt1, listCol1 = listCol1, listFlt2 = listFlt2, listCol2 = listCol2)
+                listGen = listGen, listFlt1 = listFlt1, listCol1 = listCol1, listFlt2 = listFlt2, listCol2 = listCol2,
+                listMacro = listMacro)
       .init(timelineObj)
   }
 
@@ -118,11 +121,12 @@ object PanelImpl {
                                         val config   : Nuages.Config,
                                         val transport: Transport[S],
                                         val aural    : AuralSystem,
-                                        listGen : ListView[S, Obj[S], Obj.Update[S]],
-                                        listFlt1: ListView[S, Obj[S], Obj.Update[S]],
-                                        listCol1: ListView[S, Obj[S], Obj.Update[S]],
-                                        listFlt2: ListView[S, Obj[S], Obj.Update[S]],
-                                        listCol2: ListView[S, Obj[S], Obj.Update[S]])
+                                        listGen  : ListView[S, Obj[S], Obj.Update[S]],
+                                        listFlt1 : ListView[S, Obj[S], Obj.Update[S]],
+                                        listCol1 : ListView[S, Obj[S], Obj.Update[S]],
+                                        listFlt2 : ListView[S, Obj[S], Obj.Update[S]],
+                                        listCol2 : ListView[S, Obj[S], Obj.Update[S]],
+                                        listMacro: ListView[S, Obj[S], Obj.Update[S]])
                                        (implicit val cursor: stm.Cursor[S], workspace: WorkspaceHandle[S])
     extends NuagesPanel[S] with ComponentHolder[Component] {
     panel =>
@@ -419,9 +423,8 @@ object PanelImpl {
 
     private def mkRubberBand(rf: DefaultRendererFactory): Unit = {
       val selectedItems = new DefaultTupleSet
-      _vis.addFocusGroup("sel", selectedItems)
-      val focusGroup = _vis.getGroup("sel")
-      focusGroup.addTupleSetListener(new TupleSetListener {
+      _vis.addFocusGroup(GROUP_SELECTION, selectedItems)
+      selectedItems.addTupleSetListener(new TupleSetListener {
         def tupleSetChanged(ts: TupleSet, add: Array[Tuple], remove: Array[Tuple]): Unit = {
           add.foreach {
             case vi: VisualItem => vi.setHighlighted(true)
@@ -448,13 +451,33 @@ object PanelImpl {
       _dsp.addControlListener(new RubberBandSelect(rubberBand))
     }
 
-    def showOverlayPanel(p: Component, pt: Point): Boolean = {
+    def selection: Set[VisualNode[S]] = {
+      requireEDT()
+      val selectedItems = _vis.getGroup(GROUP_SELECTION)
+      import JavaConversions._
+      selectedItems.tuples().flatMap {
+        case ni: NodeItem =>
+          ni.get(COL_NUAGES) match {
+            case vn: VisualNode[S] => Some(vn)
+            case _ => None
+          }
+        case _ => None
+      } .toSet
+    }
+
+    def showOverlayPanel(p: OverlayPanel, ptOpt: Option[Point] = None): Boolean = {
       if (overlay.isDefined) return false
       val pp = p.peer
       val c = component
-      val x = math.max(0, math.min(pt.getX.toInt , c.peer.getWidth  - pp.getWidth ))
-      val y = math.min(math.max(0, pt.getY.toInt), c.peer.getHeight - pp.getHeight) // make sure bottom is visible
-      pp.setLocation(x, y)
+      val dw = c.peer.getWidth  - pp.getWidth
+      val dh = c.peer.getHeight - pp.getHeight
+      ptOpt.fold {
+        pp.setLocation(math.max(0, dw/2), math.min(dh, dh/2))
+      } { pt =>
+        val x = math.max(0, math.min(pt.getX.toInt , dw))
+        val y = math.min(math.max(0, pt.getY.toInt), dh) // make sure bottom is visible
+        pp.setLocation(x, y)
+      }
       //println( "aqui " + p.getX + ", " + p.getY + ", " + p.getWidth + ", " + p.getHeight )
       c.peer.add(pp, 0)
       c.revalidate()
@@ -867,39 +890,39 @@ object PanelImpl {
       soloInfo().foreach(_._2.set("amp" -> v))
     }
 
-    private def pack(p: Panel): p.type = {
-      p.peer.setSize(p.preferredSize)
-      p.peer.validate()
-      p
-    }
-
-    private def createAbortBar(p: SequentialContainer)(createAction: => Unit): Unit = {
-      val b = new BoxPanel(Orientation.Horizontal)
-      val butCreate = /* Basic */ Button("Create")(createAction)
-      butCreate.focusable = false
-      b.contents += butCreate
-      val strut = Swing.HStrut(8)
-      // strut.background = Color.black
-      b.contents += strut
-      val butAbort = /* Basic */ Button("Abort")(close(p))
-      butAbort.addAction("press", focus = FocusType.Window, action = new DoClickAction(butAbort) {
-        accelerator = Some(KeyStrokes.plain + Key.Escape)
-      })
-      butAbort.focusable = false
-      b.contents += butAbort
-      p.contents += b
-      // b
-    }
-
     private def close(p: Container): Unit = p.peer.getParent.remove(p.peer)
 
-    private lazy val createGenDialog: Panel = {
+    def saveMacro(name: String, sel: Set[VisualObj[S]]): Unit =
+      cursor.step { implicit tx =>
+        val copies = sel.map { vObj =>
+          val obj = vObj.objH()
+          Obj.copy(obj)
+        }
+        val macroF = Folder[S]
+        copies.foreach(macroF.addLast)
+        val nuagesF = panel.nuages.folder
+        val parent = nuagesF.iterator.collect {
+          case FolderElem.Obj(parentObj) if parentObj.name == Nuages.NameMacros => parentObj.elem.peer
+        } .toList.headOption.getOrElse {
+          val res = Folder[S]
+          val resObj = Obj(FolderElem(res))
+          resObj.name = Nuages.NameMacros
+          nuagesF.addLast(resObj)
+          res
+        }
+
+        val macroFObj = Obj(FolderElem(macroF))
+        macroFObj.name = name
+        parent.addLast(macroFObj)
+      }
+
+    private lazy val createGenDialog: OverlayPanel = {
       val p = new OverlayPanel()
       p.contents += listGen.component
       p.contents += Swing.VStrut(4)
       p.contents += listCol1.component
       p.contents += Swing.VStrut(4)
-      createAbortBar(p) {
+      p.onComplete {
         listGen.guiSelection match {
           case Vec(genIdx) =>
             val colIdxOpt = listCol1.guiSelection.headOption
@@ -924,7 +947,30 @@ object PanelImpl {
           case _ =>
         }
       }
-      pack(p)
+    }
+
+    private lazy val createInsertMacroDialog: OverlayPanel = {
+      val p = new OverlayPanel()
+      p.contents += listMacro.component
+      p.contents += Swing.VStrut(4)
+      p.onComplete {
+        listGen.guiSelection match {
+          case Vec(genIdx) =>
+            val colIdxOpt = listMacro.guiSelection.headOption
+            close(p)
+            val displayPt = display.getAbsoluteCoordinate(p.location, null)
+            atomic { implicit tx =>
+              // val nuages = nuagesH()
+              for {
+                macroList <- listGen.list
+                gen <- macroList.get(genIdx) // nuages.generators.get(genIdx)
+              } {
+                println("TODO")
+              }
+            }
+          case _ =>
+        }
+      }
     }
 
     private var fltPred: VisualScan[S] = _
@@ -934,7 +980,7 @@ object PanelImpl {
       val p = new OverlayPanel()
       p.contents += listFlt1.component
       p.contents += Swing.VStrut(4)
-      createAbortBar(p) {
+      p.onComplete {
         listFlt1.guiSelection match {
           case Vec(fltIdx) =>
           close(p)
@@ -959,7 +1005,6 @@ object PanelImpl {
           }
         }
       }
-      pack(p)
     }
 
     private def createFilterOnlyFromDialog(p: Container)(objFun: S#Tx => Option[Obj[S]]): Unit = {
@@ -988,7 +1033,7 @@ object PanelImpl {
       p.contents += Swing.VStrut(4)
       p.contents += listCol2.component
       p.contents += Swing.VStrut(4)
-      createAbortBar(p) {
+      p.onComplete {
         (listFlt2.guiSelection.headOption, listCol2.guiSelection.headOption) match {
           case (Some(fltIdx), None) =>
             createFilterOnlyFromDialog(p) { implicit tx =>
@@ -1035,7 +1080,6 @@ object PanelImpl {
           case _ =>
         }
       }
-      pack(p)
     }
 
     private def exec(obj: Obj[S], key: String)(implicit tx: S#Tx): Unit =
@@ -1122,20 +1166,25 @@ object PanelImpl {
 
     def showCreateGenDialog(pt: Point): Boolean = {
       requireEDT()
-      showOverlayPanel(createGenDialog, pt)
+      showOverlayPanel(createGenDialog, Some(pt))
     }
 
     def showInsertFilterDialog(pred: VisualScan[S], succ: VisualScan[S], pt: Point): Boolean = {
       requireEDT()
       fltPred = pred
       fltSucc = succ
-      showOverlayPanel(createFilterInsertDialog, pt)
+      showOverlayPanel(createFilterInsertDialog, Some(pt))
+    }
+
+    def showInsertMacroDialog(): Boolean = {
+      requireEDT()
+      showOverlayPanel(createInsertMacroDialog)
     }
 
     def showAppendFilterDialog(pred: VisualScan[S], pt: Point): Boolean = {
       requireEDT()
       fltPred = pred
-      showOverlayPanel(createFilterAppendDialog, pt)
+      showOverlayPanel(createFilterAppendDialog, Some(pt))
     }
   }
 

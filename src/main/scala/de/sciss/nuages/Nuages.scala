@@ -122,6 +122,7 @@ object Nuages {
   final val NameFilters     = "filters"
   final val NameGenerators  = "generators"
   final val NameCollectors  = "collectors"
+  final val NameMacros      = "macros"
 
   final val typeID = 0x1000A
 
@@ -159,6 +160,7 @@ trait Nuages[S <: Sys[S]] extends Writable with Disposable[S#Tx] with evt.Publis
   def generators(implicit tx: S#Tx): Option[Folder[S]]
   def filters   (implicit tx: S#Tx): Option[Folder[S]]
   def collectors(implicit tx: S#Tx): Option[Folder[S]]
+  def macros    (implicit tx: S#Tx): Option[Folder[S]]
 
   def timeline  : Timeline.Obj[S]
 }

@@ -14,24 +14,27 @@
 package de.sciss.nuages
 package impl
 
-import java.awt.{Toolkit, Color}
 import java.awt.event.{ActionEvent, InputEvent, KeyEvent}
-import javax.swing.{AbstractAction, KeyStroke, JComponent}
+import java.awt.{Color, Toolkit}
+import javax.swing.{AbstractAction, JComponent, KeyStroke}
 
 import de.sciss.audiowidgets.TimelineModel
 import de.sciss.lucre.stm
 import de.sciss.lucre.swing.impl.ComponentHolder
 import de.sciss.lucre.swing.{View, defer, deferTx}
-import de.sciss.lucre.synth.{Synth, Server, Sys, Txn}
+import de.sciss.lucre.synth.{Server, Synth, Sys, Txn}
+import de.sciss.osc
 import de.sciss.span.Span
-import de.sciss.{osc, synth}
-import de.sciss.synth.{addAfter, SynthGraph}
-import de.sciss.synth.message
-import de.sciss.synth.proc.{Timeline, WorkspaceHandle, AuralSystem}
+import de.sciss.swingplus.PopupMenu
+import de.sciss.synth.proc.{FolderElem, Folder, Obj, AuralSystem, Timeline, WorkspaceHandle}
+import de.sciss.synth.proc.Implicits._
 import de.sciss.synth.swing.j.JServerStatusPanel
+import de.sciss.synth.{SynthGraph, addAfter, message}
 
 import scala.collection.breakOut
-import scala.swing.{BorderPanel, Component, GridBagPanel, Orientation, Swing}
+import scala.swing.Swing._
+import scala.swing.event.ButtonClicked
+import scala.swing.{Action, BorderPanel, Button, Component, GridBagPanel, Label, MenuItem, Orientation, TextField}
 
 object NuagesViewImpl {
   def apply[S <: Sys[S]](nuages: Nuages[S], nuagesConfig: Nuages.Config, scissConfig: ScissProcs.Config)
@@ -99,13 +102,13 @@ object NuagesViewImpl {
       // ggSouthBox.contents += bottom
       // ggSouthBox.contents += Swing.HStrut(8)
       val transportC = transportView.component
-      transportC.border = Swing.EmptyBorder(0, 4, 0, 4)
+      transportC.border = EmptyBorder(0, 4, 0, 4)
       // transportC.background = Color.black
       ggSouthBox.contents += transportC
-      ggSouthBox.contents += Swing.HStrut(8)
+      ggSouthBox.contents += HStrut(8)
       _serverPanel = new JServerStatusPanel(JServerStatusPanel.COUNTS)
       ggSouthBox.contents += Component.wrap(_serverPanel)
-      ggSouthBox.contents += Swing.HStrut(8)
+      ggSouthBox.contents += HStrut(8)
       val cConfig = ControlPanel.Config()
       cConfig.numOutputChannels = panel.config.masterChannels.map(_.size).getOrElse(0)
       val numInputChannels = sConfig.lineInputs.size + sConfig.micInputs.size
@@ -118,7 +121,16 @@ object NuagesViewImpl {
       //  de.sciss.synth.Server.default ! osc.Message("/n_trace", 1003)
       //}
 
-      ggSouthBox.contents += Swing.HGlue
+      ggSouthBox.contents += HStrut(4)
+      val ggMenu = new Button("#")
+      ggMenu.listenTo(ggMenu)
+      ggMenu.reactions += {
+        case ButtonClicked(_) => showMenu(ggMenu)
+      }
+      ggMenu.focusable = false
+      ggSouthBox.contents += ggMenu
+
+      ggSouthBox.contents += HGlue
       // currently not working:
       // ggSouthBox.contents += transition
 
@@ -158,6 +170,38 @@ object NuagesViewImpl {
       // if (config.fullScreenKey) installFullScreenKey(frame)
     }
 
+    private def showMenu(parent: Component): Unit = {
+      val selectedObjects = panel.selection.collect {
+        case v: VisualObj[S] => v
+      }
+      val pop = new PopupMenu {
+        contents += new MenuItem(new Action("Save Macro...") {
+          enabled = selectedObjects.nonEmpty
+          def apply(): Unit = {
+            val p = new OverlayPanel {
+              val ggName = new TextField("Macro", 12)
+              contents += new BasicPanel(Orientation.Horizontal) {
+                contents += new Label("Name:") {
+                  foreground = Color.white
+                }
+                contents += HStrut(4)
+                contents += ggName
+              }
+              onComplete {
+                close()
+                panel.saveMacro(ggName.text, selectedObjects)
+              }
+            }
+            panel.showOverlayPanel(p)
+          }
+        })
+        contents += new MenuItem(new Action("Paste Macro...") {
+          def apply(): Unit = panel.showInsertMacroDialog()
+        })
+      }
+      pop.show(parent, 0, 0)
+    }
+
     def dispose()(implicit tx: S#Tx): Unit = {
       panel.aural.removeClient(this)
       val synth = panel.masterSynth
@@ -169,7 +213,8 @@ object NuagesViewImpl {
     private def installMasterSynth(server: Server)
                                   (implicit tx: Txn): Unit = {
       val dfPostM = SynthGraph {
-        import synth._; import ugen._
+        import de.sciss.synth._
+        import de.sciss.synth.ugen._
         // val masterBus = settings.frame.panel.masterBus.get // XXX ouch
         // val sigMast = In.ar( masterBus.index, masterBus.numChannels )
         import panel.{config => nConfig}

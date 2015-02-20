@@ -13,11 +13,15 @@
 
 package de.sciss.nuages
 
+import java.awt.{AWTEvent, Color}
 import javax.swing.JPanel
 import javax.swing.plaf.basic.BasicPanelUI
-import java.awt.{Color, AWTEvent}
 
-import scala.swing.{Swing, Orientation, BoxPanel}
+import de.sciss.desktop.{FocusType, KeyStrokes}
+import de.sciss.swingplus.DoClickAction
+
+import scala.swing.event.Key
+import scala.swing.{BoxPanel, Button, Orientation, Swing}
 
 class BasicPanel(orientation: Orientation.Value) extends BoxPanel(orientation) {
   def this() = this(Orientation.Vertical)
@@ -27,8 +31,10 @@ class BasicPanel(orientation: Orientation.Value) extends BoxPanel(orientation) {
   foreground  = Color.white
 }
 
+object OverlayPanel {
+}
 class OverlayPanel(orientation: Orientation.Value) extends BasicPanel(orientation) {
-  import AWTEvent._
+  import java.awt.AWTEvent._
 
   def this() = this(Orientation.Vertical)
 
@@ -50,4 +56,32 @@ class OverlayPanel(orientation: Orientation.Value) extends BasicPanel(orientatio
   }
 
   Swing.EmptyBorder(12, 12, 12, 12)
+
+  def onComplete(action: => Unit): this.type = {
+    val b = new BoxPanel(Orientation.Horizontal)
+    val butCreate = /* Basic */ Button("Create")(action)
+    butCreate.focusable = false
+    b.contents += butCreate
+    val strut = Swing.HStrut(8)
+    // strut.background = Color.black
+    b.contents += strut
+    val butAbort = /* Basic */ Button("Abort")(close())
+    import de.sciss.desktop.Implicits._
+    butAbort.addAction("press", focus = FocusType.Window, action = new DoClickAction(butAbort) {
+      accelerator = Some(KeyStrokes.plain + Key.Escape)
+    })
+    butAbort.focusable = false
+    b.contents += butAbort
+
+    contents += b
+    pack()
+  }
+
+  def close(): Unit = peer.getParent.remove(peer)
+
+  def pack(): this.type = {
+    peer.setSize(preferredSize)
+    peer.validate()
+    this
+  }
 }
