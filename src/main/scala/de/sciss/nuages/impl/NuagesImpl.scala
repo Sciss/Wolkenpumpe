@@ -25,6 +25,8 @@ import de.sciss.synth.proc.Implicits._
 import scala.collection.immutable.{IndexedSeq => Vec}
 
 object NuagesImpl {
+  private final val DEBUG = false
+
   def apply[S <: Sys[S]]()(implicit tx: S#Tx): Nuages[S] = {
     val tl        = Timeline[S]
     val timeline  = Obj(Timeline.Elem(tl))
@@ -37,51 +39,100 @@ object NuagesImpl {
     res
   }
 
-  def copyGraph[S <: Sys[S]](xs: Vec[Obj[S]])(implicit tx: S#Tx): Vec[Obj[S]] = {
-    var res         = Vector.empty[Obj[S]]
+  // `isScan` is true for scan-links and `false` for attribute mappings
+  private final class LinkPreservation[S <: Sys[S]](val sink: Proc.Obj[S], val sinkKey  : String,
+                                                    val source: Proc[S]  , val sourceKey: String,
+                                                    val isScan: Boolean)
 
+  def copyGraph[S <: Sys[S]](xs: Vec[Obj[S]])(implicit tx: S#Tx): Vec[Obj[S]] = {
     // we collect the proc copies and create a scan map
     // ; then in a second iteration, we must remove the
     // obsolete scan links and refresh them
-    var procCopies  = Vector.empty[Proc[S]]
+    var procCopies  = Vector.empty[(Proc.Obj[S], Proc.Obj[S])] // (original, copy)
     var scanMap     = Map.empty[Scan[S], (String, Proc[S])] // "old" scan to new proc
 
-    xs.foreach {
+    // simply copy all objects, and populate the scan-map on the way
+    val res: Vec[Obj[S]] = xs.map {
       case Proc.Obj(procObj) =>
         val proc    = procObj.elem.peer
         val cpyElem = procObj.elem.mkCopy()
         val cpyObj  = Obj.copyT[S, Proc.Elem](procObj, cpyElem)
         val cpy     = cpyElem.peer
-        res :+= cpyObj
-        procCopies :+= cpy
+        procCopies :+= (procObj, cpyObj)
         scanMap ++= proc.scans.iterator.map { case (key, scan) =>
+          if (DEBUG) println(s"scanMap: add $scan.")
           scan -> (key, cpy)
         } .toMap
 
-      case other =>
-        val cpy = Obj.copy(other)
-        res :+= cpy
+        cpyObj
+
+      case other => Obj.copy(other)
     }
 
-    var sources = Vector.empty[(Proc[S], String, Proc[S], String)]
+    // we'll now store the replacements of scan source links.
+    // they carry the copied (new) sink, the key in the sink,
+    // the copied (new) source as found through the scan-map,
+    // and the source key. We can traverse the copied procs
+    // because currently the `mkCopy` method of procs does
+    // recreate scan links. If this "feature" disappears in the
+    // future, we'll have to use the original procs.
+    //
+    // On the way, we'll disconnect all source links.
+    //
+    // A second type of link are mappings, where a scan
+    // is stored in the attribute map of a sink. We'll also
+    // have to replace these.
+    //
+    // Note that here the copied attribute map will also
+    // have copied the scan already. This is wasteful and
+    // should be avoid in the future. Now, we just need
+    // to be careful to use the attribute map of the original
+    // proc, otherwise we won't find the scan in the scan-map!
 
-    procCopies.foreach { thisProc =>
-      val scans = thisProc.scans.iterator.toMap
+    var preserve = Vector.empty[LinkPreservation[S]]
+
+    procCopies.foreach { case (origObj, cpyObj) =>
+      val thisProc  = cpyObj.elem.peer
+      val scans     = thisProc.scans.iterator.toMap
       scans.foreach { case (thisKey, thisScan) =>
         val thisSources = thisScan.sources.toList
         thisSources.foreach {
           case lnk @ Scan.Link.Scan(thatScan) =>
             scanMap.get(thatScan).foreach { case (thatKey, thatProc) =>
-              sources :+= (thisProc, thisKey, thatProc, thatKey)
+              preserve :+= new LinkPreservation(sink   = cpyObj  , sinkKey   = thisKey,
+                                                source = thatProc, sourceKey = thatKey, isScan = true)
             }
             thisScan.removeSource(lnk)
 
           case _ =>
         }
       }
+      val origAttr  = origObj.attr
+      val cpyAttr   = cpyObj .attr
+      val keys      = cpyAttr.keys // ought to be identical to origAttr.keys
+      keys.foreach { thisKey =>
+        // important to use `origAttr` here, see note above
+        origAttr[Scan.Elem](thisKey).foreach { thatScan =>
+          if (DEBUG) println(s"In ${origObj.name}, attribute $thisKey points to a scan.")
+          scanMap.get(thatScan: Scan[S]).fold {
+            if (DEBUG) println(s".... did NOT find $thatScan.")
+          } { case (thatKey, thatProc) =>
+            if (DEBUG) println(".... we found that scan.")
+            preserve :+= new LinkPreservation(sink   = cpyObj  , sinkKey   = thisKey,
+                                              source = thatProc, sourceKey = thatKey, isScan = false)
+          }
+          cpyAttr.remove(thisKey)
+        }
+      }
     }
-    procCopies.foreach { thisProc =>
-      val scans = thisProc.scans.iterator.toMap
+
+    // At this point, links have been bi-directionally removed
+    // because `removeSource` is symmetric with `removeSink`. However,
+    // there may be remaining sinks that point outside the selected
+    // graph; we'll have to simply cut these as well.
+    procCopies.foreach { case (_, cpyObj) =>
+      val thisProc  = cpyObj.elem.peer
+      val scans     = thisProc.scans.iterator.toMap
       scans.foreach { case (thisKey, thisScan) =>
         val thisSinks = thisScan.sinks.toList
         thisSinks.foreach {
@@ -92,8 +143,16 @@ object NuagesImpl {
       }
     }
 
-    sources.foreach { case (thisProc, thisKey, thatProc, thatKey) =>
-      thisProc.scans.add(thisKey).addSource(Scan.Link.Scan(thatProc.scans.add(thatKey)))
+    // Re-create correct links
+    preserve.foreach { p =>
+      val procObj     = p.sink
+      val sourceScan  = p.source.scans.add(p.sourceKey)
+      if (p.isScan) {
+        procObj.elem.peer.scans.add(p.sinkKey).addSource(Scan.Link.Scan(sourceScan))
+      } else {
+        if (DEBUG) println(s"Re-assigning attribute scan entry for ${procObj.name} and key ${p.sinkKey}")
+        procObj.attr.put(p.sinkKey, Obj(Scan.Elem(sourceScan))) // XXX TODO - we'd lose attributes on the Scan.Obj
+      }
     }
 
     res

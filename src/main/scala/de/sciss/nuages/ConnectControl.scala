@@ -140,6 +140,7 @@ class ConnectControl[S <: Sys[S]](main: NuagesPanel[S])
               for (tgtScan <- tgtProc.elem.peer.scans.get(tgtVScan.key))
                 srcScan.addSink(Scan.Link.Scan(tgtScan))
             case vCtl: VisualControl[S] =>
+              // println(s"Mapping from $srcScan")
               tgtObj.attr.put(vCtl.key, Obj(Scan.Elem(srcScan)))
           }
         }
