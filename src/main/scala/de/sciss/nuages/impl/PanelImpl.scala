@@ -14,47 +14,41 @@
 package de.sciss.nuages
 package impl
 
-import java.awt.event.MouseEvent
-import java.awt.{RenderingHints, Graphics2D, Dimension, Rectangle, LayoutManager, Point, Color}
-import java.awt.geom.{Rectangle2D, Point2D}
+import java.awt.geom.Point2D
+import java.awt.{Color, Dimension, Graphics2D, LayoutManager, Point, Rectangle, RenderingHints}
+import javax.swing.JPanel
 import javax.swing.event.{AncestorEvent, AncestorListener}
-import javax.swing.{SwingUtilities, JPanel}
 
-import de.sciss.desktop.{KeyStrokes, FocusType}
-import de.sciss.desktop.Implicits._
 import de.sciss.lucre.bitemp.{SpanLike => SpanLikeEx}
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{TxnLike, Disposable}
-import de.sciss.lucre.swing.{ListView, defer, deferTx, requireEDT}
+import de.sciss.lucre.stm.{Disposable, TxnLike}
 import de.sciss.lucre.swing.impl.ComponentHolder
-import de.sciss.lucre.synth.{AudioBus, Node, Txn, Synth, Sys}
+import de.sciss.lucre.swing.{ListView, defer, deferTx, requireEDT}
+import de.sciss.lucre.synth.{AudioBus, Node, Synth, Sys, Txn}
 import de.sciss.model.Change
-import de.sciss.span.{SpanLike, Span}
-import de.sciss.swingplus.DoClickAction
+import de.sciss.span.{Span, SpanLike}
 import de.sciss.synth
-import de.sciss.synth.{addToTail, SynthGraph, proc, message}
-import de.sciss.synth.proc.{Folder, FolderElem, DoubleElem, AuralObj, Action, WorkspaceHandle, Scan, ExprImplicits, AuralSystem, Transport, Timeline, Proc, Obj}
 import de.sciss.synth.proc.Implicits._
-
-import prefuse.action.{RepaintAction, ActionList}
+import de.sciss.synth.proc.{Action, AuralObj, AuralSystem, DoubleElem, ExprImplicits, Folder, FolderElem, Obj, Proc, Scan, Timeline, Transport, WorkspaceHandle}
+import de.sciss.synth.{SynthGraph, addToTail, message, proc}
 import prefuse.action.assignment.ColorAction
 import prefuse.action.layout.graph.ForceDirectedLayout
+import prefuse.action.{ActionList, RepaintAction}
 import prefuse.activity.Activity
-import prefuse.controls.{ControlAdapter, Control, PanControl, WheelZoomControl, ZoomControl}
+import prefuse.controls.{Control, WheelZoomControl, ZoomControl}
 import prefuse.data.event.TupleSetListener
 import prefuse.data.tuple.{DefaultTupleSet, TupleSet}
-import prefuse.data.{Table, Tuple, Graph}
-import prefuse.render.{DefaultRendererFactory, PolygonRenderer, EdgeRenderer}
+import prefuse.data.{Graph, Table, Tuple}
+import prefuse.render.{DefaultRendererFactory, EdgeRenderer, PolygonRenderer}
 import prefuse.util.ColorLib
-import prefuse.visual.{NodeItem, AggregateTable, VisualGraph, VisualItem}
 import prefuse.visual.expression.InGroupPredicate
+import prefuse.visual.{AggregateTable, NodeItem, VisualGraph, VisualItem}
 import prefuse.{Constants, Display, Visualization}
 
 import scala.collection.JavaConversions
 import scala.collection.immutable.{IndexedSeq => Vec}
-import scala.concurrent.stm.{TxnExecutor, TMap, Ref, TxnLocal}
-import scala.swing.event.Key
-import scala.swing.{Button, Container, Orientation, SequentialContainer, BoxPanel, Panel, Swing, Component}
+import scala.concurrent.stm.{Ref, TMap, TxnExecutor, TxnLocal}
+import scala.swing.{Component, Container, Swing}
 import scala.util.control.NonFatal
 
 object PanelImpl {
@@ -93,7 +87,7 @@ object PanelImpl {
   private final val LAYOUT_TIME   = 50
 
   private def mkListView[S <: Sys[S]](folderOpt: Option[Folder[S]])(implicit tx: S#Tx, cursor: stm.Cursor[S]) = {
-    import proc.Implicits._
+    import de.sciss.synth.proc.Implicits._
     val h = ListView.Handler[S, Obj[S], Obj.Update[S]] { implicit tx => obj => obj.name } (_ => (_, _) => None)
     implicit val ser = de.sciss.lucre.expr.List.serializer[S, Obj[S], Obj.Update[S]]
     // val res = ListView[S, Obj[S], Obj.Update[S], String](folder, h)
@@ -131,8 +125,8 @@ object PanelImpl {
     extends NuagesPanel[S] with ComponentHolder[Component] {
     panel =>
 
-    import NuagesPanel._
     import cursor.{step => atomic}
+    import de.sciss.nuages.NuagesPanel._
 
     private var _vis: Visualization = _
     private var _dsp: Display       = _
@@ -454,7 +448,7 @@ object PanelImpl {
     def selection: Set[VisualNode[S]] = {
       requireEDT()
       val selectedItems = _vis.getGroup(GROUP_SELECTION)
-      import JavaConversions._
+      import scala.collection.JavaConversions._
       selectedItems.tuples().flatMap {
         case ni: NodeItem =>
           ni.get(COL_NUAGES) match {
@@ -613,7 +607,8 @@ object PanelImpl {
       val numCh       = bus.numChannels
       val meterGraph  = meterGraphMap.getOrElse(numCh, {
         val res = SynthGraph {
-          import synth._; import ugen._
+          import de.sciss.synth._
+          import de.sciss.synth.ugen._
           val meterTr = Impulse.kr(1000.0 / LAYOUT_TIME)
           val sig     = In.ar("in".kr, numCh)
           val peak    = Peak.kr(sig, meterTr) // .outputs
@@ -849,7 +844,8 @@ object PanelImpl {
           (bus, node) <- getAuralScanData(auralProc)
         } {
           val sg = SynthGraph {
-            import synth._; import ugen._
+            import de.sciss.synth._
+            import de.sciss.synth.ugen._
             val numIn     = bus.numChannels
             val numOut    = outChans.size
             // println(s"numIn = $numIn, numOut = $numOut")
@@ -954,18 +950,16 @@ object PanelImpl {
       p.contents += listMacro.component
       p.contents += Swing.VStrut(4)
       p.onComplete {
-        listGen.guiSelection match {
-          case Vec(genIdx) =>
-            val colIdxOpt = listMacro.guiSelection.headOption
+        listMacro.guiSelection match {
+          case Vec(macIdx) =>
             close(p)
             val displayPt = display.getAbsoluteCoordinate(p.location, null)
             atomic { implicit tx =>
-              // val nuages = nuagesH()
               for {
-                macroList <- listGen.list
-                gen <- macroList.get(genIdx) // nuages.generators.get(genIdx)
+                macroList <- listMacro.list
+                FolderElem.Obj(macroFObj) <- macroList.get(macIdx)
               } {
-                println("TODO")
+                insertMacro(macroFObj.elem.peer, displayPt)
               }
             }
           case _ =>
@@ -1114,6 +1108,13 @@ object PanelImpl {
         addToTimeline(tl, proc)
         colOpt.foreach(addToTimeline(tl, _))
       }
+
+    private def insertMacro(macroF: Folder[S], pt: Point2D)(implicit tx: S#Tx): Unit = {
+      macroF.iterator.foreach { src =>
+        val cpy = Obj.copy(src)
+        finalizeProcAndCollector(cpy, None, pt)
+      }
+    }
 
     def createGenerator(genSrc: Obj[S], colSrcOpt: Option[Obj[S]], pt: Point2D)(implicit tx: S#Tx): Unit = {
       val gen = Obj.copy(genSrc)
