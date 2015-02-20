@@ -19,8 +19,10 @@ import de.sciss.lucre.event.{EventLike, Sys}
 import de.sciss.lucre.synth.InMemory
 import de.sciss.serial.{DataOutput, DataInput, Serializer}
 import de.sciss.synth.proc
-import de.sciss.synth.proc.{Elem, FolderElem, Obj, Timeline, Folder}
+import de.sciss.synth.proc.{Scan, Proc, Elem, FolderElem, Obj, Timeline, Folder}
 import de.sciss.synth.proc.Implicits._
+
+import scala.collection.immutable.{IndexedSeq => Vec}
 
 object NuagesImpl {
   def apply[S <: Sys[S]]()(implicit tx: S#Tx): Nuages[S] = {
@@ -32,6 +34,68 @@ object NuagesImpl {
     folder.addLast(mkFolderObj(Nuages.NameCollectors))
     folder.addLast(mkFolderObj(Nuages.NameMacros    ))
     val res       = new Impl(_folder = folder, timeline = timeline)
+    res
+  }
+
+  def copyGraph[S <: Sys[S]](xs: Vec[Obj[S]])(implicit tx: S#Tx): Vec[Obj[S]] = {
+    var res         = Vector.empty[Obj[S]]
+
+    // we collect the proc copies and create a scan map
+    // ; then in a second iteration, we must remove the
+    // obsolete scan links and refresh them
+    var procCopies  = Vector.empty[Proc[S]]
+    var scanMap     = Map.empty[Scan[S], (String, Proc[S])] // "old" scan to new proc
+
+    xs.foreach {
+      case Proc.Obj(procObj) =>
+        val proc    = procObj.elem.peer
+        val cpyElem = procObj.elem.mkCopy()
+        val cpyObj  = Obj.copyT[S, Proc.Elem](procObj, cpyElem)
+        val cpy     = cpyElem.peer
+        res :+= cpyObj
+        procCopies :+= cpy
+        scanMap ++= proc.scans.iterator.map { case (key, scan) =>
+          scan -> (key, cpy)
+        } .toMap
+
+      case other =>
+        val cpy = Obj.copy(other)
+        res :+= cpy
+    }
+
+    var sources = Vector.empty[(Proc[S], String, Proc[S], String)]
+
+    procCopies.foreach { thisProc =>
+      val scans = thisProc.scans.iterator.toMap
+      scans.foreach { case (thisKey, thisScan) =>
+        val thisSources = thisScan.sources.toList
+        thisSources.foreach {
+          case lnk @ Scan.Link.Scan(thatScan) =>
+            scanMap.get(thatScan).foreach { case (thatKey, thatProc) =>
+              sources :+= (thisProc, thisKey, thatProc, thatKey)
+            }
+            thisScan.removeSource(lnk)
+
+          case _ =>
+        }
+      }
+    }
+    procCopies.foreach { thisProc =>
+      val scans = thisProc.scans.iterator.toMap
+      scans.foreach { case (thisKey, thisScan) =>
+        val thisSinks = thisScan.sinks.toList
+        thisSinks.foreach {
+          case lnk @ Scan.Link.Scan(_) =>
+            thisScan.removeSink(lnk)
+          case _ =>
+        }
+      }
+    }
+
+    sources.foreach { case (thisProc, thisKey, thatProc, thatKey) =>
+      thisProc.scans.add(thisKey).addSource(Scan.Link.Scan(thatProc.scans.add(thatKey)))
+    }
+
     res
   }
 

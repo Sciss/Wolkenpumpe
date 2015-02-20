@@ -44,6 +44,7 @@ import prefuse.visual.expression.InGroupPredicate
 import prefuse.visual.{AggregateTable, NodeItem, VisualGraph, VisualItem}
 import prefuse.{Constants, Display, Visualization}
 
+import scala.collection.breakOut
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm.{Ref, TMap, TxnExecutor, TxnLocal}
 import scala.swing.{Component, Container, Swing}
@@ -888,10 +889,8 @@ object PanelImpl {
 
     def saveMacro(name: String, sel: Set[VisualObj[S]]): Unit =
       cursor.step { implicit tx =>
-        val copies = sel.map { vObj =>
-          val obj = vObj.objH()
-          Obj.copy(obj)
-        }
+       val copies = Nuages.copyGraph(sel.map(_.objH())(breakOut))
+
         val macroF = Folder[S]
         copies.foreach(macroF.addLast)
         val nuagesF = panel.nuages.folder
@@ -1108,8 +1107,8 @@ object PanelImpl {
       }
 
     private def insertMacro(macroF: Folder[S], pt: Point2D)(implicit tx: S#Tx): Unit = {
-      macroF.iterator.foreach { src =>
-        val cpy = Obj.copy(src)
+      val copies = Nuages.copyGraph(macroF.iterator.toIndexedSeq)
+      copies.foreach { cpy =>
         finalizeProcAndCollector(cpy, None, pt)
       }
     }

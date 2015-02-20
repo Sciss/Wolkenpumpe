@@ -153,6 +153,10 @@ object Nuages {
   // ---- event ----
 
   trait Update[S <: Sys[S]]
+
+  // ---- functions ----
+
+  def copyGraph[S <: Sys[S]](xs: Vec[proc.Obj[S]])(implicit tx: S#Tx): Vec[proc.Obj[S]] = Impl.copyGraph(xs)
 }
 trait Nuages[S <: Sys[S]] extends Writable with Disposable[S#Tx] with evt.Publisher[S, Nuages.Update[S]] {
   def folder(implicit tx: S#Tx): Folder[S]
