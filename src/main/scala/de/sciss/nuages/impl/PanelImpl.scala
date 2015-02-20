@@ -384,14 +384,15 @@ object PanelImpl {
 
       // initialize the display
       _dsp.setSize(960, 640)
-      _dsp.addControlListener(new MyZoomControl   )
+      _dsp.addControlListener(new ZoomControl     ())
       _dsp.addControlListener(new WheelZoomControl())
-      _dsp.addControlListener(new MyPanControl    )
+      _dsp.addControlListener(new PanControl    )
       _dsp.addControlListener(new DragControl     (_vis))
       _dsp.addControlListener(new ClickControl    (this))
       _dsp.addControlListener(new ConnectControl  (this))
       _dsp.addControlListener(keyControl)
       _dsp.setHighQuality(true)
+      new GlobalControl(this)
 
       // ---- rubber band test ----
       mkRubberBand(rf)
