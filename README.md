@@ -18,3 +18,24 @@ Builds with sbt 0.13 against Scala 2.11 and 2.10.
     "de.sciss" %% "wolkenpumpe" % v
 
 The current stable version `v` is `"1.0.0"`.
+
+## mouse control
+
+- wheel zooms
+- right-click auto zooms
+- shift-press starts rubber-band selection
+- double-click on panel brings up generator dialog
+- double-click on edge brings up filter insertion dialog
+- double-click on scan-out brings up filter append dialog
+- double-click on node fixes/unfixes position
+- alt-click on node deletes node
+- shift-drag from scan-out brings up connector rubber-band
+
+## keyboard shortcuts
+
+- <tt>1</tt> zoom 100%
+- <tt>2</tt> zoom 200%
+- <tt>O</tt> pan to next collector
+- custom filter insertion short-cuts via object attribute `Nuages.KeyShortcut`
+- <tt>Control</tt>-<tt>Shift</tt>-<tt>F</tt> toggle full-screen
+- <tt>Escape</tt> cancel on-screen dialogs

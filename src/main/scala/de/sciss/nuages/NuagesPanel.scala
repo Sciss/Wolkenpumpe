@@ -22,7 +22,7 @@ import de.sciss.lucre.synth.{Synth, Sys, Txn}
 import de.sciss.nuages.impl.{PanelImpl => Impl}
 import de.sciss.synth.proc.{AuralSystem, Obj, Scan, Transport, WorkspaceHandle}
 import prefuse.data.Graph
-import prefuse.visual.AggregateTable
+import prefuse.visual.{VisualGraph, AggregateTable}
 import prefuse.{Display, Visualization}
 
 import scala.swing.Point
@@ -59,6 +59,8 @@ trait NuagesPanel[S <: Sys[S]] extends View[S] {
   def visualization: Visualization
 
   def graph: Graph
+
+  def visualGraph: VisualGraph
 
   def aggrTable: AggregateTable
 

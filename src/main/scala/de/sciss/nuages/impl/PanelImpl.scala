@@ -132,13 +132,9 @@ object PanelImpl {
     private var _vis: Visualization = _
     private var _dsp: Display       = _
     private var _g  : Graph         = _
-    private var vg  : VisualGraph   = _
+    private var _vg : VisualGraph   = _
 
     private var _aggrTable: AggregateTable = _
-
-    //  var transition: Double => Transition = (_) => Instant
-
-    // private var masterBusVar : Option[SAudioBus] = None
 
     private val locHintMap = TxnLocal(Map.empty[Obj[S], Point2D])
 
@@ -155,15 +151,11 @@ object PanelImpl {
     def display      : Display        = _dsp
     def visualization: Visualization  = _vis
     def graph        : Graph          = _g
+    def visualGraph  : VisualGraph    = _vg
     def aggrTable    : AggregateTable = _aggrTable
-
-    // def masterBus: Option[SAudioBus] = masterBusVar
 
     def setLocationHint(p: Obj[S], loc: Point2D)(implicit tx: S#Tx): Unit =
       locHintMap.transform(_ + (p -> loc))(tx.peer)
-
-    //    private def setLocationHint(p: Any, loc: Point2D)(implicit tx: InTxn): Unit =
-    //      locHintMap.transform(_ + (p -> loc))
 
     def nuages(implicit tx: S#Tx): Nuages[S] = nuagesH()
 
@@ -316,8 +308,8 @@ object PanelImpl {
       }
 
       _g     = new Graph
-      vg    = _vis.addGraph(GROUP_GRAPH, _g)
-      vg.addColumn(COL_NUAGES, classOf[AnyRef])
+      _vg    = _vis.addGraph(GROUP_GRAPH, _g)
+      _vg.addColumn(COL_NUAGES, classOf[AnyRef])
       _aggrTable = _vis.addAggregates(AGGR_PROC)
       _aggrTable .addColumn(VisualItem.POLYGON, classOf[Array[Float]])
 
@@ -386,7 +378,7 @@ object PanelImpl {
       _dsp.setSize(960, 640)
       _dsp.addControlListener(new ZoomControl     ())
       _dsp.addControlListener(new WheelZoomControl())
-      _dsp.addControlListener(new PanControl    )
+      _dsp.addControlListener(new PanControl        )
       _dsp.addControlListener(new DragControl     (_vis))
       _dsp.addControlListener(new ClickControl    (this))
       _dsp.addControlListener(new ConnectControl  (this))
@@ -484,7 +476,10 @@ object PanelImpl {
 
         def ancestorRemoved(e: AncestorEvent): Unit = {
           pp.removeAncestorListener(this)
-          if (Some(p) == overlay) overlay = None
+          if (Some(p) == overlay) {
+            overlay = None
+            display.requestFocus()
+          }
         }
 
         def ancestorMoved(e: AncestorEvent) = ()
@@ -945,7 +940,7 @@ object PanelImpl {
       soloInfo().foreach(_._2.set("amp" -> v))
     }
 
-    private def close(p: Container): Unit = p.peer.getParent.remove(p.peer)
+    // private def close(p: Container): Unit = p.peer.getParent.remove(p.peer)
 
     def saveMacro(name: String, sel: Set[VisualObj[S]]): Unit =
       cursor.step { implicit tx =>
@@ -979,7 +974,7 @@ object PanelImpl {
         listGen.guiSelection match {
           case Vec(genIdx) =>
             val colIdxOpt = listCol1.guiSelection.headOption
-            close(p)
+            p.close()
             val displayPt = display.getAbsoluteCoordinate(p.location, null)
             atomic { implicit tx =>
               // val nuages = nuagesH()
@@ -1009,7 +1004,7 @@ object PanelImpl {
       p.onComplete {
         listMacro.guiSelection match {
           case Vec(macIdx) =>
-            close(p)
+            p.close()
             val displayPt = display.getAbsoluteCoordinate(p.location, null)
             atomic { implicit tx =>
               for {
@@ -1034,7 +1029,7 @@ object PanelImpl {
       p.onComplete {
         listFlt1.guiSelection match {
           case Vec(fltIdx) =>
-          close(p)
+          p.close()
           val displayPt = display.getAbsoluteCoordinate(p.location, null)
           atomic { implicit tx =>
             // val nuages = nuagesH()
@@ -1058,8 +1053,8 @@ object PanelImpl {
       }
     }
 
-    private def createFilterOnlyFromDialog(p: Container)(objFun: S#Tx => Option[Obj[S]]): Unit = {
-      close(p)
+    private def createFilterOnlyFromDialog(p: OverlayPanel)(objFun: S#Tx => Option[Obj[S]]): Unit = {
+      p.close()
       val displayPt = display.getAbsoluteCoordinate(p.location, null)
       cursor.step { implicit tx =>
         for {
@@ -1105,7 +1100,7 @@ object PanelImpl {
             }
 
           case (Some(fltIdx), Some(colIdx)) =>
-            close(p)
+            p.close()
             val displayPt = display.getAbsoluteCoordinate(p.location, null)
             atomic { implicit tx =>
               for {
