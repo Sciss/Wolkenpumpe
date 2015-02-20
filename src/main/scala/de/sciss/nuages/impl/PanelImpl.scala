@@ -27,10 +27,9 @@ import de.sciss.lucre.swing.{ListView, defer, deferTx, requireEDT}
 import de.sciss.lucre.synth.{AudioBus, Node, Synth, Sys, Txn}
 import de.sciss.model.Change
 import de.sciss.span.{Span, SpanLike}
-import de.sciss.synth
 import de.sciss.synth.proc.Implicits._
 import de.sciss.synth.proc.{Action, AuralObj, AuralSystem, DoubleElem, ExprImplicits, Folder, FolderElem, Obj, Proc, Scan, Timeline, Transport, WorkspaceHandle}
-import de.sciss.synth.{SynthGraph, addToTail, message, proc}
+import de.sciss.synth.{SynthGraph, addToTail, message}
 import prefuse.action.assignment.ColorAction
 import prefuse.action.layout.graph.ForceDirectedLayout
 import prefuse.action.{ActionList, RepaintAction}
@@ -45,7 +44,6 @@ import prefuse.visual.expression.InGroupPredicate
 import prefuse.visual.{AggregateTable, NodeItem, VisualGraph, VisualItem}
 import prefuse.{Constants, Display, Visualization}
 
-import scala.collection.JavaConversions
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm.{Ref, TMap, TxnExecutor, TxnLocal}
 import scala.swing.{Component, Container, Swing}
