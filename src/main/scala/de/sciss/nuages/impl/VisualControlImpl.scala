@@ -19,6 +19,7 @@ import java.awt.event.MouseEvent
 import java.awt.geom.{GeneralPath, Arc2D, Point2D, Area}
 
 import de.sciss.lucre.expr.{Expr, Double => DoubleEx}
+import de.sciss.lucre.stm
 import de.sciss.lucre.swing.requireEDT
 import de.sciss.lucre.synth.{Synth, Sys}
 import de.sciss.numbers
@@ -45,7 +46,8 @@ object VisualControlImpl {
                         sObj: Scan.Obj[S])(implicit tx: S#Tx): VisualControl[S] = {
     val value = 0.5 // XXX TODO
     val spec  = getSpec(parent, key)
-    apply(parent, key = key, spec = spec, value = value, mapping = Some(new MappingImpl))
+    val scan  = sObj.elem.peer
+    apply(parent, key = key, spec = spec, value = value, mapping = Some(new MappingImpl(tx.newHandle(scan))))
   }
 
   private def apply[S <: Sys[S]](parent: VisualObj[S], key: String, spec: ParamSpec, value: Double,
@@ -60,9 +62,11 @@ object VisualControlImpl {
     var dragValue = valueStart
   }
 
-  private final class MappingImpl[S <: Sys[S]] extends VisualControl.Mapping[S] {
+  private final class MappingImpl[S <: Sys[S]](scanH: stm.Source[S#Tx, Scan[S]]) extends VisualControl.Mapping[S] {
     val synth   = Ref(Option.empty[Synth])
     var source  = Option.empty[VisualScan[S]]
+
+    def scan(implicit tx: S#Tx): Scan[S] = scanH()
   }
 }
 final class VisualControlImpl[S <: Sys[S]] private(val parent: VisualObj[S], val key: String,

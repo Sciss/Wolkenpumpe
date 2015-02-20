@@ -27,12 +27,13 @@ object VisualControl {
                         sObj: Scan.Obj[S])(implicit tx: S#Tx): VisualControl[S] =
     impl.VisualControlImpl.scan(parent, key, sObj)
 
-
   trait Mapping[S <: Sys[S]] {
     /** The metering synth that via `SendTrig` updates the control's current value. */
     def synth: Ref[Option[Synth]]
 
     var source: Option[VisualScan[S]]
+
+    def scan(implicit tx: S#Tx): Scan[S]
   }
 }
 trait VisualControl[S <: Sys[S]] extends VisualParam[S] {

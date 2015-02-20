@@ -56,22 +56,23 @@ object PanelImpl {
   def apply[S <: Sys[S]](nuages: Nuages[S], config: Nuages.Config)
                         (implicit tx: S#Tx, aural: AuralSystem, cursor: stm.Cursor[S],
                          workspace: WorkspaceHandle[S]): NuagesPanel[S] = {
-    val nuagesH   = tx.newHandle(nuages)
+    val nuagesH       = tx.newHandle(nuages)
 
-    val listGen   = mkListView(nuages.generators)
-    val listFlt1  = mkListView(nuages.filters   )
-    val listCol1  = mkListView(nuages.collectors)
-    val listFlt2  = mkListView(nuages.filters   )
-    val listCol2  = mkListView(nuages.collectors)
-    val listMacro = mkListView(nuages.macros    )
+    val listGen       = mkListView(nuages.generators)
+    val listFlt1      = mkListView(nuages.filters   )
+    val listCol1      = mkListView(nuages.collectors)
+    val listFlt2      = mkListView(nuages.filters   )
+    val listCol2      = mkListView(nuages.collectors)
+    val listMacro     = mkListView(nuages.macros    )
 
-    val nodeMap   = tx.newInMemoryIDMap[VisualObj[S]]
-    val scanMap   = tx.newInMemoryIDMap[ScanInfo [S]]
-    val transport = Transport[S](aural)
-    val timelineObj = nuages.timeline
+    val nodeMap       = tx.newInMemoryIDMap[VisualObj[S]]
+    val scanMap       = tx.newInMemoryIDMap[ScanInfo [S]]
+    val missingScans  = tx.newInMemoryIDMap[List[VisualControl[S]]]
+    val transport     = Transport[S](aural)
+    val timelineObj   = nuages.timeline
     // transport.addObject(timelineObj)
 
-    new Impl[S](nuagesH, nodeMap, scanMap, config, transport, aural,
+    new Impl[S](nuagesH, nodeMap, scanMap, missingScans, config, transport, aural,
                 listGen = listGen, listFlt1 = listFlt1, listCol1 = listCol1, listFlt2 = listFlt2, listCol2 = listCol2,
                 listMacro = listMacro)
       .init(timelineObj)
@@ -102,7 +103,7 @@ object PanelImpl {
   }
 
   private final class VisualLink[S <: Sys[S]](val source: VisualObj[S], val sourceKey: String,
-                                              val sink  : VisualObj[S], val sinkKey  : String)
+                                              val sink  : VisualObj[S], val sinkKey  : String, val isScan: Boolean)
 
   /* Contains the `id` of the parent `timed` object, and the scan key */
   private final case class ScanInfo[S <: Sys[S]](timedID: S#ID, key: String)
@@ -111,6 +112,7 @@ object PanelImpl {
   private final class Impl[S <: Sys[S]](nuagesH: stm.Source[S#Tx, Nuages[S]],
                                         nodeMap: stm.IdentifierMap[S#ID, S#Tx, VisualObj[S]],
                                         scanMap: stm.IdentifierMap[S#ID, S#Tx, ScanInfo[S]],
+                                        missingScans: stm.IdentifierMap[S#ID, S#Tx, List[VisualControl[S]]],
                                         val config   : Nuages.Config,
                                         val transport: Transport[S],
                                         val aural    : AuralSystem,
@@ -180,14 +182,15 @@ object PanelImpl {
       }
       viewToAuralMap.clear()
       auralToViewMap.clear()
-      nodeMap  .dispose()
-      scanMap  .dispose()
+      nodeMap       .dispose()
+      scanMap       .dispose()
+      missingScans  .dispose()
 
-      keyControl.dispose()
+      keyControl    .dispose()
     }
 
     private def disposeAuralObserver()(implicit tx: S#Tx): Unit = {
-      auralTimeline.set(None)(tx.peer)
+      auralTimeline.set (None)(tx.peer)
       auralObserver.swap(None)(tx.peer).foreach(_.dispose())
     }
 
@@ -263,7 +266,7 @@ object PanelImpl {
                         }
 
                       scanChanges.foreach {
-                        case Scan.SinkAdded  (sink) => withScans(sink)(addEdgeGUI   )
+                        case Scan.SinkAdded  (sink) => withScans(sink)(addScanScanEdgeGUI   )
                         case Scan.SinkRemoved(sink) => withScans(sink)(removeEdgeGUI)
                         case _ =>
                       }
@@ -582,21 +585,26 @@ object PanelImpl {
       implicit val itx = tx.peer
       val vc    = VisualControl.scan(visObj, key, sObj)
       val scan  = sObj.elem.peer
+      assignMapping(source = scan, vSink = vc)
+      addControl(visObj, vc)
+    }
+
+    private def assignMapping(source: Scan[S], vSink: VisualControl[S])(implicit tx: S#Tx): Unit = {
+      implicit val itx = tx.peer
       for {
-        info    <- scanMap.get(scan.id)
+        info    <- scanMap.get(source.id)
         vObj    <- nodeMap.get(info.timedID)
         vScan   <- vObj.scans.get(info.key)
-        m       <- vc.mapping
+        m       <- vSink.mapping
       } {
-        m.source = Some(vScan)
+        m.source = Some(vScan)  // XXX TODO -- not cool, should be on the EDT
         for {
           aural <- viewToAuralMap.get(vObj)
           (bus, node) <- getAuralScanData(aural, info.key)
         } {
-          m.synth() = Some(mkMeter(bus, node)(vc.value = _))
+          m.synth() = Some(mkMeter(bus, node)(vSink.value = _))
         }
       }
-      addControl(visObj, vc)
     }
 
     // simple cache from num-channels to graph
@@ -637,7 +645,9 @@ object PanelImpl {
       // val key     = vc.key
       // val locOpt  = locHintMap.get(tx.peer).get(visObj -> key)
       // println(s"locHintMap($visObj -> $key) = $locOpt")
-      deferVisTx(addControlGUI(visObj, vc /* , locOpt */))
+      deferVisTx {
+        addControlGUI(visObj, vc /* , locOpt */)
+      }
     }
 
     // makes the meter synth
@@ -668,6 +678,8 @@ object PanelImpl {
             scans.iterator.foreach { case (_, scan) =>
               scanMap.remove(scan.id)
             }
+            // XXX TODO -- clean up missing controls
+
           case _ =>
         }
 
@@ -684,8 +696,15 @@ object PanelImpl {
       }
     }
 
+    // looks for existing sinks and sources of a scan that
+    // are already represented in the GUI. for those, creates
+    // visual links and returns them (they'll have to be
+    // "materialized" in terms of prefuse-edges later).
+    //
+    // resolves entries in missingScans as well.
     private def addScan(vi: VisualObj[S], scan: Scan[S], info: ScanInfo[S])(implicit tx: S#Tx): List[VisualLink[S]] = {
-      scanMap.put(scan.id, info)  // stupid look-up
+      val sid = scan.id
+      scanMap.put(sid, info)  // stupid look-up
       var res = List.empty[VisualLink[S]]
       scan.sources.foreach {
         case Scan.Link.Scan(source) =>
@@ -693,7 +712,7 @@ object PanelImpl {
             ScanInfo(sourceTimedID, sourceKey) <- scanMap.get(source.id)
             sourceVis <- nodeMap.get(sourceTimedID)
           } {
-            res ::= new VisualLink(sourceVis, sourceKey, vi, info.key)
+            res ::= new VisualLink(sourceVis, sourceKey, vi, info.key, isScan = true)
           }
         case _ =>
       }
@@ -703,10 +722,19 @@ object PanelImpl {
             ScanInfo(sinkTimedID, sinkKey) <- scanMap.get(sink.id)
             sinkVis <- nodeMap.get(sinkTimedID)
           } {
-            res ::= new VisualLink(vi, info.key, sinkVis, sinkKey)
+            res ::= new VisualLink(vi, info.key, sinkVis, sinkKey, isScan = true)
           }
         case _ =>
       }
+
+      missingScans.get(sid).foreach { controls =>
+        missingScans.remove(sid)
+        controls  .foreach { ctl =>
+          assignMapping(source = scan, vSink = ctl)
+          res ::= new VisualLink(vi, info.key, ctl.parent, ctl.key, isScan = false)
+        }
+      }
+
       res
     }
 
@@ -750,11 +778,15 @@ object PanelImpl {
       }
 
       links.foreach { link =>
-        for {
-          sourceVisScan <- link.source.scans.get(link.sourceKey)
-          sinkVisScan   <- link.sink  .scans.get(link.sinkKey  )
-        } {
-          addEdgeGUI(sourceVisScan, sinkVisScan)
+        link.source.scans.get(link.sourceKey).foreach { sourceVisScan =>
+          if (link.isScan)
+            link.sink.scans.get(link.sinkKey).foreach { sinkVisScan =>
+              addScanScanEdgeGUI(sourceVisScan, sinkVisScan)
+            }
+          else
+            link.sink.params.get(link.sinkKey).foreach { sinkVisCtl =>
+              addScanControlEdgeGUI(sourceVisScan, sinkVisCtl)
+            }
         }
       }
     }
@@ -793,10 +825,16 @@ object PanelImpl {
       _g.removeNode(vc.pNode)
     }
 
-    def addEdgeGUI(source: VisualScan[S], sink: VisualScan[S]): Unit = {
+    def addScanScanEdgeGUI(source: VisualScan[S], sink: VisualScan[S]): Unit = {
       val pEdge = _g.addEdge(source.pNode, sink.pNode)
       source.sinks   += pEdge
       sink  .sources += pEdge
+    }
+
+    def addScanControlEdgeGUI(source: VisualScan[S], sink: VisualControl[S]): Unit = {
+      /* val pEdge = */ _g.addEdge(source.pNode, sink.pNode)
+      source.mappings += sink
+      // sink  .mapping.foreach { m => ... }
     }
 
     def removeEdgeGUI(source: VisualScan[S], sink: VisualScan[S]): Unit =
