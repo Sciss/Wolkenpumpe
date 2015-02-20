@@ -556,7 +556,7 @@ object PanelImpl {
       nodeMap.put(id, vp)
       val locO  = locHintMap.getAndTransform(_ - obj)(tx.peer).get(obj)
 
-      val links: List[VisualLink[S]] = obj match {
+      var links: List[VisualLink[S]] = obj match {
         case Proc.Obj(objT) =>
           val scans = objT.elem.peer.scans
           scans.iterator.flatMap { case (key, scan) =>
@@ -564,6 +564,27 @@ object PanelImpl {
             addScan(vp, scan, info)
           } .toList
         case _ => Nil
+      }
+
+      // check existing mappings; establish visual links or remember missing scans
+      vp.params.foreach { case (sinkKey, vSink) =>
+        vSink.mapping.foreach { m =>
+          assert(m.source.isEmpty)  // must be missing at this stage
+          val scan  = m.scan
+          val sid   = scan.id
+          scanMap.get(sid).fold {
+            val list  = vSink :: missingScans.getOrElse(sid, Nil)
+            missingScans.put(sid, list)
+          } { info =>
+            for {
+              vObj    <- nodeMap.get(info.timedID)
+              vScan   <- vObj.scans.get(info.key)
+            } {
+              assignMapping(source = scan, vSink = vSink)
+              links ::= new VisualLink(vObj, info.key, vp /* aka vCtl.parent */, sinkKey, isScan = false)
+            }
+          }
+        }
       }
 
       for {
