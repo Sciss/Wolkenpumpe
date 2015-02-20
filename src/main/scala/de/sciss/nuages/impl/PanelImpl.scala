@@ -47,7 +47,7 @@ import prefuse.{Constants, Display, Visualization}
 import scala.collection.breakOut
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm.{Ref, TMap, TxnExecutor, TxnLocal}
-import scala.swing.{Component, Container, Swing}
+import scala.swing.{Component, Swing}
 import scala.util.control.NonFatal
 
 object PanelImpl {
