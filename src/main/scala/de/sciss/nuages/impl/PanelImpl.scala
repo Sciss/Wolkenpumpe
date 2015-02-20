@@ -1060,7 +1060,7 @@ object PanelImpl {
     private def createFilterOnlyFromDialog(p: Container)(objFun: S#Tx => Option[Obj[S]]): Unit = {
       close(p)
       val displayPt = display.getAbsoluteCoordinate(p.location, null)
-      atomic { implicit tx =>
+      cursor.step { implicit tx =>
         for {
           Proc.Obj(flt) <- objFun(tx)
         } {

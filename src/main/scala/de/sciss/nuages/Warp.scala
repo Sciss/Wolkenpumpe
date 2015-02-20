@@ -14,10 +14,8 @@
 package de.sciss.nuages
 
 import de.sciss.lucre.expr
-import de.sciss.serial.{Writable, DataInput, DataOutput}
-import de.sciss.synth
-import de.sciss.synth.GE
-import synth._
+import de.sciss.serial.{DataInput, DataOutput, Writable}
+import de.sciss.synth.{GE, _}
 
 import scala.annotation.switch
 import scala.math.Pi

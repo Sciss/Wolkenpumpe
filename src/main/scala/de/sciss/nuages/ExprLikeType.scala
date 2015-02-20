@@ -13,10 +13,9 @@
 
 package de.sciss.nuages
 
-import de.sciss.lucre.{event => evt}
 import de.sciss.lucre.event.Sys
-import de.sciss.lucre.expr.{Type1, Expr}
-import de.sciss.serial.{DataOutput, DataInput}
+import de.sciss.lucre.expr.{Expr, Type1}
+import de.sciss.serial.{DataInput, DataOutput}
 
 import scala.language.higherKinds
 

@@ -30,7 +30,7 @@ object VisualObj {
 
 /** The GUI representation of a `proc.Obj`.
   *
-  * @see [[de.sciss.synth.proc.Obj]]
+  * @see [[Obj]]
   */
 trait VisualObj[S <: Sys[S]]
   extends VisualNode[S] with Disposable[S#Tx] {

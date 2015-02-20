@@ -124,7 +124,7 @@ object ParamSpecExprImpl
   private[this] def readVar[S <: Sys[S]](in: DataInput, access: S#Acc, targets: evt.Targets[S])
                                         (implicit tx: S#Tx): Repr[S] with evt.Node[S] = {
     val ref = tx.readVar[Repr[S]](targets.id, in)
-    new Var(targets, ref)
+    new Var[S](targets, ref)
   }
 
   private[this] def readNode[S <: Sys[S]](cookie: Int, in: DataInput, access: S#Acc, targets: evt.Targets[S])
@@ -134,7 +134,7 @@ object ParamSpecExprImpl
   }
 
   private[this] final case class Const[S <: Sys[S]](constValue: ParamSpec)
-    extends Repr[S] with expr.impl.ConstImpl[S, ParamSpec] {
+    extends ParamSpec.Expr[S] /* Repr[S] */ with expr.impl.ConstImpl[S, ParamSpec] {
 
     def lo  (implicit tx: S#Tx): Expr[S, Double] = DoubleEx .newConst(constValue.lo  )
     def hi  (implicit tx: S#Tx): Expr[S, Double] = DoubleEx .newConst(constValue.hi  )
@@ -165,7 +165,7 @@ object ParamSpecExprImpl
                                                loEx: Expr[S, Double], hiEx: Expr[S, Double],
                                                warpEx: Expr[S, Warp], // stepEx: Expr[S, Double],
                                                unitEx: Expr[S, String])
-    extends Repr[S]
+    extends ParamSpec.Expr[S] // Repr[S]
     with evt.impl.StandaloneLike  [S, Change[ParamSpec], Repr[S]]
     with evt.impl.EventImpl       [S, Change[ParamSpec], Repr[S]]
     /* with evt.impl.MappingGenerator[S, Change[ParamSpec], Repr[S]] */ {
@@ -252,7 +252,7 @@ object ParamSpecExprImpl
   }
 
   private[this] final class Var[S <: Sys[S]](val targets: evt.Targets[S], val ref: S#Var[Repr[S]])
-    extends Repr[S]
+    extends ParamSpec.Expr[S] // Repr[S]
     with evt.impl.StandaloneLike[S, Change[ParamSpec], Repr[S]]
     with evt.impl.Generator[S, Change[ParamSpec], Repr[S]] with evt.InvariantSelector[S]
     with stm.Var[S#Tx, Repr[S]] {
@@ -278,11 +278,11 @@ object ParamSpecExprImpl
 
     def value(implicit tx: S#Tx): ParamSpec = apply().value
 
-    def lo  (implicit tx: S#Tx): Expr[S, Double] = mkTuple1(this, DoubleExtensions.Lo)
-    def hi  (implicit tx: S#Tx): Expr[S, Double] = mkTuple1(this, DoubleExtensions.Hi)
-    def warp(implicit tx: S#Tx): Expr[S, Warp  ] = mkTuple1(this, WarpExtensions.Warp)
+    def lo  (implicit tx: S#Tx): Expr[S, Double] = mkTuple1[S, Double](this, DoubleExtensions.Lo)
+    def hi  (implicit tx: S#Tx): Expr[S, Double] = mkTuple1[S, Double](this, DoubleExtensions.Hi)
+    def warp(implicit tx: S#Tx): Expr[S, Warp  ] = mkTuple1[S, Warp  ](this, WarpExtensions.Warp)
     // def step(implicit tx: S#Tx): Expr[S, Double] = mkTuple1(this, DoubleExtensions.Step)
-    def unit(implicit tx: S#Tx): Expr[S, String] = mkTuple1(this, StringExtensions.Unit)
+    def unit(implicit tx: S#Tx): Expr[S, String] = mkTuple1[S, String](this, StringExtensions.Unit)
 
     def changed: EventLike[S, Change[ParamSpec]] = this
 
@@ -505,7 +505,7 @@ object ParamSpecElemImpl extends proc.impl.ElemCompanionImpl[ParamSpec.Elem] {
     def typeID = ParamSpec.typeID
     def prefix = "ParamSpec"
 
-    override def toString = s"$prefix$id"
+    override def toString() = s"$prefix$id"
 
     def mkCopy()(implicit tx: S#Tx): ParamSpec.Elem[S] = ParamSpec.Elem(peer)
   }

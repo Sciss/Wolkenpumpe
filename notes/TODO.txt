@@ -6,7 +6,8 @@
 [OK]    - missing labels on VisualControl instances until display zoom changes
         - glide, fade
         - keyboard control
-        - group selection and filtering
+[OK]    - group selection
+        - group filtering
         - fscape procs
 [high]  - avoid gaps with new synth-defs
         - main recorder

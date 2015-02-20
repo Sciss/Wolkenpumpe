@@ -80,8 +80,8 @@ class ControlPanel private(val config: ControlPanel.Config)
     Some(p)
   } else None
 
-  private val outMeterPanel  = makeMeter( config.numOutputChannels )
-  private val inMeterPanel   = makeMeter( config.numInputChannels  )
+  private val outMeterPanel  = makeMeter(config.numOutputChannels)
+  private val inMeterPanel   = makeMeter(config.numInputChannels )
   private val inDataOffset   = config.numOutputChannels << 1
 
   private def space(width: Int = 8): Unit = panel.contents += HStrut(width)

@@ -26,8 +26,7 @@ import de.sciss.lucre.synth.{Server, Synth, Sys, Txn}
 import de.sciss.osc
 import de.sciss.span.Span
 import de.sciss.swingplus.PopupMenu
-import de.sciss.synth.proc.{FolderElem, Folder, Obj, AuralSystem, Timeline, WorkspaceHandle}
-import de.sciss.synth.proc.Implicits._
+import de.sciss.synth.proc.{AuralSystem, Timeline, WorkspaceHandle}
 import de.sciss.synth.swing.j.JServerStatusPanel
 import de.sciss.synth.{SynthGraph, addAfter, message}
 
@@ -53,7 +52,6 @@ object NuagesViewImpl {
                                        (implicit val cursor: stm.Cursor[S])
     extends NuagesView[S] with ComponentHolder[Component] with AuralSystem.Client { impl =>
 
-    import cursor.{step => atomic}
     import panel.config
 
     def init()(implicit tx: S#Tx): this.type = {
@@ -148,7 +146,7 @@ object NuagesViewImpl {
           value = slidInit) { v =>
           val ctrlVal = ctrlSpec.map(slidSpec.inverseMap(v))
           //               grpMaster.set( ctrlName -> ctrlVal )
-          atomic { implicit tx =>
+          cursor.step { implicit tx =>
             fun(ctrlVal, tx)
           }
         }

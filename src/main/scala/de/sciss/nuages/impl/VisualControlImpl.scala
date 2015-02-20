@@ -22,7 +22,6 @@ import de.sciss.lucre.expr.{Expr, Double => DoubleEx}
 import de.sciss.lucre.stm
 import de.sciss.lucre.swing.requireEDT
 import de.sciss.lucre.synth.{Synth, Sys}
-import de.sciss.numbers
 import de.sciss.synth.proc.{Obj, Scan, DoubleElem}
 import prefuse.util.ColorLib
 import prefuse.visual.VisualItem
@@ -88,7 +87,6 @@ final class VisualControlImpl[S <: Sys[S]] private(val parent: VisualObj[S], val
   private var drag: Drag = null
 
   private val spikes: Shape = if (spec.warp == IntWarp) {
-    import numbers.Implicits._
     val loInt = spec.map(0.0).toInt
     val hiInt = spec.map(1.0).toInt
     val sz    = hiInt - loInt
