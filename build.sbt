@@ -1,6 +1,6 @@
 name               := "Wolkenpumpe"
 
-version            := "1.1.0"
+version            := "1.2.0-SNAPSHOT"
 
 organization       := "de.sciss"
 
@@ -10,15 +10,15 @@ description        := "A Prefuse based visual interface for SoundProcesses, a so
 
 licenses           := Seq("GPL v2+" -> url( "http://www.gnu.org/licenses/gpl-2.0.txt"))
 
-scalaVersion       := "2.11.5"
+scalaVersion       := "2.11.6"
 
-crossScalaVersions := Seq("2.11.5", "2.10.4")
+crossScalaVersions := Seq("2.11.6", "2.10.4")
 
-lazy val soundProcessesVersion      = "2.16.0"
+lazy val soundProcessesVersion      = "2.17.0-SNAPSHOT"
 
 lazy val scalaColliderSwingVersion  = "1.25.0"
 
-lazy val lucreSwingVersion          = "0.8.0"
+lazy val lucreSwingVersion          = "0.9.0-SNAPSHOT"
 
 lazy val swingPlusVersion           = "0.2.0"
 
