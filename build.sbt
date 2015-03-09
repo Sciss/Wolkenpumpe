@@ -1,6 +1,6 @@
 name               := "Wolkenpumpe"
 
-version            := "1.2.0-SNAPSHOT"
+version            := "1.2.0"
 
 organization       := "de.sciss"
 
@@ -12,13 +12,13 @@ licenses           := Seq("GPL v2+" -> url( "http://www.gnu.org/licenses/gpl-2.0
 
 scalaVersion       := "2.11.6"
 
-crossScalaVersions := Seq("2.11.6", "2.10.4")
+crossScalaVersions := Seq("2.11.6", "2.10.5")
 
-lazy val soundProcessesVersion      = "2.17.0-SNAPSHOT"
+lazy val soundProcessesVersion      = "2.17.0"
 
 lazy val scalaColliderSwingVersion  = "1.25.0"
 
-lazy val lucreSwingVersion          = "0.9.0-SNAPSHOT"
+lazy val lucreSwingVersion          = "0.9.0"
 
 lazy val swingPlusVersion           = "0.2.0"
 
