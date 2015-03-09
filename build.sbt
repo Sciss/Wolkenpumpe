@@ -14,6 +14,8 @@ scalaVersion       := "2.11.6"
 
 crossScalaVersions := Seq("2.11.6", "2.10.5")
 
+resolvers          += "Oracle Repository" at "http://download.oracle.com/maven"  // required for sleepycat
+
 lazy val soundProcessesVersion      = "2.17.0"
 
 lazy val scalaColliderSwingVersion  = "1.25.0"
