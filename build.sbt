@@ -1,6 +1,6 @@
 name               := "Wolkenpumpe"
 
-version            := "1.2.0"
+version            := "1.2.1-SNAPSHOT"
 
 organization       := "de.sciss"
 
@@ -20,7 +20,7 @@ lazy val soundProcessesVersion      = "2.17.0"
 
 lazy val scalaColliderSwingVersion  = "1.25.0"
 
-lazy val lucreSwingVersion          = "0.9.0"
+lazy val lucreSwingVersion          = "0.9.1"
 
 lazy val swingPlusVersion           = "0.2.0"
 
