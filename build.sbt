@@ -1,6 +1,6 @@
 name               := "Wolkenpumpe"
 
-version            := "1.2.1-SNAPSHOT"
+version            := "1.3.0-SNAPSHOT"
 
 organization       := "de.sciss"
 
@@ -16,7 +16,7 @@ crossScalaVersions := Seq("2.11.6", "2.10.5")
 
 resolvers          += "Oracle Repository" at "http://download.oracle.com/maven"  // required for sleepycat
 
-lazy val soundProcessesVersion      = "2.17.0"
+lazy val soundProcessesVersion      = "2.18.1"
 
 lazy val scalaColliderSwingVersion  = "1.25.0"
 

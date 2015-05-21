@@ -353,6 +353,25 @@ object PanelImpl {
       val actionAggrStroke  = new ColorAction(AGGR_PROC  , VisualItem.STROKECOLOR, ColorLib.rgb(255, 255, 255))
 
       val lay = new ForceDirectedLayout(GROUP_GRAPH)
+      val sim = lay.getForceSimulator
+      val forces = sim.getForces.map { f => (f.getClass.getSimpleName, f) } (breakOut)
+
+      val forceMap = Map(
+        // ("NBodyForce" , "GravitationalConstant") -> 0f, // -0.01f,
+        ("NBodyForce", "Distance") -> 100.0f
+        // ("NBodyForce" , "BarnesHutTheta"       ) -> 0.4f,
+        // ("DragForce"  , "DragCoefficient"      ) -> 0.015f,
+      )
+
+      sim.getForces.foreach { force =>
+        val fName = force.getClass.getSimpleName
+        for (i <- 0 until force.getParameterCount) {
+          val pName = force.getParameterName(i)
+          forceMap.get((fName, pName)).foreach { value =>
+            force.setParameter(i, value)
+          }
+        }
+      }
 
       // quick repaint
       val actionColor = new ActionList()
