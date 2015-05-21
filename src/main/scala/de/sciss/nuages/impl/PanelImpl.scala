@@ -358,7 +358,7 @@ object PanelImpl {
 
       val forceMap = Map(
         // ("NBodyForce" , "GravitationalConstant") -> 0f, // -0.01f,
-        ("NBodyForce", "Distance") -> 100.0f
+        ("NBodyForce", "Distance") -> 200.0f
         // ("NBodyForce" , "BarnesHutTheta"       ) -> 0.4f,
         // ("DragForce"  , "DragCoefficient"      ) -> 0.015f,
       )

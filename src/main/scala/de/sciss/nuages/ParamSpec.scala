@@ -92,6 +92,7 @@ final case class ParamSpec(lo: Double = 0.0, hi: Double = 1.0, warp: Warp = Line
     w // if (step <= 0.0) w else w.roundTo(step)
   }
 
+  /** Maps a number from spec spaced to normalized (0 ... 1) space. */
   def inverseMap(value: Double): Double = warp.inverseMap(this, value)
 
   /** Maps a graph element from normalized range to spec.
@@ -103,6 +104,7 @@ final case class ParamSpec(lo: Double = 0.0, hi: Double = 1.0, warp: Warp = Line
     w // if (step <= 0.0) w else w.roundTo(step)
   }
 
+  /** Maps a graph element from spec spaced to normalized (0 ... 1) space. */
   def inverseMap(value: GE): GE = warp.inverseMap(this, value)
 
   def write(out: DataOutput): Unit = ExprImpl.writeValue(this, out)

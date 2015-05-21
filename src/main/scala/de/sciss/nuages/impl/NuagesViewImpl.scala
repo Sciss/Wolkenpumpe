@@ -271,7 +271,7 @@ object NuagesViewImpl {
       message.Responder.add(server.peer) {
         case osc.Message( "/meters", `synPostMID`, 0, values @ _* ) =>
           defer {
-            _controlPanel.meterUpdate(values.map(_.asInstanceOf[Float])(breakOut))
+            _controlPanel.meterUpdate(values.map(x => math.min(10f, x.asInstanceOf[Float]))(breakOut))
           }
       }
     }

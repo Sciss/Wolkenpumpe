@@ -46,4 +46,7 @@ trait VisualControl[S <: Sys[S]] extends VisualParam[S] {
   def mapping: Option[VisualControl.Mapping[S]]
 
   def removeMapping()(implicit tx: S#Tx): Unit
+
+  /** Adjusts the control with the given normalized value. */
+  def setControl(v: Double, instant: Boolean): Unit
 }

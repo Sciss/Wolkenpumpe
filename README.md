@@ -34,9 +34,23 @@ The current stable version `v` is `"1.2.0"`.
 
 ## keyboard shortcuts
 
+Global:
+
 - <tt>1</tt> zoom 100%
 - <tt>2</tt> zoom 200%
-- <tt>O</tt> pan to next collector
-- custom filter insertion short-cuts via object attribute `Nuages.KeyShortcut`
+- <tt>O</tt> pan to next collector (O for output)
 - <tt>Control</tt>-<tt>Shift</tt>-<tt>F</tt> toggle full-screen
 - <tt>Escape</tt> cancel on-screen dialogs
+
+Scan-out:
+
+- custom filter insertion short-cuts via object attribute `Nuages.KeyShortcut`
+
+Parameter values:
+
+- <tt>n</tt> minimum
+- <tt>c</tt> center
+- <tt>x</tt> maximum
+- <tt>r</tt> random
+- <tt>[</tt> decrement
+- <tt>]</tt> increment

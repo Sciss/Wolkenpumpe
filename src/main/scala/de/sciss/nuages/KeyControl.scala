@@ -13,18 +13,22 @@
 
 package de.sciss.nuages
 
-import java.awt.event.{MouseEvent, KeyEvent}
+import java.awt.Toolkit
+import java.awt.datatransfer.{UnsupportedFlavorException, DataFlavor, Transferable, Clipboard, ClipboardOwner}
+import java.awt.event.{KeyEvent, MouseEvent}
 import java.awt.geom.Point2D
 import javax.swing.KeyStroke
 
+import de.sciss.desktop.KeyStrokes
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{IdentifierMap, Disposable}
+import de.sciss.lucre.stm.{Disposable, IdentifierMap}
 import de.sciss.lucre.synth.Sys
 import de.sciss.nuages.NuagesPanel._
-import de.sciss.synth.proc.{StringElem, Obj, Folder}
+import de.sciss.synth.proc.{Folder, Obj, StringElem}
 import prefuse.controls.{Control, ControlAdapter}
-import prefuse.visual.{EdgeItem, VisualItem}
+import prefuse.visual.{EdgeItem, NodeItem, VisualItem}
 
+import scala.annotation.switch
 import scala.concurrent.stm.TMap
 
 object KeyControl {
@@ -33,6 +37,21 @@ object KeyControl {
     res.init()
     res
   }
+
+  private def internalFlavor[A](implicit ct: reflect.ClassTag[A]): DataFlavor =
+    new DataFlavor(DataFlavor.javaJVMLocalObjectMimeType + ";class=\"" + ct.runtimeClass.getName + "\"")
+
+  private final class ControlDrag(val value: Double, val spec: ParamSpec) extends Transferable {
+    def getTransferDataFlavors: Array[DataFlavor] = Array(ControlFlavor)
+    def isDataFlavorSupported(_flavor: DataFlavor): Boolean = _flavor == ControlFlavor
+
+    def getTransferData(_flavor: DataFlavor): AnyRef  = {
+      if (!isDataFlavorSupported(_flavor)) throw new UnsupportedFlavorException(_flavor)
+      this
+    }
+  }
+
+  private val ControlFlavor = internalFlavor[ControlDrag]
 
   private trait Category[S <: Sys[S]] extends Disposable[S#Tx] {
     def get(ks: KeyStroke): Option[stm.Source[S#Tx, Obj[S]]]
@@ -62,8 +81,11 @@ object KeyControl {
     final def get(ks: KeyStroke): Option[stm.Source[S#Tx, Obj[S]]] = keyMap.single.get(ks)
   }
 
-  private class Impl[S <: Sys[S]](main: NuagesPanel[S]) extends ControlAdapter with Disposable[S#Tx] {
-    private var filters: Category[S] = _
+  private final class Impl[S <: Sys[S]](main: NuagesPanel[S])
+    extends ControlAdapter with Disposable[S#Tx] with ClipboardOwner {
+
+    private[this] var filters: Category[S] = _
+    private[this] val meta = KeyStrokes.menu1.mask
 
     private def mkEmptyCategory()(implicit tx: S#Tx): Category[S] = new Category[S] {
       def dispose()(implicit tx: S#Tx) = ()
@@ -135,12 +157,53 @@ object KeyControl {
             }
           }
 
+          case ni: NodeItem =>
+            ni.get(COL_NUAGES) match {
+              case vc: VisualControl[S] =>
+                if ((e.getModifiers & meta) == meta) {
+                  val clip = Toolkit.getDefaultToolkit.getSystemClipboard
+                  if (e.getKeyCode == KeyEvent.VK_C) {        // copy
+                    val data = new ControlDrag(vc.value, vc.spec)
+                    clip.setContents(data, this)
+
+                  } else if (e.getKeyCode == KeyEvent.VK_V) { // paste
+                    if (clip.isDataFlavorAvailable(ControlFlavor)) {
+                      val data = clip.getData(ControlFlavor).asInstanceOf[ControlDrag]
+                      vc.setControl(data.value, instant = true) // XXX TODO -- which want to rescale
+                    }
+                  }
+                }
+
+              case _ =>
+            }
+
         case _ =>
       }
     }
 
-    override def keyPressed(e: KeyEvent): Unit = {
-      // println(s"keyPressed '${e.getKeyChar}'")
+    override def itemKeyTyped(vi: VisualItem, e: KeyEvent): Unit = {
+      vi match {
+        case ni: NodeItem =>
+          ni.get(COL_NUAGES) match {
+            case vc: VisualControl[S] =>
+              val v = (e.getKeyChar: @switch) match {
+                case 'r'  => math.random
+                case 'n'  => 0.0
+                case 'x'  => 1.0
+                case 'c'  => 0.5
+                case '['  => math.max(0.0, vc.value - 0.005)
+                case ']'  => math.min(1.0, vc.value + 0.005)
+                case _    => -1.0
+              }
+              if (v >= 0) vc.setControl(v, instant = true)
+
+            case _ =>
+          }
+
+        case _ =>
+      }
     }
+
+    def lostOwnership(clipboard: Clipboard, contents: Transferable): Unit = ()
   }
 }

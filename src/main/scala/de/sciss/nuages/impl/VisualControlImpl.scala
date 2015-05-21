@@ -135,7 +135,7 @@ final class VisualControlImpl[S <: Sys[S]] private(val parent: VisualObj[S], val
 
   def removeMapping()(implicit tx: S#Tx): Unit = setControlTxn(value)
 
-  private def setControl(v: Double, instant: Boolean): Unit =
+  def setControl(v: Double, instant: Boolean): Unit =
     atomic { implicit t =>
       // if (instant) {
         setControlTxn(v)

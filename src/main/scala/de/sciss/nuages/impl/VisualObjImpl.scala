@@ -138,7 +138,7 @@ final class VisualObjImpl[S <: Sys[S]] private (val main: NuagesPanel[S],
 
   def meterUpdate(newPeak0: Float /*, newRMS0: Float */): Unit = {
     val time = System.currentTimeMillis
-    val newPeak = (math.log(newPeak0) * logPeakCorr).toFloat
+    val newPeak = (math.log(math.min(10f, newPeak0)) * logPeakCorr).toFloat
     if (newPeak >= peak) {
       peak = newPeak
     } else {
