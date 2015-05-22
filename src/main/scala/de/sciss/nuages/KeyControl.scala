@@ -13,11 +13,12 @@
 
 package de.sciss.nuages
 
-import java.awt.Toolkit
+import java.awt.{Color, Toolkit}
 import java.awt.datatransfer.{UnsupportedFlavorException, DataFlavor, Transferable, Clipboard, ClipboardOwner}
-import java.awt.event.{KeyEvent, MouseEvent}
+import java.awt.event.{ComponentEvent, ComponentAdapter, KeyEvent, MouseEvent}
 import java.awt.geom.Point2D
 import javax.swing.KeyStroke
+import javax.swing.event.{AncestorEvent, AncestorListener}
 
 import de.sciss.desktop.KeyStrokes
 import de.sciss.lucre.stm
@@ -30,6 +31,8 @@ import prefuse.visual.{EdgeItem, NodeItem, VisualItem}
 
 import scala.annotation.switch
 import scala.concurrent.stm.TMap
+import scala.swing.{Swing, Label, Orientation, TextField}
+import scala.util.Try
 
 object KeyControl {
   def apply[S <: Sys[S]](main: NuagesPanel[S])(implicit tx: S#Tx): Control with Disposable[S#Tx] = {
@@ -172,6 +175,9 @@ object KeyControl {
                       vc.setControl(data.value, instant = true) // XXX TODO -- which want to rescale
                     }
                   }
+                } else {
+
+                  if (e.getKeyCode == KeyEvent.VK_ENTER) showParamInput(vc)
                 }
 
               case _ =>
@@ -179,6 +185,34 @@ object KeyControl {
 
         case _ =>
       }
+    }
+
+    private def showParamInput(vc: VisualControl[S]): Unit = {
+      val p = new OverlayPanel {
+        val ggValue = new TextField(f"${vc.spec.map(vc.value)}%1.3f", 12)
+        ggValue.peer.addAncestorListener(new AncestorListener {
+          def ancestorRemoved(e: AncestorEvent): Unit = ()
+          def ancestorMoved  (e: AncestorEvent): Unit = ()
+          def ancestorAdded  (e: AncestorEvent): Unit = ggValue.requestFocus()
+        })
+        contents += new BasicPanel(Orientation.Horizontal) {
+          contents += ggValue
+          if (vc.spec.unit.nonEmpty) {
+            contents += Swing.HStrut(4)
+            contents += new Label(vc.spec.unit) {
+              foreground = Color.white
+            }
+          }
+        }
+        onComplete {
+          close()
+          Try(ggValue.text.toDouble).toOption.foreach { newValue =>
+            val v = vc.spec.inverseMap(vc.spec.clip(newValue))
+            vc.setControl(v, instant = true)
+          }
+        }
+      }
+      main.showOverlayPanel(p)
     }
 
     override def itemKeyTyped(vi: VisualItem, e: KeyEvent): Unit = {
@@ -191,8 +225,22 @@ object KeyControl {
                 case 'n'  => 0.0
                 case 'x'  => 1.0
                 case 'c'  => 0.5
-                case '['  => math.max(0.0, vc.value - 0.005)
-                case ']'  => math.min(1.0, vc.value + 0.005)
+                case '['  =>
+                  val s = vc.spec
+                  val v = vc.value
+                  val vNew = if (s.warp == IntWarp) {
+                    s.inverseMap(s.map(v) - 1)
+                  } else v - 0.005
+                  math.max(0.0, vNew)
+
+                case ']'  =>
+                  val s = vc.spec
+                  val v = vc.value
+                  val vNew = if (s.warp == IntWarp) {
+                    s.inverseMap(s.map(v) + 1)
+                  } else v + 0.005
+                  math.min(1.0, vNew)
+
                 case _    => -1.0
               }
               if (v >= 0) vc.setControl(v, instant = true)

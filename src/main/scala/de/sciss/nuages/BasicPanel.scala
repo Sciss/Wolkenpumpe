@@ -58,15 +58,18 @@ class OverlayPanel(orientation: Orientation.Value) extends BasicPanel(orientatio
   Swing.EmptyBorder(12, 12, 12, 12)
 
   def onComplete(action: => Unit): this.type = {
+    import de.sciss.desktop.Implicits._
     val b = new BoxPanel(Orientation.Horizontal)
     val butCreate = /* Basic */ Button("Create")(action)
+    butCreate.addAction("press", focus = FocusType.Window, action = new DoClickAction(butCreate) {
+      accelerator = Some(KeyStrokes.menu1 + Key.Enter)
+    })
     butCreate.focusable = false
     b.contents += butCreate
     val strut = Swing.HStrut(8)
     // strut.background = Color.black
     b.contents += strut
     val butAbort = /* Basic */ Button("Abort")(close())
-    import de.sciss.desktop.Implicits._
     butAbort.addAction("press", focus = FocusType.Window, action = new DoClickAction(butAbort) {
       accelerator = Some(KeyStrokes.plain + Key.Escape)
     })
