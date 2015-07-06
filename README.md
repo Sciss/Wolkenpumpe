@@ -18,7 +18,7 @@ Builds with sbt 0.13 against Scala 2.11 and 2.10.
 
     "de.sciss" %% "wolkenpumpe" % v
 
-The current stable version `v` is `"1.4.0"`.
+The current version `v` is `"1.5.0"`.
 
 ## mouse control
 

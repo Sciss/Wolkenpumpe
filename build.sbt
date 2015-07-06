@@ -1,6 +1,6 @@
 name               := "Wolkenpumpe"
 
-version            := "1.4.0"
+version            := "1.5.0"
 
 organization       := "de.sciss"
 
@@ -10,15 +10,15 @@ description        := "A Prefuse based visual interface for SoundProcesses, a so
 
 licenses           := Seq("GPL v2+" -> url( "http://www.gnu.org/licenses/gpl-2.0.txt"))
 
-scalaVersion       := "2.11.6"
+scalaVersion       := "2.11.7"
 
-crossScalaVersions := Seq("2.11.6", "2.10.5")
+crossScalaVersions := Seq("2.11.7", "2.10.5")
 
 resolvers          += "Oracle Repository" at "http://download.oracle.com/maven"  // required for sleepycat
 
-lazy val soundProcessesVersion      = "2.19.0"
+lazy val soundProcessesVersion      = "2.20.0"
 
-lazy val scalaColliderSwingVersion  = "1.25.1"
+lazy val scalaColliderSwingVersion  = "1.25.2"
 
 lazy val lucreSwingVersion          = "0.9.1"
 
@@ -85,11 +85,8 @@ pomExtra := { val n = name.value
 
 // ---- ls.implicit.ly ----
 
-seq(lsSettings :_*)
-
-(LsKeys.tags   in LsKeys.lsync) := Seq("sound-synthesis", "gui", "sound", "music", "supercollider")
-
-(LsKeys.ghUser in LsKeys.lsync) := Some("Sciss")
-
-(LsKeys.ghRepo in LsKeys.lsync) := Some(name.value)
-
+// seq(lsSettings :_*)
+// 
+// (LsKeys.tags   in LsKeys.lsync) := Seq("sound-synthesis", "gui", "sound", "music", "supercollider")
+// (LsKeys.ghUser in LsKeys.lsync) := Some("Sciss")
+// (LsKeys.ghRepo in LsKeys.lsync) := Some(name.value)
