@@ -58,7 +58,7 @@ class DSL[S <: evt.Sys[S]] {
   def pAudioIn(key: String, numChannels: Int, spec: ParamSpec)(implicit tx: S#Tx): GE = {
     val obj       = current.get(tx.peer)
     val sig       = ScanInFix(key, numChannels)
-    obj.elem.peer.scans.add(key)
+    obj.elem.peer.inputs.add(key)
     spec.map(sig.clip(0, 1))
   }
 
@@ -116,7 +116,7 @@ class DSL[S <: evt.Sys[S]] {
       val out = fun
       ScanOut(Proc.Obj.scanMainOut, out)
     }
-    obj.elem.peer.scans.add(Proc.Obj.scanMainOut)
+    obj.elem.peer.outputs.add(Proc.Obj.scanMainOut)
     insertByName(n.generators.get, obj)
     obj
   }
@@ -127,9 +127,9 @@ class DSL[S <: evt.Sys[S]] {
       val out = fun(in)
       ScanOut(Proc.Obj.scanMainOut, out)
     }
-    val scans = obj.elem.peer.scans
-    scans.add(Proc.Obj.scanMainIn )
-    scans.add(Proc.Obj.scanMainOut)
+    val proc  = obj.elem.peer
+    proc.inputs .add(Proc.Obj.scanMainIn )
+    proc.outputs.add(Proc.Obj.scanMainOut)
     insertByName(n.filters.get, obj)
     obj
   }
@@ -137,7 +137,7 @@ class DSL[S <: evt.Sys[S]] {
   def pAudioOut(key: String, sig: GE)(implicit tx: S#Tx): Unit = {
     val obj = current.get(tx.peer)
     ScanOut(key, sig)
-    obj.elem.peer.scans.add(key)
+    obj.elem.peer.outputs.add(key)
   }
 
   def sink(name: String)(fun: GE => Unit)(implicit tx: S#Tx, n: Nuages[S]): Proc.Obj[S] =
@@ -152,7 +152,7 @@ class DSL[S <: evt.Sys[S]] {
       val in = ScanIn(Proc.Obj.scanMainIn)
       fun(in)
     }
-    obj.elem.peer.scans.add(Proc.Obj.scanMainIn)
+    obj.elem.peer.inputs.add(Proc.Obj.scanMainIn)
     insertByName(folder, obj)
     obj
   }

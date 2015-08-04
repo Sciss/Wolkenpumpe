@@ -46,9 +46,10 @@ object VisualObjImpl {
     main.deferVisTx(res.initGUI())
     obj match {
       case Proc.Obj(objT) =>
-        val scans = objT.elem.peer.scans
-        res.scans = scans.keys.map { key => key -> VisualScan(res, key) } (breakOut)
-        res.params = objT.attr.iterator.flatMap {
+        val proc    = objT.elem.peer
+        res.inputs  = proc.inputs .keys.map { key => key -> VisualScan(res, key, isInput = true ) } (breakOut)
+        res.outputs = proc.outputs.keys.map { key => key -> VisualScan(res, key, isInput = false) } (breakOut)
+        res.params  = objT.attr.iterator.flatMap {
           case (key, DoubleElem.Obj(dObj)) =>
             val vc = VisualControl.scalar(res, key, dObj)
             Some(key -> vc)
@@ -79,7 +80,8 @@ final class VisualObjImpl[S <: Sys[S]] private (val main: NuagesPanel[S],
 
   private var _aggr: AggregateItem = _
 
-  var scans   = Map.empty[String, VisualScan   [S]]
+  var inputs  = Map.empty[String, VisualScan   [S]]
+  var outputs = Map.empty[String, VisualScan   [S]]
   var params  = Map.empty[String, VisualControl[S]]
 
   private val _meterSynth = Ref(Option.empty[Synth])
@@ -108,7 +110,7 @@ final class VisualObjImpl[S <: Sys[S]] private (val main: NuagesPanel[S],
 
   private var peak = 0f
   private var peakToPaint = -160f
-  private var peakNorm = 0f
+  private var peakNorm    = 0f
 
   //   private var rms         = 0f
   //   private var rmsToPaint	= -160f
@@ -166,10 +168,12 @@ final class VisualObjImpl[S <: Sys[S]] private (val main: NuagesPanel[S],
 
     } else if (outerE.contains(xt, yt) & e.isAltDown) {
       // val instant = !stateVar.playing || stateVar.bypassed || (main.transition(0) == Instant)
-      val scanKeys = scans.keySet
-      val mappings = scans.valuesIterator.flatMap(_.mappings)
+      val visScans  = inputs ++ outputs
+      val inKeys    = inputs .keySet
+      val outKeys   = outputs.keySet
+      val mappings  = visScans.valuesIterator.flatMap(_.mappings)
       atomic { implicit tx =>
-        if (scanKeys.nonEmpty) {
+        if (mappings.nonEmpty) {
           mappings.foreach { vc =>
             vc.removeMapping()
           }
@@ -177,18 +181,23 @@ final class VisualObjImpl[S <: Sys[S]] private (val main: NuagesPanel[S],
           val obj = objH()
           obj match {
             case Proc.Obj(objT) =>
-              val scans = objT.elem.peer.scans
-              val ins   = scans.get(Proc.Obj.scanMainIn ).fold(List.empty[Scan[S]])(_.sources.collect { case Scan.Link.Scan(source) => source } .toList)
-              val outs  = scans.get(Proc.Obj.scanMainOut).fold(List.empty[Scan[S]])(_.sinks  .collect { case Scan.Link.Scan(sink  ) => sink   } .toList)
-              scanKeys.foreach { key =>
-                scans.get(key).foreach { scan =>
-                  scan.sinks  .toList.foreach(scan.removeSink  )
-                  scan.sources.toList.foreach(scan.removeSource)
+              val proc  = objT.elem.peer
+              // val scans = proc.scans
+              val ins   = proc.inputs .get(Proc.Obj.scanMainIn ).fold(List.empty[Scan[S]])(_.iterator.collect { case Scan.Link.Scan(source) => source } .toList)
+              val outs  = proc.outputs.get(Proc.Obj.scanMainOut).fold(List.empty[Scan[S]])(_.iterator.collect { case Scan.Link.Scan(sink  ) => sink   } .toList)
+              inKeys.foreach { key =>
+                proc.inputs.get(key).foreach { scan =>
+                  scan.iterator.foreach(scan.remove(_))
+                }
+              }
+              outKeys.foreach { key =>
+                proc.outputs.get(key).foreach { scan =>
+                  scan.iterator.foreach(scan.remove(_))
                 }
               }
               ins.foreach { in =>
                 outs.foreach { out =>
-                  in.addSink(out)
+                  in.add(out)
                 }
               }
 

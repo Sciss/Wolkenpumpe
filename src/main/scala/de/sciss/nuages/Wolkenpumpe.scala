@@ -92,10 +92,16 @@ object Wolkenpumpe {
   }
 
   private lazy val _initFont: Font = {
-    val is  = Wolkenpumpe.getClass.getResourceAsStream("BellySansCondensed.ttf")
-    val res = Font.createFont(Font.TRUETYPE_FONT, is)
-    is.close()
-    res
+    val url = Wolkenpumpe.getClass.getResource("BellySansCondensed.ttf")
+    // val is  = Wolkenpumpe.getClass.getResourceAsStream("BellySansCondensed.ttf")
+    if (url == null) {
+      new Font(Font.SANS_SERIF, Font.PLAIN, 1)
+    } else {
+      val is = url.openStream()
+      val res = Font.createFont(Font.TRUETYPE_FONT, is)
+      is.close()
+      res
+    }
     //      // "SF Movie Poster Condensed"
     //      new Font( "BellySansCondensed", Font.PLAIN, 12 )
   }

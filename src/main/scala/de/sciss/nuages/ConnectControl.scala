@@ -133,12 +133,12 @@ class ConnectControl[S <: Sys[S]](main: NuagesPanel[S])
         for {
           srcProc <- Proc.Obj.unapply(srcObj)
           tgtProc <- Proc.Obj.unapply(tgtObj)
-          srcScan <- srcProc.elem.peer.scans.get(srcVScan.key)
+          srcScan <- srcProc.elem.peer.outputs.get(srcVScan.key)
         } {
           tgtV match {
             case tgtVScan: VisualScan[S] =>
-              for (tgtScan <- tgtProc.elem.peer.scans.get(tgtVScan.key))
-                srcScan.addSink(Scan.Link.Scan(tgtScan))
+              for (tgtScan <- tgtProc.elem.peer.inputs.get(tgtVScan.key))
+                srcScan.add(Scan.Link.Scan(tgtScan))
             case vCtl: VisualControl[S] =>
               // println(s"Mapping from $srcScan")
               tgtObj.attr.put(vCtl.key, Obj(Scan.Elem(srcScan)))

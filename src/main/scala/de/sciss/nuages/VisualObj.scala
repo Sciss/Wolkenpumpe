@@ -47,8 +47,9 @@ trait VisualObj[S <: Sys[S]]
 
   def aggr: AggregateItem
 
-  var scans : Map[String, VisualScan   [S]]
-  var params: Map[String, VisualControl[S]]
+  var inputs : Map[String, VisualScan   [S]]
+  var outputs: Map[String, VisualScan   [S]]
+  var params : Map[String, VisualControl[S]]
 
   /** GUI property: whether the object is heard through the solo function or not. */
   var soloed: Boolean

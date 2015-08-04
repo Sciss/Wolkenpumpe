@@ -18,8 +18,8 @@ import de.sciss.synth.proc.Scan
 import prefuse.data.Edge
 
 object VisualScan {
-  def apply[S <: Sys[S]](parent: VisualObj[S], key: String)(implicit tx: S#Tx): VisualScan[S] =
-    impl.VisualScanImpl(parent, key)
+  def apply[S <: Sys[S]](parent: VisualObj[S], key: String, isInput: Boolean)(implicit tx: S#Tx): VisualScan[S] =
+    impl.VisualScanImpl(parent, key = key, isInput = isInput)
 }
 trait VisualScan[S <: Sys[S]] extends VisualParam[S] {
   var sources : Set[Edge]

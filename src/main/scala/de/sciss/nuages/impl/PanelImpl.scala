@@ -106,7 +106,7 @@ object PanelImpl {
                                               val sink  : VisualObj[S], val sinkKey  : String, val isScan: Boolean)
 
   /* Contains the `id` of the parent `timed` object, and the scan key */
-  private final case class ScanInfo[S <: Sys[S]](timedID: S#ID, key: String)
+  private final case class ScanInfo[S <: Sys[S]](timedID: S#ID, key: String, isInput: Boolean)
 
   // nodeMap: uses timed-id as key
   private final class Impl[S <: Sys[S]](nuagesH: stm.Source[S#Tx, Nuages[S]],
@@ -243,23 +243,23 @@ object PanelImpl {
 
                 case Obj.ElemChange(pUpd: Proc.Update[S]) =>
                   pUpd.changes.foreach {
-                    case Proc.ScanChange(key, scan, scanChanges) =>
+                    case Proc.OutputChange(key, scan, scanChanges) =>
                       def withScans(sink: Scan.Link[S])(fun: (VisualScan[S], VisualScan[S]) => Unit): Unit =
                         for {
                           sinkInfo <- scanMap.get(sink.id)
                           sinkVis  <- nodeMap.get(sinkInfo.timedID)
                         } deferVisTx {
                           for {
-                            sourceVisScan <- visObj .scans.get(key)
-                            sinkVisScan   <- sinkVis.scans.get(sinkInfo.key)
+                            sourceVisScan <- visObj .outputs.get(key)
+                            sinkVisScan   <- sinkVis.inputs .get(sinkInfo.key)
                           } {
                             fun(sourceVisScan, sinkVisScan)
                           }
                         }
 
                       scanChanges.foreach {
-                        case Scan.SinkAdded  (sink) => withScans(sink)(addScanScanEdgeGUI   )
-                        case Scan.SinkRemoved(sink) => withScans(sink)(removeEdgeGUI)
+                        case Scan.Added  (sink) => withScans(sink)(addScanScanEdgeGUI)
+                        case Scan.Removed(sink) => withScans(sink)(removeEdgeGUI     )
                         case _ =>
                       }
 
@@ -573,11 +573,19 @@ object PanelImpl {
 
       var links: List[VisualLink[S]] = obj match {
         case Proc.Obj(objT) =>
-          val scans = objT.elem.peer.scans
-          scans.iterator.flatMap { case (key, scan) =>
-            val info = new ScanInfo(id, key)
+          val proc  = objT.elem.peer
+          val l1 = proc.inputs.iterator.flatMap { case (key, scan) =>
+            val info = new ScanInfo(id, key, isInput = true)
             addScan(vp, scan, info)
           } .toList
+
+          val l2 = proc.outputs.iterator.flatMap { case (key, scan) =>
+            val info = new ScanInfo(id, key, isInput = false)
+            addScan(vp, scan, info)
+          } .toList
+
+          l1 ++ l2
+
         case _ => Nil
       }
 
@@ -593,7 +601,7 @@ object PanelImpl {
           } { info =>
             for {
               vObj    <- nodeMap.get(info.timedID)
-              vScan   <- vObj.scans.get(info.key)
+              // vScan   <- vObj.scans.get(info.key)
             } {
               assignMapping(source = scan, vSink = vSink)
               links ::= new VisualLink(vObj, info.key, vp /* aka vCtl.parent */, sinkKey, isScan = false)
@@ -630,7 +638,7 @@ object PanelImpl {
       for {
         info    <- scanMap.get(source.id)
         vObj    <- nodeMap.get(info.timedID)
-        vScan   <- vObj.scans.get(info.key)
+        vScan   <- vObj.outputs.get(info.key)
         m       <- vSink.mapping
       } {
         m.source = Some(vScan)  // XXX TODO -- not cool, should be on the EDT
@@ -710,8 +718,11 @@ object PanelImpl {
         nodeMap.remove(id)
         obj match {
           case Proc.Obj(objT) =>
-            val scans = objT.elem.peer.scans
-            scans.iterator.foreach { case (_, scan) =>
+            val proc  = objT.elem.peer
+            proc.inputs.iterator.foreach { case (_, scan) =>
+              scanMap.remove(scan.id)
+            }
+            proc.outputs.iterator.foreach { case (_, scan) =>
               scanMap.remove(scan.id)
             }
             // XXX TODO -- clean up missing controls
@@ -742,23 +753,19 @@ object PanelImpl {
       val sid = scan.id
       scanMap.put(sid, info)  // stupid look-up
       var res = List.empty[VisualLink[S]]
-      scan.sources.foreach {
-        case Scan.Link.Scan(source) =>
+      scan.iterator.foreach {
+        case Scan.Link.Scan(target) =>
           for {
-            ScanInfo(sourceTimedID, sourceKey) <- scanMap.get(source.id)
-            sourceVis <- nodeMap.get(sourceTimedID)
+            ScanInfo(targetTimedID, targetKey, _) <- scanMap.get(target.id)
+            targetVis <- nodeMap.get(targetTimedID)
           } {
-            res ::= new VisualLink(sourceVis, sourceKey, vi, info.key, isScan = true)
-          }
-        case _ =>
-      }
-      scan.sinks.foreach {
-        case Scan.Link.Scan(sink) =>
-          for {
-            ScanInfo(sinkTimedID, sinkKey) <- scanMap.get(sink.id)
-            sinkVis <- nodeMap.get(sinkTimedID)
-          } {
-            res ::= new VisualLink(vi, info.key, sinkVis, sinkKey, isScan = true)
+            import info.isInput
+            val sourceVis = if (isInput) targetVis else vi
+            val sourceKey = if (isInput) targetKey else info.key
+            val sinkVis   = if (isInput) vi else targetVis
+            val sinkKey   = if (isInput) info.key else targetKey
+
+            res ::= new VisualLink(sourceVis, sourceKey, sinkVis, sinkKey, isScan = true)
           }
         case _ =>
       }
@@ -777,7 +784,10 @@ object PanelImpl {
     private def removeNodeGUI(vp: VisualObj[S]): Unit = {
       _aggrTable.removeTuple(vp.aggr)
       _g.removeNode(vp.pNode)
-      vp.scans.foreach { case (_, vs) =>
+      vp.inputs.foreach { case (_, vs) =>
+        _g.removeNode(vs.pNode)
+      }
+      vp.outputs.foreach { case (_, vs) =>
         _g.removeNode(vs.pNode)
       }
       vp.params.foreach { case (_, vc) =>
@@ -805,7 +815,10 @@ object PanelImpl {
     private def addNodeGUI(vp: VisualObj[S], links: List[VisualLink[S]], locO: Option[Point2D]): Unit = {
       initNodeGUI(vp, vp, locO)
 
-      vp.scans.foreach { case (_, vScan) =>
+      vp.inputs.foreach { case (_, vScan) =>
+        initNodeGUI(vp, vScan, locO)
+      }
+      vp.outputs.foreach { case (_, vScan) =>
         initNodeGUI(vp, vScan, locO)
       }
 
@@ -814,9 +827,9 @@ object PanelImpl {
       }
 
       links.foreach { link =>
-        link.source.scans.get(link.sourceKey).foreach { sourceVisScan =>
+        link.source.outputs.get(link.sourceKey).foreach { sourceVisScan =>
           if (link.isScan)
-            link.sink.scans.get(link.sinkKey).foreach { sinkVisScan =>
+            link.sink.inputs.get(link.sinkKey).foreach { sinkVisScan =>
               addScanScanEdgeGUI(sourceVisScan, sinkVisScan)
             }
           else
@@ -889,7 +902,7 @@ object PanelImpl {
       case ap: AuralObj.Proc[S] =>
         val d = ap.data
         for {
-          either  <- d.getScan(key)
+          either  <- d.getScanOut(key)
           nodeRef <- d.nodeOption
         } yield {
           val bus   = either.fold(identity, _.bus)
@@ -1059,8 +1072,8 @@ object PanelImpl {
               (fltPred.parent.objH(), fltSucc.parent.objH()) match {
                 case (Proc.Obj(pred), Proc.Obj(succ)) =>
                   for {
-                    predScan <- pred.elem.peer.scans.get(fltPred.key)
-                    succScan <- succ.elem.peer.scans.get(fltSucc.key)
+                    predScan <- pred.elem.peer.outputs.get(fltPred.key)
+                    succScan <- succ.elem.peer.inputs .get(fltSucc.key)
                   } {
                     insertFilter(predScan, succScan, flt, displayPt)
                   }
@@ -1082,7 +1095,7 @@ object PanelImpl {
           fltPred.parent.objH() match {
             case Proc.Obj(pred) =>
               for {
-                predScan <- pred.elem.peer.scans.get(fltPred.key)
+                predScan <- pred.elem.peer.outputs.get(fltPred.key)
               } {
                 appendFilter(predScan, flt, None, displayPt)
               }
@@ -1133,7 +1146,7 @@ object PanelImpl {
                 fltPred.parent.objH() match {
                   case Proc.Obj(pred) =>
                     for {
-                      predScan <- pred.elem.peer.scans.get(fltPred.key)
+                      predScan <- pred.elem.peer.outputs.get(fltPred.key)
                     } {
                       appendFilter(predScan, flt, Some(col), displayPt)
                     }
@@ -1163,9 +1176,9 @@ object PanelImpl {
           case (Proc.Obj(genP), Some(Proc.Obj(colP))) =>
             val procGen = genP.elem.peer
             val procCol = colP.elem.peer
-            val scanOut = procGen.scans.add(Proc.Obj.scanMainOut)
-            val scanIn  = procCol.scans.add(Proc.Obj.scanMainIn )
-            scanOut.addSink(scanIn)
+            val scanOut = procGen.outputs.add(Proc.Obj.scanMainOut)
+            val scanIn  = procCol.inputs .add(Proc.Obj.scanMainIn )
+            scanOut.add(scanIn)
 
           case _ =>
         }
@@ -1207,13 +1220,13 @@ object PanelImpl {
       flt match {
         case Proc.Obj(fltP) =>
           val procFlt  = fltP .elem.peer
-          pred.addSink(procFlt.scans.add(Proc.Obj.scanMainIn))
+          pred.add(procFlt.inputs.add(Proc.Obj.scanMainIn))
           // we may handle 'sinks' here by ignoring them when they don't have an `"out"` scan.
           for {
-            fltOut <- procFlt.scans.get(Proc.Obj.scanMainOut)
+            fltOut <- procFlt.outputs.get(Proc.Obj.scanMainOut)
           } {
-            pred  .removeSink(succ)
-            fltOut.addSink   (succ)
+            pred  .remove(succ)
+            fltOut.add   (succ)
           }
 
         case _ =>
@@ -1229,7 +1242,7 @@ object PanelImpl {
       flt match {
         case Proc.Obj(fltP) =>
           val procFlt  = fltP .elem.peer
-          pred.addSink(procFlt.scans.add("in"))
+          pred.add(procFlt.inputs.add(Proc.Obj.scanMainIn))
         case _ =>
       }
 

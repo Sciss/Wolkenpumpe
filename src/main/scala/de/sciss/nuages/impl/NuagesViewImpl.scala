@@ -268,12 +268,13 @@ object NuagesViewImpl {
       panel.masterSynth = Some(synPostM)
 
       val synPostMID = synPostM.peer.id
-      message.Responder.add(server.peer) {
+      val resp = message.Responder.add(server.peer) {
         case osc.Message( "/meters", `synPostMID`, 0, values @ _* ) =>
           defer {
             _controlPanel.meterUpdate(values.map(x => math.min(10f, x.asInstanceOf[Float]))(breakOut))
           }
       }
+      scala.concurrent.stm.Txn.afterRollback(_ => resp.remove())(tx.peer)
     }
   }
 }

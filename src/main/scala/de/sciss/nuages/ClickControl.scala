@@ -127,10 +127,10 @@ class ClickControl[S <: Sys[S]](main: NuagesPanel[S]) extends ControlAdapter {
                 for {
                   srcProc <- Proc.Obj.unapply(srcObj)
                   tgtProc <- Proc.Obj.unapply(tgtObj)
-                  srcScan <- srcProc.elem.peer.scans.get(srcVScan.key)
-                  tgtScan <- tgtProc.elem.peer.scans.get(tgtVScan.key)
+                  srcScan <- srcProc.elem.peer.outputs.get(srcVScan.key)
+                  tgtScan <- tgtProc.elem.peer.inputs .get(tgtVScan.key)
                 } {
-                  srcScan.removeSink(Scan.Link.Scan(tgtScan))
+                  srcScan.remove(Scan.Link.Scan(tgtScan))
                 }
               }
 

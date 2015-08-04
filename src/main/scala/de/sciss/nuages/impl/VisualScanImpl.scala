@@ -25,13 +25,13 @@ import prefuse.data.Edge
 import prefuse.visual.VisualItem
 
 object VisualScanImpl {
-  def apply[S <: Sys[S]](parent: VisualObj[S], key: String)(implicit tx: S#Tx): VisualScanImpl[S] = {
-    val res = new VisualScanImpl(parent, key)
+  def apply[S <: Sys[S]](parent: VisualObj[S], key: String, isInput: Boolean)(implicit tx: S#Tx): VisualScanImpl[S] = {
+    val res = new VisualScanImpl(parent, key = key, isInput = isInput)
     parent.main.deferVisTx(res.initGUI())
     res
   }
 }
-final class VisualScanImpl[S <: Sys[S]] private(val parent: VisualObj[S], val key: String)
+final class VisualScanImpl[S <: Sys[S]] private(val parent: VisualObj[S], val key: String, val isInput: Boolean)
   extends VisualParamImpl[S] with VisualScan[S] {
 
   import VisualDataImpl._
@@ -44,7 +44,9 @@ final class VisualScanImpl[S <: Sys[S]] private(val parent: VisualObj[S], val ke
 
   def scan(implicit tx: S#Tx): Option[Scan[S]] =
     Proc.Obj.unapply(parent.objH()).flatMap { p =>
-      p.elem.peer.scans.get(key)
+      val proc = p.elem.peer
+      val scans = if (isInput) proc.inputs else proc.outputs
+      scans.get(key)
     }
 
   def initGUI(): Unit = {

@@ -49,7 +49,8 @@ object NuagesImpl {
     // ; then in a second iteration, we must remove the
     // obsolete scan links and refresh them
     var procCopies  = Vector.empty[(Proc.Obj[S], Proc.Obj[S])] // (original, copy)
-    var scanMap     = Map.empty[Scan[S], (String, Proc[S])] // "old" scan to new proc
+    var scanInMap   = Map.empty[Scan[S], (String, Proc[S])] // "old" scan to new proc
+    var scanOutMap  = Map.empty[Scan[S], (String, Proc[S])] // "old" scan to new proc
 
     // simply copy all objects, and populate the scan-map on the way
     val res: Vec[Obj[S]] = xs.map {
@@ -59,8 +60,12 @@ object NuagesImpl {
         val cpyObj  = Obj.copyT[S, Proc.Elem](procObj, cpyElem)
         val cpy     = cpyElem.peer
         procCopies :+= (procObj, cpyObj)
-        scanMap ++= proc.scans.iterator.map { case (key, scan) =>
-          if (DEBUG) println(s"scanMap: add $scan.")
+        scanInMap ++= proc.inputs.iterator.map { case (key, scan) =>
+          if (DEBUG) println(s"scanInMap: add $scan.")
+          scan -> (key, cpy)
+        } .toMap
+        scanOutMap ++= proc.outputs.iterator.map { case (key, scan) =>
+          if (DEBUG) println(s"scanOutMap: add $scan.")
           scan -> (key, cpy)
         } .toMap
 
@@ -93,16 +98,16 @@ object NuagesImpl {
 
     procCopies.foreach { case (origObj, cpyObj) =>
       val thisProc  = cpyObj.elem.peer
-      val scans     = thisProc.scans.iterator.toMap
-      scans.foreach { case (thisKey, thisScan) =>
-        val thisSources = thisScan.sources.toList
+      val scanIns   = thisProc.inputs.iterator.toMap
+      scanIns.foreach { case (thisKey, thisScan) =>
+        val thisSources = thisScan.iterator.toList
         thisSources.foreach {
           case lnk @ Scan.Link.Scan(thatScan) =>
-            scanMap.get(thatScan).foreach { case (thatKey, thatProc) =>
+            scanOutMap.get(thatScan).foreach { case (thatKey, thatProc) =>
               preserve :+= new LinkPreservation(sink   = cpyObj  , sinkKey   = thisKey,
                                                 source = thatProc, sourceKey = thatKey, isScan = true)
             }
-            thisScan.removeSource(lnk)
+            thisScan.remove(lnk)
 
           case _ =>
         }
@@ -114,7 +119,7 @@ object NuagesImpl {
         // important to use `origAttr` here, see note above
         origAttr[Scan.Elem](thisKey).foreach { thatScan =>
           if (DEBUG) println(s"In ${origObj.name}, attribute $thisKey points to a scan.")
-          scanMap.get(thatScan: Scan[S]).fold {
+          scanOutMap.get(thatScan: Scan[S]).fold {
             if (DEBUG) println(s".... did NOT find $thatScan.")
           } { case (thatKey, thatProc) =>
             if (DEBUG) println(".... we found that scan.")
@@ -132,12 +137,12 @@ object NuagesImpl {
     // graph; we'll have to simply cut these as well.
     procCopies.foreach { case (_, cpyObj) =>
       val thisProc  = cpyObj.elem.peer
-      val scans     = thisProc.scans.iterator.toMap
+      val scans     = thisProc.outputs.iterator.toMap
       scans.foreach { case (thisKey, thisScan) =>
-        val thisSinks = thisScan.sinks.toList
+        val thisSinks = thisScan.iterator.toList
         thisSinks.foreach {
           case lnk @ Scan.Link.Scan(_) =>
-            thisScan.removeSink(lnk)
+            thisScan.remove(lnk)
           case _ =>
         }
       }
@@ -146,9 +151,9 @@ object NuagesImpl {
     // Re-create correct links
     preserve.foreach { p =>
       val procObj     = p.sink
-      val sourceScan  = p.source.scans.add(p.sourceKey)
+      val sourceScan  = p.source.outputs.add(p.sourceKey)
       if (p.isScan) {
-        procObj.elem.peer.scans.add(p.sinkKey).addSource(Scan.Link.Scan(sourceScan))
+        procObj.elem.peer.inputs.add(p.sinkKey).add(Scan.Link.Scan(sourceScan))
       } else {
         if (DEBUG) println(s"Re-assigning attribute scan entry for ${procObj.name} and key ${p.sinkKey}")
         procObj.attr.put(p.sinkKey, Obj(Scan.Elem(sourceScan))) // XXX TODO - we'd lose attributes on the Scan.Obj
