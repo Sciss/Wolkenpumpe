@@ -173,43 +173,41 @@ final class VisualObjImpl[S <: Sys[S]] private (val main: NuagesPanel[S],
       val outKeys   = outputs.keySet
       val mappings  = visScans.valuesIterator.flatMap(_.mappings)
       atomic { implicit tx =>
-        if (mappings.nonEmpty) {
-          mappings.foreach { vc =>
-            vc.removeMapping()
-          }
-
-          val obj = objH()
-          obj match {
-            case Proc.Obj(objT) =>
-              val proc  = objT.elem.peer
-              // val scans = proc.scans
-              val ins   = proc.inputs .get(Proc.Obj.scanMainIn ).fold(List.empty[Scan[S]])(_.iterator.collect { case Scan.Link.Scan(source) => source } .toList)
-              val outs  = proc.outputs.get(Proc.Obj.scanMainOut).fold(List.empty[Scan[S]])(_.iterator.collect { case Scan.Link.Scan(sink  ) => sink   } .toList)
-              inKeys.foreach { key =>
-                proc.inputs.get(key).foreach { scan =>
-                  scan.iterator.foreach(scan.remove(_))
-                }
-              }
-              outKeys.foreach { key =>
-                proc.outputs.get(key).foreach { scan =>
-                  scan.iterator.foreach(scan.remove(_))
-                }
-              }
-              ins.foreach { in =>
-                outs.foreach { out =>
-                  in.add(out)
-                }
-              }
-
-            case _ =>
-          }
-
-          main.nuages.timeline.elem.peer.modifiableOption.foreach { tl =>
-            // XXX TODO --- ought to be an update to the span variable
-            tl.remove(spanH(), obj)
-          }
-          // XXX TODO --- remove orphaned input or output procs
+        mappings.foreach { vc =>
+          vc.removeMapping()
         }
+
+        val obj = objH()
+        obj match {
+          case Proc.Obj(objT) =>
+            val proc  = objT.elem.peer
+            // val scans = proc.scans
+            val ins   = proc.inputs .get(Proc.Obj.scanMainIn ).fold(List.empty[Scan[S]])(_.iterator.collect { case Scan.Link.Scan(source) => source } .toList)
+            val outs  = proc.outputs.get(Proc.Obj.scanMainOut).fold(List.empty[Scan[S]])(_.iterator.collect { case Scan.Link.Scan(sink  ) => sink   } .toList)
+            inKeys.foreach { key =>
+              proc.inputs.get(key).foreach { scan =>
+                scan.iterator.foreach(scan.remove(_))
+              }
+            }
+            outKeys.foreach { key =>
+              proc.outputs.get(key).foreach { scan =>
+                scan.iterator.foreach(scan.remove(_))
+              }
+            }
+            ins.foreach { in =>
+              outs.foreach { out =>
+                in.add(out)
+              }
+            }
+
+          case _ =>
+        }
+
+        main.nuages.timeline.elem.peer.modifiableOption.foreach { tl =>
+          // XXX TODO --- ought to be an update to the span variable
+          tl.remove(spanH(), obj)
+        }
+        // XXX TODO --- remove orphaned input or output procs
       }
       true
 

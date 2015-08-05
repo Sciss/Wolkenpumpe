@@ -51,7 +51,7 @@ import scala.swing.{Component, Swing}
 import scala.util.control.NonFatal
 
 object PanelImpl {
-  var DEBUG = true
+  var DEBUG = false
 
   def apply[S <: Sys[S]](nuages: Nuages[S], config: Nuages.Config)
                         (implicit tx: S#Tx, aural: AuralSystem, cursor: stm.Cursor[S],
