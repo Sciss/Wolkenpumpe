@@ -13,10 +13,11 @@
 
 package de.sciss.nuages
 
-import de.sciss.lucre.expr.{Expr => _Expr}
+import de.sciss.lucre.event.Targets
+import de.sciss.lucre.expr.impl.ExprTypeImpl
+import de.sciss.lucre.expr.Expr
 import de.sciss.lucre.stm.Sys
-import de.sciss.nuages.impl.{ParamSpecElemImpl => ElemImpl, ParamSpecExprImpl => ExprImpl}
-import de.sciss.serial.{DataInput, DataOutput, Writable}
+import de.sciss.serial.{ImmutableSerializer, DataInput, DataOutput, Writable}
 import de.sciss.synth
 
 object ParamSpec {
@@ -24,28 +25,62 @@ object ParamSpec {
 
   final val Key = "spec"
 
-  private lazy val _init: Unit = {
-    ExprImpl.init()
-    ElemImpl.init()
+  private final val COOKIE = 0x505301 // "PS\1"
+
+  def init(): Unit = Obj.init()
+
+  //  def apply[S <: Sys[S]](lo: Expr[S, Double], hi: Expr[S, Double], warp: Expr[S, Warp],
+//                         step: Expr[S, Double], unit: Expr[S, String])(implicit tx: S#Tx): Obj[S]
+
+  object Obj extends ExprTypeImpl[ParamSpec, Obj] {
+    import ParamSpec.{Obj => Repr}
+
+    def typeID: Int = ParamSpec.typeID
+
+    implicit def valueSerializer: ImmutableSerializer[ParamSpec] = ParamSpec.serializer
+
+    protected def mkConst[S <: Sys[S]](id: S#ID, value: A)(implicit tx: S#Tx): Const[S] =
+      new _Const[S](id, value)
+
+    protected def mkVar[S <: Sys[S]](targets: Targets[S], vr: S#Var[Ex[S]])(implicit tx: S#Tx): Var[S] =
+      new _Var[S](targets, vr)
+
+    private[this] final class _Const[S <: Sys[S]](val id: S#ID, val constValue: A)
+      extends ConstImpl[S] with Repr[S]
+
+    private[this] final class _Var[S <: Sys[S]](val targets: Targets[S], val ref: S#Var[Ex[S]])
+      extends VarImpl[S] with Repr[S]
   }
-  private[nuages] def init(): Unit = _init
-
-  trait ExprCompanion extends ExprLikeType[ParamSpec, Obj] {
-    def apply[S <: Sys[S]](lo: _Expr[S, Double], hi: _Expr[S, Double], warp: _Expr[S, Warp],
-                           step: _Expr[S, Double], unit: _Expr[S, String])(implicit tx: S#Tx): Obj[S]
+  trait Obj[S <: Sys[S]] extends Expr[S, ParamSpec] {
+//    def lo  (implicit tx: S#Tx): Expr[S, Double]
+//    def hi  (implicit tx: S#Tx): Expr[S, Double]
+//    def warp(implicit tx: S#Tx): Expr[S, Warp  ]
+//    def unit(implicit tx: S#Tx): Expr[S, String]
   }
 
-  final val Expr: ExprCompanion = ExprImpl
+  implicit object serializer extends ImmutableSerializer[ParamSpec] {
+    def write(v: ParamSpec, out: DataOutput): Unit = {
+      import v._
+      out.writeInt(ParamSpec.COOKIE)
+      out.writeDouble(lo)
+      out.writeDouble(hi)
+      warp.write(out)
+      out.writeUTF(unit)
+    }
 
-  trait Obj[S <: Sys[S]] extends _Expr[S, ParamSpec] {
-    def lo  (implicit tx: S#Tx): _Expr[S, Double]
-    def hi  (implicit tx: S#Tx): _Expr[S, Double]
-    def warp(implicit tx: S#Tx): _Expr[S, Warp  ]
-    // def step(implicit tx: S#Tx): _Expr[S, Double]
-    def unit(implicit tx: S#Tx): _Expr[S, String]
+    def read(in: DataInput): ParamSpec = {
+      val cookie = in.readInt()
+      if (cookie != COOKIE) sys.error(s"Unexpected cookie (found $cookie, expected $COOKIE)")
+  
+      val lo    = in.readDouble()
+      val hi    = in.readDouble()
+      val warp  = Warp.read(in)
+      val unit  = in.readUTF()
+      ParamSpec(lo = lo, hi = hi, warp = warp, /* step = step, */ unit = unit)
+    }
   }
 
-  def read(in: DataInput): ParamSpec = ExprImpl.readValue(in)
+  def read(in: DataInput): ParamSpec = serializer.read(in)
 }
 final case class ParamSpec(lo: Double = 0.0, hi: Double = 1.0, warp: Warp = LinearWarp, // step: Double = 0.0,
                            unit: String = "")
@@ -81,5 +116,5 @@ final case class ParamSpec(lo: Double = 0.0, hi: Double = 1.0, warp: Warp = Line
   /** Maps a graph element from spec spaced to normalized (0 ... 1) space. */
   def inverseMap(value: GE): GE = warp.inverseMap(this, value)
 
-  def write(out: DataOutput): Unit = ExprImpl.writeValue(this, out)
+  def write(out: DataOutput): Unit = ParamSpec.serializer.write(this, out)
 }

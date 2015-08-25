@@ -13,15 +13,10 @@
 
 package de.sciss
 
-import de.sciss.nuages.impl.NuagesImpl
+import de.sciss.synth.proc.SoundProcesses
 
 package object nuages {
   def ExpWarp   = ExponentialWarp
   def LinWarp   = LinearWarp
   val TrigSpec  = ParamSpec(0, 1, IntWarp)
-
-  def initTypes(): Unit = {
-    ParamSpec .init()
-    Nuages    .init()
-  }
 }

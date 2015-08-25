@@ -165,6 +165,7 @@ object NuagesImpl {
   private def mkFolderObj[S <: Sys[S]](name: String)(implicit tx: S#Tx): Folder[S] = {
     val f   = Folder[S]
     f.name  = name
+    // assert(f.name == name)
     f
   }
 
@@ -202,6 +203,7 @@ object NuagesImpl {
     def macros    (implicit tx: S#Tx): Option[Folder[S]] = findChild(Nuages.NameMacros    )
 
     private def findChild(name: String)(implicit tx: S#Tx): Option[Folder[S]] = {
+      // val foo = _folder.iterator.toList.map(_.name)
       val it = _folder.iterator.collect {
         case f: Folder[S] /* FolderElem.Obj(f) */ if f.name == name => f
       }

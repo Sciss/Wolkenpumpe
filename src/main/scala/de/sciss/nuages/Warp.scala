@@ -13,20 +13,44 @@
 
 package de.sciss.nuages
 
+import de.sciss.lucre.event.Targets
 import de.sciss.lucre.expr
-import de.sciss.serial.{DataInput, DataOutput, Writable}
+import de.sciss.lucre.expr.Expr
+import de.sciss.lucre.stm.Sys
+import de.sciss.serial.{ImmutableSerializer, DataInput, DataOutput, Writable}
 import de.sciss.synth.{GE, _}
 
 import scala.annotation.switch
 import scala.math.Pi
 
 object Warp {
-  def read(in: DataInput): Warp = Expr.readValue(in)
+  def read(in: DataInput): Warp = serializer.read(in)
 
-  object Expr extends expr.impl.ExprTypeImplA[Warp] {
+  def init(): Unit = Obj.init()
+
+  object Obj extends expr.impl.ExprTypeImpl[Warp, Obj] {
+    import Warp.{Obj => Repr}
+
     final val typeID = 20
 
-    def readValue(in: DataInput): Warp = {
+    implicit def valueSerializer: ImmutableSerializer[Warp] = Warp.serializer
+
+    protected def mkConst[S <: Sys[S]](id: S#ID, value: A)(implicit tx: S#Tx): Const[S] =
+      new _Const[S](id, value)
+
+    protected def mkVar[S <: Sys[S]](targets: Targets[S], vr: S#Var[Ex[S]])(implicit tx: S#Tx): Var[S] =
+      new _Var[S](targets, vr)
+
+    private[this] final class _Const[S <: Sys[S]](val id: S#ID, val constValue: A)
+      extends ConstImpl[S] with Repr[S]
+
+    private[this] final class _Var[S <: Sys[S]](val targets: Targets[S], val ref: S#Var[Ex[S]])
+      extends VarImpl[S] with Repr[S]
+  }
+  trait Obj[S <: Sys[S]] extends Expr[S, Warp]
+
+  implicit object serializer extends ImmutableSerializer[Warp] {
+    def read(in: DataInput): Warp = {
       val id = in.readShort()
       (id: @switch) match {
         case LinearWarp     .id => LinearWarp
@@ -40,7 +64,7 @@ object Warp {
       }
     }
 
-    def writeValue(value: Warp, out: DataOutput): Unit = value.write(out)
+    def write(value: Warp, out: DataOutput): Unit = value.write(out)
   }
 }
 trait Warp extends Writable {

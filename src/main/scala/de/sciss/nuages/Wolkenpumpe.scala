@@ -19,7 +19,7 @@ import de.sciss.file._
 import de.sciss.lucre.stm
 import de.sciss.lucre.synth.{InMemory, Sys}
 import de.sciss.osc
-import de.sciss.synth.proc.AuralSystem
+import de.sciss.synth.proc.{SoundProcesses, AuralSystem}
 import de.sciss.synth.{Server => SServer}
 
 object Wolkenpumpe {
@@ -144,8 +144,15 @@ class Wolkenpumpe[S <: Sys[S]] {
     ScissProcs[S](sCfg, nCfg)
   }
 
+  def init(): Unit = {
+    SoundProcesses.init()
+    ParamSpec     .init()
+    Warp          .init()
+    Nuages        .init()
+  }
+
   def run()(implicit cursor: stm.Cursor[S]): Unit = {
-    de.sciss.nuages.initTypes()
+    init()
 
     val nCfg                = Nuages    .Config()
     val sCfg                = ScissProcs.Config()

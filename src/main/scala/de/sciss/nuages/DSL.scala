@@ -79,7 +79,7 @@ class DSL[S <: stm.Sys[S]] {
     val obj       = current.get(tx.peer)
     val defaultN  = spec.inverseMap(default)
     val paramObj  = DoubleObj.newVar(DoubleObj.newConst[S](defaultN))
-    val specObj   = ParamSpec.Expr.newConst[S](spec)
+    val specObj   = ParamSpec.Obj.newConst[S](spec)
     // paramObj.attr.put(ParamSpec.Key, specObj)
     obj     .attr.put(key, paramObj)
     obj     .attr.put(s"$key-${ParamSpec.Key}", specObj)
@@ -116,7 +116,8 @@ class DSL[S <: stm.Sys[S]] {
       ScanOut(Proc.scanMainOut, out)
     }
     obj.outputs.add(Proc.scanMainOut)
-    insertByName(n.generators.get, obj)
+    val genOpt = n.generators
+    insertByName(genOpt.get, obj)
     obj
   }
 

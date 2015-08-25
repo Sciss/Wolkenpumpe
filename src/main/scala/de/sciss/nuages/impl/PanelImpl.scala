@@ -19,6 +19,7 @@ import java.awt.{Color, Dimension, Graphics2D, LayoutManager, Point, Rectangle, 
 import javax.swing.JPanel
 import javax.swing.event.{AncestorEvent, AncestorListener}
 
+import de.sciss.lucre.expr.{SpanLikeObj, DoubleObj}
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Obj, Disposable, TxnLike}
 import de.sciss.lucre.swing.impl.ComponentHolder
@@ -27,7 +28,7 @@ import de.sciss.lucre.synth.{AudioBus, Node, Synth, Sys, Txn}
 import de.sciss.model.Change
 import de.sciss.span.{Span, SpanLike}
 import de.sciss.synth.proc.{Action, AuralObj, AuralSystem, Folder, Proc, Scan, Timeline, Transport, WorkspaceHandle}
-import de.sciss.synth.{SynthGraph, addToTail, message}
+import de.sciss.synth.{proc, SynthGraph, addToTail, message}
 import prefuse.action.assignment.ColorAction
 import prefuse.action.layout.graph.ForceDirectedLayout
 import prefuse.action.{ActionList, RepaintAction}
@@ -47,6 +48,8 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm.{Ref, TMap, TxnExecutor, TxnLocal}
 import scala.swing.{Component, Swing}
 import scala.util.control.NonFatal
+
+import proc.Implicits._
 
 object PanelImpl {
   var DEBUG = false
@@ -85,10 +88,10 @@ object PanelImpl {
   private final val LAYOUT_TIME   = 50
 
   private def mkListView[S <: Sys[S]](folderOpt: Option[Folder[S]])(implicit tx: S#Tx, cursor: stm.Cursor[S]) = {
-    val h = ListView.Handler[S, Obj[S], Obj.Update[S]] { implicit tx => obj => obj.name } (_ => (_, _) => None)
-    implicit val ser = de.sciss.lucre.expr.List.serializer[S, Obj[S], Obj.Update[S]]
-    // val res = ListView[S, Obj[S], Obj.Update[S], String](folder, h)
-    val res = ListView.empty[S, Obj[S], Obj.Update[S], String](h)
+    val h = ListView.Handler[S, Obj[S], Unit /* Obj.Update[S] */] { implicit tx => obj => obj.name } (_ => (_, _) => None)
+    implicit val ser = de.sciss.lucre.expr.List.serializer[S, Obj[S] /* , Unit */ /* Obj.Update[S] */]
+    // val res = ListView[S, Obj[S], Unit /* Obj.Update[S] */, String](folder, h)
+    val res = ListView.empty[S, Obj[S], Unit /* Obj.Update[S] */, String](h)
     deferTx {
       val c = res.view
       c.background = Color.black
@@ -113,12 +116,12 @@ object PanelImpl {
                                         val config   : Nuages.Config,
                                         val transport: Transport[S],
                                         val aural    : AuralSystem,
-                                        listGen  : ListView[S, Obj[S], Obj.Update[S]],
-                                        listFlt1 : ListView[S, Obj[S], Obj.Update[S]],
-                                        listCol1 : ListView[S, Obj[S], Obj.Update[S]],
-                                        listFlt2 : ListView[S, Obj[S], Obj.Update[S]],
-                                        listCol2 : ListView[S, Obj[S], Obj.Update[S]],
-                                        listMacro: ListView[S, Obj[S], Obj.Update[S]])
+                                        listGen  : ListView[S, Obj[S], Unit /* Obj.Update[S] */],
+                                        listFlt1 : ListView[S, Obj[S], Unit /* Obj.Update[S] */],
+                                        listCol1 : ListView[S, Obj[S], Unit /* Obj.Update[S] */],
+                                        listFlt2 : ListView[S, Obj[S], Unit /* Obj.Update[S] */],
+                                        listCol2 : ListView[S, Obj[S], Unit /* Obj.Update[S] */],
+                                        listMacro: ListView[S, Obj[S], Unit /* Obj.Update[S] */])
                                        (implicit val cursor: stm.Cursor[S], workspace: WorkspaceHandle[S])
     extends NuagesPanel[S] with ComponentHolder[Component] {
     panel =>
@@ -218,68 +221,69 @@ object PanelImpl {
             if (span.contains(transport.position)) removeNode(span, timed)
             // XXX TODO - update scheduler
 
-          case Timeline.Element(timed, Obj.UpdateT(obj, changes)) =>
-            nodeMap.get(timed.id).foreach { visObj =>
-              changes.foreach {
-                case Obj.AttrChange(key, _, attrChanges) if visObj.params.contains(key) =>
-                  attrChanges.foreach {
-                    case Obj.ElemChange(Change(_, now: Double)) =>
-                      // println(s"NOW $now")
-                      deferTx {
-                        visObj.params.get(key).foreach { visCtl =>
-                          visCtl.value = now
-                          val visItem = _vis.getVisualItem(GROUP_GRAPH, visCtl.pNode)
-                          _vis.damageReport(visItem, visItem.getBounds)
-                        }
-                      }
-
-                    // XXX TODO - ParamSpec changes
-
-                    case other => if (DEBUG) println(s"OBSERVED: Timeline.Element - AttrChange($key, $other)")
-                  }
-
-                case Obj.ElemChange(pUpd: Proc.Update[S]) =>
-                  pUpd.changes.foreach {
-                    case Proc.OutputChange(key, scan, scanChanges) =>
-                      def withScans(sink: Scan.Link[S])(fun: (VisualScan[S], VisualScan[S]) => Unit): Unit =
-                        for {
-                          sinkInfo <- scanMap.get(sink.id)
-                          sinkVis  <- nodeMap.get(sinkInfo.timedID)
-                        } deferVisTx {
-                          for {
-                            sourceVisScan <- visObj .outputs.get(key)
-                            sinkVisScan   <- sinkVis.inputs .get(sinkInfo.key)
-                          } {
-                            fun(sourceVisScan, sinkVisScan)
-                          }
-                        }
-
-                      scanChanges.foreach {
-                        case Scan.Added  (sink) => withScans(sink)(addScanScanEdgeGUI)
-                        case Scan.Removed(sink) => withScans(sink)(removeEdgeGUI     )
-                        case _ =>
-                      }
-
-                    case other => if (DEBUG) println(s"OBSERVED: Timeline.Element - ProcChange($other)")
-                  }
-
-                case Obj.AttrRemoved(key, elem) =>
-                  deferVisTx {
-                    visObj.params.get(key).foreach { vc =>
-                      removeControlGUI(visObj, vc)
-                    }
-                  }
-
-                case Obj.AttrAdded(key, elem) =>
-                  elem match {
-                    case DoubleElem.Obj(dObj) => addScalarControl(visObj, key, dObj)
-                    case Scan      .Obj(sObj) => addScanControl  (visObj, key, sObj)
-                    case _ =>
-                  }
-
-                case other => if (DEBUG) println(s"OBSERVED: Timeline.Element - $other")
-              }
-            }
+// ELEM
+//          case Timeline.Element(timed, Obj.UpdateT(obj, changes)) =>
+//            nodeMap.get(timed.id).foreach { visObj =>
+//              changes.foreach {
+//                case Obj.AttrChange(key, _, attrChanges) if visObj.params.contains(key) =>
+//                  attrChanges.foreach {
+//                    case Obj.ElemChange(Change(_, now: Double)) =>
+//                      // println(s"NOW $now")
+//                      deferTx {
+//                        visObj.params.get(key).foreach { visCtl =>
+//                          visCtl.value = now
+//                          val visItem = _vis.getVisualItem(GROUP_GRAPH, visCtl.pNode)
+//                          _vis.damageReport(visItem, visItem.getBounds)
+//                        }
+//                      }
+//
+//                    // XXX TODO - ParamSpec changes
+//
+//                    case other => if (DEBUG) println(s"OBSERVED: Timeline.Element - AttrChange($key, $other)")
+//                  }
+//
+//                case Obj.ElemChange(pUpd: Proc.Update[S]) =>
+//                  pUpd.changes.foreach {
+//                    case Proc.OutputChange(key, scan, scanChanges) =>
+//                      def withScans(sink: Scan.Link[S])(fun: (VisualScan[S], VisualScan[S]) => Unit): Unit =
+//                        for {
+//                          sinkInfo <- scanMap.get(sink.id)
+//                          sinkVis  <- nodeMap.get(sinkInfo.timedID)
+//                        } deferVisTx {
+//                          for {
+//                            sourceVisScan <- visObj .outputs.get(key)
+//                            sinkVisScan   <- sinkVis.inputs .get(sinkInfo.key)
+//                          } {
+//                            fun(sourceVisScan, sinkVisScan)
+//                          }
+//                        }
+//
+//                      scanChanges.foreach {
+//                        case Scan.Added  (sink) => withScans(sink)(addScanScanEdgeGUI)
+//                        case Scan.Removed(sink) => withScans(sink)(removeEdgeGUI     )
+//                        case _ =>
+//                      }
+//
+//                    case other => if (DEBUG) println(s"OBSERVED: Timeline.Element - ProcChange($other)")
+//                  }
+//
+//                case Obj.AttrRemoved(key, elem) =>
+//                  deferVisTx {
+//                    visObj.params.get(key).foreach { vc =>
+//                      removeControlGUI(visObj, vc)
+//                    }
+//                  }
+//
+//                case Obj.AttrAdded(key, elem) =>
+//                  elem match {
+//                    case dObj: DoubleObj[S] => addScalarControl(visObj, key, dObj)
+//                    case sObj: Scan     [S] => addScanControl  (visObj, key, sObj)
+//                    case _ =>
+//                  }
+//
+//                case other => if (DEBUG) println(s"OBSERVED: Timeline.Element - $other")
+//              }
+//            }
 
           case other => if (DEBUG) println(s"OBSERVED: $other")
         }
@@ -569,7 +573,7 @@ object PanelImpl {
       val locO  = locHintMap.getAndTransform(_ - obj)(tx.peer).get(obj)
 
       var links: List[VisualLink[S]] = obj match {
-        case Proc.Obj(objT) =>
+        case objT: Proc[S] =>
           val proc  = objT
           val l1 = proc.inputs.iterator.flatMap { case (key, scan) =>
             val info = new ScanInfo(id, key, isInput = true)
@@ -714,7 +718,7 @@ object PanelImpl {
       nodeMap.get(id).foreach { vp =>
         nodeMap.remove(id)
         obj match {
-          case Proc.Obj(objT) =>
+          case objT: Proc[S] =>
             val proc  = objT
             proc.inputs.iterator.foreach { case (_, scan) =>
               scanMap.remove(scan.id)
@@ -894,7 +898,7 @@ object PanelImpl {
 
     private val soloInfo    = Ref(Option.empty[(VisualObj[S], Synth)])
 
-    private def getAuralScanData(aural: AuralObj[S], key: String = Proc.Obj.scanMainOut)
+    private def getAuralScanData(aural: AuralObj[S], key: String = Proc.scanMainOut)
                                 (implicit tx: S#Tx): Option[(AudioBus, Node)] = aural match {
       case ap: AuralObj.Proc[S] =>
         val d = ap.data
@@ -979,18 +983,16 @@ object PanelImpl {
         copies.foreach(macroF.addLast)
         val nuagesF = panel.nuages.folder
         val parent = nuagesF.iterator.collect {
-          case FolderElem.Obj(parentObj) if parentObj.name == Nuages.NameMacros => parentObj
+          case parentObj: Folder[S] if parentObj.name == Nuages.NameMacros => parentObj
         } .toList.headOption.getOrElse {
           val res = Folder[S]
-          val resObj = Obj(FolderElem(res))
-          resObj.name = Nuages.NameMacros
-          nuagesF.addLast(resObj)
+          res.name = Nuages.NameMacros
+          nuagesF.addLast(res)
           res
         }
 
-        val macroFObj = Obj(FolderElem(macroF))
-        macroFObj.name = name
-        parent.addLast(macroFObj)
+        macroF.name = name
+        parent.addLast(macroF)
       }
 
     private lazy val createGenDialog: OverlayPanel = {
@@ -1036,11 +1038,12 @@ object PanelImpl {
             p.close()
             val displayPt = display.getAbsoluteCoordinate(p.location, null)
             atomic { implicit tx =>
-              for {
-                macroList <- listMacro.list
-                FolderElem.Obj(macroFObj) <- macroList.get(macIdx)
-              } {
-                insertMacro(macroFObj, displayPt)
+              listMacro.list.foreach { macroList =>
+                macroList.get(macIdx).foreach {
+                  case macroFObj: Folder[S] =>
+                    insertMacro(macroFObj, displayPt)
+                  case _ =>
+                }
               }
             }
           case _ =>
@@ -1062,17 +1065,18 @@ object PanelImpl {
           val displayPt = display.getAbsoluteCoordinate(p.location, null)
           atomic { implicit tx =>
             // val nuages = nuagesH()
-            for {
-              fltList       <- listFlt1.list
-              Proc.Obj(flt) <- fltList.get(fltIdx) // nuages.filters.get(fltIdx)
-            } {
-              (fltPred.parent.objH(), fltSucc.parent.objH()) match {
-                case (Proc.Obj(pred), Proc.Obj(succ)) =>
-                  for {
-                    predScan <- pred.outputs.get(fltPred.key)
-                    succScan <- succ.inputs .get(fltSucc.key)
-                  } {
-                    insertFilter(predScan, succScan, flt, displayPt)
+            listFlt1.list.foreach { fltList =>
+              fltList.get(fltIdx).foreach {
+                case flt: Proc[S] =>
+                  (fltPred.parent.objH(), fltSucc.parent.objH()) match {
+                    case (pred: Proc[S], succ: Proc[S]) =>
+                      for {
+                        predScan <- pred.outputs.get(fltPred.key)
+                        succScan <- succ.inputs .get(fltSucc.key)
+                      } {
+                        insertFilter(predScan, succScan, flt, displayPt)
+                      }
+                    case _ =>
                   }
                 case _ =>
               }
@@ -1086,18 +1090,18 @@ object PanelImpl {
       p.close()
       val displayPt = display.getAbsoluteCoordinate(p.location, null)
       cursor.step { implicit tx =>
-        for {
-          Proc.Obj(flt) <- objFun(tx)
-        } {
-          fltPred.parent.objH() match {
-            case Proc.Obj(pred) =>
-              for {
-                predScan <- pred.outputs.get(fltPred.key)
-              } {
-                appendFilter(predScan, flt, None, displayPt)
-              }
-            case _ =>
-          }
+        objFun(tx).foreach {
+          case flt: Proc[S] =>
+            fltPred.parent.objH() match {
+              case pred: Proc[S] =>
+                for {
+                  predScan <- pred.outputs.get(fltPred.key)
+                } {
+                  appendFilter(predScan, flt, None, displayPt)
+                }
+              case _ =>
+            }
+          case _ =>
         }
       }
     }
@@ -1132,22 +1136,25 @@ object PanelImpl {
             p.close()
             val displayPt = display.getAbsoluteCoordinate(p.location, null)
             atomic { implicit tx =>
-              for {
-                fltList       <- listFlt2.list
-                colList       <- listCol2.list
-                Proc.Obj(flt) <- fltList.get(fltIdx)
-                Proc.Obj(col) <- colList.get(colIdx)
-                // Proc.Obj(flt) <- nuages.filters   .get(fltIdx)
-                // Proc.Obj(col) <- nuages.collectors.get(colIdx)
-              } {
-                fltPred.parent.objH() match {
-                  case Proc.Obj(pred) =>
-                    for {
-                      predScan <- pred.outputs.get(fltPred.key)
-                    } {
-                      appendFilter(predScan, flt, Some(col), displayPt)
-                    }
-                  case _ =>
+              listFlt2.list.foreach { fltList =>
+                listCol2.list.foreach { colList =>
+                  fltList.get(fltIdx).foreach {
+                    case flt: Proc[S] =>
+                      colList.get(colIdx).foreach {
+                        case col: Proc[S] =>
+                          fltPred.parent.objH() match {
+                            case pred: Proc[S] =>
+                              for {
+                                predScan <- pred.outputs.get(fltPred.key)
+                              } {
+                                appendFilter(predScan, flt, Some(col), displayPt)
+                              }
+                            case _ =>
+                          }
+                        case _ =>
+                      }
+                    case _ =>
+                  }
                 }
               }
             }
@@ -1158,7 +1165,7 @@ object PanelImpl {
     }
 
     private def exec(obj: Obj[S], key: String)(implicit tx: S#Tx): Unit =
-      for (Action.Obj(self) <- obj.attr.get(key))
+      for (self <- obj.attr.$[Action](key))
         self.execute(Action.Universe(self, workspace, invoker = Some(obj)))
 
     private def prepareObj(obj: Obj[S])(implicit tx: S#Tx): Unit = exec(obj, "nuages-prepare")
@@ -1167,14 +1174,14 @@ object PanelImpl {
     private def finalizeProcAndCollector(proc: Obj[S], colSrcOpt: Option[Obj[S]], pt: Point2D)
                                         (implicit tx: S#Tx): Unit =
       for (tl <- nuages.timeline.modifiableOption) {
-        val colOpt = colSrcOpt.map(Obj.copy[S])
+        val colOpt = colSrcOpt.map(in => ??? : Obj[S]) // RRR Obj.copy[S])
 
         (proc, colOpt) match {
-          case (Proc.Obj(genP), Some(Proc.Obj(colP))) =>
+          case (genP: Proc[S], Some(colP: Proc[S])) =>
             val procGen = genP
             val procCol = colP
-            val scanOut = procGen.outputs.add(Proc.Obj.scanMainOut)
-            val scanIn  = procCol.inputs .add(Proc.Obj.scanMainIn )
+            val scanOut = procGen.outputs.add(Proc.scanMainOut)
+            val scanIn  = procCol.inputs .add(Proc.scanMainIn )
             scanOut.add(scanIn)
 
           case _ =>
@@ -1198,28 +1205,28 @@ object PanelImpl {
     }
 
     def createGenerator(genSrc: Obj[S], colSrcOpt: Option[Obj[S]], pt: Point2D)(implicit tx: S#Tx): Unit = {
-      val gen = Obj.copy(genSrc)
+      val gen = ??? : Obj[S] // RRR Obj.copy(genSrc)
       finalizeProcAndCollector(gen, colSrcOpt, pt)
     }
 
     private def addToTimeline(tl: Timeline.Modifiable[S], obj: Obj[S])(implicit tx: S#Tx): Unit = {
-      val imp = ExprImplicits[S]
+      // val imp = ExprImplicits[S]
       val time    = transport.position
       val span    = Span.From(time)
-      val spanEx  = SpanLikeEx.newVar(span)
+      val spanEx  = SpanLikeObj.newVar(span)
       tl.add(spanEx, obj)
     }
 
     def insertFilter(pred: Scan[S], succ: Scan[S], fltSrc: Obj[S], fltPt: Point2D)(implicit tx: S#Tx): Unit = {
-      val flt = Obj.copy(fltSrc)
+      val flt = ??? : Obj[S] // RRR Obj.copy(fltSrc)
 
       flt match {
-        case Proc.Obj(fltP) =>
+        case fltP: Proc[S] =>
           val procFlt  = fltP
-          pred.add(procFlt.inputs.add(Proc.Obj.scanMainIn))
+          pred.add(procFlt.inputs.add(Proc.scanMainIn))
           // we may handle 'sinks' here by ignoring them when they don't have an `"out"` scan.
           for {
-            fltOut <- procFlt.outputs.get(Proc.Obj.scanMainOut)
+            fltOut <- procFlt.outputs.get(Proc.scanMainOut)
           } {
             pred  .remove(succ)
             fltOut.add   (succ)
@@ -1233,12 +1240,12 @@ object PanelImpl {
 
     def appendFilter(pred: Scan[S], fltSrc: Obj[S], colSrcOpt: Option[Obj[S]], fltPt: Point2D)
                     (implicit tx: S#Tx): Unit = {
-      val flt = Obj.copy(fltSrc)
+      val flt = ??? : Obj[S] // RRR Obj.copy(fltSrc)
 
       flt match {
-        case Proc.Obj(fltP) =>
+        case fltP: Proc[S] =>
           val procFlt  = fltP
-          pred.add(procFlt.inputs.add(Proc.Obj.scanMainIn))
+          pred.add(procFlt.inputs.add(Proc.scanMainIn))
         case _ =>
       }
 
