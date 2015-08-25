@@ -13,16 +13,14 @@
 
 package de.sciss.nuages
 
-import de.sciss.lucre.expr.Expr
+import de.sciss.lucre.expr.SpanLikeObj
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.Disposable
+import de.sciss.lucre.stm.{Disposable, Obj}
 import de.sciss.lucre.synth.{Synth, Sys}
-import de.sciss.span.SpanLike
-import de.sciss.synth.proc.Obj
 import prefuse.visual.AggregateItem
 
 object VisualObj {
-  def apply[S <: Sys[S]](main: NuagesPanel[S], span: Expr[S, SpanLike], obj: Obj[S],
+  def apply[S <: Sys[S]](main: NuagesPanel[S], span: SpanLikeObj[S], obj: Obj[S],
                          hasMeter: Boolean, hasSolo: Boolean)
                         (implicit tx: S#Tx): VisualObj[S] =
     impl.VisualObjImpl(main, span, obj, hasMeter = hasMeter, hasSolo = hasSolo)
@@ -37,7 +35,7 @@ trait VisualObj[S <: Sys[S]]
 
   def main: NuagesPanel[S]
 
-  def spanH: stm.Source[S#Tx, Expr[S, SpanLike]]
+  def spanH: stm.Source[S#Tx, SpanLikeObj[S]]
   def objH : stm.Source[S#Tx, Obj[S]]
 
   // ---- methods to be called on the EDT ----

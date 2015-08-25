@@ -122,15 +122,15 @@ class ClickControl[S <: Sys[S]](main: NuagesPanel[S]) extends ControlAdapter {
           (srcData, tgtData) match {
             case (srcVScan: VisualScan[S], tgtVScan: VisualScan[S]) =>
               main.cursor.step { implicit tx =>
-                val srcObj   = srcVScan.parent.objH()
-                val tgtObj   = tgtVScan.parent.objH()
-                for {
-                  srcProc <- Proc.Obj.unapply(srcObj)
-                  tgtProc <- Proc.Obj.unapply(tgtObj)
-                  srcScan <- srcProc.elem.peer.outputs.get(srcVScan.key)
-                  tgtScan <- tgtProc.elem.peer.inputs .get(tgtVScan.key)
-                } {
-                  srcScan.remove(Scan.Link.Scan(tgtScan))
+                (srcVScan.parent.objH(), tgtVScan.parent.objH()) match {
+                  case (srcProc: Proc[S], tgtProc: Proc[S]) =>
+                    for {
+                      srcScan <- srcProc.outputs.get(srcVScan.key)
+                      tgtScan <- tgtProc.inputs .get(tgtVScan.key)
+                    } {
+                      srcScan.remove(Scan.Link.Scan(tgtScan))
+                    }
+                  case _ =>
                 }
               }
 

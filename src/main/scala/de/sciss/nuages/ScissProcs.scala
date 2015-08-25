@@ -19,12 +19,12 @@ import java.util.{Date, Locale}
 
 import de.sciss.file._
 import de.sciss.lucre.artifact.{Artifact, ArtifactLocation}
-import de.sciss.lucre.{event => evt, stm}
 import de.sciss.lucre.synth.Sys
+import de.sciss.lucre.stm
 import de.sciss.synth
 import de.sciss.synth.io.AudioFile
 import de.sciss.synth.proc.Action.Universe
-import de.sciss.synth.proc.{SoundProcesses, ArtifactElem, Action, AuralSystem, AudioGraphemeElem, ExprImplicits, Grapheme, Obj}
+import de.sciss.synth.proc.{Action, AuralSystem, Grapheme, SoundProcesses}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.language.implicitConversions
@@ -104,8 +104,7 @@ object ScissProcs {
 
     val dsl = new DSL[S]
     import dsl._
-    val imp = ExprImplicits[S]
-    import imp._
+    // val imp = ExprImplicits[S]
 
     val masterChansOption = nConfig.masterChannels
 
@@ -182,7 +181,7 @@ object ScissProcs {
         val art   = loc.add(f)
         val spec  = AudioFile.readSpec(f)
         val gr    = Grapheme.Expr.Audio(art, spec, 0L, 1.0)
-        procObj.attr.put("file", Obj(AudioGraphemeElem(gr)))
+        procObj.attr.put("file", gr)
       })
     }
 
@@ -240,7 +239,7 @@ object ScissProcs {
       val art   = locH().add(f)
       val spec  = AudioFile.readSpec(f)
       val gr    = Grapheme.Expr.Audio(art, spec, 0L, 1.0)
-      procObj.attr.put("file", Obj(AudioGraphemeElem(gr)))
+      procObj.attr.put("file", gr) // Obj(AudioGraphemeElem(gr)))
       // val artObj  = Obj(ArtifactElem(art))
       // procObj.attr.put("file", artObj)
     }
@@ -865,10 +864,10 @@ object ScissProcs {
     val recFormat = new SimpleDateFormat("'rec_'yyMMdd'_'HHmmss'.aif'", Locale.US)
 
     val sinkRecPrepare = new Action.Body {
-      def apply[T <: evt.Sys[T]](universe: Universe[T])(implicit tx: T#Tx): Unit = {
+      def apply[T <: stm.Sys[T]](universe: Universe[T])(implicit tx: T#Tx): Unit = {
         import universe._
         for {
-          art  <- self.attr[ArtifactElem]("file")
+          art  <- self.attr.$[Artifact]("file")
           artM <- art.modifiableOption
         } {
           val name  = recFormat.format(new Date)
@@ -880,10 +879,10 @@ object ScissProcs {
     Action.registerPredef("nuages-prepare-rec", sinkRecPrepare)
 
     val sinkRecDispose = new Action.Body {
-      def apply[T <: evt.Sys[T]](universe: Universe[T])(implicit tx: T#Tx): Unit = {
+      def apply[T <: stm.Sys[T]](universe: Universe[T])(implicit tx: T#Tx): Unit = {
         import universe.{cursor => _, _}
         for {
-          art <- self.attr[ArtifactElem]("file")
+          art <- self.attr.$[Artifact]("file")
         } {
           val f = art.value
           SoundProcesses.scheduledExecutorService.schedule(new Runnable {
@@ -902,13 +901,12 @@ object ScissProcs {
       proc.graph.DiskOut.ar("file", in)
       // Mix.mono(in).poll(1, "poll")
     }
-    val sinkPrepObj = Obj(Action.Elem(Action.predef("nuages-prepare-rec")))
-    val sinkDispObj = Obj(Action.Elem(Action.predef("nuages-dispose-rec")))
+    val sinkPrepObj = Action.predef("nuages-prepare-rec")
+    val sinkDispObj = Action.predef("nuages-dispose-rec")
     val artRec      = loc.add(loc.directory / "undefined")
-    val artRecObj   = Obj(ArtifactElem(artRec))
-    sinkPrepObj.attr.put("file"   , artRecObj  )
-    sinkDispObj.attr.put("file"   , artRecObj  )
-    sinkRec    .attr.put("file"   , artRecObj  )
+    sinkPrepObj.attr.put("file"   , artRec  )
+    sinkDispObj.attr.put("file"   , artRec  )
+    sinkRec    .attr.put("file"   , artRec  )
     sinkRec    .attr.put("nuages-prepare", sinkPrepObj)
     sinkRec    .attr.put("nuages-dispose", sinkDispObj)
 

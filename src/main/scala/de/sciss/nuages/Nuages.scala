@@ -13,29 +13,28 @@
 
 package de.sciss.nuages
 
-import de.sciss.lucre.{event => evt}
-import evt.Sys
-import de.sciss.lucre.stm.Disposable
+import de.sciss.lucre.stm.{Obj, Disposable, Sys}
+import de.sciss.lucre.{event => evt, stm}
+import de.sciss.nuages.impl.{NuagesImpl => Impl}
 import de.sciss.serial.{DataInput, Serializer, Writable}
 import de.sciss.synth.proc
-import de.sciss.synth.proc.{Timeline, Folder}
-import impl.{NuagesImpl => Impl}
+import de.sciss.synth.proc.{Folder, Timeline}
 
-import collection.immutable.{IndexedSeq => Vec}
-import language.implicitConversions
+import scala.collection.immutable.{IndexedSeq => Vec}
+import scala.language.implicitConversions
 
-object Nuages {
+object Nuages extends Obj.Type {
   def apply[S <: Sys[S]]()(implicit tx: S#Tx): Nuages[S] =
     Impl[S]
-
-  //  def empty[S <: Sys[S]](implicit tx: S#Tx): Nuages[S] =
-  //    apply(Folder[S], Folder[S], Folder[S], Obj(Timeline.Elem(Timeline[S])))
 
   implicit def serializer[S <: Sys[S]]: Serializer[S#Tx, S#Acc, Nuages[S]] = Impl.serializer[S]
 
   def read[S <: Sys[S]](in: DataInput, access: S#Acc)(implicit tx: S#Tx): Nuages[S] = Impl.read(in, access)
 
   // ---- config ----
+
+  override def readIdentifiedObj[S <: Sys[S]](in: DataInput, access: S#Acc)(implicit tx: S#Tx): Obj[S] =
+    ??? // RRR
 
   sealed trait ConfigLike {
     def masterChannels: Option[Vec[Int]]
@@ -126,37 +125,13 @@ object Nuages {
 
   final val typeID = 0x1000A
 
-  // ---- Elem ----
-
-  implicit object Elem extends proc.Elem.Companion[Elem] {
-    def typeID = Nuages.typeID
-
-    def apply[S <: Sys[S]](peer: Nuages[S])(implicit tx: S#Tx): Nuages.Elem[S] = Impl.ElemImpl(peer)
-
-    implicit def serializer[S <: Sys[S]]: Serializer[S#Tx, S#Acc, Nuages.Elem[S]] = Impl.ElemImpl.serializer[S]
-  }
-  trait Elem[S <: Sys[S]] extends proc.Elem[S] {
-    type Peer       = Nuages[S]
-    type PeerUpdate = Nuages.Update[S]
-    type This       = Elem[S]
-  }
-
-  /** Convenient short-cut */
-
-  object Obj {
-    def unapply[S <: Sys[S]](obj: proc.Obj[S]): Option[Nuages.Obj[S]] =
-      if (obj.elem.isInstanceOf[Nuages.Elem[S]]) Some(obj.asInstanceOf[Nuages.Obj[S]])
-      else None
-  }
-  type Obj[S <: Sys[S]] = proc.Obj.T[S, Nuages.Elem]
-
   // ---- event ----
 
   trait Update[S <: Sys[S]]
 
   // ---- functions ----
 
-  def copyGraph[S <: Sys[S]](xs: Vec[proc.Obj[S]])(implicit tx: S#Tx): Vec[proc.Obj[S]] = Impl.copyGraph(xs)
+  def copyGraph[S <: Sys[S]](xs: Vec[Obj[S]])(implicit tx: S#Tx): Vec[Obj[S]] = Impl.copyGraph(xs)
 }
 trait Nuages[S <: Sys[S]] extends Writable with Disposable[S#Tx] with evt.Publisher[S, Nuages.Update[S]] {
   def folder(implicit tx: S#Tx): Folder[S]
@@ -166,5 +141,5 @@ trait Nuages[S <: Sys[S]] extends Writable with Disposable[S#Tx] with evt.Publis
   def collectors(implicit tx: S#Tx): Option[Folder[S]]
   def macros    (implicit tx: S#Tx): Option[Folder[S]]
 
-  def timeline  : Timeline.Obj[S]
+  def timeline  : Timeline[S]
 }

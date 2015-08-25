@@ -14,15 +14,15 @@
 package de.sciss.nuages
 package impl
 
-import de.sciss.lucre.expr.{Double => DoubleEx, String => StringEx, Type1, ExprType1, Type, Expr}
+import de.sciss.lucre.event.{Event, EventLike}
 import de.sciss.lucre.expr.impl.TypeImplLike
-import de.sciss.lucre.{event => evt, stm, expr}
-import de.sciss.lucre.event.{Event, EventLike, InMemory, Sys}
+import de.sciss.lucre.expr.{DoubleObj, Expr, StringObj, Type}
+import de.sciss.lucre.stm.Sys
+import de.sciss.lucre.{event => evt, expr, stm}
 import de.sciss.model.Change
 import de.sciss.nuages
-import de.sciss.serial.{DataOutput, DataInput}
+import de.sciss.serial.{DataInput, DataOutput}
 import de.sciss.synth.proc
-import de.sciss.synth.proc.Elem
 
 import scala.annotation.switch
 
@@ -31,8 +31,8 @@ object ParamSpecExprImpl
   extends ParamSpec.ExprCompanion
   // ---- yeah, fuck you Scala, we cannot implement TypeImpl1 because of initializer problems ----
   // with TypeImpl1[ParamSpec.Expr]
-  with Type1[ParamSpec.Expr]
-  with TypeImplLike[Type.Extension1[ParamSpec.Expr]] {
+  with Type1[ParamSpec.Obj]
+  with TypeImplLike[Type.Extension1[ParamSpec.Obj]] {
 
   def typeID = ParamSpec.typeID
 
@@ -44,8 +44,8 @@ object ParamSpecExprImpl
   private[this] var exts = new Array[Ext](0)
 
   private lazy val _init: Unit = {
-    DoubleEx .registerExtension(1, DoubleExtensions)
-    StringEx .registerExtension(1, StringExtensions)
+    DoubleObj .registerExtension(1, DoubleObjtensions)
+    StringObj .registerExtension(1, StringObjtensions)
     Warp.Expr.registerExtension(1, WarpExtensions)
     this     .registerExtension(Apply)
   }
@@ -55,7 +55,7 @@ object ParamSpecExprImpl
 
   final protected def findExt(op: Int): Ext = findExt(exts, op)
 
-  protected def readExtension[S <: evt.Sys[S]](op: Int, in: DataInput, access: S#Acc, targets: evt.Targets[S])
+  protected def readExtension[S <: stm.Sys[S]](op: Int, in: DataInput, access: S#Acc, targets: evt.Targets[S])
                                                     (implicit tx: S#Tx): Repr[S] with evt.Node[S] = {
     val ext = findExt(op)
     if (ext == null) sys.error(s"Unknown extension operator $op")
@@ -134,13 +134,13 @@ object ParamSpecExprImpl
   }
 
   private[this] final case class Const[S <: Sys[S]](constValue: ParamSpec)
-    extends ParamSpec.Expr[S] /* Repr[S] */ with expr.impl.ConstImpl[S, ParamSpec] {
+    extends ParamSpec.Obj[S] /* Repr[S] */ with expr.impl.ConstImpl[S, ParamSpec] {
 
-    def lo  (implicit tx: S#Tx): Expr[S, Double] = DoubleEx .newConst(constValue.lo  )
-    def hi  (implicit tx: S#Tx): Expr[S, Double] = DoubleEx .newConst(constValue.hi  )
+    def lo  (implicit tx: S#Tx): Expr[S, Double] = DoubleObj .newConst(constValue.lo  )
+    def hi  (implicit tx: S#Tx): Expr[S, Double] = DoubleObj .newConst(constValue.hi  )
     def warp(implicit tx: S#Tx): Expr[S, Warp  ] = Warp.Expr.newConst(constValue.warp)
-    // def step(implicit tx: S#Tx): Expr[S, Double] = DoubleEx .newConst(constValue.step)
-    def unit(implicit tx: S#Tx): Expr[S, String] = StringEx .newConst(constValue.unit)
+    // def step(implicit tx: S#Tx): Expr[S, Double] = DoubleObj .newConst(constValue.step)
+    def unit(implicit tx: S#Tx): Expr[S, String] = StringObj .newConst(constValue.unit)
 
     protected def writeData(out: DataOutput): Unit = writeValue(constValue, out)
   }
@@ -148,11 +148,11 @@ object ParamSpecExprImpl
   object Apply extends Type.Extension1[Repr] {
     def readExtension[S <: Sys[S]](opID: Int, in: DataInput, access: S#Acc, targets: evt.Targets[S])
                                   (implicit tx: S#Tx): Repr[S] with evt.Node[S] = {
-      val lo    = DoubleEx .read(in, access)
-      val hi    = DoubleEx .read(in, access)
+      val lo    = DoubleObj .read(in, access)
+      val hi    = DoubleObj .read(in, access)
       val warp  = Warp.Expr.read(in, access)
-      // val step  = DoubleEx .read(in, access)
-      val unit  = StringEx .read(in, access)
+      // val step  = DoubleObj .read(in, access)
+      val unit  = StringObj .read(in, access)
       new Apply(targets, loEx = lo, hiEx = hi, warpEx = warp, /* stepEx = step, */ unitEx = unit)
     }
 
@@ -165,7 +165,7 @@ object ParamSpecExprImpl
                                                loEx: Expr[S, Double], hiEx: Expr[S, Double],
                                                warpEx: Expr[S, Warp], // stepEx: Expr[S, Double],
                                                unitEx: Expr[S, String])
-    extends ParamSpec.Expr[S] // Repr[S]
+    extends ParamSpec.Obj[S] // Repr[S]
     with evt.impl.StandaloneLike  [S, Change[ParamSpec], Repr[S]]
     with evt.impl.EventImpl       [S, Change[ParamSpec], Repr[S]]
     /* with evt.impl.MappingGenerator[S, Change[ParamSpec], Repr[S]] */ {
@@ -252,7 +252,7 @@ object ParamSpecExprImpl
   }
 
   private[this] final class Var[S <: Sys[S]](val targets: evt.Targets[S], val ref: S#Var[Repr[S]])
-    extends ParamSpec.Expr[S] // Repr[S]
+    extends ParamSpec.Obj[S] // Repr[S]
     with evt.impl.StandaloneLike[S, Change[ParamSpec], Repr[S]]
     with evt.impl.Generator[S, Change[ParamSpec], Repr[S]] with evt.InvariantSelector[S]
     with stm.Var[S#Tx, Repr[S]] {
@@ -278,11 +278,11 @@ object ParamSpecExprImpl
 
     def value(implicit tx: S#Tx): ParamSpec = apply().value
 
-    def lo  (implicit tx: S#Tx): Expr[S, Double] = mkTuple1[S, Double](this, DoubleExtensions.Lo)
-    def hi  (implicit tx: S#Tx): Expr[S, Double] = mkTuple1[S, Double](this, DoubleExtensions.Hi)
+    def lo  (implicit tx: S#Tx): Expr[S, Double] = mkTuple1[S, Double](this, DoubleObjtensions.Lo)
+    def hi  (implicit tx: S#Tx): Expr[S, Double] = mkTuple1[S, Double](this, DoubleObjtensions.Hi)
     def warp(implicit tx: S#Tx): Expr[S, Warp  ] = mkTuple1[S, Warp  ](this, WarpExtensions.Warp)
-    // def step(implicit tx: S#Tx): Expr[S, Double] = mkTuple1(this, DoubleExtensions.Step)
-    def unit(implicit tx: S#Tx): Expr[S, String] = mkTuple1[S, String](this, StringExtensions.Unit)
+    // def step(implicit tx: S#Tx): Expr[S, Double] = mkTuple1(this, DoubleObjtensions.Step)
+    def unit(implicit tx: S#Tx): Expr[S, String] = mkTuple1[S, String](this, StringObjtensions.Unit)
 
     def changed: EventLike[S, Change[ParamSpec]] = this
 
@@ -308,7 +308,7 @@ object ParamSpecExprImpl
     override def toString() = s"ParamSpec.Expr.Var$id"
   }
 
-  object DoubleExtensions
+  object DoubleObjtensions
     extends Type.Extension1[({type Repr[~ <: Sys[~]] = Expr[~, Double]})#Repr] {
 
     final val arity = 1
@@ -330,7 +330,7 @@ object ParamSpecExprImpl
     }
 
     sealed trait Op extends Tuple1Op[Double] {
-      def exprType = DoubleEx
+      def exprType = DoubleObj
     }
 
     object Lo extends Op {
@@ -352,7 +352,7 @@ object ParamSpecExprImpl
     //    }
   }
 
-  object StringExtensions
+  object StringObjtensions
     extends Type.Extension1[({type Repr[~ <: Sys[~]] = Expr[~, String]})#Repr] {
 
     final val arity = 1
@@ -372,7 +372,7 @@ object ParamSpecExprImpl
     }
 
     sealed trait Op extends Tuple1Op[String] {
-      def exprType = StringEx
+      def exprType = StringObj
     }
 
     object Unit extends Op {
@@ -474,7 +474,7 @@ object ParamSpecElemImpl extends proc.impl.ElemCompanionImpl[ParamSpec.Elem] {
   private lazy val _init: Unit = Elem.registerExtension(this)
   def init(): Unit = _init
 
-  def apply[S <: Sys[S]](peer: ParamSpec.Expr[S])(implicit tx: S#Tx): ParamSpec.Elem[S] = {
+  def apply[S <: Sys[S]](peer: ParamSpec.Obj[S])(implicit tx: S#Tx): ParamSpec.Elem[S] = {
     val targets = evt.Targets[S]
     new Impl[S](targets, peer)
   }
@@ -498,7 +498,7 @@ object ParamSpecElemImpl extends proc.impl.ElemCompanionImpl[ParamSpec.Elem] {
   // ---- implementation ----
 
   private final class Impl[S <: Sys[S]](protected val targets: evt.Targets[S],
-                                        val peer: ParamSpec.Expr[S])
+                                        val peer: ParamSpec.Obj[S])
     extends ParamSpec.Elem[S]
     with proc.impl.ActiveElemImpl[S] {
 

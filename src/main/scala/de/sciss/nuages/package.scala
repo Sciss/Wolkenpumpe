@@ -22,6 +22,6 @@ package object nuages {
 
   def initTypes(): Unit = {
     ParamSpec .init()
-    NuagesImpl.init()
+    Nuages    .init()
   }
 }

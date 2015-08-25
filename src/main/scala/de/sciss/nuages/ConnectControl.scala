@@ -13,15 +13,16 @@
 
 package de.sciss.nuages
 
-import de.sciss.lucre.synth.Sys
-import de.sciss.synth.proc.{Obj, Scan, Proc}
-import prefuse.controls.ControlAdapter
-import prefuse.visual.{NodeItem, VisualItem}
 import java.awt.event.MouseEvent
-import prefuse.util.display.PaintListener
-import java.awt.{Color, Graphics2D}
 import java.awt.geom.{Line2D, Point2D}
+import java.awt.{Color, Graphics2D}
+
+import de.sciss.lucre.synth.Sys
+import de.sciss.synth.proc.{Proc, Scan}
 import prefuse.Display
+import prefuse.controls.ControlAdapter
+import prefuse.util.display.PaintListener
+import prefuse.visual.{NodeItem, VisualItem}
 
 object ConnectControl {
   private final case class DragSource[S <: Sys[S]](vi: VisualItem, visual: VisualScan [S])
@@ -36,7 +37,6 @@ class ConnectControl[S <: Sys[S]](main: NuagesPanel[S])
 
   import ConnectControl._
   import NuagesPanel._
-
   import main.{visualization => vis}
 
   private var drag: Option[Drag[S]] = None
@@ -130,18 +130,17 @@ class ConnectControl[S <: Sys[S]](main: NuagesPanel[S])
         val srcVScan = dr.source.visual
         val srcObj   = srcVScan.parent.objH()
         val tgtObj   = tgtV    .parent.objH()
-        for {
-          srcProc <- Proc.Obj.unapply(srcObj)
-          tgtProc <- Proc.Obj.unapply(tgtObj)
-          srcScan <- srcProc.elem.peer.outputs.get(srcVScan.key)
-        } {
-          tgtV match {
-            case tgtVScan: VisualScan[S] =>
-              for (tgtScan <- tgtProc.elem.peer.inputs.get(tgtVScan.key))
-                srcScan.add(Scan.Link.Scan(tgtScan))
-            case vCtl: VisualControl[S] =>
-              // println(s"Mapping from $srcScan")
-              tgtObj.attr.put(vCtl.key, Obj(Scan.Elem(srcScan)))
+        (srcObj, tgtObj) match {
+          case (srcProc: Proc[S], tgtProc: Proc[S]) =>
+          srcProc.outputs.get(srcVScan.key).foreach { srcScan =>
+            tgtV match {
+              case tgtVScan: VisualScan[S] =>
+                for (tgtScan <- tgtProc.inputs.get(tgtVScan.key))
+                  srcScan.add(Scan.Link.Scan(tgtScan))
+              case vCtl: VisualControl[S] =>
+                // println(s"Mapping from $srcScan")
+                tgtObj.attr.put(vCtl.key, srcScan)
+            }
           }
         }
       }

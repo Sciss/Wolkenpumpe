@@ -13,18 +13,19 @@
 
 package de.sciss.nuages
 
+import de.sciss.lucre.expr.DoubleObj
 import de.sciss.lucre.synth.{Synth, Sys}
-import de.sciss.synth.proc.{Scan, DoubleElem}
+import de.sciss.synth.proc.Scan
 
 import scala.concurrent.stm.Ref
 
 object VisualControl {
   def scalar[S <: Sys[S]](parent: VisualObj[S], key: String,
-                          dObj: DoubleElem.Obj[S])(implicit tx: S#Tx): VisualControl[S] =
+                          dObj: DoubleObj[S])(implicit tx: S#Tx): VisualControl[S] =
     impl.VisualControlImpl.scalar(parent, key, dObj)
 
   def scan[S <: Sys[S]](parent: VisualObj[S], key: String,
-                        sObj: Scan.Obj[S])(implicit tx: S#Tx): VisualControl[S] =
+                        sObj: Scan[S])(implicit tx: S#Tx): VisualControl[S] =
     impl.VisualControlImpl.scan(parent, key, sObj)
 
   trait Mapping[S <: Sys[S]] {

@@ -14,15 +14,15 @@
 package de.sciss.nuages
 package impl
 
-import java.awt.{Shape, Graphics2D}
 import java.awt.event.MouseEvent
-import java.awt.geom.{GeneralPath, Arc2D, Point2D, Area}
+import java.awt.geom.{Arc2D, Area, GeneralPath, Point2D}
+import java.awt.{Graphics2D, Shape}
 
-import de.sciss.lucre.expr.{Expr, Double => DoubleEx}
+import de.sciss.lucre.expr.{DoubleObj, Expr}
 import de.sciss.lucre.stm
 import de.sciss.lucre.swing.requireEDT
 import de.sciss.lucre.synth.{Synth, Sys}
-import de.sciss.synth.proc.{Obj, Scan, DoubleElem}
+import de.sciss.synth.proc.Scan
 import prefuse.util.ColorLib
 import prefuse.visual.VisualItem
 
@@ -32,20 +32,20 @@ object VisualControlImpl {
   private val defaultSpec = ParamSpec()
 
   private def getSpec[S <: Sys[S]](parent: VisualObj[S], key: String)(implicit tx: S#Tx): ParamSpec =
-    parent.objH().attr[ParamSpec.Elem](s"$key-${ParamSpec.Key}").map(_.value).getOrElse(defaultSpec)
+    parent.objH().attr.$[ParamSpec.Obj](s"$key-${ParamSpec.Key}").map(_.value).getOrElse(defaultSpec)
 
   def scalar[S <: Sys[S]](parent: VisualObj[S], key: String,
-                          dObj: DoubleElem.Obj[S])(implicit tx: S#Tx): VisualControl[S] = {
-    val value = dObj.elem.peer.value
+                          dObj: DoubleObj[S])(implicit tx: S#Tx): VisualControl[S] = {
+    val value = dObj.value
     val spec  = getSpec(parent, key)
     apply(parent, key = key, spec = spec, value = value, mapping = None)
   }
 
   def scan[S <: Sys[S]](parent: VisualObj[S], key: String,
-                        sObj: Scan.Obj[S])(implicit tx: S#Tx): VisualControl[S] = {
+                        sObj: Scan[S])(implicit tx: S#Tx): VisualControl[S] = {
     val value = 0.5 // XXX TODO
     val spec  = getSpec(parent, key)
-    val scan  = sObj.elem.peer
+    val scan  = sObj
     apply(parent, key = key, spec = spec, value = value, mapping = Some(new MappingImpl(tx.newHandle(scan))))
   }
 
@@ -73,8 +73,8 @@ final class VisualControlImpl[S <: Sys[S]] private(val parent: VisualObj[S], val
                                                    val mapping: Option[VisualControl.Mapping[S]])
   extends VisualParamImpl[S] with VisualControl[S] {
 
-  import VisualDataImpl._
   import VisualControlImpl.Drag
+  import VisualDataImpl._
 
   protected def nodeSize = 1f
 
@@ -146,10 +146,10 @@ final class VisualControlImpl[S <: Sys[S]] private(val parent: VisualObj[S], val
 
   private def setControlTxn(v: Double)(implicit tx: S#Tx): Unit = {
     val attr = parent.objH().attr
-    val vc   = DoubleEx.newConst[S](v)
-    attr[DoubleElem](key) match {
+    val vc   = DoubleObj.newConst[S](v)
+    attr.$[DoubleObj](key) match {
       case Some(Expr.Var(vr)) => vr() = vc
-      case _ => attr.put(key, Obj(DoubleElem(DoubleEx.newVar(vc))))
+      case _ => attr.put(key, DoubleObj.newVar(vc))
     }
   }
 

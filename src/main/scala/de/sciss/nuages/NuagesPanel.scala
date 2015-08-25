@@ -16,13 +16,13 @@ package de.sciss.nuages
 import java.awt.geom.Point2D
 
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.TxnLike
+import de.sciss.lucre.stm.{Obj, TxnLike}
 import de.sciss.lucre.swing.View
 import de.sciss.lucre.synth.{Synth, Sys, Txn}
 import de.sciss.nuages.impl.{PanelImpl => Impl}
-import de.sciss.synth.proc.{AuralSystem, Obj, Scan, Transport, WorkspaceHandle}
+import de.sciss.synth.proc.{AuralSystem, Scan, Transport, WorkspaceHandle}
 import prefuse.data.Graph
-import prefuse.visual.{VisualGraph, AggregateTable}
+import prefuse.visual.{AggregateTable, VisualGraph}
 import prefuse.{Display, Visualization}
 
 import scala.swing.Point

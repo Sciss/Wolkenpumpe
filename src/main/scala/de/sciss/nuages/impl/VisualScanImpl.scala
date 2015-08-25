@@ -42,12 +42,14 @@ final class VisualScanImpl[S <: Sys[S]] private(val parent: VisualObj[S], val ke
   var sinks     = Set.empty[Edge]
   var mappings  = Set.empty[VisualControl[S]]
 
-  def scan(implicit tx: S#Tx): Option[Scan[S]] =
-    Proc.Obj.unapply(parent.objH()).flatMap { p =>
-      val proc = p.elem.peer
+  def scan(implicit tx: S#Tx): Option[Scan[S]] = parent.objH() match {
+    case p: Proc[S] =>
+      val proc = p
       val scans = if (isInput) proc.inputs else proc.outputs
       scans.get(key)
-    }
+
+    case _ => None
+  }
 
   def initGUI(): Unit = {
     requireEDT()

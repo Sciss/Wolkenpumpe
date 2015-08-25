@@ -14,21 +14,20 @@
 package de.sciss.nuages
 package impl
 
-import java.awt.{Color, Graphics2D}
 import java.awt.event.MouseEvent
-import java.awt.geom.{Arc2D, Point2D, Area}
+import java.awt.geom.{Arc2D, Area, Point2D}
+import java.awt.{Color, Graphics2D}
 
-import de.sciss.lucre.bitemp.{SpanLike => SpanLikeEx}
 import de.sciss.intensitypalette.IntensityPalette
-import de.sciss.lucre.expr.Expr
+import de.sciss.lucre.expr.{DoubleObj, SpanLikeObj}
 import de.sciss.lucre.stm
+import de.sciss.lucre.stm.Obj
 import de.sciss.lucre.swing.requireEDT
 import de.sciss.lucre.synth.{Synth, Sys}
-import de.sciss.span.SpanLike
-import de.sciss.synth.proc.{DoubleElem, Scan, Proc, Obj}
 import de.sciss.synth.proc.Implicits._
+import de.sciss.synth.proc.{Proc, Scan}
 import prefuse.util.ColorLib
-import prefuse.visual.{VisualItem, AggregateItem}
+import prefuse.visual.{AggregateItem, VisualItem}
 
 import scala.collection.breakOut
 import scala.concurrent.stm.Ref
@@ -38,22 +37,21 @@ object VisualObjImpl {
 
   private val colrPeak = Array.tabulate(91)(ang => new Color(IntensityPalette.apply(ang / 90f)))
 
-  def apply[S <: Sys[S]](main: NuagesPanel[S], span: Expr[S, SpanLike], obj: Obj[S],
+  def apply[S <: Sys[S]](main: NuagesPanel[S], span: SpanLikeObj[S], obj: Obj[S],
                          hasMeter: Boolean, hasSolo: Boolean)
                         (implicit tx: S#Tx): VisualObj[S] = {
-    import SpanLikeEx.serializer
     val res = new VisualObjImpl(main, tx.newHandle(span), tx.newHandle(obj), obj.name, hasMeter = hasMeter, hasSolo = hasSolo)
     main.deferVisTx(res.initGUI())
     obj match {
-      case Proc.Obj(objT) =>
-        val proc    = objT.elem.peer
+      case objT: Proc[S] =>
+        val proc    = objT
         res.inputs  = proc.inputs .keys.map { key => key -> VisualScan(res, key, isInput = true ) } (breakOut)
         res.outputs = proc.outputs.keys.map { key => key -> VisualScan(res, key, isInput = false) } (breakOut)
         res.params  = objT.attr.iterator.flatMap {
-          case (key, DoubleElem.Obj(dObj)) =>
+          case (key, dObj: DoubleObj[S]) =>
             val vc = VisualControl.scalar(res, key, dObj)
             Some(key -> vc)
-          case (key, Scan.Obj(sObj)) =>
+          case (key, sObj: Scan[S]) =>
             val vc = VisualControl.scan(res, key, sObj)
             Some(key -> vc)
           case _ =>
@@ -66,7 +64,7 @@ object VisualObjImpl {
   }
 }
 final class VisualObjImpl[S <: Sys[S]] private (val main: NuagesPanel[S],
-                                                val spanH: stm.Source[S#Tx, Expr[S, SpanLike]],
+                                                val spanH: stm.Source[S#Tx, SpanLikeObj[S]],
                                                 val objH : stm.Source[S#Tx, Obj[S]],
                                                 var name: String,
                                                 hasMeter: Boolean, hasSolo: Boolean)
@@ -179,19 +177,19 @@ final class VisualObjImpl[S <: Sys[S]] private (val main: NuagesPanel[S],
 
         val obj = objH()
         obj match {
-          case Proc.Obj(objT) =>
-            val proc  = objT.elem.peer
+          case objT: Proc[S] =>
+            val proc  = objT
             // val scans = proc.scans
-            val ins   = proc.inputs .get(Proc.Obj.scanMainIn ).fold(List.empty[Scan[S]])(_.iterator.collect { case Scan.Link.Scan(source) => source } .toList)
-            val outs  = proc.outputs.get(Proc.Obj.scanMainOut).fold(List.empty[Scan[S]])(_.iterator.collect { case Scan.Link.Scan(sink  ) => sink   } .toList)
+            val ins   = proc.inputs .get(Proc.scanMainIn ).fold(List.empty[Scan[S]])(_.iterator.collect { case Scan.Link.Scan(source) => source } .toList)
+            val outs  = proc.outputs.get(Proc.scanMainOut).fold(List.empty[Scan[S]])(_.iterator.collect { case Scan.Link.Scan(sink  ) => sink   } .toList)
             inKeys.foreach { key =>
               proc.inputs.get(key).foreach { scan =>
-                scan.iterator.foreach(scan.remove(_))
+                scan.iterator.foreach(scan.remove)
               }
             }
             outKeys.foreach { key =>
               proc.outputs.get(key).foreach { scan =>
-                scan.iterator.foreach(scan.remove(_))
+                scan.iterator.foreach(scan.remove)
               }
             }
             ins.foreach { in =>
@@ -203,7 +201,7 @@ final class VisualObjImpl[S <: Sys[S]] private (val main: NuagesPanel[S],
           case _ =>
         }
 
-        main.nuages.timeline.elem.peer.modifiableOption.foreach { tl =>
+        main.nuages.timeline.modifiableOption.foreach { tl =>
           // XXX TODO --- ought to be an update to the span variable
           tl.remove(spanH(), obj)
         }

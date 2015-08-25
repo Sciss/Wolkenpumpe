@@ -13,25 +13,26 @@
 
 package de.sciss.nuages
 
-import java.awt.{Color, Toolkit}
-import java.awt.datatransfer.{UnsupportedFlavorException, DataFlavor, Transferable, Clipboard, ClipboardOwner}
-import java.awt.event.{ComponentEvent, ComponentAdapter, KeyEvent, MouseEvent}
+import java.awt.datatransfer.{Clipboard, ClipboardOwner, DataFlavor, Transferable, UnsupportedFlavorException}
+import java.awt.event.{KeyEvent, MouseEvent}
 import java.awt.geom.Point2D
+import java.awt.{Color, Toolkit}
 import javax.swing.KeyStroke
 import javax.swing.event.{AncestorEvent, AncestorListener}
 
 import de.sciss.desktop.KeyStrokes
+import de.sciss.lucre.expr.StringObj
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{Disposable, IdentifierMap}
+import de.sciss.lucre.stm.{Obj, Disposable, IdentifierMap}
 import de.sciss.lucre.synth.Sys
 import de.sciss.nuages.NuagesPanel._
-import de.sciss.synth.proc.{Folder, Obj, StringElem}
+import de.sciss.synth.proc.Folder
 import prefuse.controls.{Control, ControlAdapter}
 import prefuse.visual.{EdgeItem, NodeItem, VisualItem}
 
 import scala.annotation.switch
 import scala.concurrent.stm.TMap
-import scala.swing.{Swing, Label, Orientation, TextField}
+import scala.swing.{Label, Orientation, Swing, TextField}
 import scala.util.Try
 
 object KeyControl {
@@ -69,7 +70,7 @@ object KeyControl {
     final def dispose()(implicit tx: S#Tx): Unit = observer.dispose()
 
     protected final def elemAdded(elem: Obj[S])(implicit tx: S#Tx): Unit =
-      elem.attr[StringElem](Nuages.KeyShortcut).foreach { expr =>
+      elem.attr.$[StringObj](Nuages.KeyShortcut).foreach { expr =>
         Option(KeyStroke.getKeyStroke(expr.value)).foreach { ks =>
           keyMap.put(ks, tx.newHandle(elem))(tx.peer)
         }

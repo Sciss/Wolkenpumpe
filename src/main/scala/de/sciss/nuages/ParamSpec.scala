@@ -13,13 +13,11 @@
 
 package de.sciss.nuages
 
-import de.sciss.lucre.event.Sys
-import de.sciss.model.Change
-import de.sciss.serial.{Serializer, DataOutput, DataInput, Writable}
-import de.sciss.synth
 import de.sciss.lucre.expr.{Expr => _Expr}
-import de.sciss.synth.proc
-import impl.{ParamSpecExprImpl => ExprImpl, ParamSpecElemImpl => ElemImpl}
+import de.sciss.lucre.stm.Sys
+import de.sciss.nuages.impl.{ParamSpecElemImpl => ElemImpl, ParamSpecExprImpl => ExprImpl}
+import de.sciss.serial.{DataInput, DataOutput, Writable}
+import de.sciss.synth
 
 object ParamSpec {
   final val typeID = 21
@@ -32,14 +30,14 @@ object ParamSpec {
   }
   private[nuages] def init(): Unit = _init
 
-  trait ExprCompanion extends ExprLikeType[ParamSpec, Expr] {
+  trait ExprCompanion extends ExprLikeType[ParamSpec, Obj] {
     def apply[S <: Sys[S]](lo: _Expr[S, Double], hi: _Expr[S, Double], warp: _Expr[S, Warp],
-                           step: _Expr[S, Double], unit: _Expr[S, String])(implicit tx: S#Tx): Expr[S]
+                           step: _Expr[S, Double], unit: _Expr[S, String])(implicit tx: S#Tx): Obj[S]
   }
 
   final val Expr: ExprCompanion = ExprImpl
 
-  trait Expr[S <: Sys[S]] extends _Expr[S, ParamSpec] {
+  trait Obj[S <: Sys[S]] extends _Expr[S, ParamSpec] {
     def lo  (implicit tx: S#Tx): _Expr[S, Double]
     def hi  (implicit tx: S#Tx): _Expr[S, Double]
     def warp(implicit tx: S#Tx): _Expr[S, Warp  ]
@@ -48,30 +46,6 @@ object ParamSpec {
   }
 
   def read(in: DataInput): ParamSpec = ExprImpl.readValue(in)
-
-  // ---- element ----
-
-  implicit object Elem extends proc.Elem.Companion[Elem] {
-    def typeID = ParamSpec.typeID
-
-    def apply[S <: Sys[S]](peer: ParamSpec.Expr[S])(implicit tx: S#Tx): ParamSpec.Elem[S] = ElemImpl(peer)
-
-    implicit def serializer[S <: Sys[S]]: Serializer[S#Tx, S#Acc, ParamSpec.Elem[S]] = ElemImpl.serializer
-  }
-
-  trait Elem[S <: Sys[S]] extends proc.Elem[S] {
-    type Peer         = ParamSpec.Expr[S]
-    type PeerUpdate   = Change[ParamSpec]
-    type This         = Elem[S]
-  }
-
-  object Obj {
-    def unapply[S <: Sys[S]](obj: proc.Obj[S]): Option[ParamSpec.Obj[S]] =
-      if (obj.elem.isInstanceOf[ParamSpec.Elem[S]]) Some(obj.asInstanceOf[ParamSpec.Obj[S]])
-      else None
-  }
-
-  type Obj[S <: Sys[S]] = proc.Obj.T[S, ParamSpec.Elem]
 }
 final case class ParamSpec(lo: Double = 0.0, hi: Double = 1.0, warp: Warp = LinearWarp, // step: Double = 0.0,
                            unit: String = "")
