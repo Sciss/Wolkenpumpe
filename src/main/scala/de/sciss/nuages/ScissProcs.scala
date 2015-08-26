@@ -108,7 +108,7 @@ object ScissProcs {
 
     val masterChansOption = nConfig.masterChannels
 
-    val loc   = ArtifactLocation[S](file(sys.props("java.io.tmpdir")))
+    val loc   = ArtifactLocation.newVar[S](file(sys.props("java.io.tmpdir")))
     val locH  = tx.newHandle(loc)
 
     def ForceChan(in: GE): GE = if (sConfig.generatorChannels <= 0) in else {
@@ -159,7 +159,7 @@ object ScissProcs {
     //    }
 
     sConfig.audioFilesFolder.foreach { folder =>
-      val loc = ArtifactLocation[S](folder)
+      val loc = ArtifactLocation.newConst[S](folder)
 
       def abbreviate(s: String) = if (s.length < 16) s else s"${s.take(7)}...${s.takeRight(7)}"
 
@@ -178,7 +178,7 @@ object ScissProcs {
           sig
         }
 
-        val art   = loc.add(f)
+        val art   = Artifact(loc, f) // loc.add(f)
         val spec  = AudioFile.readSpec(f)
         val gr    = Grapheme.Expr.Audio(art, spec, 0L, 1.0)
         procObj.attr.put("file", gr)
@@ -236,7 +236,7 @@ object ScissProcs {
         LocalOut.kr(Impulse.kr(1.0 / duration.max(0.1)))
         sig
       }
-      val art   = locH().add(f)
+      val art   = Artifact(locH(), f) // locH().add(f)
       val spec  = AudioFile.readSpec(f)
       val gr    = Grapheme.Expr.Audio(art, spec, 0L, 1.0)
       procObj.attr.put("file", gr) // Obj(AudioGraphemeElem(gr)))
@@ -903,7 +903,7 @@ object ScissProcs {
     }
     val sinkPrepObj = Action.predef("nuages-prepare-rec")
     val sinkDispObj = Action.predef("nuages-dispose-rec")
-    val artRec      = loc.add(loc.directory / "undefined")
+    val artRec      = Artifact(loc, Artifact.Child("undefined")) // loc.add(loc.directory / "undefined")
     sinkPrepObj.attr.put("file"   , artRec  )
     sinkDispObj.attr.put("file"   , artRec  )
     sinkRec    .attr.put("file"   , artRec  )

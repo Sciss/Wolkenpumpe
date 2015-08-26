@@ -13,11 +13,10 @@
 
 package de.sciss.nuages
 
-import de.sciss.lucre.stm.{Obj, Disposable, Sys}
-import de.sciss.lucre.{event => evt, stm}
+import de.sciss.lucre.stm.{Obj, Sys}
+import de.sciss.lucre.{event => evt}
 import de.sciss.nuages.impl.{NuagesImpl => Impl}
-import de.sciss.serial.{DataInput, Serializer, Writable}
-import de.sciss.synth.proc
+import de.sciss.serial.{DataInput, Serializer}
 import de.sciss.synth.proc.{Folder, Timeline}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -34,7 +33,7 @@ object Nuages extends Obj.Type {
   // ---- config ----
 
   override def readIdentifiedObj[S <: Sys[S]](in: DataInput, access: S#Acc)(implicit tx: S#Tx): Obj[S] =
-    ??? // RRR
+    Impl.read(in, access)
 
   sealed trait ConfigLike {
     def masterChannels: Option[Vec[Int]]
@@ -133,7 +132,7 @@ object Nuages extends Obj.Type {
 
   def copyGraph[S <: Sys[S]](xs: Vec[Obj[S]])(implicit tx: S#Tx): Vec[Obj[S]] = Impl.copyGraph(xs)
 }
-trait Nuages[S <: Sys[S]] extends Writable with Disposable[S#Tx] with evt.Publisher[S, Nuages.Update[S]] {
+trait Nuages[S <: Sys[S]] extends Obj[S] with evt.Publisher[S, Nuages.Update[S]] {
   def folder(implicit tx: S#Tx): Folder[S]
 
   def generators(implicit tx: S#Tx): Option[Folder[S]]

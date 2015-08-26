@@ -1174,7 +1174,7 @@ object PanelImpl {
     private def finalizeProcAndCollector(proc: Obj[S], colSrcOpt: Option[Obj[S]], pt: Point2D)
                                         (implicit tx: S#Tx): Unit =
       for (tl <- nuages.timeline.modifiableOption) {
-        val colOpt = colSrcOpt.map(in => ??? : Obj[S]) // RRR Obj.copy[S])
+        val colOpt = colSrcOpt.map(in => Obj.copy(in))
 
         (proc, colOpt) match {
           case (genP: Proc[S], Some(colP: Proc[S])) =>
@@ -1205,7 +1205,7 @@ object PanelImpl {
     }
 
     def createGenerator(genSrc: Obj[S], colSrcOpt: Option[Obj[S]], pt: Point2D)(implicit tx: S#Tx): Unit = {
-      val gen = ??? : Obj[S] // RRR Obj.copy(genSrc)
+      val gen = Obj.copy(genSrc)
       finalizeProcAndCollector(gen, colSrcOpt, pt)
     }
 
@@ -1218,7 +1218,7 @@ object PanelImpl {
     }
 
     def insertFilter(pred: Scan[S], succ: Scan[S], fltSrc: Obj[S], fltPt: Point2D)(implicit tx: S#Tx): Unit = {
-      val flt = ??? : Obj[S] // RRR Obj.copy(fltSrc)
+      val flt = Obj.copy(fltSrc)
 
       flt match {
         case fltP: Proc[S] =>
@@ -1240,7 +1240,7 @@ object PanelImpl {
 
     def appendFilter(pred: Scan[S], fltSrc: Obj[S], colSrcOpt: Option[Obj[S]], fltPt: Point2D)
                     (implicit tx: S#Tx): Unit = {
-      val flt = ??? : Obj[S] // RRR Obj.copy(fltSrc)
+      val flt = Obj.copy(fltSrc)
 
       flt match {
         case fltP: Proc[S] =>

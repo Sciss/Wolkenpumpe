@@ -117,6 +117,13 @@ object Wolkenpumpe {
   }
   def condensedFont_=(value: Font): Unit =
     _condensedFont = value
+
+  def init(): Unit = {
+    SoundProcesses.init()
+    ParamSpec     .init()
+    Warp          .init()
+    Nuages        .init()
+  }
 }
 class Wolkenpumpe[S <: Sys[S]] {
   /** Subclasses may want to override this. */
@@ -144,15 +151,8 @@ class Wolkenpumpe[S <: Sys[S]] {
     ScissProcs[S](sCfg, nCfg)
   }
 
-  def init(): Unit = {
-    SoundProcesses.init()
-    ParamSpec     .init()
-    Warp          .init()
-    Nuages        .init()
-  }
-
   def run()(implicit cursor: stm.Cursor[S]): Unit = {
-    init()
+    Wolkenpumpe.init()
 
     val nCfg                = Nuages    .Config()
     val sCfg                = ScissProcs.Config()
