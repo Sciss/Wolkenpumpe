@@ -62,6 +62,7 @@ object NuagesImpl {
       copy(proc)
     }
     val res2  = inOthers.map(copy(_))
+    copy.finish()
 
     val res = res1 ++ res2
     res
