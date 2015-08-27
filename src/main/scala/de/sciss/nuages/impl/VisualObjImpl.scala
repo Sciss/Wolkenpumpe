@@ -39,13 +39,13 @@ object VisualObjImpl {
 
   private val colrPeak = Array.tabulate(91)(ang => new Color(IntensityPalette.apply(ang / 90f)))
 
-  def apply[S <: Sys[S]](main: NuagesPanel[S], timed: Timed[S],
+  def apply[S <: Sys[S]](main: NuagesPanel[S], locOption: Option[Point2D], timed: Timed[S],
                          hasMeter: Boolean, hasSolo: Boolean)
                         (implicit tx: S#Tx): VisualObj[S] = {
     val obj = timed.value
     // import BiGroup.Entry.serializer
     val res = new VisualObjImpl(main, tx.newHandle(timed), obj.name, hasMeter = hasMeter, hasSolo = hasSolo)
-    res.init(timed)
+    res.init(timed, locOption)
     res
   }
 }
@@ -77,9 +77,9 @@ final class VisualObjImpl[S <: Sys[S]] private (val main: NuagesPanel[S],
 
   def aggr: AggregateItem = _aggr
 
-  def init(timed: Timed[S])(implicit tx: S#Tx): this.type = {
+  def init(timed: Timed[S], locOption: Option[Point2D])(implicit tx: S#Tx): this.type = {
     main.nodeMap.put(timed.id, this)
-    main.deferVisTx(initGUI())
+    main.deferVisTx(initGUI(locOption))
     timed.value match {
       case proc: Proc[S] => initProc(proc)
       case _ =>
@@ -121,11 +121,15 @@ final class VisualObjImpl[S <: Sys[S]] private (val main: NuagesPanel[S],
     case _ =>
   }
 
-  private[this] def initGUI(): Unit = {
+  private[this] def initGUI(locOption: Option[Point2D]): Unit = {
     requireEDT()
     // important: this must be this first step
     _aggr = main.aggrTable.addItem().asInstanceOf[AggregateItem]
-    mkPNode()
+    val vi = mkPNode()
+    locOption.foreach { pt =>
+      vi.setEndX(pt.getX)
+      vi.setEndY(pt.getY)
+    }
   }
 
   def meterSynth(implicit tx: S#Tx): Option[Synth] = _meterSynth.get(tx.peer)
@@ -135,8 +139,19 @@ final class VisualObjImpl[S <: Sys[S]] private (val main: NuagesPanel[S],
   }
 
   def dispose()(implicit tx: S#Tx): Unit = {
+    implicit val itx = tx.peer
     observers.foreach(_.dispose())
     meterSynth = None
+    params .foreach(_._2.dispose())
+    inputs .foreach(_._2.dispose())
+    outputs.foreach(_._2.dispose())
+    main.nodeMap.remove(timed.id)
+    main.deferVisTx(disposeGUI())
+  }
+
+  private[this] def disposeGUI(): Unit = {
+    main.aggrTable.removeTuple(aggr)
+    main.graph    .removeNode (pNode)
   }
 
   private[this] val playArea = new Area()

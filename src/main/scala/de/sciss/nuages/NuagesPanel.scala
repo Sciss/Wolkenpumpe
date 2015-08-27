@@ -111,5 +111,5 @@ trait NuagesPanel[S <: Sys[S]] extends View[S] {
 
   def assignMapping(source: Scan[S], vSink: VisualControl[S])(implicit tx: S#Tx): Unit
 
-  def initNodeGUI(obj: VisualObj[S], vn: VisualNode[S], locO: Option[Point2D]): VisualItem
+  // def initNodeGUI(obj: VisualObj[S], vn: VisualNode[S], locO: Option[Point2D]): VisualItem
 }

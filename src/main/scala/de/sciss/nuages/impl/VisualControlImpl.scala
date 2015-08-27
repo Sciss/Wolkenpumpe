@@ -132,7 +132,6 @@ final class VisualControlImpl[S <: Sys[S]] private(val parent: VisualObj[S], val
   private def initGUI(): Unit = {
     requireEDT()
     mkPNodeAndEdge()
-    main.initNodeGUI(parent, this, None /* locO */)
     // val old = parent.params.get(vc.key)
     mapping.foreach { m =>
       m.source.foreach { vSrc =>

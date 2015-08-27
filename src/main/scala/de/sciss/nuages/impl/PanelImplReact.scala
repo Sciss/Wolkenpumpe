@@ -26,10 +26,6 @@ trait PanelImplReact[S <: Sys[S]] {
   protected def scanMap     : stm.IdentifierMap[S#ID, S#Tx, ScanInfo          [S]]
   protected def missingScans: stm.IdentifierMap[S#ID, S#Tx, List[VisualControl[S]]]
 
-  // protected def addControlGUI(vp: VisualObj[S], vc: VisualControl[S]): Unit
-  protected def addNodeGUI   (vp: VisualObj[S], links: List[VisualLink[S]], locO: Option[Point2D]): Unit
-  protected def removeNodeGUI(vp: VisualObj[S]): Unit
-
   protected def auralTimeline: Ref[Option[AuralObj.Timeline[S]]]
 
   protected def getAuralScanData(aural: AuralObj[S], key: String = Proc.scanMainOut)
@@ -48,9 +44,8 @@ trait PanelImplReact[S <: Sys[S]] {
     val id    = timed.id
     val obj   = timed.value
     val config = main.config
-    val vp    = VisualObj[S](main, timed, hasMeter = config.meters, hasSolo = config.soloChannels.isDefined)
-    nodeMap.put(id, vp)
     val locO  = removeLocationHint(obj)
+    val vp    = VisualObj[S](main, locO, timed, hasMeter = config.meters, hasSolo = config.soloChannels.isDefined)
 
     var links: List[VisualLink[S]] = obj match {
       case objT: Proc[S] =>
@@ -93,8 +88,6 @@ trait PanelImplReact[S <: Sys[S]] {
         auralObjAdded(vp, auralObj)
       }
     }
-
-    deferVisTx(addNodeGUI(vp, links, locO))
   }
 
 //  def addScalarControl(visObj: VisualObj[S], key: String, dObj: DoubleObj[S])(implicit tx: S#Tx): Unit = {
@@ -159,23 +152,6 @@ trait PanelImplReact[S <: Sys[S]] {
     val id   = timed.id
     val obj  = timed.value
     nodeMap.get(id).foreach { vp =>
-      nodeMap.remove(id)
-      obj match {
-        case objT: Proc[S] =>
-          val proc  = objT
-          proc.inputs.iterator.foreach { case (_, scan) =>
-            scanMap.remove(scan.id)
-          }
-          proc.outputs.iterator.foreach { case (_, scan) =>
-            scanMap.remove(scan.id)
-          }
-        // XXX TODO -- clean up missing controls
-
-        case _ =>
-      }
-
-      deferVisTx(removeNodeGUI(vp))
-      // println(s"Disposing ${vp.meterSynth}")
       vp.dispose()
       disposeObj(obj)
 

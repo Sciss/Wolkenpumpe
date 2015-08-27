@@ -30,7 +30,7 @@ trait VisualNodeImpl[S <: Sys[S]] extends VisualDataImpl[S] with VisualNode[S] {
     _pNode
   }
 
-  protected final def mkPNode(): Unit = {
+  protected final def mkPNode(): VisualItem = {
     if (_pNode != null) throw new IllegalStateException(s"Component $this has already been initialized")
     _pNode  = main.graph.addNode()
     val vis = main.visualization
@@ -39,6 +39,7 @@ trait VisualNodeImpl[S <: Sys[S]] extends VisualDataImpl[S] with VisualNode[S] {
     val sz  = nodeSize
     if (sz != 1.0f) vi.set(VisualItem.SIZE, sz)
     parent.aggr.addItem(vi)
+    vi
   }
 
   protected final def atomic[A](fun: S#Tx => A): A = main.transport.scheduler.cursor.step(fun)

@@ -76,6 +76,7 @@ final class VisualScanImpl[S <: Sys[S]] private(val parent: VisualObj[S],
   def dispose()(implicit tx: S#Tx): Unit = {
     val map = if (isInput) parent.inputs else parent.outputs
     map.remove(key)(tx.peer)
+    main.scanMap.remove(scan.id)
     observers.foreach(_.dispose())
   }
 

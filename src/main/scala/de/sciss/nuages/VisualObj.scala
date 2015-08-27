@@ -13,6 +13,8 @@
 
 package de.sciss.nuages
 
+import java.awt.geom.Point2D
+
 import de.sciss.lucre.expr.SpanLikeObj
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Disposable, Obj}
@@ -23,10 +25,11 @@ import prefuse.visual.AggregateItem
 import scala.concurrent.stm.TMap
 
 object VisualObj {
-  def apply[S <: Sys[S]](main: NuagesPanel[S], timed: Timed[S],
+  def apply[S <: Sys[S]](main: NuagesPanel[S], locOption: Option[Point2D],
+                         timed: Timed[S],
                          hasMeter: Boolean, hasSolo: Boolean)
                         (implicit tx: S#Tx): VisualObj[S] =
-    impl.VisualObjImpl(main, timed, hasMeter = hasMeter, hasSolo = hasSolo)
+    impl.VisualObjImpl(main, locOption, timed, hasMeter = hasMeter, hasSolo = hasSolo)
 }
 
 /** The GUI representation of a `proc.Obj`.
