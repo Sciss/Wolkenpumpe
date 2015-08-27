@@ -21,7 +21,7 @@ import java.awt.{Color, Graphics2D}
 import de.sciss.intensitypalette.IntensityPalette
 import de.sciss.lucre.expr.{DoubleObj, SpanLikeObj}
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.Obj
+import de.sciss.lucre.stm.{Disposable, Obj}
 import de.sciss.lucre.swing.requireEDT
 import de.sciss.lucre.synth.{Synth, Sys}
 import de.sciss.synth.proc.Implicits._
@@ -30,7 +30,7 @@ import prefuse.util.ColorLib
 import prefuse.visual.{AggregateItem, VisualItem}
 
 import scala.collection.breakOut
-import scala.concurrent.stm.Ref
+import scala.concurrent.stm.{TMap, Ref}
 
 object VisualObjImpl {
   private val logPeakCorr = 20.0 / math.log(10)
@@ -41,25 +41,7 @@ object VisualObjImpl {
                          hasMeter: Boolean, hasSolo: Boolean)
                         (implicit tx: S#Tx): VisualObj[S] = {
     val res = new VisualObjImpl(main, tx.newHandle(span), tx.newHandle(obj), obj.name, hasMeter = hasMeter, hasSolo = hasSolo)
-    main.deferVisTx(res.initGUI())
-    obj match {
-      case objT: Proc[S] =>
-        val proc    = objT
-        res.inputs  = proc.inputs .keys.map { key => key -> VisualScan(res, key, isInput = true ) } (breakOut)
-        res.outputs = proc.outputs.keys.map { key => key -> VisualScan(res, key, isInput = false) } (breakOut)
-        res.params  = objT.attr.iterator.flatMap {
-          case (key, dObj: DoubleObj[S]) =>
-            val vc = VisualControl.scalar(res, key, dObj)
-            Some(key -> vc)
-          case (key, sObj: Scan[S]) =>
-            val vc = VisualControl.scan(res, key, sObj)
-            Some(key -> vc)
-          case _ =>
-            None
-        } .toMap
-
-      case _ =>
-    }
+    res.init(obj)
     res
   }
 }
@@ -76,19 +58,64 @@ final class VisualObjImpl[S <: Sys[S]] private (val main: NuagesPanel[S],
 
   protected def nodeSize = 1f
 
-  private var _aggr: AggregateItem = _
+  private[this] var observers = List.empty[Disposable[S#Tx]]
 
-  var inputs  = Map.empty[String, VisualScan   [S]]
-  var outputs = Map.empty[String, VisualScan   [S]]
-  var params  = Map.empty[String, VisualControl[S]]
+  private[this] var _aggr: AggregateItem = _
 
-  private val _meterSynth = Ref(Option.empty[Synth])
+  val inputs  = TMap.empty[String, VisualScan   [S]]
+  val outputs = TMap.empty[String, VisualScan   [S]]
+  val params  = TMap.empty[String, VisualControl[S]]
+
+  private[this] val _meterSynth = Ref(Option.empty[Synth])
 
   def parent: VisualObj[S] = this
 
   def aggr: AggregateItem = _aggr
 
-  def initGUI(): Unit = {
+  def init(obj: Obj[S])(implicit tx: S#Tx): this.type = {
+    main.deferVisTx(initGUI())
+    obj match {
+      case proc: Proc[S] => initProc(proc)
+      case _ =>
+    }
+    this
+  }
+
+  private[this] def initProc(proc: Proc[S])(implicit tx: S#Tx): Unit = {
+    proc.inputs .iterator.foreach { case (key, scan) =>
+      VisualScan(this, scan, key, isInput = true )
+    }
+    proc.outputs.iterator.foreach { case (key, scan) =>
+      VisualScan(this, scan, key, isInput = false)
+    }
+
+    observers ::= proc.changed.react { implicit tx => upd =>
+      upd.changes.foreach {
+        case Proc.InputAdded   (key, scan) => VisualScan(this, scan, key, isInput = true )
+        case Proc.InputRemoved (key, scan) => inputs.get(key)(tx.peer).foreach(_.dispose())
+        case Proc.OutputAdded  (key, scan) => VisualScan(this, scan, key, isInput = false)
+        case Proc.OutputRemoved(key, scan) => inputs.get(key)(tx.peer).foreach(_.dispose())
+        case _ =>
+      }
+    }
+
+    val attr = proc.attr
+    attr.iterator.foreach { case (key, obj) => mkParam(key, obj) }
+    observers ::= attr.changed.react { implicit tx => upd =>
+      upd.changes.foreach {
+        case Obj.AttrAdded  (key, obj) => mkParam(key, obj)
+        case Obj.AttrRemoved(key, obj) => params.get(key)(tx.peer).foreach(_.dispose())
+      }
+    }
+  }
+
+  private[this] def mkParam(key: String, obj: Obj[S])(implicit tx: S#Tx): Unit = obj match {
+    case dObj: DoubleObj[S] => VisualControl.scalar(this, key, dObj)
+    case sObj: Scan[S]      => VisualControl.scan  (this, key, sObj)
+    case _ =>
+  }
+
+  private[this] def initGUI(): Unit = {
     requireEDT()
     // important: this must be this first step
     _aggr = main.aggrTable.addItem().asInstanceOf[AggregateItem]
@@ -101,20 +128,23 @@ final class VisualObjImpl[S <: Sys[S]] private (val main: NuagesPanel[S],
     old.foreach(_.dispose())
   }
 
-  def dispose()(implicit tx: S#Tx): Unit = meterSynth = None
+  def dispose()(implicit tx: S#Tx): Unit = {
+    observers.foreach(_.dispose())
+    meterSynth = None
+  }
 
-  private val playArea = new Area()
-  private val soloArea = new Area()
+  private[this] val playArea = new Area()
+  private[this] val soloArea = new Area()
 
-  private var peak = 0f
-  private var peakToPaint = -160f
-  private var peakNorm    = 0f
+  private[this] var peak = 0f
+  private[this] var peakToPaint = -160f
+  private[this] var peakNorm    = 0f
 
   //   private var rms         = 0f
   //   private var rmsToPaint	= -160f
   //   private var rmsNorm     = 0f
 
-  private var lastUpdate = System.currentTimeMillis()
+  private[this] var lastUpdate = System.currentTimeMillis()
 
   @volatile var soloed = false
 
@@ -166,11 +196,13 @@ final class VisualObjImpl[S <: Sys[S]] private (val main: NuagesPanel[S],
 
     } else if (outerE.contains(xt, yt) & e.isAltDown) {
       // val instant = !stateVar.playing || stateVar.bypassed || (main.transition(0) == Instant)
-      val visScans  = inputs ++ outputs
-      val inKeys    = inputs .keySet
-      val outKeys   = outputs.keySet
-      val mappings  = visScans.valuesIterator.flatMap(_.mappings)
       atomic { implicit tx =>
+        implicit val itx = tx.peer
+        val visScans  = inputs ++ outputs
+        val inKeys    = inputs .keySet
+        val outKeys   = outputs.keySet
+        val mappings  = visScans.valuesIterator.flatMap(_.mappings)
+
         mappings.foreach { vc =>
           vc.removeMapping()
         }

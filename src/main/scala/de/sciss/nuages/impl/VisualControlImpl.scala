@@ -46,14 +46,15 @@ object VisualControlImpl {
     val value = 0.5 // XXX TODO
     val spec  = getSpec(parent, key)
     val scan  = sObj
-    apply(parent, key = key, spec = spec, value = value, mapping = Some(new MappingImpl(tx.newHandle(scan))))
+    val res = apply(parent, key = key, spec = spec, value = value, mapping = Some(new MappingImpl(tx.newHandle(scan))))
+    res
   }
 
   private def apply[S <: Sys[S]](parent: VisualObj[S], key: String, spec: ParamSpec, value: Double,
                                  mapping: Option[VisualControl.Mapping[S]])
                                 (implicit tx: S#Tx): VisualControl[S] = {
     val res   = new VisualControlImpl(parent, key = key, spec = spec, value = value, mapping = mapping)
-    res.main.deferVisTx(res.initGUI())
+    res.init()
     res
   }
 
@@ -104,9 +105,42 @@ final class VisualControlImpl[S <: Sys[S]] private(val parent: VisualObj[S], val
     } else null
   } else null
 
-  def initGUI(): Unit = {
+  def dispose()(implicit tx: S#Tx): Unit = {
+    mapping.foreach { m =>
+      m.synth.swap(None)(tx.peer).foreach(_.dispose())
+    }
+    parent.params.remove(key)(tx.peer)
+    main.deferVisTx(disposeGUI())
+  }
+
+  private def disposeGUI(): Unit = {
+    val _vi = main.visualization.getVisualItem(NuagesPanel.GROUP_GRAPH, pNode)
+    parent.aggr.removeItem(_vi)
+    main.graph.removeNode(pNode)
+  }
+
+  def init()(implicit tx: S#Tx): this.type = {
+    parent.params.put(key, this)(tx.peer)
+    main.deferVisTx(initGUI())
+    mapping.foreach { m =>
+      main.assignMapping(source = m.scan, vSink = this)
+    }
+    parent.params.put(key, this)(tx.peer).foreach(_.dispose())
+    this
+  }
+
+  private def initGUI(): Unit = {
     requireEDT()
     mkPNodeAndEdge()
+    main.initNodeGUI(parent, this, None /* locO */)
+    // val old = parent.params.get(vc.key)
+    mapping.foreach { m =>
+      m.source.foreach { vSrc =>
+        main.graph.addEdge(vSrc.pNode, pNode)
+        vSrc.mappings += this
+      }
+    }
+    // old.foreach(removeControlGUI(vp, _))
   }
 
   override def itemPressed(vi: VisualItem, e: MouseEvent, pt: Point2D): Boolean = {

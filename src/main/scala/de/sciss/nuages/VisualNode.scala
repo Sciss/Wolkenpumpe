@@ -13,6 +13,7 @@
 
 package de.sciss.nuages
 
+import de.sciss.lucre.stm.Disposable
 import de.sciss.lucre.synth.Sys
 import prefuse.data.{Node => PNode}
 
@@ -24,7 +25,7 @@ import prefuse.data.{Node => PNode}
   * @see [[VisualObj]]
   * @see [[VisualParam]]
   */
-trait VisualNode[S <: Sys[S]] extends VisualData[S] {
+trait VisualNode[S <: Sys[S]] extends VisualData[S] with Disposable[S#Tx] {
   // ---- methods to be called on the EDT ----
 
   /** The corresponding Prefuse node. */

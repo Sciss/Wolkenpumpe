@@ -24,20 +24,21 @@ trait PanelImplGuiFuns[S <: Sys[S]] {
   // ---- impl ----
 
   protected def removeNodeGUI(vp: VisualObj[S]): Unit = {
-    aggrTable.removeTuple(vp.aggr)
-    graph.removeNode(vp.pNode)
-    vp.inputs.foreach { case (_, vs) =>
-      graph.removeNode(vs.pNode)
-    }
-    vp.outputs.foreach { case (_, vs) =>
-      graph.removeNode(vs.pNode)
-    }
-    vp.params.foreach { case (_, vc) =>
-      graph.removeNode(vc.pNode)
-    }
+    ???
+//    aggrTable.removeTuple(vp.aggr)
+//    graph.removeNode(vp.pNode)
+//    vp.inputs.foreach { case (_, vs) =>
+//      graph.removeNode(vs.pNode)
+//    }
+//    vp.outputs.foreach { case (_, vs) =>
+//      graph.removeNode(vs.pNode)
+//    }
+//    vp.params.foreach { case (_, vc) =>
+//      graph.removeNode(vc.pNode)
+//    }
   }
 
-  private def initNodeGUI(obj: VisualObj[S], vn: VisualNode[S], locO: Option[Point2D]): VisualItem = {
+  def initNodeGUI(obj: VisualObj[S], vn: VisualNode[S], locO: Option[Point2D]): VisualItem = {
     val pNode = vn.pNode
     val _vi   = visualization.getVisualItem(GROUP_GRAPH, pNode)
     val same  = vn == obj
@@ -55,64 +56,66 @@ trait PanelImplGuiFuns[S <: Sys[S]] {
   }
 
   protected def addNodeGUI(vp: VisualObj[S], links: List[VisualLink[S]], locO: Option[Point2D]): Unit = {
-    initNodeGUI(vp, vp, locO)
-
-    vp.inputs.foreach { case (_, vScan) =>
-      initNodeGUI(vp, vScan, locO)
-    }
-    vp.outputs.foreach { case (_, vScan) =>
-      initNodeGUI(vp, vScan, locO)
-    }
-
-    vp.params.foreach { case (_, vParam) =>
-      initNodeGUI(vp, vParam, locO)
-    }
-
-    links.foreach { link =>
-      link.source.outputs.get(link.sourceKey).foreach { sourceVisScan =>
-        if (link.isScan)
-          link.sink.inputs.get(link.sinkKey).foreach { sinkVisScan =>
-            addScanScanEdgeGUI(sourceVisScan, sinkVisScan)
-          }
-        else
-          link.sink.params.get(link.sinkKey).foreach { sinkVisCtl =>
-            addScanControlEdgeGUI(sourceVisScan, sinkVisCtl)
-          }
-      }
-    }
+    ???
+//    initNodeGUI(vp, vp, locO)
+//
+//    vp.inputs.foreach { case (_, vScan) =>
+//      initNodeGUI(vp, vScan, locO)
+//    }
+//    vp.outputs.foreach { case (_, vScan) =>
+//      initNodeGUI(vp, vScan, locO)
+//    }
+//
+//    vp.params.foreach { case (_, vParam) =>
+//      initNodeGUI(vp, vParam, locO)
+//    }
+//
+//    links.foreach { link =>
+//      link.source.outputs.get(link.sourceKey).foreach { sourceVisScan =>
+//        if (link.isScan)
+//          link.sink.inputs.get(link.sinkKey).foreach { sinkVisScan =>
+//            addScanScanEdgeGUI(sourceVisScan, sinkVisScan)
+//          }
+//        else
+//          link.sink.params.get(link.sinkKey).foreach { sinkVisCtl =>
+//            addScanControlEdgeGUI(sourceVisScan, sinkVisCtl)
+//          }
+//      }
+//    }
   }
 
-  protected def addControlGUI(vp: VisualObj[S], vc: VisualControl[S] /* , locO: Option[Point2D] */): Unit = {
-    initNodeGUI(vp, vc, None /* locO */)
-    val old = vp.params.get(vc.key)
-    vp.params += vc.key -> vc
-    vc.mapping.foreach { m =>
-      m.source.foreach { vSrc =>
-        /* val pEdge = */ graph.addEdge(vSrc.pNode, vc.pNode)
-        vSrc.mappings += vc
-        // m.pEdge = Some(pEdge)
-      }
-    }
-    old.foreach(removeControlGUI(vp, _))
-  }
+//  protected def addControlGUI(vp: VisualObj[S], vc: VisualControl[S] /* , locO: Option[Point2D] */): Unit = {
+//    initNodeGUI(vp, vc, None /* locO */)
+//    val old = vp.params.get(vc.key)
+//    vp.params += vc.key -> vc
+//    vc.mapping.foreach { m =>
+//      m.source.foreach { vSrc =>
+//        /* val pEdge = */ graph.addEdge(vSrc.pNode, vc.pNode)
+//        vSrc.mappings += vc
+//        // m.pEdge = Some(pEdge)
+//      }
+//    }
+//    old.foreach(removeControlGUI(vp, _))
+//  }
 
   def removeControlGUI(visObj: VisualObj[S], vc: VisualControl[S]): Unit = {
-    val key = vc.key
-    visObj.params -= key
-    val _vi = visualization.getVisualItem(GROUP_GRAPH, vc.pNode)
-    visObj.aggr.removeItem(_vi)
-    // val loc = new Point2D.Double(_vi.getX, _vi.getY)
-    TxnExecutor.defaultAtomic { implicit itx =>
-      // println(s"setLocationHint($visObj -> $key, $loc)")
-      // setLocationHint(visObj -> key, loc)
-      vc.mapping.foreach { m =>
-        m.synth.swap(None).foreach { synth =>
-          implicit val tx = Txn.wrap(itx)
-          synth.dispose()
-        }
-      }
-    }
-    graph.removeNode(vc.pNode)
+    ???
+//    val key = vc.key
+//    visObj.params -= key
+//    val _vi = visualization.getVisualItem(GROUP_GRAPH, vc.pNode)
+//    visObj.aggr.removeItem(_vi)
+//    // val loc = new Point2D.Double(_vi.getX, _vi.getY)
+//    TxnExecutor.defaultAtomic { implicit itx =>
+//      // println(s"setLocationHint($visObj -> $key, $loc)")
+//      // setLocationHint(visObj -> key, loc)
+//      vc.mapping.foreach { m =>
+//        m.synth.swap(None).foreach { synth =>
+//          implicit val tx = Txn.wrap(itx)
+//          synth.dispose()
+//        }
+//      }
+//    }
+//    graph.removeNode(vc.pNode)
   }
 
   def addScanScanEdgeGUI(source: VisualScan[S], sink: VisualScan[S]): Unit = {

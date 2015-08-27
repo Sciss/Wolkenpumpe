@@ -147,12 +147,10 @@ object KeyControl {
                       val pt = new Point2D.Double(r.getCenterX, r.getCenterY)
                       // println("TODO: Insert Filter")
                       main.cursor.step { implicit tx =>
-                        for {
-                          pred <- vOut.scan
-                          succ <- vIn .scan
-                        } {
-                          main.insertFilter(pred = pred, succ = succ, flt = objH(), pt = pt)
-                        }
+                        val pred = vOut.scan
+                        val succ = vIn .scan
+
+                        main.insertFilter(pred = pred, succ = succ, flt = objH(), pt = pt)
                       }
                     case _ =>
                   }

@@ -19,6 +19,8 @@ import de.sciss.lucre.stm.{Disposable, Obj}
 import de.sciss.lucre.synth.{Synth, Sys}
 import prefuse.visual.AggregateItem
 
+import scala.concurrent.stm.TMap
+
 object VisualObj {
   def apply[S <: Sys[S]](main: NuagesPanel[S], span: SpanLikeObj[S], obj: Obj[S],
                          hasMeter: Boolean, hasSolo: Boolean)
@@ -31,7 +33,7 @@ object VisualObj {
   * @see [[Obj]]
   */
 trait VisualObj[S <: Sys[S]]
-  extends VisualNode[S] with Disposable[S#Tx] {
+  extends VisualNode[S] {
 
   def main: NuagesPanel[S]
 
@@ -45,9 +47,9 @@ trait VisualObj[S <: Sys[S]]
 
   def aggr: AggregateItem
 
-  var inputs : Map[String, VisualScan   [S]]
-  var outputs: Map[String, VisualScan   [S]]
-  var params : Map[String, VisualControl[S]]
+  val inputs : TMap[String, VisualScan   [S]]
+  val outputs: TMap[String, VisualScan   [S]]
+  val params : TMap[String, VisualControl[S]]
 
   /** GUI property: whether the object is heard through the solo function or not. */
   var soloed: Boolean

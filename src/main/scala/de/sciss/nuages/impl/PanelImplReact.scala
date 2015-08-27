@@ -26,7 +26,7 @@ trait PanelImplReact[S <: Sys[S]] {
   protected def scanMap     : stm.IdentifierMap[S#ID, S#Tx, ScanInfo          [S]]
   protected def missingScans: stm.IdentifierMap[S#ID, S#Tx, List[VisualControl[S]]]
 
-  protected def addControlGUI(vp: VisualObj[S], vc: VisualControl[S]): Unit
+  // protected def addControlGUI(vp: VisualObj[S], vc: VisualControl[S]): Unit
   protected def addNodeGUI   (vp: VisualObj[S], links: List[VisualLink[S]], locO: Option[Point2D]): Unit
   protected def removeNodeGUI(vp: VisualObj[S]): Unit
 
@@ -86,7 +86,7 @@ trait PanelImplReact[S <: Sys[S]] {
           }
         }
       }
-    }
+    } (tx.peer)
 
     auralTimeline.get(tx.peer).foreach { auralTL =>
       auralTL.getView(timed).foreach { auralObj =>
@@ -97,29 +97,29 @@ trait PanelImplReact[S <: Sys[S]] {
     deferVisTx(addNodeGUI(vp, links, locO))
   }
 
-  def addScalarControl(visObj: VisualObj[S], key: String, dObj: DoubleObj[S])(implicit tx: S#Tx): Unit = {
-    val vc = VisualControl.scalar(visObj, key, dObj)
-    addControl(visObj, vc)
-  }
+//  def addScalarControl(visObj: VisualObj[S], key: String, dObj: DoubleObj[S])(implicit tx: S#Tx): Unit = {
+//    val vc = VisualControl.scalar(visObj, key, dObj)
+//    addControl(visObj, vc)
+//  }
+//
+//  def addScanControl(visObj: VisualObj[S], key: String, sObj: Scan[S])(implicit tx: S#Tx): Unit = {
+//    implicit val itx = tx.peer
+//    val vc    = VisualControl.scan(visObj, key, sObj)
+//    val scan  = sObj
+//    assignMapping(source = scan, vSink = vc)
+//    addControl(visObj, vc)
+//  }
 
-  def addScanControl(visObj: VisualObj[S], key: String, sObj: Scan[S])(implicit tx: S#Tx): Unit = {
-    implicit val itx = tx.peer
-    val vc    = VisualControl.scan(visObj, key, sObj)
-    val scan  = sObj
-    assignMapping(source = scan, vSink = vc)
-    addControl(visObj, vc)
-  }
+//  private def addControl(visObj: VisualObj[S], vc: VisualControl[S])(implicit tx: S#Tx): Unit = {
+//    // val key     = vc.key
+//    // val locOpt  = locHintMap.get(tx.peer).get(visObj -> key)
+//    // println(s"locHintMap($visObj -> $key) = $locOpt")
+//    deferVisTx {
+//      addControlGUI(visObj, vc /* , locOpt */)
+//    }
+//  }
 
-  private def addControl(visObj: VisualObj[S], vc: VisualControl[S])(implicit tx: S#Tx): Unit = {
-    // val key     = vc.key
-    // val locOpt  = locHintMap.get(tx.peer).get(visObj -> key)
-    // println(s"locHintMap($visObj -> $key) = $locOpt")
-    deferVisTx {
-      addControlGUI(visObj, vc /* , locOpt */)
-    }
-  }
-
-  private def assignMapping(source: Scan[S], vSink: VisualControl[S])(implicit tx: S#Tx): Unit = {
+  def assignMapping(source: Scan[S], vSink: VisualControl[S])(implicit tx: S#Tx): Unit = {
     implicit val itx = tx.peer
     scanMap.get(source.id).foreach { info =>
       nodeMap.get(info.timedID).foreach { vObj =>

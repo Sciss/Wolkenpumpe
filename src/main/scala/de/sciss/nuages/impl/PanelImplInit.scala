@@ -83,48 +83,6 @@ trait PanelImplInit[S <: Sys[S]] {
         //          case Timeline.Element(timed, Obj.UpdateT(obj, changes)) =>
         //            nodeMap.get(timed.id).foreach { visObj =>
         //              changes.foreach {
-        //                case Obj.AttrChange(key, _, attrChanges) if visObj.params.contains(key) =>
-        //                  attrChanges.foreach {
-        //                    case Obj.ElemChange(Change(_, now: Double)) =>
-        //                      // println(s"NOW $now")
-        //                      deferTx {
-        //                        visObj.params.get(key).foreach { visCtl =>
-        //                          visCtl.value = now
-        //                          val visItem = _vis.getVisualItem(GROUP_GRAPH, visCtl.pNode)
-        //                          _vis.damageReport(visItem, visItem.getBounds)
-        //                        }
-        //                      }
-        //
-        //                    // XXX TODO - ParamSpec changes
-        //
-        //                    case other => if (DEBUG) println(s"OBSERVED: Timeline.Element - AttrChange($key, $other)")
-        //                  }
-        //
-        //                case Obj.ElemChange(pUpd: Proc.Update[S]) =>
-        //                  pUpd.changes.foreach {
-        //                    case Proc.OutputChange(key, scan, scanChanges) =>
-        //                      def withScans(sink: Scan.Link[S])(fun: (VisualScan[S], VisualScan[S]) => Unit): Unit =
-        //                        for {
-        //                          sinkInfo <- scanMap.get(sink.id)
-        //                          sinkVis  <- nodeMap.get(sinkInfo.timedID)
-        //                        } deferVisTx {
-        //                          for {
-        //                            sourceVisScan <- visObj .outputs.get(key)
-        //                            sinkVisScan   <- sinkVis.inputs .get(sinkInfo.key)
-        //                          } {
-        //                            fun(sourceVisScan, sinkVisScan)
-        //                          }
-        //                        }
-        //
-        //                      scanChanges.foreach {
-        //                        case Scan.Added  (sink) => withScans(sink)(addScanScanEdgeGUI)
-        //                        case Scan.Removed(sink) => withScans(sink)(removeEdgeGUI     )
-        //                        case _ =>
-        //                      }
-        //
-        //                    case other => if (DEBUG) println(s"OBSERVED: Timeline.Element - ProcChange($other)")
-        //                  }
-        //
         //                case Obj.AttrRemoved(key, elem) =>
         //                  deferVisTx {
         //                    visObj.params.get(key).foreach { vc =>

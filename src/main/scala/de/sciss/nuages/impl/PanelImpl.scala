@@ -112,8 +112,8 @@ object PanelImpl {
 
 // nodeMap: uses timed-id as key
 final class PanelImpl[S <: Sys[S]](nuagesH: stm.Source[S#Tx, Nuages[S]],
-                                   protected val nodeMap: stm.IdentifierMap[S#ID, S#Tx, VisualObj[S]],
-                                   protected val scanMap: stm.IdentifierMap[S#ID, S#Tx, PanelImpl.ScanInfo[S]],
+                                   val nodeMap: stm.IdentifierMap[S#ID, S#Tx, VisualObj[S]],
+                                   val scanMap: stm.IdentifierMap[S#ID, S#Tx, PanelImpl.ScanInfo[S]],
                                    protected val missingScans: stm.IdentifierMap[S#ID, S#Tx, List[VisualControl[S]]],
                                    val config   : Nuages.Config,
                                    val transport: Transport[S],
