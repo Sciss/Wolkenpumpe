@@ -22,7 +22,7 @@ import de.sciss.lucre.synth.{Synth, Sys, Txn}
 import de.sciss.nuages.impl.{PanelImpl => Impl}
 import de.sciss.synth.proc.{AuralSystem, Scan, Transport, WorkspaceHandle}
 import prefuse.data.Graph
-import prefuse.visual.{VisualItem, AggregateTable, VisualGraph}
+import prefuse.visual.{AggregateTable, VisualGraph}
 import prefuse.{Display, Visualization}
 
 import scala.swing.Point
@@ -54,22 +54,19 @@ trait NuagesPanel[S <: Sys[S]] extends View[S] {
 
   // ---- methods to be called on the EDT ----
 
-  def display: Display
+  // -- prefuse --
 
-  def visualization: Visualization
+  def display       : Display
+  def visualization : Visualization
+  def graph         : Graph
+  def visualGraph   : VisualGraph
+  def aggrTable     : AggregateTable
 
-  def graph: Graph
-
-  def visualGraph: VisualGraph
-
-  def aggrTable: AggregateTable
+  // -- dialogs --
 
   def showCreateGenDialog(pt: Point): Boolean
-
   def showInsertFilterDialog(vOut: VisualScan[S], vIn: VisualScan[S], pt: Point): Boolean
-
   def showAppendFilterDialog(vOut: VisualScan[S], pt: Point): Boolean
-
   def showInsertMacroDialog(): Boolean
 
   def showOverlayPanel(p: OverlayPanel, pt: Option[Point] = None): Boolean
@@ -96,20 +93,13 @@ trait NuagesPanel[S <: Sys[S]] extends View[S] {
   def deferVisTx(thunk: => Unit)(implicit tx: TxnLike): Unit
 
   def createGenerator(gen: Obj[S], colOpt: Option[Obj[S]], pt: Point2D)(implicit tx: S#Tx): Unit
-
   def insertFilter(pred: Scan[S], succ: Scan[S], flt: Obj[S], pt: Point2D)(implicit tx: S#Tx): Unit
-
   def appendFilter(pred: Scan[S], flt: Obj[S], colOpt: Option[Obj[S]], pt: Point2D)(implicit tx: S#Tx): Unit
-
-  // ---- these are left-overs from refactoring, they should not go in public API ----
-
-//  def addScanScanEdgeGUI(source: VisualScan[S], sink: VisualScan[S]): Unit
-  // def removeEdgeGUI     (source: VisualScan[S], sink: VisualScan[S]): Unit
 
   def nodeMap: stm.IdentifierMap[S#ID, S#Tx, VisualObj [S]]
   def scanMap: stm.IdentifierMap[S#ID, S#Tx, VisualScan[S]]
 
-  def assignMapping(source: Scan[S], vSink: VisualControl[S])(implicit tx: S#Tx): Unit
+  // ---- these are left-overs from refactoring, they should not go in public API ----
 
-  // def initNodeGUI(obj: VisualObj[S], vn: VisualNode[S], locO: Option[Point2D]): VisualItem
+  def assignMapping(source: Scan[S], vSink: VisualControl[S])(implicit tx: S#Tx): Unit
 }

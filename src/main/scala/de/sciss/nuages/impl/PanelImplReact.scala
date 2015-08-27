@@ -52,49 +52,10 @@ trait PanelImplReact[S <: Sys[S]] {
   // ---- impl ----
 
   def addNode(span: SpanLike, timed: Timeline.Timed[S])(implicit tx: S#Tx): Unit = {
-    // val id    = timed.id
     val obj   = timed.value
     val config = main.config
     val locO  = removeLocationHint(obj)
     val vp    = VisualObj[S](main, locO, timed, hasMeter = config.meters, hasSolo = config.soloChannels.isDefined)
-
-//    var links: List[VisualLink[S]] =
-//      obj match {
-//      case objT: Proc[S] =>
-//        val proc  = objT
-//        val l1: List[VisualLink[S]] = proc.inputs.iterator.flatMap { case (key, scan) =>
-//          val info = new ScanInfo[S](id, key, isInput = true)
-//          addScan(vp, scan, info)
-//        } .toList
-//
-//        val l2: List[VisualLink[S]] = proc.outputs.iterator.flatMap { case (key, scan) =>
-//          val info = new ScanInfo[S](id, key, isInput = false)
-//          addScan(vp, scan, info)
-//        } .toList
-//
-//        l1 ++ l2
-//
-//      case _ => Nil
-//    }
-
-//    // check existing mappings; establish visual links or remember missing scans
-//    vp.params.foreach { case (sinkKey, vSink) =>
-//      vSink.mapping.foreach { m =>
-//        assert(m.source.isEmpty)  // must be missing at this stage
-//        val scan  = m.scan
-//        val sid   = scan.id
-//        scanMap.get(sid).fold[Unit] {
-//          val list  = vSink :: missingScans.getOrElse(sid, Nil)
-//          missingScans.put(sid, list)
-//        } { info =>
-//          val vObj = info.parent
-//          // nodeMap.get(info.parent.timed.id).foreach { vObj =>
-//            assignMapping(source = scan, vSink = vSink)
-//            links ::= new VisualLink(vObj, info.key, vp /* aka vCtl.parent */, sinkKey, isScan = false)
-//          // }
-//        }
-//      }
-//    } (tx.peer)
 
     auralTimeline.get(tx.peer).foreach { auralTL =>
       auralTL.getView(timed).foreach { auralObj =>
@@ -150,42 +111,4 @@ trait PanelImplReact[S <: Sys[S]] {
       // `setSolo` another time or upon frame disposal.
     }
   }
-
-  // looks for existing sinks and sources of a scan that
-  // are already represented in the GUI. for those, creates
-  // visual links and returns them (they'll have to be
-  // "materialized" in terms of prefuse-edges later).
-  //
-  // resolves entries in missingScans as well.
-//  private def addScan(vi: VisualObj[S], scan: Scan[S], info: ScanInfo[S])(implicit tx: S#Tx): List[VisualLink[S]] = {
-//    val sid = scan.id
-//    scanMap.put(sid, info)  // stupid look-up
-//    var res = List.empty[VisualLink[S]]
-//    scan.iterator.foreach {
-//      case Scan.Link.Scan(target) =>
-//        scanMap.get(target.id).foreach {
-//          case ScanInfo(targetTimedID, targetKey, _) =>
-//            nodeMap.get(targetTimedID).foreach { targetVis =>
-//              import info.isInput
-//              val sourceVis = if (isInput) targetVis else vi
-//              val sourceKey = if (isInput) targetKey else info.key
-//              val sinkVis   = if (isInput) vi else targetVis
-//              val sinkKey   = if (isInput) info.key else targetKey
-//
-//              res ::= new VisualLink(sourceVis, sourceKey, sinkVis, sinkKey, isScan = true)
-//            }
-//        }
-//      case _ =>
-//    }
-//
-//    missingScans.get(sid).foreach { controls =>
-//      missingScans.remove(sid)
-//      controls  .foreach { ctl =>
-//        assignMapping(source = scan, vSink = ctl)
-//        res ::= new VisualLink(vi, info.key, ctl.parent, ctl.key, isScan = false)
-//      }
-//    }
-//
-//    res
-//  }
 }

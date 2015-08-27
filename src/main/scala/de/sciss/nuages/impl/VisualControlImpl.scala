@@ -20,6 +20,7 @@ import java.awt.{Graphics2D, Shape}
 
 import de.sciss.lucre.expr.DoubleObj
 import de.sciss.lucre.stm
+import de.sciss.lucre.stm.{Disposable, Obj}
 import de.sciss.lucre.swing.requireEDT
 import de.sciss.lucre.synth.{Synth, Sys}
 import de.sciss.synth.proc.Scan
@@ -38,7 +39,7 @@ object VisualControlImpl {
                           dObj: DoubleObj[S])(implicit tx: S#Tx): VisualControl[S] = {
     val value = dObj.value
     val spec  = getSpec(parent, key)
-    apply(parent, key = key, spec = spec, value = value, mapping = None)
+    apply(parent, dObj, key = key, spec = spec, value = value, mapping = None)
   }
 
   def scan[S <: Sys[S]](parent: VisualObj[S], key: String,
@@ -46,15 +47,15 @@ object VisualControlImpl {
     val value = 0.5 // XXX TODO
     val spec  = getSpec(parent, key)
     val scan  = sObj
-    val res = apply(parent, key = key, spec = spec, value = value, mapping = Some(new MappingImpl(tx.newHandle(scan))))
+    val res = apply(parent, sObj, key = key, spec = spec, value = value, mapping = Some(new MappingImpl(tx.newHandle(scan))))
     res
   }
 
-  private def apply[S <: Sys[S]](parent: VisualObj[S], key: String, spec: ParamSpec, value: Double,
+  private def apply[S <: Sys[S]](parent: VisualObj[S], obj: Obj[S], key: String, spec: ParamSpec, value: Double,
                                  mapping: Option[VisualControl.Mapping[S]])
                                 (implicit tx: S#Tx): VisualControl[S] = {
     val res = new VisualControlImpl(parent, key = key, spec = spec, value = value, mapping = mapping)
-    res.init()
+    res.init(obj)
     res
   }
 
@@ -105,7 +106,10 @@ final class VisualControlImpl[S <: Sys[S]] private(val parent: VisualObj[S], val
     } else null
   } else null
 
+  private[this] var observers = List.empty[Disposable[S#Tx]]
+
   def dispose()(implicit tx: S#Tx): Unit = {
+    observers.foreach(_.dispose())
     mapping.foreach { m =>
       m.synth.swap(None)(tx.peer).foreach(_.dispose())
     }
@@ -113,11 +117,23 @@ final class VisualControlImpl[S <: Sys[S]] private(val parent: VisualObj[S], val
     main.deferVisTx(disposeGUI())
   }
 
-  def init()(implicit tx: S#Tx): this.type = {
+  def init(obj: Obj[S])(implicit tx: S#Tx): this.type = {
     parent.params.put(key, this)(tx.peer) // .foreach(_.dispose())
     main.deferVisTx(initGUI())
     mapping.foreach { m =>
       main.assignMapping(source = m.scan, vSink = this)
+    }
+    obj match {
+      case dObj: DoubleObj[S] =>
+        observers ::= dObj.changed.react { implicit tx => upd =>
+          main.deferVisTx {
+            value = upd.now
+            val _vis = main.visualization
+            val visItem = _vis.getVisualItem(NuagesPanel.GROUP_GRAPH, pNode)
+            _vis.damageReport(visItem, visItem.getBounds)
+          }
+        }
+      case _ =>
     }
     this
   }
