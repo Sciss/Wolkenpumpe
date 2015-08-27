@@ -129,8 +129,8 @@ class Wolkenpumpe[S <: Sys[S]] {
   /** Subclasses may want to override this. */
   protected def configure(sCfg: ScissProcs.ConfigBuilder, nCfg: Nuages.ConfigBuilder,
                           aCfg: SServer.ConfigBuilder): Unit = {
-    nCfg.masterChannels     = Some(0 until 5) // Vector(0, 1))
-    nCfg.soloChannels       = Some(0 to 1)
+    nCfg.masterChannels     = Some(0 to 7) // Vector(0, 1))
+    nCfg.soloChannels       = None // Some(0 to 1)
 
     sCfg.audioFilesFolder   = Some(userHome / "Music" / "tapes")
     sCfg.micInputs          = Vector(
@@ -167,15 +167,10 @@ class Wolkenpumpe[S <: Sys[S]] {
 
     configure(sCfg, nCfg, aCfg)
 
-    val maxInputs   = (sCfg.lineInputs ++ sCfg.micInputs).map(_.stopOffset).max
-    val maxOutputs  = math.max(
-      math.max(
-        sCfg.lineOutputs.map(_.stopOffset).max,
-        nCfg.soloChannels  .fold(0)(_.max + 1)
-      ),
-      nCfg.masterChannels.fold(0)(_.max + 1)
-    )
-
+    val maxInputs   = ((sCfg.lineInputs ++ sCfg.micInputs).map(_.stopOffset) :+ 0).max
+    val maxOutputs  = (
+        sCfg.lineOutputs.map(_.stopOffset) :+ nCfg.soloChannels.fold(0)(_.max + 1) :+ nCfg.masterChannels.fold(0)(_.max + 1)
+      ).max
     println(s"numInputs = $maxInputs, numOutputs = $maxOutputs")
 
     aCfg.outputBusChannels  = maxOutputs
