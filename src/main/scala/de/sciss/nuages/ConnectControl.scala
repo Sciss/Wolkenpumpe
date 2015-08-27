@@ -128,8 +128,8 @@ class ConnectControl[S <: Sys[S]](main: NuagesPanel[S])
       DragControl.setSmartFixed(vis, tgt.vi, state = false)
       main.cursor.step { implicit tx =>
         val srcVScan = dr.source.visual
-        val srcObj   = srcVScan.parent.objH()
-        val tgtObj   = tgtV    .parent.objH()
+        val srcObj   = srcVScan.parent.obj
+        val tgtObj   = tgtV    .parent.obj
         (srcObj, tgtObj) match {
           case (srcProc: Proc[S], tgtProc: Proc[S]) =>
           srcProc.outputs.get(srcVScan.key).foreach { srcScan =>

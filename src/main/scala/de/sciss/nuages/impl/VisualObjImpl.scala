@@ -19,13 +19,15 @@ import java.awt.geom.{Arc2D, Area, Point2D}
 import java.awt.{Color, Graphics2D}
 
 import de.sciss.intensitypalette.IntensityPalette
+import de.sciss.lucre.bitemp.BiGroup
 import de.sciss.lucre.expr.{DoubleObj, SpanLikeObj}
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Disposable, Obj}
 import de.sciss.lucre.swing.requireEDT
 import de.sciss.lucre.synth.{Synth, Sys}
 import de.sciss.synth.proc.Implicits._
-import de.sciss.synth.proc.{Proc, Scan}
+import de.sciss.synth.proc.Timeline.Timed
+import de.sciss.synth.proc.{Timeline, Proc, Scan}
 import prefuse.util.ColorLib
 import prefuse.visual.{AggregateItem, VisualItem}
 
@@ -37,17 +39,18 @@ object VisualObjImpl {
 
   private val colrPeak = Array.tabulate(91)(ang => new Color(IntensityPalette.apply(ang / 90f)))
 
-  def apply[S <: Sys[S]](main: NuagesPanel[S], span: SpanLikeObj[S], obj: Obj[S],
+  def apply[S <: Sys[S]](main: NuagesPanel[S], timed: Timed[S],
                          hasMeter: Boolean, hasSolo: Boolean)
                         (implicit tx: S#Tx): VisualObj[S] = {
-    val res = new VisualObjImpl(main, tx.newHandle(span), tx.newHandle(obj), obj.name, hasMeter = hasMeter, hasSolo = hasSolo)
-    res.init(obj)
+    val obj = timed.value
+    // import BiGroup.Entry.serializer
+    val res = new VisualObjImpl(main, tx.newHandle(timed), obj.name, hasMeter = hasMeter, hasSolo = hasSolo)
+    res.init(timed)
     res
   }
 }
 final class VisualObjImpl[S <: Sys[S]] private (val main: NuagesPanel[S],
-                                                val spanH: stm.Source[S#Tx, SpanLikeObj[S]],
-                                                val objH : stm.Source[S#Tx, Obj[S]],
+                                                timedH: stm.Source[S#Tx, Timed[S]],
                                                 var name: String,
                                                 hasMeter: Boolean, hasSolo: Boolean)
   extends VisualNodeImpl[S] with VisualObj[S] {
@@ -68,13 +71,16 @@ final class VisualObjImpl[S <: Sys[S]] private (val main: NuagesPanel[S],
 
   private[this] val _meterSynth = Ref(Option.empty[Synth])
 
+  def timed(implicit tx: S#Tx): Timed[S] = timedH()
+
   def parent: VisualObj[S] = this
 
   def aggr: AggregateItem = _aggr
 
-  def init(obj: Obj[S])(implicit tx: S#Tx): this.type = {
+  def init(timed: Timed[S])(implicit tx: S#Tx): this.type = {
+    main.nodeMap.put(timed.id, this)
     main.deferVisTx(initGUI())
-    obj match {
+    timed.value match {
       case proc: Proc[S] => initProc(proc)
       case _ =>
     }
@@ -207,7 +213,7 @@ final class VisualObjImpl[S <: Sys[S]] private (val main: NuagesPanel[S],
           vc.removeMapping()
         }
 
-        val obj = objH()
+        val obj = timed.value
         obj match {
           case objT: Proc[S] =>
             val proc  = objT
@@ -235,7 +241,8 @@ final class VisualObjImpl[S <: Sys[S]] private (val main: NuagesPanel[S],
 
         main.nuages.timeline.modifiableOption.foreach { tl =>
           // XXX TODO --- ought to be an update to the span variable
-          tl.remove(spanH(), obj)
+          val t = timed
+          tl.remove(t.span, t.value)
         }
         // XXX TODO --- remove orphaned input or output procs
       }

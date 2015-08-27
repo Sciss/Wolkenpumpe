@@ -56,7 +56,7 @@ trait PanelImplDialogs[S <: Sys[S]] {
             listFlt1.list.foreach { fltList =>
               fltList.get(fltIdx).foreach {
                 case flt: Proc[S] =>
-                  (fltPred.parent.objH(), fltSucc.parent.objH()) match {
+                  (fltPred.parent.obj, fltSucc.parent.obj) match {
                     case (pred: Proc[S], succ: Proc[S]) =>
                       for {
                         predScan <- pred.outputs.get(fltPred.key)
@@ -113,7 +113,7 @@ trait PanelImplDialogs[S <: Sys[S]] {
     cursor.step { implicit tx =>
       objFun(tx).foreach {
         case flt: Proc[S] =>
-          fltPred.parent.objH() match {
+          fltPred.parent.obj match {
             case pred: Proc[S] =>
               for {
                 predScan <- pred.outputs.get(fltPred.key)
@@ -163,7 +163,7 @@ trait PanelImplDialogs[S <: Sys[S]] {
                   case flt: Proc[S] =>
                     colList.get(colIdx).foreach {
                       case col: Proc[S] =>
-                        fltPred.parent.objH() match {
+                        fltPred.parent.obj match {
                           case pred: Proc[S] =>
                             for {
                               predScan <- pred.outputs.get(fltPred.key)

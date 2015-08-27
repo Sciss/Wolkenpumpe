@@ -244,7 +244,7 @@ final class PanelImpl[S <: Sys[S]](nuagesH: stm.Source[S#Tx, Nuages[S]],
 
   def saveMacro(name: String, sel: Set[VisualObj[S]]): Unit =
     cursor.step { implicit tx =>
-     val copies = Nuages.copyGraph(sel.map(_.objH())(breakOut))
+     val copies = Nuages.copyGraph(sel.map(_.obj)(breakOut))
 
       val macroF = Folder[S]
       copies.foreach(macroF.addLast)

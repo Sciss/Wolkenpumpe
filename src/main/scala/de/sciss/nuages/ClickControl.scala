@@ -122,7 +122,7 @@ class ClickControl[S <: Sys[S]](main: NuagesPanel[S]) extends ControlAdapter {
           (srcData, tgtData) match {
             case (srcVScan: VisualScan[S], tgtVScan: VisualScan[S]) =>
               main.cursor.step { implicit tx =>
-                (srcVScan.parent.objH(), tgtVScan.parent.objH()) match {
+                (srcVScan.parent.obj, tgtVScan.parent.obj) match {
                   case (srcProc: Proc[S], tgtProc: Proc[S]) =>
                     for {
                       srcScan <- srcProc.outputs.get(srcVScan.key)

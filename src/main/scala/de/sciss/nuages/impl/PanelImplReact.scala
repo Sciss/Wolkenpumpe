@@ -48,7 +48,7 @@ trait PanelImplReact[S <: Sys[S]] {
     val id    = timed.id
     val obj   = timed.value
     val config = main.config
-    val vp    = VisualObj[S](main, timed.span, obj, hasMeter = config.meters, hasSolo = config.soloChannels.isDefined)
+    val vp    = VisualObj[S](main, timed, hasMeter = config.meters, hasSolo = config.soloChannels.isDefined)
     nodeMap.put(id, vp)
     val locO  = removeLocationHint(obj)
 

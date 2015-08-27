@@ -32,7 +32,7 @@ object VisualControlImpl {
   private val defaultSpec = ParamSpec()
 
   private def getSpec[S <: Sys[S]](parent: VisualObj[S], key: String)(implicit tx: S#Tx): ParamSpec =
-    parent.objH().attr.$[ParamSpec.Obj](s"$key-${ParamSpec.Key}").map(_.value).getOrElse(defaultSpec)
+    parent.obj.attr.$[ParamSpec.Obj](s"$key-${ParamSpec.Key}").map(_.value).getOrElse(defaultSpec)
 
   def scalar[S <: Sys[S]](parent: VisualObj[S], key: String,
                           dObj: DoubleObj[S])(implicit tx: S#Tx): VisualControl[S] = {
@@ -179,10 +179,10 @@ final class VisualControlImpl[S <: Sys[S]] private(val parent: VisualObj[S], val
     }
 
   private def setControlTxn(v: Double)(implicit tx: S#Tx): Unit = {
-    val attr = parent.objH().attr
+    val attr = parent.obj.attr
     val vc   = DoubleObj.newConst[S](v)
     attr.$[DoubleObj](key) match {
-      case Some(Expr.Var(vr)) => vr() = vc
+      case Some(DoubleObj.Var(vr)) => vr() = vc
       case _ => attr.put(key, DoubleObj.newVar(vc))
     }
   }

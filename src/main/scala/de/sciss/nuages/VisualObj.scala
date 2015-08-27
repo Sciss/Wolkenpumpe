@@ -17,15 +17,16 @@ import de.sciss.lucre.expr.SpanLikeObj
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Disposable, Obj}
 import de.sciss.lucre.synth.{Synth, Sys}
+import de.sciss.synth.proc.Timeline.Timed
 import prefuse.visual.AggregateItem
 
 import scala.concurrent.stm.TMap
 
 object VisualObj {
-  def apply[S <: Sys[S]](main: NuagesPanel[S], span: SpanLikeObj[S], obj: Obj[S],
+  def apply[S <: Sys[S]](main: NuagesPanel[S], timed: Timed[S],
                          hasMeter: Boolean, hasSolo: Boolean)
                         (implicit tx: S#Tx): VisualObj[S] =
-    impl.VisualObjImpl(main, span, obj, hasMeter = hasMeter, hasSolo = hasSolo)
+    impl.VisualObjImpl(main, timed, hasMeter = hasMeter, hasSolo = hasSolo)
 }
 
 /** The GUI representation of a `proc.Obj`.
@@ -37,8 +38,11 @@ trait VisualObj[S <: Sys[S]]
 
   def main: NuagesPanel[S]
 
-  def spanH: stm.Source[S#Tx, SpanLikeObj[S]]
-  def objH : stm.Source[S#Tx, Obj[S]]
+//  def spanH: stm.Source[S#Tx, SpanLikeObj[S]]
+//  def objH : stm.Source[S#Tx, Obj[S]]
+
+  def timed(implicit tx: S#Tx): Timed[S]
+  def obj  (implicit tx: S#Tx): Obj[S]    = timed.value
 
   // ---- methods to be called on the EDT ----
 
