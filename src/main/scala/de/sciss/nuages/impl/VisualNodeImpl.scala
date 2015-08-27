@@ -32,6 +32,7 @@ trait VisualNodeImpl[S <: Sys[S]] extends VisualDataImpl[S] with VisualNode[S] {
 
   protected final def mkPNode(): VisualItem = {
     if (_pNode != null) throw new IllegalStateException(s"Component $this has already been initialized")
+    log(s"mkPNode($name)")
     _pNode  = main.graph.addNode()
     val vis = main.visualization
     val vi  = vis.getVisualItem(NuagesPanel.GROUP_GRAPH, _pNode)
@@ -40,6 +41,13 @@ trait VisualNodeImpl[S <: Sys[S]] extends VisualDataImpl[S] with VisualNode[S] {
     if (sz != 1.0f) vi.set(VisualItem.SIZE, sz)
     parent.aggr.addItem(vi)
     vi
+  }
+
+  protected def disposeGUI(): Unit = {
+    log(s"disposeGUI($name)")
+    val _vi = main.visualization.getVisualItem(NuagesPanel.GROUP_GRAPH, pNode)
+    parent.aggr.removeItem(_vi)
+    main.graph.removeNode(pNode)
   }
 
   protected final def atomic[A](fun: S#Tx => A): A = main.transport.scheduler.cursor.step(fun)

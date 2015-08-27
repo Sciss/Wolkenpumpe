@@ -13,10 +13,21 @@
 
 package de.sciss
 
-import de.sciss.synth.proc.SoundProcesses
+import java.text.SimpleDateFormat
+import java.util.{Date, Locale}
+
+import scala.annotation.elidable
+import scala.annotation.elidable.CONFIG
 
 package object nuages {
   def ExpWarp   = ExponentialWarp
   def LinWarp   = LinearWarp
   val TrigSpec  = ParamSpec(0, 1, IntWarp)
+
+  private lazy val logHeader = new SimpleDateFormat("[d MMM yyyy, HH:mm''ss.SSS] 'Nuages' ", Locale.US)
+
+  var showLog = true
+
+  @elidable(CONFIG) private[nuages] def log(what: => String): Unit =
+    if (showLog) println(logHeader.format(new Date()) + what)
 }

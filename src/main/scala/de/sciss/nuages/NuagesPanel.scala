@@ -106,8 +106,8 @@ trait NuagesPanel[S <: Sys[S]] extends View[S] {
 //  def addScanScanEdgeGUI(source: VisualScan[S], sink: VisualScan[S]): Unit
   // def removeEdgeGUI     (source: VisualScan[S], sink: VisualScan[S]): Unit
 
-  def nodeMap: stm.IdentifierMap[S#ID, S#Tx, VisualObj[S]]
-  def scanMap: stm.IdentifierMap[S#ID, S#Tx, Impl.ScanInfo[S]]
+  def nodeMap: stm.IdentifierMap[S#ID, S#Tx, VisualObj [S]]
+  def scanMap: stm.IdentifierMap[S#ID, S#Tx, VisualScan[S]]
 
   def assignMapping(source: Scan[S], vSink: VisualControl[S])(implicit tx: S#Tx): Unit
 

@@ -18,7 +18,7 @@ import java.awt.event.MouseEvent
 import java.awt.geom.{Arc2D, Area, GeneralPath, Point2D}
 import java.awt.{Graphics2D, Shape}
 
-import de.sciss.lucre.expr.{DoubleObj, Expr}
+import de.sciss.lucre.expr.DoubleObj
 import de.sciss.lucre.stm
 import de.sciss.lucre.swing.requireEDT
 import de.sciss.lucre.synth.{Synth, Sys}
@@ -53,7 +53,7 @@ object VisualControlImpl {
   private def apply[S <: Sys[S]](parent: VisualObj[S], key: String, spec: ParamSpec, value: Double,
                                  mapping: Option[VisualControl.Mapping[S]])
                                 (implicit tx: S#Tx): VisualControl[S] = {
-    val res   = new VisualControlImpl(parent, key = key, spec = spec, value = value, mapping = mapping)
+    val res = new VisualControlImpl(parent, key = key, spec = spec, value = value, mapping = mapping)
     res.init()
     res
   }
@@ -79,15 +79,15 @@ final class VisualControlImpl[S <: Sys[S]] private(val parent: VisualObj[S], val
 
   protected def nodeSize = 1f
 
-  private val mapped: Boolean = mapping.isDefined
+  private[this] val mapped: Boolean = mapping.isDefined
 
-  private var renderedValue = Double.NaN
-  private val containerArea = new Area()
-  private val valueArea     = new Area()
+  private[this] var renderedValue = Double.NaN
+  private[this] val containerArea = new Area()
+  private[this] val valueArea     = new Area()
 
-  private var drag: Drag = null
+  private[this] var drag: Drag = null
 
-  private val spikes: Shape = if (spec.warp == IntWarp) {
+  private[this] val spikes: Shape = if (spec.warp == IntWarp) {
     val loInt = spec.map(0.0).toInt
     val hiInt = spec.map(1.0).toInt
     val sz    = hiInt - loInt
@@ -113,23 +113,16 @@ final class VisualControlImpl[S <: Sys[S]] private(val parent: VisualObj[S], val
     main.deferVisTx(disposeGUI())
   }
 
-  private def disposeGUI(): Unit = {
-    val _vi = main.visualization.getVisualItem(NuagesPanel.GROUP_GRAPH, pNode)
-    parent.aggr.removeItem(_vi)
-    main.graph.removeNode(pNode)
-  }
-
   def init()(implicit tx: S#Tx): this.type = {
-    parent.params.put(key, this)(tx.peer)
+    parent.params.put(key, this)(tx.peer) // .foreach(_.dispose())
     main.deferVisTx(initGUI())
     mapping.foreach { m =>
       main.assignMapping(source = m.scan, vSink = this)
     }
-    parent.params.put(key, this)(tx.peer).foreach(_.dispose())
     this
   }
 
-  private def initGUI(): Unit = {
+  private[this] def initGUI(): Unit = {
     requireEDT()
     mkPNodeAndEdge()
     mapping.foreach { m =>
@@ -218,7 +211,7 @@ final class VisualControlImpl[S <: Sys[S]] private(val parent: VisualObj[S], val
     renderedValue = Double.NaN // triggers updateRenderValue
   }
 
-  private def updateRenderValue(v: Double): Unit = {
+  private[this] def updateRenderValue(v: Double): Unit = {
     renderedValue = v
     // val vn = /* control. */ spec.inverseMap(v)
     //println( "updateRenderValue( " + control.name + " ) from " + v + " to " + vn )
@@ -232,7 +225,7 @@ final class VisualControlImpl[S <: Sys[S]] private(val parent: VisualObj[S], val
   }
 
   // changes `gLine`
-  private def setSpine(v: Double): Unit = {
+  private[this] def setSpine(v: Double): Unit = {
     val ang   = ((1.0 - v) * 1.5 - 0.25) * math.Pi
     val cos   = math.cos(ang)
     val sin   = math.sin(ang)
@@ -272,7 +265,7 @@ final class VisualControlImpl[S <: Sys[S]] private(val parent: VisualObj[S], val
   }
 
 
-  private def valueText(v: Double): String = {
+  private[this] def valueText(v: Double): String = {
     val m = spec.map(v)
     if (spec.warp == IntWarp) m.toInt.toString
     else {

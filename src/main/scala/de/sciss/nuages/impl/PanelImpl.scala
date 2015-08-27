@@ -64,7 +64,7 @@ object PanelImpl {
     val listMacro     = mkListView(nuages.macros    )
 
     val nodeMap       = tx.newInMemoryIDMap[VisualObj[S]]
-    val scanMap       = tx.newInMemoryIDMap[ScanInfo [S]]
+    val scanMap       = tx.newInMemoryIDMap[VisualScan[S]] // ScanInfo [S]]
     val missingScans  = tx.newInMemoryIDMap[List[VisualControl[S]]]
     val transport     = Transport[S](aural)
     val timelineObj   = nuages.timeline
@@ -102,18 +102,17 @@ object PanelImpl {
     res
   }
 
-  final class VisualLink[S <: Sys[S]](val source: VisualObj[S], val sourceKey: String,
-                                              val sink  : VisualObj[S], val sinkKey  : String, val isScan: Boolean)
+//  final class VisualLink[S <: Sys[S]](val source: VisualObj[S], val sourceKey: String,
+//                                      val sink  : VisualObj[S], val sinkKey  : String, val isScan: Boolean)
 
-  /* Contains the `id` of the parent `timed` object, and the scan key */
-  final case class ScanInfo[S <: Sys[S]](timedID: S#ID, key: String, isInput: Boolean)
-
+//  /* Contains the `id` of the parent `timed` object, and the scan key */
+//  final case class ScanInfo[S <: Sys[S]](timedID: S#ID, key: String, isInput: Boolean)
 }
 
 // nodeMap: uses timed-id as key
 final class PanelImpl[S <: Sys[S]](nuagesH: stm.Source[S#Tx, Nuages[S]],
                                    val nodeMap: stm.IdentifierMap[S#ID, S#Tx, VisualObj[S]],
-                                   val scanMap: stm.IdentifierMap[S#ID, S#Tx, PanelImpl.ScanInfo[S]],
+                                   val scanMap: stm.IdentifierMap[S#ID, S#Tx, VisualScan[S]],
                                    protected val missingScans: stm.IdentifierMap[S#ID, S#Tx, List[VisualControl[S]]],
                                    val config   : Nuages.Config,
                                    val transport: Transport[S],
@@ -133,7 +132,8 @@ final class PanelImpl[S <: Sys[S]](nuagesH: stm.Source[S#Tx, Nuages[S]],
   with PanelImplReact  [S]
   with PanelImplMixer  [S]
   with PanelImplGuiInit[S]
-  with PanelImplGuiFuns[S] {
+  // with PanelImplGuiFuns[S]
+  {
   panel =>
 
   import NuagesPanel.{GROUP_SELECTION, GROUP_GRAPH, COL_NUAGES}

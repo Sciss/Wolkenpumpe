@@ -11,10 +11,10 @@
  *  contact@sciss.de
  */
 
-package de.sciss.nuages.impl
+package de.sciss.nuages
+package impl
 
 import de.sciss.lucre.synth.Sys
-import de.sciss.nuages.{NuagesPanel, VisualParam}
 import prefuse.data.{Edge => PEdge}
 import prefuse.visual.VisualItem
 
@@ -31,6 +31,7 @@ trait VisualParamImpl[S <: Sys[S]] extends VisualNodeImpl[S] with VisualParam[S]
     if (_pEdge != null) throw new IllegalStateException(s"Component $this has already been initialized")
     val g   = main.graph
     _pEdge  = g.addEdge(parent.pNode, pNode)
+    log(s"mkPNodeAndEdge($name)")
     val pVi = main.visualization.getVisualItem(NuagesPanel.GROUP_GRAPH, parent.pNode)
     vi.setEndX(pVi.getX)
     vi.setEndY(pVi.getY)
