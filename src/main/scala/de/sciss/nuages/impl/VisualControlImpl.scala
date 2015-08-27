@@ -132,14 +132,12 @@ final class VisualControlImpl[S <: Sys[S]] private(val parent: VisualObj[S], val
   private def initGUI(): Unit = {
     requireEDT()
     mkPNodeAndEdge()
-    // val old = parent.params.get(vc.key)
     mapping.foreach { m =>
       m.source.foreach { vSrc =>
         main.graph.addEdge(vSrc.pNode, pNode)
         vSrc.mappings += this
       }
     }
-    // old.foreach(removeControlGUI(vp, _))
   }
 
   override def itemPressed(vi: VisualItem, e: MouseEvent, pt: Point2D): Boolean = {

@@ -19,20 +19,18 @@ import java.awt.geom.{Arc2D, Area, Point2D}
 import java.awt.{Color, Graphics2D}
 
 import de.sciss.intensitypalette.IntensityPalette
-import de.sciss.lucre.bitemp.BiGroup
-import de.sciss.lucre.expr.{DoubleObj, SpanLikeObj}
+import de.sciss.lucre.expr.DoubleObj
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Disposable, Obj}
 import de.sciss.lucre.swing.requireEDT
 import de.sciss.lucre.synth.{Synth, Sys}
 import de.sciss.synth.proc.Implicits._
 import de.sciss.synth.proc.Timeline.Timed
-import de.sciss.synth.proc.{Timeline, Proc, Scan}
+import de.sciss.synth.proc.{Proc, Scan}
 import prefuse.util.ColorLib
 import prefuse.visual.{AggregateItem, VisualItem}
 
-import scala.collection.breakOut
-import scala.concurrent.stm.{TMap, Ref}
+import scala.concurrent.stm.{Ref, TMap}
 
 object VisualObjImpl {
   private val logPeakCorr = 20.0 / math.log(10)

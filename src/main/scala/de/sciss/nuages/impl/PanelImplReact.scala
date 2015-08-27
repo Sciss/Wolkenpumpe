@@ -1,17 +1,29 @@
+/*
+ *  PanelImplReact.scala
+ *  (Wolkenpumpe)
+ *
+ *  Copyright (c) 2008-2015 Hanns Holger Rutz. All rights reserved.
+ *
+ *  This software is published under the GNU General Public License v2+
+ *
+ *
+ *  For further information, please contact Hanns Holger Rutz at
+ *  contact@sciss.de
+ */
+
 package de.sciss.nuages
 package impl
 
 import java.awt.geom.Point2D
 
-import de.sciss.lucre.expr.DoubleObj
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Obj, TxnLike}
-import de.sciss.lucre.synth.{Synth, Node, AudioBus, Sys}
-import de.sciss.nuages.impl.PanelImpl.{VisualLink, ScanInfo}
+import de.sciss.lucre.synth.{AudioBus, Node, Synth, Sys}
+import de.sciss.nuages.impl.PanelImpl.{ScanInfo, VisualLink}
 import de.sciss.span.SpanLike
-import de.sciss.synth.proc.{AuralObj, Scan, Proc, Timeline}
+import de.sciss.synth.proc.{AuralObj, Proc, Scan, Timeline}
 
-import scala.concurrent.stm.{TMap, Ref}
+import scala.concurrent.stm.{Ref, TMap}
 
 trait PanelImplReact[S <: Sys[S]] {
   // ---- abstract ----
@@ -89,28 +101,6 @@ trait PanelImplReact[S <: Sys[S]] {
       }
     }
   }
-
-//  def addScalarControl(visObj: VisualObj[S], key: String, dObj: DoubleObj[S])(implicit tx: S#Tx): Unit = {
-//    val vc = VisualControl.scalar(visObj, key, dObj)
-//    addControl(visObj, vc)
-//  }
-//
-//  def addScanControl(visObj: VisualObj[S], key: String, sObj: Scan[S])(implicit tx: S#Tx): Unit = {
-//    implicit val itx = tx.peer
-//    val vc    = VisualControl.scan(visObj, key, sObj)
-//    val scan  = sObj
-//    assignMapping(source = scan, vSink = vc)
-//    addControl(visObj, vc)
-//  }
-
-//  private def addControl(visObj: VisualObj[S], vc: VisualControl[S])(implicit tx: S#Tx): Unit = {
-//    // val key     = vc.key
-//    // val locOpt  = locHintMap.get(tx.peer).get(visObj -> key)
-//    // println(s"locHintMap($visObj -> $key) = $locOpt")
-//    deferVisTx {
-//      addControlGUI(visObj, vc /* , locOpt */)
-//    }
-//  }
 
   def assignMapping(source: Scan[S], vSink: VisualControl[S])(implicit tx: S#Tx): Unit = {
     implicit val itx = tx.peer

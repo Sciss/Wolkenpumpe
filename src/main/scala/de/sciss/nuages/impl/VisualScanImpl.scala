@@ -55,22 +55,38 @@ final class VisualScanImpl[S <: Sys[S]] private(val parent: VisualObj[S],
     val map = if (isInput) parent.inputs else parent.outputs
     map.put(key, this)(tx.peer)
     main.deferVisTx(initGUI())
-    if (!isInput) observers ::= scan.changed.react { implicit tx => upd =>
-      upd.changes.foreach {
-        case Scan.Added  (sink) => withScans(sink)(main.addScanScanEdgeGUI)
-        case Scan.Removed(sink) => withScans(sink)(main.removeEdgeGUI     )
+    if (!isInput) {
+      observers ::= scan.changed.react { implicit tx => upd =>
+        upd.changes.foreach {
+          case Scan.Added  (sink) => withScans(sink)(addEdgeGUI   )
+          case Scan.Removed(sink) => withScans(sink)(removeEdgeGUI)
+        }
       }
     }
     this
   }
 
-  private def withScans(sink: Scan.Link[S])(fun: (VisualScan[S], VisualScan[S]) => Unit)(implicit tx: S#Tx): Unit =
+  private[this] def addEdgeGUI(sink: VisualScan[S]): Unit = {
+    val pEdge = main.graph.addEdge(this.pNode, sink.pNode)
+    this.sinks   += pEdge
+    sink.sources += pEdge
+  }
+
+  private[this] def removeEdgeGUI(sink: VisualScan[S]): Unit =
+    sinks.find(_.getTargetNode == sink.pNode).foreach { pEdge =>
+      this.sinks   -= pEdge
+      sink.sources -= pEdge
+      main.graph.removeEdge(pEdge)
+    }
+
+  private[this] def withScans(sink: Scan.Link[S])(fun: VisualScan[S] => Unit)
+                             (implicit tx: S#Tx): Unit =
     for {
       sinkInfo    <- main.scanMap  .get(sink.id)
       sinkVis     <- main.nodeMap  .get(sinkInfo.timedID)
       sinkVisScan <- sinkVis.inputs.get(sinkInfo.key)(tx.peer)
     } main.deferVisTx {
-      fun(this, sinkVisScan)
+      fun(sinkVisScan)
     }
 
   def dispose()(implicit tx: S#Tx): Unit = {
