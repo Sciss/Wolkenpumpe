@@ -23,6 +23,8 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.language.implicitConversions
 
 object Nuages extends Obj.Type {
+  final val typeID = 0x1000A
+
   def apply[S <: Sys[S]]()(implicit tx: S#Tx): Nuages[S] =
     Impl[S]
 
@@ -33,7 +35,7 @@ object Nuages extends Obj.Type {
   // ---- config ----
 
   override def readIdentifiedObj[S <: Sys[S]](in: DataInput, access: S#Acc)(implicit tx: S#Tx): Obj[S] =
-    Impl.read(in, access)
+    Impl.readIdentifiedObj(in, access)
 
   sealed trait ConfigLike {
     def masterChannels: Option[Vec[Int]]
@@ -121,8 +123,6 @@ object Nuages extends Obj.Type {
   final val NameGenerators  = "generators"
   final val NameCollectors  = "collectors"
   final val NameMacros      = "macros"
-
-  final val typeID = 0x1000A
 
   // ---- event ----
 
