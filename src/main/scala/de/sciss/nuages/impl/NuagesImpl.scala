@@ -56,7 +56,7 @@ object NuagesImpl {
 
     val filter = inProcsS.contains(_)
 
-    val copy  = Copy[S]
+    val copy  = Copy[S, S]
     val res1  = inProcs.map { proc =>
       copy.putHint(proc, Proc.hintFilterLinks, filter)
       copy(proc)
@@ -91,7 +91,7 @@ object NuagesImpl {
     val cookie      = in.readInt()
     if (cookie != COOKIE) sys.error(s"Unexpected cookie (found $cookie, expected $COOKIE)")
     val folder      = Folder  .read[S](in, access)
-    val timeline    = Timeline.read(in, access) // Obj.readT[S, Timeline.Elem](in, access)
+    val timeline    = Timeline.read(in, access)
     new Impl(targets, _folder = folder, timeline = timeline)
   }
 
@@ -103,8 +103,8 @@ object NuagesImpl {
 
     def tpe: Obj.Type = Nuages
 
-    def copy()(implicit tx: S#Tx, copy: Copy[S]): Elem[S] =
-      new Impl(Targets[S], copy(_folder), copy(timeline)).connect()
+    def copy[Out <: Sys[Out]]()(implicit tx: S#Tx, txOut: Out#Tx, context: Copy[S, Out]): Elem[Out] =
+      new Impl(Targets[Out], context(_folder), context(timeline)).connect()
 
     object changed extends Changed {
       def pullUpdate(pull: evt.Pull[S])(implicit tx: S#Tx): Option[Nuages.Update[S]] = None

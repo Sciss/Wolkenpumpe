@@ -17,22 +17,17 @@ crossScalaVersions := Seq("2.11.7", "2.10.5")
 resolvers          += "Oracle Repository" at "http://download.oracle.com/maven"  // required for sleepycat
 
 lazy val soundProcessesVersion      = "3.0.0-SNAPSHOT"
-
 lazy val scalaColliderSwingVersion  = "1.25.2"
-
 lazy val lucreSwingVersion          = "1.0.0-SNAPSHOT"
-
 lazy val swingPlusVersion           = "0.2.1"
-
 lazy val intensityVersion           = "1.0.0"
-
 lazy val fileUtilVersion            = "1.1.1"
 
 // ---- test ----
 
 lazy val webLaFVersion              = "1.28"
-
 lazy val lucreVersion               = "3.0.0-SNAPSHOT"
+lazy val scalaTestVersion           = "2.2.5"
 
 libraryDependencies ++= Seq(
   "de.sciss" %% "soundprocesses-views"    % soundProcessesVersion,
@@ -42,7 +37,8 @@ libraryDependencies ++= Seq(
   "de.sciss" %% "swingplus"               % swingPlusVersion,
   "de.sciss" %  "intensitypalette"        % intensityVersion,
   "de.sciss" %% "lucre-bdb"               % lucreVersion       % "test",
-  "de.sciss" %  "weblaf"                  % webLaFVersion      % "test"
+  "de.sciss" %  "weblaf"                  % webLaFVersion      % "test",
+  "org.scalatest" %% "scalatest"          % scalaTestVersion   % "test"
 )
 
 scalacOptions ++= Seq("-deprecation", "-unchecked", "-feature", "-encoding", "utf8", "-Xfuture")
