@@ -33,8 +33,13 @@ trait VisualParamImpl[S <: Sys[S]] extends VisualNodeImpl[S] with VisualParam[S]
     _pEdge  = g.addEdge(parent.pNode, pNode)
     log(s"mkPNodeAndEdge($name)")
     val pVi = main.visualization.getVisualItem(NuagesPanel.GROUP_GRAPH, parent.pNode)
-    vi.setEndX(pVi.getX)
-    vi.setEndY(pVi.getY)
+
+//    val x0 = pVi.getStartX
+//    val x1 = pVi.getEndX
+//    val x2 = pVi.getX
+
+    vi.setEndX(pVi.getEndX)
+    vi.setEndY(pVi.getEndY)
     vi
   }
 
