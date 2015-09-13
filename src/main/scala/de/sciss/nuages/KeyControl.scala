@@ -31,6 +31,7 @@ import prefuse.controls.{Control, ControlAdapter}
 import prefuse.visual.{EdgeItem, NodeItem, VisualItem}
 
 import scala.annotation.switch
+import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm.TMap
 import scala.swing.{Label, Orientation, Swing, TextField}
 import scala.util.Try
@@ -45,7 +46,7 @@ object KeyControl {
   private def internalFlavor[A](implicit ct: reflect.ClassTag[A]): DataFlavor =
     new DataFlavor(DataFlavor.javaJVMLocalObjectMimeType + ";class=\"" + ct.runtimeClass.getName + "\"")
 
-  private final class ControlDrag(val value: Double, val spec: ParamSpec) extends Transferable {
+  private final class ControlDrag(val values: Vec[Double], val spec: ParamSpec) extends Transferable {
     def getTransferDataFlavors: Array[DataFlavor] = Array(ControlFlavor)
     def isDataFlavorSupported(_flavor: DataFlavor): Boolean = _flavor == ControlFlavor
 
@@ -171,7 +172,7 @@ object KeyControl {
                   } else if (e.getKeyCode == KeyEvent.VK_V) { // paste
                     if (clip.isDataFlavorAvailable(ControlFlavor)) {
                       val data = clip.getData(ControlFlavor).asInstanceOf[ControlDrag]
-                      vc.setControl(data.value, instant = true) // XXX TODO -- which want to rescale
+                      vc.setControl(data.values, instant = true) // XXX TODO -- which want to rescale
                     }
                   }
                 } else {
@@ -188,7 +189,7 @@ object KeyControl {
 
     private def showParamInput(vc: VisualControl[S]): Unit = {
       val p = new OverlayPanel {
-        val ggValue = new TextField(f"${vc.spec.map(vc.value)}%1.3f", 12)
+        val ggValue = new TextField(??? /* f"${vc.spec.map(vc.value)}%1.3f" */, 12)
         ggValue.peer.addAncestorListener(new AncestorListener {
           def ancestorRemoved(e: AncestorEvent): Unit = ()
           def ancestorMoved  (e: AncestorEvent): Unit = ()
@@ -207,7 +208,7 @@ object KeyControl {
           close()
           Try(ggValue.text.toDouble).toOption.foreach { newValue =>
             val v = vc.spec.inverseMap(vc.spec.clip(newValue))
-            vc.setControl(v, instant = true)
+            vc.setControl(??? /* v */, instant = true)
           }
         }
       }
@@ -220,29 +221,30 @@ object KeyControl {
           ni.get(COL_NUAGES) match {
             case vc: VisualControl[S] =>
               val v = (e.getKeyChar: @switch) match {
-                case 'r'  => math.random
-                case 'n'  => 0.0
-                case 'x'  => 1.0
-                case 'c'  => 0.5
+                case 'r'  => val v = math.random; Vector.fill(vc.numChannels)(v)
+                case 'R'  => Vector.fill(vc.numChannels)(math.random)
+                case 'n'  => Vector.fill(vc.numChannels)(0.0)
+                case 'x'  => Vector.fill(vc.numChannels)(1.0)
+                case 'c'  => Vector.fill(vc.numChannels)(0.5)
                 case '['  =>
-                  val s = vc.spec
-                  val v = vc.value
+                  val s  = vc.spec
+                  val vs = vc.value
                   val vNew = if (s.warp == IntWarp) {
-                    s.inverseMap(s.map(v) - 1)
-                  } else v - 0.005
-                  math.max(0.0, vNew)
+                    vs.map(v => s.inverseMap(s.map(v) - 1))
+                  } else vs.map(_ - 0.005)
+                  vNew.map(math.max(0.0, _))
 
                 case ']'  =>
-                  val s = vc.spec
-                  val v = vc.value
+                  val s  = vc.spec
+                  val vs = vc.value
                   val vNew = if (s.warp == IntWarp) {
-                    s.inverseMap(s.map(v) + 1)
-                  } else v + 0.005
-                  math.min(1.0, vNew)
+                    vs.map(v => s.inverseMap(s.map(v) + 1))
+                  } else vs.map(_ + 0.005)
+                  vNew.map(math.min(1.0, _))
 
-                case _    => -1.0
+                case _    => Vector.empty
               }
-              if (v >= 0) vc.setControl(v, instant = true)
+              if (v.nonEmpty) vc.setControl(v, instant = true)
 
             case _ =>
           }

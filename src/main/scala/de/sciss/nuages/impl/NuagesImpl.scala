@@ -19,16 +19,12 @@ import de.sciss.lucre.stm.impl.ObjSerializer
 import de.sciss.lucre.stm.{Copy, Elem, NoSys, Obj, Sys}
 import de.sciss.lucre.{event => evt}
 import de.sciss.serial.{DataInput, DataOutput, Serializer}
-import de.sciss.synth.proc
 import de.sciss.synth.proc.Implicits._
-import de.sciss.synth.proc.{Folder, Proc, Scan, Timeline}
+import de.sciss.synth.proc.{Folder, Proc, Timeline}
 
-import scala.collection.breakOut
 import scala.collection.immutable.{IndexedSeq => Vec}
 
 object NuagesImpl {
-  private final val DEBUG = false
-
   def apply[S <: Sys[S]]()(implicit tx: S#Tx): Nuages[S] = {
     val targets   = Targets[S]
     val tl        = Timeline[S]
@@ -54,7 +50,7 @@ object NuagesImpl {
     val inProcsS = inProcs.toSet
     val inOthers = xs diff inProcs
 
-    val filter = inProcsS.contains(_)
+    val filter = inProcsS.contains _
 
     val copy  = Copy[S, S]
     val res1  = inProcs.map { proc =>
@@ -104,7 +100,7 @@ object NuagesImpl {
     def tpe: Obj.Type = Nuages
 
     def copy[Out <: Sys[Out]]()(implicit tx: S#Tx, txOut: Out#Tx, context: Copy[S, Out]): Elem[Out] =
-      new Impl(Targets[Out], context(_folder), context(timeline)).connect()
+      new Impl[Out](Targets[Out], context(_folder), context(timeline)).connect()
 
     object changed extends Changed {
       def pullUpdate(pull: evt.Pull[S])(implicit tx: S#Tx): Option[Nuages.Update[S]] = None

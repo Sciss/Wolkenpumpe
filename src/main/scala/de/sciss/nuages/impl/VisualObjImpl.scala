@@ -19,7 +19,7 @@ import java.awt.geom.{Arc2D, Area, Point2D}
 import java.awt.{Color, Graphics2D}
 
 import de.sciss.intensitypalette.IntensityPalette
-import de.sciss.lucre.expr.DoubleObj
+import de.sciss.lucre.expr.{DoubleVector, DoubleObj}
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Disposable, Obj}
 import de.sciss.lucre.swing.requireEDT
@@ -114,8 +114,9 @@ final class VisualObjImpl[S <: Sys[S]] private (val main: NuagesPanel[S],
   }
 
   private[this] def mkParam(key: String, obj: Obj[S])(implicit tx: S#Tx): Unit = obj match {
-    case dObj: DoubleObj[S] => VisualControl.scalar(this, key, dObj)
-    case sObj: Scan[S]      => VisualControl.scan  (this, key, sObj)
+    case dObj: DoubleObj[S]     => VisualControl.scalar(this, key, dObj)
+    case dObj: DoubleVector[S]  => VisualControl.vector(this, key, dObj)
+    case sObj: Scan[S]          => VisualControl.scan  (this, key, sObj)
     case _ =>
   }
 

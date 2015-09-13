@@ -13,16 +13,21 @@
 
 package de.sciss.nuages
 
-import de.sciss.lucre.expr.DoubleObj
+import de.sciss.lucre.expr.{DoubleVector, DoubleObj}
 import de.sciss.lucre.synth.{Synth, Sys}
 import de.sciss.synth.proc.Scan
 
+import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm.Ref
 
 object VisualControl {
   def scalar[S <: Sys[S]](parent: VisualObj[S], key: String,
                           dObj: DoubleObj[S])(implicit tx: S#Tx): VisualControl[S] =
     impl.VisualControlImpl.scalar(parent, key, dObj)
+
+  def vector[S <: Sys[S]](parent: VisualObj[S], key: String,
+                          dObj: DoubleVector[S])(implicit tx: S#Tx): VisualControl[S] =
+    impl.VisualControlImpl.vector(parent, key, dObj)
 
   def scan[S <: Sys[S]](parent: VisualObj[S], key: String,
                         sObj: Scan[S])(implicit tx: S#Tx): VisualControl[S] =
@@ -42,12 +47,17 @@ trait VisualControl[S <: Sys[S]] extends VisualParam[S] {
   def spec: ParamSpec
 
   /** The value is normalized in the range 0 to 1 */
-  var value: Double
+  var value: Vec[Double]
+
+  def numChannels: Int
+
+  /** The value is normalized in the range 0 to 1 */
+  def value1_=(v: Double): Unit
 
   def mapping: Option[VisualControl.Mapping[S]]
 
   def removeMapping()(implicit tx: S#Tx): Unit
 
   /** Adjusts the control with the given normalized value. */
-  def setControl(v: Double, instant: Boolean): Unit
+  def setControl(v: Vec[Double], instant: Boolean): Unit
 }

@@ -73,7 +73,7 @@ trait PanelImplReact[S <: Sys[S]] {
           viewToAuralMap.get(vObj).foreach { aural =>
             getAuralScanData(aural, vScan.key).foreach {
               case (bus, node) =>
-                m.synth() = Some(mkMeter(bus, node)(vSink.value = _))
+                m.synth() = Some(mkMeter(bus, node)(v => vSink.value1_=(v.toDouble)))
             }
           }
         }

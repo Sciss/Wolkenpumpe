@@ -13,15 +13,35 @@
 
 package de.sciss.nuages
 
-import de.sciss.lucre.expr.{DoubleObj, StringObj}
-import de.sciss.lucre.stm.Obj
+import de.sciss.lucre.expr.{DoubleObj, DoubleVector, StringObj}
 import de.sciss.lucre.stm
+import de.sciss.lucre.stm.Obj
 import de.sciss.synth.proc.graph.{Attribute, ScanIn, ScanInFix, ScanOut}
 import de.sciss.synth.proc.{Folder, Proc}
 import de.sciss.synth.{GE, Rate, SynthGraph, audio, control, proc, scalar}
 
 import scala.concurrent.stm.TxnLocal
 
+object DSL {
+//  /** Magnet pattern for mkPar */
+//  sealed trait ParDefault extends Any {
+//    def mkObj[S <: Sys[S]](spec: ParamSpec)(implicit tx: S#Tx): Obj[S]
+//  }
+//  implicit final class ParScalar(val `this`: Double) extends AnyVal with ParDefault { me =>
+//    import me.{`this` => default}
+//    def mkObj[S <: Sys[S]](spec: ParamSpec)(implicit tx: S#Tx): Obj[S] = {
+//      val defaultN  = spec.inverseMap(default)
+//      DoubleObj.newVar(DoubleObj.newConst[S](defaultN))
+//    }
+//  }
+//  implicit final class ParVector(val `this`: Vec[Double]) extends AnyVal with ParDefault { me =>
+//    import me.{`this` => default}
+//    def mkObj[S <: Sys[S]](spec: ParamSpec)(implicit tx: S#Tx): Obj[S] = {
+//      val defaultN  = default.map(spec.inverseMap)
+//      DoubleVector.newVar(DoubleVector.newConst[S](defaultN))
+//    }
+//  }
+}
 class DSL[S <: stm.Sys[S]] {
   // val imp = ExprImplicits[S]
   import proc.Implicits._
@@ -45,13 +65,13 @@ class DSL[S <: stm.Sys[S]] {
     p
   }
 
-  def pAudio(key: String, spec: ParamSpec, default: Double)(implicit tx: S#Tx): GE =
+  def pAudio(key: String, spec: ParamSpec, default: Attribute.Default)(implicit tx: S#Tx): GE =
     mkPar(audio, key = key, spec = spec, default = default)
 
-  def pControl(key: String, spec: ParamSpec, default: Double)(implicit tx: S#Tx): GE =
+  def pControl(key: String, spec: ParamSpec, default: Attribute.Default)(implicit tx: S#Tx): GE =
     mkPar(control, key = key, spec = spec, default = default)
 
-  def pScalar(key: String, spec: ParamSpec, default: Double)(implicit tx: S#Tx): GE =
+  def pScalar(key: String, spec: ParamSpec, default: Attribute.Default)(implicit tx: S#Tx): GE =
     mkPar(scalar, key = key, spec = spec, default = default)
 
   def pAudioIn(key: String, numChannels: Int, spec: ParamSpec)(implicit tx: S#Tx): GE = {
@@ -75,14 +95,19 @@ class DSL[S <: stm.Sys[S]] {
     }
   }
 
-  private def mkPar(rate: Rate, key: String, spec: ParamSpec, default: Double)(implicit tx: S#Tx): GE = {
+  private def mkPar(rate: Rate, key: String, spec: ParamSpec, default: Attribute.Default)(implicit tx: S#Tx): GE = {
     val obj       = current.get(tx.peer)
-    val defaultN  = spec.inverseMap(default)
-    val paramObj  = DoubleObj.newVar(DoubleObj.newConst[S](defaultN))
+    val paramObj  = default match {
+      case Attribute.Scalar(x) =>
+        val defaultN  = spec.inverseMap(x)
+        DoubleObj.newVar(DoubleObj.newConst[S](defaultN))
+      case Attribute.Vector(xs) =>
+        val defaultN  = xs.map(spec.inverseMap)
+        DoubleVector.newVar(DoubleVector.newConst[S](defaultN))
+    }
     val specObj   = ParamSpec.Obj.newConst[S](spec)
-    // paramObj.attr.put(ParamSpec.Key, specObj)
-    obj     .attr.put(key, paramObj)
-    obj     .attr.put(s"$key-${ParamSpec.Key}", specObj)
+    obj.attr.put(key, paramObj)
+    obj.attr.put(s"$key-${ParamSpec.Key}", specObj)
     val sig       = Attribute(rate, key, default)
     spec.map(sig.clip(0, 1))
   }

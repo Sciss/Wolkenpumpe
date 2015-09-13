@@ -11,7 +11,7 @@ import de.sciss.synth.proc.{AuralSystem, Durable}
 import scala.swing.SwingApplication
 
 object Demo extends SwingApplication {
-  val DEBUG = false
+  val DEBUG = true
 
   def startup(args: Array[String]): Unit = {
     WebLookAndFeel.install()
@@ -38,10 +38,10 @@ object Demo extends SwingApplication {
             import synth._
             import ugen._
 
-            val pFreq   = pAudio("freq"     , ParamSpec(0.1 , 10000, ExpWarp), default = 15 /* 1 */)
+            val pFreq   = pAudio("freq"     , ParamSpec(0.1 , 10000, ExpWarp), default = 15.0 /* 1 */)
             val pw      = pAudio("width"    , ParamSpec(0.0 ,     1.0),        default =  0.5)
             val pAmp    = pAudio("amp"      , ParamSpec(0.01,     1, ExpWarp), default =  0.1)
-            val pFreqMix= pAudio("freq-src" , TrigSpec, default = 0)
+            val pFreqMix= pAudio("freq-src" , TrigSpec, default = 0.0)
 
             val inFreq  = pAudioIn("in-freq", 1, ParamSpec(0.1 , 10000, ExpWarp))
 
@@ -53,7 +53,7 @@ object Demo extends SwingApplication {
           }
 
           generator("a~DC") {
-            val sig = pAudio("value", ParamSpec(0, 1), default = 0)
+            val sig = pAudio("value", ParamSpec(0, 1), default = 0.0)
             sig
           }
         }
@@ -64,14 +64,16 @@ object Demo extends SwingApplication {
           super.configure(sCfg, nCfg, aCfg)
           if (DEBUG) {
             sCfg.generatorChannels = 2
-            sCfg.micInputs          = Vector(
-              NamedBusConfig("m-dpa"  ,  2, 1),
-              NamedBusConfig("m-at "  ,  0, 2)
-            )
-            sCfg.highPass = 100
+            sCfg.micInputs          = Vector.empty
+            sCfg.lineInputs         = Vector.empty
+            sCfg.lineOutputs        = Vector.empty
 
-            nCfg.masterChannels     = Some(2 to 43)
-            nCfg.soloChannels       = Some(0 to 1)
+//              NamedBusConfig("m-dpa"  ,  2, 1),
+//              NamedBusConfig("m-at "  ,  0, 2)
+            // sCfg.highPass = 100
+
+            nCfg.masterChannels     = Some(0 to 1) // Some(2 to 43)
+            nCfg.soloChannels       = None // Some(0 to 1)
             nCfg.recordPath         = Some("/tmp")
 
             aCfg.wireBuffers        = 512 // 1024

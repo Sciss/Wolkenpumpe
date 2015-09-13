@@ -19,7 +19,7 @@ import de.sciss.file._
 import de.sciss.lucre.stm
 import de.sciss.lucre.synth.{InMemory, Sys}
 import de.sciss.osc
-import de.sciss.synth.proc.{SoundProcesses, AuralSystem}
+import de.sciss.synth.proc.{AuralSystem, SoundProcesses}
 import de.sciss.synth.{Server => SServer}
 
 object Wolkenpumpe {
@@ -37,7 +37,7 @@ object Wolkenpumpe {
     import dsl._
 
     generator("Sprink") {
-      val freq = pAudio("freq", ParamSpec(0.2, 50), 1)
+      val freq = pAudio("freq", ParamSpec(0.2, 50), 1.0)
       BPZ2.ar(WhiteNoise.ar(LFPulse.ar(freq, 0, 0.25) * Seq(0.1, 0.1)))
     }
 
@@ -54,7 +54,7 @@ object Wolkenpumpe {
       val hpf       = HPF.ar(in, highFreq) * highMix
       val dry       = in * dryMix
       val flt       = dry + lpf + hpf
-      val mix       = pAudio("mix", ParamSpec(0, 1), 0 /* 1 */)
+      val mix       = pAudio("mix", ParamSpec(0, 1), 0.0 /* 1 */)
       LinXFade2.ar(in, flt, mix * 2 - 1)
     }
 
@@ -79,13 +79,13 @@ object Wolkenpumpe {
       val wet           = 1 - (1 - wet0).squared
       BufWr.ar((old * dry) + (in * wet), bufID, writePhasor)
 
-      val mix           = pAudio("mix", ParamSpec(0, 1), 1)
+      val mix           = pAudio("mix", ParamSpec(0, 1), 1.0)
 
       LinXFade2.ar(in, read, mix * 2 - 1)
     }
 
     collector("Out") { in =>
-      val amp = pAudio("amp", ParamSpec(-inf, 20, DbFaderWarp), -inf).dbamp
+      val amp = pAudio("amp", ParamSpec(-inf, 20, DbFaderWarp), Double.NegativeInfinity).dbamp
       val sig = in * amp
       Out.ar(0, sig)
     }
