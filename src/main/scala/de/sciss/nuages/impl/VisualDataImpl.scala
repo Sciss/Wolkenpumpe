@@ -44,6 +44,7 @@ object VisualDataImpl {
 
   final val gArc          = new Arc2D.Double
   final val gLine         = new Line2D.Double
+  final val gEllipse      = new Ellipse2D.Double
 
   final val margin        = diam * 0.2
   final val margin2       = margin * 2

@@ -85,7 +85,9 @@ object VisualControlImpl {
 final class VisualScalarControl[S <: Sys[S]](val parent: VisualObj[S], val key: String, val spec: ParamSpec,
                                              @volatile var valueA: Double,
                                              val mapping: Option[VisualControl.Mapping[S]])
- extends VisualControlImpl[S, Double] {
+ extends VisualControlImpl[S] {
+
+  type A = Double
 
   def value: Vec[Double] = Vector(valueA)
   def value_=(v: Vec[Double]): Unit = {
@@ -132,8 +134,10 @@ final class VisualScalarControl[S <: Sys[S]](val parent: VisualObj[S], val key: 
 
 final class VisualVectorControl[S <: Sys[S]](val parent: VisualObj[S], val key: String, val spec: ParamSpec,
                                              @volatile var valueA: Vec[Double])
-  extends VisualControlImpl[S, scala.collection.immutable.IndexedSeq[Double]] {
-  
+  extends VisualControlImpl[S] {
+
+  type A = Vec[Double]
+
   def mapping: Option[Mapping[S]] = None
 
   private[this] var allValuesEqual = false
@@ -173,24 +177,44 @@ final class VisualVectorControl[S <: Sys[S]](val parent: VisualObj[S], val key: 
       case _ =>
     }
 
-  import VisualDataImpl.{gArc, gLine, threeDigits}
+  import VisualDataImpl.{gArc, gLine, gEllipse}
 
   protected def renderValueUpdated(): Unit = {
-    allValuesEqual = renderedValue.nonEmpty && {
-      val v0 = renderedValue.head
-      renderedValue.forall(_ == v0)
-    }
+    val rv: Vec[Double] = renderedValue // why IntelliJ !?
+    val sz = rv.size
+    allValuesEqual = sz == 1 || (sz > 1 && {
+      val v0  = rv.head
+      var ch  = 1
+      var res = true
+      while (ch < sz && res) {
+        res = rv(ch) == v0
+        ch += 1
+      }
+      res
+    })
 
     if (allValuesEqual) {
-      renderValueUpdated1(renderedValue.head)
+      renderValueUpdated1(rv.head)
     } else {
-      val angExtent = ??? : Int // (v * 270).toInt
-      val angStart = 225 - angExtent
-      // val pValArc   = new Arc2D.Double(0, 0, r.getWidth, r.getHeight, angStart, angExtent, Arc2D.PIE)
-      gArc.setArc(0, 0, r.getWidth, r.getHeight, angStart, angExtent, Arc2D.PIE)
+      var ch = 0
+      val m1 = VisualDataImpl.margin / sz
+      val w  = r.getWidth
+      val h  = r.getHeight
+      var m2 = 0.0
       valueArea.reset()
-      valueArea.add(new Area(gArc))
-      valueArea.subtract(new Area(innerE))
+      while (ch < sz) {
+        val v         = rv(ch)
+        val angExtent = (v * 270).toInt
+        val angStart  = 225 - angExtent
+        val m3        = m2 + m2
+        gArc.setArc(m2, m2, w - m3, h - m3, angStart, angExtent, Arc2D.PIE)
+        valueArea.add(new Area(gArc))
+        m2           += m1
+        val m4        = m2 + m2
+        gEllipse.setFrame(m2, m2, w - m4, h - m4)
+        valueArea.subtract(new Area(gEllipse))
+        ch += 1
+      }
     }
   }
 
@@ -216,16 +240,13 @@ final class VisualVectorControl[S <: Sys[S]](val parent: VisualObj[S], val key: 
   }
 }
 
-abstract class VisualControlImpl[S <: Sys[S], A]
-  // private(val parent: VisualObj[S], val key: String,
-  // val /* var */ spec: ParamSpec, @volatile var value: Vec[Double],
-  // val mapping: Option[VisualControl.Mapping[S]])
-  extends VisualParamImpl[S] with VisualControl[S] {
-
+abstract class VisualControlImpl[S <: Sys[S]]  extends VisualParamImpl[S] with VisualControl[S] {
   import VisualControlImpl.Drag
   import VisualDataImpl._
 
   // ---- abstract ----
+
+  type A
 
   protected var valueA: A
 
