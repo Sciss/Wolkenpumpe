@@ -76,12 +76,12 @@ trait PanelImplReact[S <: Sys[S]] {
   def assignMapping(source: Scan[S], vSink: VisualControl[S])(implicit tx: S#Tx): Unit = {
     implicit val itx = tx.peer
 
-    def flonky(debug: Boolean, vScan: VisualScan[S]): Unit = {
+    def withView(/* debug: Boolean, */ vScan: VisualScan[S]): Unit = {
       val vObj = vScan.parent
       vSink.mapping.foreach { m =>
-        println(s"---flonky1 $debug")
+        // println(s"---flonky1 $debug")
         deferVisTx {
-          println(s"---flonky2 $debug")
+          // println(s"---flonky2 $debug")
           m.source        = Some(vScan)
           val sourceNode  = vScan.pNode
           val sinkNode    = vSink.pNode
@@ -89,16 +89,19 @@ trait PanelImplReact[S <: Sys[S]] {
           vScan.mappings += vSink
         }
         // XXX TODO -- here we need something analogous to `waitForAux`
-        viewToAuralMap.get(vObj).foreach { aural =>
-          getAuralScanData(aural, vScan.key).foreach {
-            case (bus, node) =>
-              m.synth() = Some(mkMonitor(bus, node)(v => vSink.value = v))
+        // XXX TODO -- total hack, defer till last moment
+        tx.beforeCommit { implicit tx =>
+          viewToAuralMap.get(vObj).foreach { aural =>
+            getAuralScanData(aural, vScan.key).foreach {
+              case (bus, node) =>
+                m.synth() = Some(mkMonitor(bus, node)(v => vSink.value = v))
+            }
           }
         }
       }
     }
 
-    scanMapGet(source.id).fold(waitForScanView(source.id)(flonky(true, _)))(flonky(false, _))
+    scanMapGet(source.id).fold(waitForScanView(source.id)(withView))(withView)
   }
 
   protected def auralObjAdded(vp: VisualObj[S], aural: AuralObj[S])(implicit tx: S#Tx): Unit = {
