@@ -18,7 +18,9 @@ import java.awt.Font
 import de.sciss.file._
 import de.sciss.lucre.stm
 import de.sciss.lucre.synth.{InMemory, Sys}
+import de.sciss.nuages.ScissProcs.NuagesFinder
 import de.sciss.osc
+import de.sciss.synth.proc.Action.Universe
 import de.sciss.synth.proc.{AuralSystem, SoundProcesses}
 import de.sciss.synth.{Server => SServer}
 
@@ -145,10 +147,10 @@ class Wolkenpumpe[S <: Sys[S]] {
   }
 
   /** Subclasses may want to override this. */
-  protected def registerProcesses(sCfg: ScissProcs.Config, nCfg: Nuages.Config)
+  protected def registerProcesses(sCfg: ScissProcs.Config, nCfg: Nuages.Config, nuagesFinder: NuagesFinder)
                                  (implicit tx: S#Tx, cursor: stm.Cursor[S], nuages: Nuages[S],
                                   aural: AuralSystem): Unit = {
-    ScissProcs[S](sCfg, nCfg)
+    ScissProcs[S](sCfg, nCfg, nuagesFinder)
   }
 
   def run()(implicit cursor: stm.Cursor[S]): Unit = {
@@ -180,7 +182,14 @@ class Wolkenpumpe[S <: Sys[S]] {
       implicit val n      = Nuages[S]
       implicit val aural  = AuralSystem()
 
-      registerProcesses(sCfg, nCfg)
+      val nuagesH = tx.newHandle(n)
+      val finder  = new NuagesFinder {
+        def findNuages[T <: stm.Sys[T]](universe: Universe[T])(implicit tx: T#Tx): Nuages[T] = {
+          nuagesH.asInstanceOf[stm.Source[T#Tx, Nuages[T]]]()
+        }
+      }
+
+      registerProcesses(sCfg, nCfg, finder)
 
       import de.sciss.synth.proc.WorkspaceHandle.Implicits._
       val view  = NuagesView(n, nCfg, sCfg)

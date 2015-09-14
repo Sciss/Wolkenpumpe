@@ -19,13 +19,13 @@ import java.util.{Date, Locale}
 
 import de.sciss.file._
 import de.sciss.lucre.artifact.{Artifact, ArtifactLocation}
-import de.sciss.lucre.synth.Sys
 import de.sciss.lucre.stm
+import de.sciss.lucre.synth.Sys
 import de.sciss.synth
 import de.sciss.synth.io.AudioFile
-import de.sciss.synth.proc.Action.Universe
+import de.sciss.synth.proc
 import de.sciss.synth.proc.graph.Attribute
-import de.sciss.synth.proc.{Action, AuralSystem, Grapheme, SoundProcesses}
+import de.sciss.synth.proc.{Action, AuralSystem, Folder, Grapheme, SoundProcesses}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.language.implicitConversions
@@ -50,6 +50,8 @@ object ScissProcs {
 
     /** Force the number of channels in the generator, where `<= 0` indicates no forcing. */
     def generatorChannels: Int
+
+    def recDir: File
   }
 
   object Config {
@@ -79,6 +81,8 @@ object ScissProcs {
     var lineOutputs : Vec[NamedBusConfig] = Vec.empty
     var masterGroups: Vec[NamedBusConfig] = Vec.empty
 
+    var recDir: File = file(sys.props("java.io.tmpdir"))
+
     var generatorChannels = 0
 
     var highPass = 0
@@ -86,19 +90,44 @@ object ScissProcs {
     def build: Config = ConfigImpl(/* numLoops = numLoops, loopDuration = loopDuration, */
       audioFilesFolder = audioFilesFolder, lineInputs = lineInputs, micInputs = micInputs,
       lineOutputs = lineOutputs, masterGroups = masterGroups, generatorChannels = generatorChannels,
-      highPass = highPass)
+      highPass = highPass, recDir = recDir)
   }
 
   private case class ConfigImpl(// numLoops: Int, loopDuration: Double,
                                 audioFilesFolder: Option[File],
                                 lineInputs : Vec[NamedBusConfig], micInputs   : Vec[NamedBusConfig],
                                 lineOutputs: Vec[NamedBusConfig], masterGroups: Vec[NamedBusConfig],
-                                generatorChannels: Int, highPass: Int)
+                                generatorChannels: Int, highPass: Int,
+                                recDir: File)
     extends Config
 
   var tapePath: Option[String] = None
 
-  def apply[S <: Sys[S]](sConfig: ScissProcs.Config, nConfig: Nuages.Config)
+  final val KeyRecArtifact  = "file"
+  final val RecName         = "rec"
+
+  def getRecLocation[S <: stm.Sys[S]](root: Folder[S], recDir: => File)(implicit tx: S#Tx): ArtifactLocation[S] = {
+    import proc.Implicits._
+
+    val it = root.iterator.flatMap {
+      case objT: ArtifactLocation[S] if objT.name == RecName => Some(objT) // .modifiableOption
+      case _ => None
+    }
+    if (it.hasNext) it.next() else {
+      if (!recDir.exists()) tx.afterCommit(recDir.mkdirs())
+      val newLoc    = ArtifactLocation.newVar[S](recDir)
+      val newLocObj = newLoc // Obj(ArtifactLocationElem(newLoc))
+      newLocObj.name = RecName
+      root.modifiableOption.foreach(_.addLast(newLocObj))
+      newLoc
+    }
+  }
+
+  trait NuagesFinder {
+    def findNuages[S <: stm.Sys[S]](universe: Action.Universe[S])(implicit tx: S#Tx): Nuages[S]
+  }
+
+  def apply[S <: Sys[S]](sConfig: ScissProcs.Config, nConfig: Nuages.Config, nuagesFinder: NuagesFinder)
                         (implicit tx: S#Tx, cursor: stm.Cursor[S], nuages: Nuages[S], aural: AuralSystem): Unit = {
     import synth._
     import ugen._
@@ -108,8 +137,8 @@ object ScissProcs {
 
     val masterChansOption = nConfig.masterChannels
 
-    val loc   = ArtifactLocation.newVar[S](file(sys.props("java.io.tmpdir")))
-    val locH  = tx.newHandle(loc)
+//    val loc   = ArtifactLocation.newVar[S](file(sys.props("java.io.tmpdir")))
+//    val locH  = tx.newHandle(loc)
 
     def ForceChan(in: GE): GE = if (sConfig.generatorChannels <= 0) in else {
       WrapExtendChannels(sConfig.generatorChannels, in)
@@ -173,7 +202,10 @@ object ScissProcs {
       else
         Attribute.Vector(Vector.fill(sConfig.generatorChannels)(in))
 
-    def mkLoop(f: File)(implicit tx: S#Tx): Unit = {
+    def mkLoop[T <: stm.Sys[T]](art: Artifact[T])(implicit tx: T#Tx, n: Nuages[T]): Unit = {
+      val dsl = new DSL[T]
+      import dsl._
+      val f       = art.value
       val spec    = AudioFile.readSpec(f)
       val procObj = generator(f.base) {
         val pSpeed      = pAudio  ("speed", ParamSpec(0.125, 2.3511, ExpWarp), default(1.0))
@@ -208,7 +240,7 @@ object ScissProcs {
         LocalOut.kr(Impulse.kr(1.0 / duration.max(0.1)))
         sig
       }
-      val art   = Artifact(locH(), f) // locH().add(f)
+      // val art   = Artifact(locH(), f) // locH().add(f)
       val gr    = Grapheme.Expr.Audio(art, spec, 0L, 1.0)
       procObj.attr.put("file", gr) // Obj(AudioGraphemeElem(gr)))
       // val artObj  = Obj(ArtifactElem(art))
@@ -312,25 +344,48 @@ object ScissProcs {
       sig * pAmp
     }
 
+    generator("~dc") {
+      val sig = pAudio("value", ParamSpec(0, 1), default(0.0))
+      sig
+    }
+
     // -------------- FILTERS --------------
 
     def mix(in: GE, flt: GE, mix: GE): GE = LinXFade2.ar(in, flt, mix * 2 - 1)
     def mkMix(df: Double = 0.0): GE = pAudio("mix", ParamSpec(0, 1), default(df))
 
+//    def mkMix4(): GE = {
+//      val f1 = pAudio("mix1", ParamSpec(0, 1), default = 0)
+//      val f2 = pAudio("mix2", ParamSpec(0, 1), default = 0)
+//      Lag.ar(Seq(f1, f1 * 0.667 + f2 * 0.333, f1 * 0.333, f2 * 0.667, f2))
+//    }
+
+    // a 10% direct fade-in/out, possibly with delay to compensate for FFT
+    def mkBlend(pred: GE, z: GE, fade: GE, dt: GE = Constant(0)): GE = {
+      import de.sciss.synth._
+      import de.sciss.synth.ugen._
+      val dpa = fade.min(0.1) * 10
+      val pa  = fade.min(0.1).linlin(0, 0.1, 1, 0)
+      val za  = 1 - pa
+      val dp  = if (dt == Constant(0)) pred else DelayN.ar(pred, dt, dt * dpa)
+      val pm  = dp * pa
+      val zm  = z  * za
+      pm + zm
+    }
+
     def WrapExtendChannels(n: Int, sig: GE): GE = Vec.tabulate(n)(sig \ _)
 
     filter("staub") { in =>
       val pAmt      = pAudio("amt" , ParamSpec(0.0, 1.0), default(1.0))
-      val pFact     = pAudio("fact", ParamSpec(0.5, 2.0, ExpWarp), default(1.0))
       val pMix      = mkMix()
 
       val f1        =   10
       val f2        = 2000
 
-      val relIdx    = ChannelIndices(in) / (NumChannels(in) - 1).max(1)
-      val fade0     = pAmt * relIdx.linlin(0, 1, 1, pFact)
+      // val relIdx    = ChannelIndices(in) / (NumChannels(in) - 1).max(1)
+      // val fade0     = pAmt * relIdx.linlin(0, 1, 1, pFact)
       // val fade      = fade0.clip(0, 1)
-      val fade      = fade0.max(0).min(1) // some crazy bug in Clip
+      val fade      = pAmt // fade0.max(0).min(1) // some crazy bug in Clip
       val dustFreqS = fade.linexp(0, 1, f1, f2)
       // val dustFreqP = fade.linexp(1, 0, f1, f2)
 
@@ -350,6 +405,7 @@ object ScissProcs {
 
       val numFrames   = SampleRate.ir * 30
       val buf         = LocalBuf(numFrames = numFrames, numChannels = Pad(1, in))
+      ClearBuf(buf)
       val time        = Lag.ar(pTime)
       val lin         = Pad.LocalIn.ar(in)
       val feed        = pFeed
@@ -380,6 +436,7 @@ object ScissProcs {
       val speed       = Lag.ar(pSpeed, 0.1)
       val numFrames   = SampleRate.ir // sampleRate.toInt
       val bufID       = LocalBuf(numFrames = numFrames, numChannels = Pad(1, in))
+      ClearBuf(bufID)
       val writeRate   = BufRateScale.kr(bufID)
       val readRate    = writeRate * speed
       val readPhasor  = Phasor.ar(0, readRate, 0, numFrames)
@@ -432,13 +489,12 @@ object ScissProcs {
 
     filter("reso") { in =>
       shortcut = "R"
-      val pFreq   = pAudio("freq"     , ParamSpec(30  , 13000, ExpWarp), default(400.0)) // beware of the upper frequency
-      val pFreq2  = pAudio("freq-fact", ParamSpec( 0.5,     2, ExpWarp), default(  1.0))
-      val pq      = pAudio("q"        , ParamSpec( 0.5,    50, ExpWarp), default(  1.0))
+      val pFreq   = pAudio("freq", ParamSpec(30  , 13000, ExpWarp), default(400.0)) // beware of the upper frequency
+      val pq      = pAudio("q"   , ParamSpec( 0.5,    50, ExpWarp), default(  1.0))
       val pMix    = mkMix()
 
-      val freq0   = pFreq
-      val freq    = freq0 :: (freq0 * pFreq2).max(30).min(13000) :: Nil
+      val freq   = pFreq
+      // val freq    = freq0 :: (freq0 * pFreq2).max(30).min(13000) :: Nil
       val rq      = pq.reciprocal
       val makeUp  = pq // (rq + 0.5).pow(1.41) // rq.max( 1 ) // .sqrt
       val flt     = Resonz.ar(in, freq, rq) * makeUp
@@ -448,12 +504,11 @@ object ScissProcs {
     filter("notch") { in =>
       shortcut = "N"
       val pFreq   = pAudio("freq", ParamSpec(30, 16000, ExpWarp), default(400.0))
-      val pFreq2  = pAudio("freq-fact", ParamSpec(0.5, 2, ExpWarp), default(1.0))
       val pq      = pAudio("q", ParamSpec(1, 50, ExpWarp), default(1.0)) // beware of the lower q
       val pMix    = mkMix()
 
-      val freq0   = pFreq
-      val freq    = freq0 :: (freq0 * pFreq2).max(30).min(16000) :: Nil
+      val freq    = pFreq
+      // val freq    = freq0 :: (freq0 * pFreq2).max(30).min(16000) :: Nil
       val rq      = pq.reciprocal
       val flt     = BRF.ar(in, freq, rq)
       mix(in, flt, pMix)
@@ -491,6 +546,7 @@ object ScissProcs {
       //      val buf         = bufEmpty(numFrames, numChannels)
       //      val bufID       = buf.id
       val buf         = LocalBuf(numFrames = numFrames, numChannels = Pad(1, in))
+      ClearBuf(buf)
 
       val feedBack    = Lag.ar(pFeed, 0.1)
       val grain       = pGrain // Lag.kr( grainAttr.kr, 0.1 )
@@ -560,6 +616,15 @@ object ScissProcs {
       mix(in, play, pMix)
     }
 
+    filter("*") { in =>
+      shortcut = "ASTERISK"
+      val pMix  = mkMix()
+      val in2   = pAudio("mod", ParamSpec(0 /* -1 */, 1), default(0.0))
+      val pLag  = pAudio("lag", ParamSpec(0.001, 0.1, ExpWarp), default(0.001))
+      val flt   = in * Lag.ar(in2, pLag - 0.001)
+      mix(in, flt, pMix)
+    }
+
     filter("gain") { in =>
       shortcut = "G"
       val pGain = pAudio("gain", ParamSpec(-30, 30), default(0.0))
@@ -571,7 +636,7 @@ object ScissProcs {
     }
 
     filter("gendy") { in =>
-      val pAmt    = pAudio("amt", ParamSpec(0, 1), default(1.0))
+      val pAmt    = pAudio("amt", ParamSpec(0, 1), default(0.0))
       val pMix    = mkMix()
 
       val amt     = Lag.ar(pAmt, 0.1)
@@ -609,6 +674,7 @@ object ScissProcs {
       //      val numChannels = in.numChannels // numOutputs
       //      val bufIDs      = Seq.fill(numChannels)(bufEmpty(1024).id)
       val bufIDs      = LocalBuf(numFrames = 1024, numChannels = Pad(1, in))
+      ClearBuf(bufIDs)
       val chain1      = FFT(bufIDs, in)
       val onsets      = Onsets.kr(chain1, pThresh)
       val sig         = Decay.ar(Trig1.ar(onsets, SampleDur.ir), pDecay).min(1) // * 2 - 1
@@ -624,6 +690,7 @@ object ScissProcs {
       val ramp    = EnvGen.kr(env)
       val volume  = thresh.linlin(1.0e-3, 1.0e-0, 4 /* 32 */, 2)
       val bufIDs  = LocalBuf(numFrames = 1024, numChannels = Pad(1, in))
+      ClearBuf(bufIDs)
       val chain1  = FFT(bufIDs, HPZ1.ar(in))
       val chain2  = PV_MagAbove(chain1, thresh)
       val flt     = LPZ1.ar(volume * IFFT.ar(chain2)) * ramp
@@ -646,6 +713,7 @@ object ScissProcs {
       //            val volume		   = LinLin.kr( thresh, 1.0e-2, 1.0e-0, 4, 1 )
       val volume      = thresh.linlin(1.0e-1, 10, 2, 1)
       val bufIDs      = LocalBuf(numFrames = 1024, numChannels = Pad(1, in))
+      ClearBuf(bufIDs)
       val chain1      = FFT(bufIDs, in)
       val chain2      = PV_MagBelow(chain1, thresh)
       val flt         = volume * IFFT.ar(chain2) * ramp
@@ -658,9 +726,9 @@ object ScissProcs {
     }
 
     filter("pitch") { in =>
-      val pTrans  = pAudio("shift", ParamSpec(0.125, 4, ExpWarp), default(1.0))
-      val pTime   = pAudio("time" , ParamSpec(0.01,  1, ExpWarp), default(0.1))
-      val pPitch  = pAudio("pitch", ParamSpec(0.01,  1, ExpWarp), default(0.1))
+      val pTrans  = pAudio("shift", ParamSpec(0.125, 4, ExpWarp), default(1.0 ))
+      val pTime   = pAudio("time" , ParamSpec(0.01,  1, ExpWarp), default(0.1 ))
+      val pPitch  = pAudio("pitch", ParamSpec(0.01,  1, ExpWarp), default(0.01))
       val pMix    = mkMix()
 
       val grainSize     = 0.5f
@@ -672,21 +740,33 @@ object ScissProcs {
     }
 
     filter("pow") { in =>
-      val pAmt = pAudio("amt", ParamSpec(0, 1), default(0.5))
-      val pMix = mkMix()
-
-      val amt   = pAmt
-      val amtM  = 1 - amt
-      val exp   = amtM * 0.5 + 0.5
-      val flt0  = in.abs.pow(exp) * in.signum
-      val amp0  = Amplitude.ar(flt0)
-      val amp   = amtM + (amp0 * amt)
-      val flt   = flt0 * amp
+      val exp   = pAudio("amt"  , ParamSpec(0.5, 2.0, ExpWarp), default(1.0))
+      val decay0= pAudio("decay", ParamSpec(0.5, 1.0, ExpWarp), default(1.0))
+      val decay = Lag.ar(decay0) // Lag.kr(A2K.kr(decay0), 1) // Lag.ar(decay0)
+      val peak0 = PeakFollower.ar(in, decay)
+      CheckBadValues.ar(peak0, id = 777)
+      val peak  = peak0.max(-20.dbamp)
+      val pMix  = mkMix()
+      val inN   = in / peak
+      val pow   = inN.pow(exp)
+      val flt   = pow * peak
       mix(in, flt, pMix)
+
+//      val pAmt = pAudio("amt", ParamSpec(0, 1), default(0.5))
+//      val pMix = mkMix()
+//
+//      val amt   = pAmt
+//      val amtM  = 1 - amt
+//      val exp   = amtM * 0.5 + 0.5
+//      val flt0  = in.abs.pow(exp) * in.signum
+//      val amp0  = Amplitude.ar(flt0)
+//      val amp   = amtM + (amp0 * amt)
+//      val flt   = flt0 * amp
+//      mix(in, flt, pMix)
     }
 
     filter("renoise") { in =>
-      val pColor      = pAudio("color", ParamSpec(0, 1), default(0.0))
+      val pColor      = pAudio("color", ParamSpec(0, 1), default(1.0))
       val pMix        = mkMix()
       val step        = 0.5
       val freqF       = math.pow(2, step)
@@ -730,74 +810,196 @@ object ScissProcs {
 
     filter("zero") { in =>
       val pWidth  = pAudio("width", ParamSpec(0, 1), default(0.5))
-      val pDiv    = pAudio("div"  , ParamSpec(1, 10, IntWarp), default(1.0))
+      val pDiv    = pAudio("div"  , ParamSpec(1, 12, IntWarp), default(1.0))
       val pLag    = pAudio("lag"  , ParamSpec(0.001, 0.1, ExpWarp), default(0.01))
       val pMix    = mkMix()
 
-      val freq    = ZeroCrossing.ar(in).max(20)
+      val freq    = ZeroCrossing.ar(in).max(2)
       val width0  = Lag.ar(pWidth, 0.1)
-      val amp     = width0.sqrt
-      val width   = width0.reciprocal
+      val width   = width0 // width0.reciprocal
       val div     = Lag.ar(pDiv, 0.1)
       val lagTime = pLag
-      val pulse   = Lag.ar(LFPulse.ar(freq / div, 0, width) * amp, lagTime)
-      val flt     = in * pulse
+      val pulseF  = freq / div
+      // pulseF.poll(1, "pulse")
+      val pulse   = Lag.ar(LFPulse.ar(pulseF, 0, width), lagTime)
+      val amp     = Amplitude.kr(pulse).max(0.2).reciprocal
+      // val amp     = PeakFollower.ar(pulse).max(0.1).reciprocal
+      val flt     = in * pulse * amp
+      mix(in, flt, pMix)
+    }
+
+    filter("L-lpf") { in =>
+      val fade  = mkMix() // mkMix4()
+      val freq  = fade.linexp(1, 0, 22.05 * 2, 20000) // 22050
+      val wet   = LPF.ar(in, freq)
+      mkBlend(in, wet, fade)
+    }
+
+    filter("L-hpf") { in =>
+      val fade  = mkMix() // mkMix4()
+      val freq  = fade.linexp(1, 0, 20000, 22.05 * 2)
+      val wet   = HPF.ar(HPF.ar(in, freq), freq)
+      mkBlend(in, wet, fade)
+    }
+
+    val FFTSize = 512
+
+    filter("L-below") { in =>
+      val fade    = mkMix() // mkMix4()
+      val thresh  = fade.linexp(1, 0, 1.0e-3, 1.0e1)
+      val buf     = LocalBuf(FFTSize)
+      val wet     = IFFT.ar(PV_MagBelow(FFT(buf, in), thresh))
+      mkBlend(in, wet, fade, FFTSize / SampleRate.ir)
+    }
+
+    filter("L-above") { in =>
+      val fade    = mkMix() // mkMix4()
+      val thresh  = fade.linexp(0, 1, 1.0e-3, 2.0e1)
+      val buf     = LocalBuf(FFTSize)
+      val wet     = IFFT.ar(PV_MagAbove(FFT(buf, in), thresh))
+      mkBlend(in, wet, fade, FFTSize / SampleRate.ir)
+    }
+
+    filter("L-up") { in =>
+      val fade    = mkMix() // mkMix4()
+      val numSteps = 16 // 10
+      val x        = (1 - fade) * numSteps
+      val xh       = x / 2
+      val a        = (xh + 0.5).floor        * 2
+      val b0       = (xh       .floor + 0.5) * 2
+      val b        = b0.min(numSteps)
+      val ny       = 20000 // 22050
+      val zero     = 22.05
+      val aFreq    = a.linexp(numSteps, 0, zero, ny) - zero
+      val bFreq    = b.linexp(numSteps, 0, zero, ny) - zero
+      val freq: GE = Seq(aFreq, bFreq)
+
+      val z0      = FreqShift.ar(LPF.ar(in, ny - freq),  freq)
+
+      val zig     = x.fold(0, 1)
+      val az      = zig     // .sqrt
+      val bz      = 1 - zig // .sqrt
+      val wet     = az * (z0 \ 1 /* aka ceil */) + bz * (z0 \ 0 /* aka floor */)
+
+      mkBlend(in, wet, fade)
+    }
+
+    filter("L-down") { in =>
+      val fade     = mkMix() // mkMix4()
+      val numSteps = 16
+      val x        = (1 - fade) * numSteps
+      val xh       = x / 2
+      val a        = (xh + 0.5).floor        * 2
+      val b0       = (xh       .floor + 0.5) * 2
+      val b        = b0.min(numSteps)
+      val fd: GE   = Seq(a, b)
+      val ny       = 20000 // 20000 // 22050
+      val zero     = 22.05
+      val freq1    = fd.linexp(0, numSteps, ny, zero)
+      // val freq2    = fd.linexp(0, numSteps, zero, ny) - zero
+
+      val fltSucc   = HPF.ar(in, freq1)
+      val z0        = FreqShift.ar(fltSucc, -freq1)
+
+      val zig = x.fold(0, 1)
+      val az  = zig      // .sqrt
+      val bz  = 1 - zig  // .sqrt
+      val wet = az * (z0 \ 1 /* aka ceil */) + bz * (z0 \ 0 /* aka floor */)
+
+      mkBlend(in, wet, fade)
+    }
+
+    filter("env-perc") { in =>
+      //      def perc(attack: GE = 0.01, release: GE = 1, level: GE = 1,
+      //               curve: Env.Curve = parametric(-4)): V =
+      //        create(0, Vector[Seg]((attack, level, curve), (release, 0, curve)))
+      //
+      //      def asr(attack: GE = 0.01f, level: GE = 1, release: GE = 1, curve: Curve = parametric(-4)): Env =
+      //        new Env(0, Vector[Segment]((attack, level, curve), (release, 0, curve)), 1)
+
+      val attack  = pAudio("atk"   , ParamSpec(0.001,  1.0, ExpWarp), default(0.01))
+      val release = pAudio("rls"   , ParamSpec(0.001, 10.0, ExpWarp), default(0.01))
+      val curveP  = pAudio("curve" , ParamSpec(-4, 4), default(0.0))
+      val level   = pAudio("amp"   , ParamSpec(0.01,  1.0, ExpWarp),  default(1.0))
+      val thresh  = pAudio("thresh", ParamSpec(0, 1), default(0.5))
+      val pMix    = mkMix()
+
+      val trig    = in > thresh
+      val curve   = Env.Curve(Curve.parametric.id, curveP)
+
+      val env = Env.perc(attack = attack, release = release, level = level, curve = curve)
+      val flt = EnvGen.ar(env, gate = trig)
+
+      // gen // mkBlend(in, wet, fade)
       mix(in, flt, pMix)
     }
 
     // -------------- SINKS --------------
     val recFormat = new SimpleDateFormat("'rec_'yyMMdd'_'HHmmss'.aif'", Locale.US)
 
+//    val sinkRecPrepare = new Action.Body {
+//      def apply[T <: stm.Sys[T]](universe: Universe[T])(implicit tx: T#Tx): Unit = {
+//        import universe._
+//        for {
+//          art  <- self.attr.$[Artifact]("file")
+//          artM <- art.modifiableOption
+//        } {
+//          val name  = recFormat.format(new Date)
+//          artM.child = Artifact.Child(name) // XXX TODO - should check that it is different from previous value
+//          // println(name)
+//        }
+//      }
+//    }
+//    Action.registerPredef("nuages-prepare-rec", sinkRecPrepare)
+
     val sinkRecPrepare = new Action.Body {
-      def apply[T <: stm.Sys[T]](universe: Universe[T])(implicit tx: T#Tx): Unit = {
+      def apply[T <: stm.Sys[T]](universe: Action.Universe[T])(implicit tx: T#Tx): Unit = {
         import universe._
-        for {
-          art  <- self.attr.$[Artifact]("file")
-          artM <- art.modifiableOption
-        } {
-          val name  = recFormat.format(new Date)
-          artM.child = Artifact.Child(name) // XXX TODO - should check that it is different from previous value
+        invoker.foreach { obj =>
+          val name            = recFormat.format(new Date)
+          implicit val nuages = nuagesFinder.findNuages(universe)
+          val loc     = getRecLocation(nuages.folder, sConfig.recDir)
+          val artM    = Artifact[T](loc, Artifact.Child(name)) // loc.add(loc.directory / name) // XXX TODO - should check that it is different from previous value
           // println(name)
+          obj.attr.put(KeyRecArtifact, artM) // Obj(ArtifactElem(artM)))
         }
       }
     }
     Action.registerPredef("nuages-prepare-rec", sinkRecPrepare)
 
     val sinkRecDispose = new Action.Body {
-      def apply[T <: stm.Sys[T]](universe: Universe[T])(implicit tx: T#Tx): Unit = {
-        import universe.{cursor => _, _}
-        for {
-          art <- self.attr.$[Artifact]("file")
-        } {
-          val f = art.value
-          SoundProcesses.scheduledExecutorService.schedule(new Runnable {
-            def run(): Unit = SoundProcesses.atomic[S, Unit] { implicit tx =>
-              println(f)
-              mkLoop(f)
-            }
-          }, 1000, TimeUnit.MILLISECONDS)
+      def apply[T <: stm.Sys[T]](universe: Action.Universe[T])(implicit tx: T#Tx): Unit = {
+        import universe._
+        invoker.foreach { obj =>
+          obj.attr.$[Artifact](KeyRecArtifact).foreach { artObj =>
+            SoundProcesses.scheduledExecutorService.schedule(new Runnable {
+              def run(): Unit = SoundProcesses.atomic[T, Unit] { implicit tx =>
+                implicit val nuages = nuagesFinder.findNuages(universe)
+                mkLoop[T](artObj)
+              } (universe.cursor)
+            }, 1000, TimeUnit.MILLISECONDS)
+          }
         }
       }
     }
     Action.registerPredef("nuages-dispose-rec", sinkRecDispose)
 
     val sinkRec = sink("rec") { in =>
-      // val pStop = pControl("stop", ParamSpec(0, 1, step = 1), default(0))
-      proc.graph.DiskOut.ar("file", in)
-      // Mix.mono(in).poll(1, "poll")
+      proc.graph.DiskOut.ar(KeyRecArtifact, in)
     }
     val sinkPrepObj = Action.predef("nuages-prepare-rec")
     val sinkDispObj = Action.predef("nuages-dispose-rec")
-    val artRec      = Artifact(loc, Artifact.Child("undefined")) // loc.add(loc.directory / "undefined")
-    sinkPrepObj.attr.put("file"   , artRec  )
-    sinkDispObj.attr.put("file"   , artRec  )
-    sinkRec    .attr.put("file"   , artRec  )
     sinkRec    .attr.put("nuages-prepare", sinkPrepObj)
     sinkRec    .attr.put("nuages-dispose", sinkDispObj)
 
-    //    prepare(sinkRec) { implicit tx =>
-    //      obj => ...
-    //    }
+    val sumRec = generator("rec-sum") {
+      val numCh = masterChansOption.map(_.size).getOrElse(1)
+      val in    = InFeedback.ar(0, numCh)   // XXX TODO --- should find correct indices!
+      proc.graph.DiskOut.ar(KeyRecArtifact, in)
+      DC.ar(0)
+    }
+    sumRec.attr.put("nuages-prepare", sinkPrepObj)
+    sumRec.attr.put("nuages-dispose", sinkDispObj)
 
     // -------------- DIFFUSIONS --------------
 

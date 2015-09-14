@@ -4,6 +4,7 @@ import com.alee.laf.WebLookAndFeel
 import de.sciss.lucre.stm.Cursor
 import de.sciss.lucre.stm.store.BerkeleyDB
 import de.sciss.lucre.synth.InMemory
+import de.sciss.nuages.ScissProcs.NuagesFinder
 import de.sciss.synth
 import de.sciss.synth.Server
 import de.sciss.synth.proc.{AuralSystem, Durable}
@@ -27,10 +28,10 @@ object Demo extends SwingApplication {
       implicit val system = InMemory()
       val w = new Wolkenpumpe[S] {
         /** Subclasses may want to override this. */
-        override protected def registerProcesses(sCfg: ScissProcs.Config, nCfg: Nuages.Config)
+        override protected def registerProcesses(sCfg: ScissProcs.Config, nCfg: Nuages.Config, nFinder: NuagesFinder)
                                                 (implicit tx: S#Tx, cursor: Cursor[S], nuages: Nuages[S],
                                                  aural: AuralSystem): Unit = {
-          super.registerProcesses(sCfg, nCfg)
+          super.registerProcesses(sCfg, nCfg, nFinder)
           val dsl = new DSL[S]
           import dsl._
 
@@ -50,11 +51,6 @@ object Demo extends SwingApplication {
             val sig   = Pulse.ar(freq, width)
 
             sig * pAmp
-          }
-
-          generator("a~DC") {
-            val sig = pAudio("value", ParamSpec(0, 1), default = 0.0)
-            sig
           }
         }
 
