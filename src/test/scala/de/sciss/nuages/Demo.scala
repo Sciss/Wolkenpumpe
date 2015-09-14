@@ -22,7 +22,11 @@ object Demo extends SwingApplication {
       val factory = BerkeleyDB.tmp()
       implicit val system = Durable(factory)
       val w = new Wolkenpumpe[S]
-      w.run()
+      val nuagesH = system.root { implicit tx =>
+        Nuages[S]
+      }
+      w.run(nuagesH)
+
     } else {
       type S = InMemory
       implicit val system = InMemory()
@@ -78,7 +82,9 @@ object Demo extends SwingApplication {
           }
         }
       }
-      w.run()
+
+      val nuagesH = system.step { implicit tx => tx.newHandle(Nuages[S]) }
+      w.run(nuagesH)
     }
   }
 }

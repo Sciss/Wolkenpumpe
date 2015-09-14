@@ -29,7 +29,8 @@ object Wolkenpumpe {
     type S = InMemory
     implicit val system = InMemory()
     val w = new Wolkenpumpe[S]
-    w.run()
+    val nuagesH = system.step { implicit tx => tx.newHandle(Nuages[S]) }
+    w.run(nuagesH)
   }
 
   def mkTestProcs[S <: Sys[S]]()(implicit tx: S#Tx, nuages: Nuages[S]): Unit = {
@@ -153,7 +154,7 @@ class Wolkenpumpe[S <: Sys[S]] {
     ScissProcs[S](sCfg, nCfg, nuagesFinder)
   }
 
-  def run()(implicit cursor: stm.Cursor[S]): Unit = {
+  def run(nuagesH: stm.Source[S#Tx, Nuages[S]])(implicit cursor: stm.Cursor[S]): Unit = {
     Wolkenpumpe.init()
 
     val nCfg                = Nuages    .Config()
@@ -179,10 +180,10 @@ class Wolkenpumpe[S <: Sys[S]] {
     aCfg.inputBusChannels   = maxInputs
 
     /* val f = */ cursor.step { implicit tx =>
-      implicit val n      = Nuages[S]
+      implicit val n      = nuagesH() // Nuages[S]
       implicit val aural  = AuralSystem()
 
-      val nuagesH = tx.newHandle(n)
+      // val nuagesH = tx.newHandle(n)
       val finder  = new NuagesFinder {
         def findNuages[T <: stm.Sys[T]](universe: Universe[T])(implicit tx: T#Tx): Nuages[T] = {
           nuagesH.asInstanceOf[stm.Source[T#Tx, Nuages[T]]]()
