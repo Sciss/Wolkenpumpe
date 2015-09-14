@@ -65,8 +65,8 @@ final class VisualScanImpl[S <: Sys[S]] private(val parent: VisualObj[S],
   def init(scan: Scan[S])(implicit tx: S#Tx): this.type = {
     val map = if (isInput) parent.inputs else parent.outputs
     map.put(key, this)(tx.peer)
-    main.scanMap.put(scan.id, this)
-    main.deferVisTx(initGUI())
+    main.deferVisTx(initGUI())      // IMPORTANT: first
+    main.scanMapPut(scan.id, this)  // IMPORTANT: second
     if (!isInput) {
       observers ::= scan.changed.react { implicit tx => upd =>
         upd.changes.foreach {
@@ -95,7 +95,7 @@ final class VisualScanImpl[S <: Sys[S]] private(val parent: VisualObj[S],
   private[this] def withScan(target: Scan.Link[S])(fun: VisualScan[S] => Unit)
                              (implicit tx: S#Tx): Unit =
     for {
-      targetVis <- main.scanMap.get(target.peerID)
+      targetVis <- main.scanMapGet(target.peerID)
     } main.deferVisTx {
       fun(targetVis)
     }
@@ -103,7 +103,7 @@ final class VisualScanImpl[S <: Sys[S]] private(val parent: VisualObj[S],
   def dispose()(implicit tx: S#Tx): Unit = {
     val map = if (isInput) parent.inputs else parent.outputs
     map.remove(key)(tx.peer)
-    main.scanMap.remove(scan.id)
+    main.scanMapRemove(scan.id)
     observers.foreach(_.dispose())
     main.deferVisTx(disposeGUI())
   }

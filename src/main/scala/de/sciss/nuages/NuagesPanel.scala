@@ -97,7 +97,15 @@ trait NuagesPanel[S <: Sys[S]] extends View[S] {
   def appendFilter(pred: Scan[S], flt: Obj[S], colOpt: Option[Obj[S]], pt: Point2D)(implicit tx: S#Tx): Unit
 
   def nodeMap: stm.IdentifierMap[S#ID, S#Tx, VisualObj [S]]
-  def scanMap: stm.IdentifierMap[S#ID, S#Tx, VisualScan[S]]
+
+  // def scanMap: stm.IdentifierMap[S#ID, S#Tx, VisualScan[S]]
+
+  def scanMapPut(id: S#ID, view: VisualScan[S])(implicit tx: S#Tx): Unit
+  def scanMapGet(id: S#ID)(implicit tx: S#Tx): Option[VisualScan[S]]
+  def scanMapRemove(id: S#ID)(implicit tx: S#Tx): Unit
+
+//  /** Transaction local hack */
+//  def waitForScanView(id: S#ID)(fun: VisualScan[S] => Unit)(implicit tx: S#Tx): Unit
 
   // ---- these are left-overs from refactoring, they should not go in public API ----
 

@@ -35,8 +35,14 @@ trait PanelImplReact[S <: Sys[S]] {
   protected def removeLocationHint(obj: Obj[S])(implicit tx: S#Tx): Option[Point2D]
 
   protected def nodeMap     : stm.IdentifierMap[S#ID, S#Tx, VisualObj [S]]
-  protected def scanMap     : stm.IdentifierMap[S#ID, S#Tx, VisualScan[S]]
+//  protected def scanMap     : stm.IdentifierMap[S#ID, S#Tx, VisualScan[S]]
   protected def missingScans: stm.IdentifierMap[S#ID, S#Tx, List[VisualControl[S]]]
+
+  protected def scanMapPut     (id: S#ID, view: VisualScan[S])(implicit tx: S#Tx): Unit
+  protected def scanMapGet     (id: S#ID)(implicit tx: S#Tx): Option[VisualScan[S]]
+
+  /** Transaction local hack */
+  protected def waitForScanView(id: S#ID)(fun: VisualScan[S] => Unit)(implicit tx: S#Tx): Unit
 
   protected def auralTimeline: Ref[Option[AuralObj.Timeline[S]]]
 
@@ -69,24 +75,30 @@ trait PanelImplReact[S <: Sys[S]] {
 
   def assignMapping(source: Scan[S], vSink: VisualControl[S])(implicit tx: S#Tx): Unit = {
     implicit val itx = tx.peer
-    // XXX TODO -- here we need something analogous to `waitForAux`
-    scanMap.get(source.id).foreach { vScan =>
+
+    def flonky(debug: Boolean, vScan: VisualScan[S]): Unit = {
       val vObj = vScan.parent
-        vSink.mapping.foreach { m =>
-          deferVisTx {
-            m.source = Some(vScan)
-            main.graph.addEdge(vScan.pNode, vSink.pNode)
-            vScan.mappings += vSink
-          }
-          // XXX TODO -- here we need something analogous to `waitForAux`
-          viewToAuralMap.get(vObj).foreach { aural =>
-            getAuralScanData(aural, vScan.key).foreach {
-              case (bus, node) =>
-                m.synth() = Some(mkMonitor(bus, node)(v => vSink.value = v))
-            }
+      vSink.mapping.foreach { m =>
+        println(s"---flonky1 $debug")
+        deferVisTx {
+          println(s"---flonky2 $debug")
+          m.source        = Some(vScan)
+          val sourceNode  = vScan.pNode
+          val sinkNode    = vSink.pNode
+          main.graph.addEdge(sourceNode, sinkNode)
+          vScan.mappings += vSink
+        }
+        // XXX TODO -- here we need something analogous to `waitForAux`
+        viewToAuralMap.get(vObj).foreach { aural =>
+          getAuralScanData(aural, vScan.key).foreach {
+            case (bus, node) =>
+              m.synth() = Some(mkMonitor(bus, node)(v => vSink.value = v))
           }
         }
+      }
     }
+
+    scanMapGet(source.id).fold(waitForScanView(source.id)(flonky(true, _)))(flonky(false, _))
   }
 
   protected def auralObjAdded(vp: VisualObj[S], aural: AuralObj[S])(implicit tx: S#Tx): Unit = {
