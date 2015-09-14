@@ -73,6 +73,7 @@ trait PanelImplReact[S <: Sys[S]] {
       val vObj = vScan.parent
         vSink.mapping.foreach { m =>
           m.source = Some(vScan)  // XXX TODO -- not cool, should be on the EDT
+          // XXX TODO -- here we need something analogous to `waitForAux`
           viewToAuralMap.get(vObj).foreach { aural =>
             getAuralScanData(aural, vScan.key).foreach {
               case (bus, node) =>

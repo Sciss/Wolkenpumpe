@@ -228,7 +228,7 @@ final class VisualVectorControl[S <: Sys[S]](val parent: VisualObj[S], val key: 
     }
 
   protected def drawAdjust(g: Graphics2D, v: Vec[Double]): Unit =
-    if (allValuesEqual) {
+    if (allValuesEqual || true /* XXX TODO */ ) {
       setSpine(v.head)
       g.draw(gLine)
     } else {
