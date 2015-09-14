@@ -23,7 +23,7 @@ import de.sciss.lucre.stm
 import de.sciss.lucre.synth.Sys
 import de.sciss.synth
 import de.sciss.synth.io.AudioFile
-import de.sciss.synth.proc
+import de.sciss.synth.{GE, proc}
 import de.sciss.synth.proc.graph.Attribute
 import de.sciss.synth.proc.{Action, AuralSystem, Folder, Grapheme, SoundProcesses}
 
@@ -126,6 +126,8 @@ object ScissProcs {
   trait NuagesFinder {
     def findNuages[S <: stm.Sys[S]](universe: Action.Universe[S])(implicit tx: S#Tx): Nuages[S]
   }
+
+  def WrapExtendChannels(n: Int, sig: GE): GE = Vec.tabulate(n)(sig \ _)
 
   def apply[S <: Sys[S]](sConfig: ScissProcs.Config, nConfig: Nuages.Config, nuagesFinder: NuagesFinder)
                         (implicit tx: S#Tx, cursor: stm.Cursor[S], nuages: Nuages[S], aural: AuralSystem): Unit = {
@@ -372,8 +374,6 @@ object ScissProcs {
       val zm  = z  * za
       pm + zm
     }
-
-    def WrapExtendChannels(n: Int, sig: GE): GE = Vec.tabulate(n)(sig \ _)
 
     filter("staub") { in =>
       val pAmt      = pAudio("amt" , ParamSpec(0.0, 1.0), default(1.0))
@@ -821,7 +821,7 @@ object ScissProcs {
       val lagTime = pLag
       val pulseF  = freq / div
       // pulseF.poll(1, "pulse")
-      val pulse   = Lag.ar(LFPulse.ar(pulseF, 0, width), lagTime)
+      val pulse   = Lag.ar(LFPulse.ar(pulseF, 0, width), lagTime) // XXX TODO -- width is not modulated
       val amp     = Amplitude.kr(pulse).max(0.2).reciprocal
       // val amp     = PeakFollower.ar(pulse).max(0.1).reciprocal
       val flt     = in * pulse * amp
@@ -1000,6 +1000,170 @@ object ScissProcs {
     }
     sumRec.attr.put("nuages-prepare", sinkPrepObj)
     sumRec.attr.put("nuages-dispose", sinkDispObj)
+
+    // -------------- CONTROL SIGNALS --------------
+
+    generator("a~pulse") {
+      val pFreq   = pAudio("freq"   , ParamSpec(0.1 , 10000, ExpWarp), default(15.0))
+      val pW      = pAudio("width"  , ParamSpec(0.0 ,     1.0),        default(0.5))
+      val pLo     = pAudio("lo"     , ParamSpec(0.0 , 1), default(0.0))
+      val pHi     = pAudio("hi"     , ParamSpec(0.0 , 1), default(1.0))
+
+      val freq  = pFreq // LinXFade2.ar(pFreq, inFreq, pFreqMix * 2 - 1)
+      val width = pW // LinXFade2.ar(pW, inW, pWMix * 2 - 1)
+      val sig   = LFPulse.ar(freq, width)  // XXX TODO -- width is not modulated
+
+      sig.linlin(0, 1, pLo, pHi)
+    }
+
+    generator("a~sin") {
+      val pFreq   = pAudio("freq"   , ParamSpec(0.1 , 10000, ExpWarp), default(15.0))
+      val pLo     = pAudio("lo"     , ParamSpec(0.0 , 1), default(0.0))
+      val pHi     = pAudio("hi"     , ParamSpec(0.0 , 1), default(1.0))
+
+      val freq  = pFreq // LinXFade2.ar(pFreq, inFreq, pFreqMix * 2 - 1)
+      val sig   = SinOsc.ar(freq)
+
+      sig.linlin(-1, 1, pLo, pHi)
+    }
+
+    generator("a~dust") {
+      val pFreq   = pAudio("freq" , ParamSpec(0.01, 1000.0, ExpWarp), default(0.1))
+      val pDecay  = pAudio("decay", ParamSpec(0.001 , 10.0, ExpWarp), default(0.1))
+      val pLo     = pAudio("lo"   , ParamSpec(0.0   , 1.0          ), default(0.0))
+      val pHi     = pAudio("hi"   , ParamSpec(0.0   , 1.0          ), default(1.0))
+
+      val freq  = pFreq
+      val sig   = Decay.ar(Dust.ar(freq), pDecay).clip(0.01, 1).linlin(0.01, 1, pLo, pHi)
+      sig
+    }
+
+    generator("a~gray") {
+      val pLo     = pAudio("lo"     , ParamSpec(0.0 , 1), default(0.0))
+      val pHi     = pAudio("hi"     , ParamSpec(0.0 , 1), default(1.0))
+      // GrayNoise.ar.linlin(-1, 1, pLo, pHi)
+      val amp     = Pad(1.0, pLo)
+      GrayNoise.ar(amp).linlin(-1, 1, pLo, pHi)
+    }
+
+    filter("a~rand") { in =>
+      val pLo     = pAudio("lo"     , ParamSpec(0.0 , 1), default(0.0))
+      val pHi     = pAudio("hi"     , ParamSpec(0.0 , 1), default(1.0))
+      val pQuant  = pAudio("quant"  , ParamSpec(0.0 , 1), default(0.0))
+      val pMix    = mkMix()
+      val inTrig  = in - 0.001 // pAudio("tr", ParamSpec(0, 1), default(0.0))
+    val sig0    = K2A.ar(TRand.kr(0 /* A2K.kr(pLo) */ , 1 /* A2K.kr(pHi) */, T2K.kr(inTrig)))
+      val sig     = sig0.roundTo(pQuant).linlin(0, 1, pLo, pHi)
+      mix(in, sig, pMix)
+    }
+
+    filter("a~delay") { in =>
+      val pTime   = pAudio("time", ParamSpec(0.0 , 1.0), default(0.0))
+      val pMix    = mkMix(1.0)
+      val sig     = DelayN.ar(in, delayTime = pTime, maxDelayTime = 1.0)
+      mix(in, sig, pMix)
+    }
+
+    filter("a~skew") { in =>
+      val pLo     = pAudio("lo" , ParamSpec(0, 1), default(0.0))
+      val pHi     = pAudio("hi" , ParamSpec(0, 1), default(1.0))
+      val pPow    = pAudio("pow", ParamSpec(0.125, 8, ExpWarp), default(1.0))
+      val pRound  = pAudio("rnd", ParamSpec(0, 1), default(0.0))
+
+      val pMix    = mkMix()
+
+      val sig = in.max(0).min(1).pow(pPow).linlin(0, 1, pLo, pHi).roundTo(pRound)
+      mix(in, sig, pMix)
+    }
+
+    filter("a~step8") { in =>
+      val vals    = Vector.tabulate(8)(i => pAudio(s"v${i+1}", ParamSpec(0, 1), default(0.0)))
+      val trig    = in - 0.001 // pAudio("trig", ParamSpec(0.0, 1.0), default(0.0))
+    val hi      = pAudio("hi", ParamSpec(1, 8, IntWarp), default(1.0))
+      val pMix    = mkMix()
+      val index   = Stepper.ar(trig, lo = 0, hi = hi - 1)
+      val sig     = Select.ar(index, vals)
+      mix(in, sig, pMix)
+    }
+
+    filter("a~dup") { in =>
+      val pThresh = pAudio("thresh", ParamSpec(0.01, 1, ExpWarp), default(0.1))
+      val pMul    = pAudio("mul"   , ParamSpec(1  , 16, IntWarp), default(1.0))
+      val pDiv    = pAudio("div"   , ParamSpec(1  , 16, IntWarp), default(1.0))
+      val pAmp    = pAudio("amp"   , ParamSpec(0.01, 1, ExpWarp), default(0.1))
+      val pMix    = mkMix()
+      val tr      = in > pThresh
+      val tim     = Timer.ar(tr)
+      val sd      = SampleDur.ir
+      val frq     = tim.max(sd * 2).reciprocal * pMul / pDiv
+      // frq.poll(1, "dup-freq")
+      val sig     = Phasor.ar(in, frq * sd) * pAmp
+      mix(in, sig, pMix)
+    }
+
+    filter("a~div") { in =>
+      val pThresh = pAudio("thresh", ParamSpec(0.01, 1, ExpWarp), default(0.1))
+      val pMul    = pAudio("mul"   , ParamSpec(1, 16, IntWarp), default(1.0))
+      val pDiv    = pAudio("div"   , ParamSpec(1, 16, IntWarp), default(1.0))
+      val pAmp    = pAudio("amp"   , ParamSpec(0.01, 1, ExpWarp), default(0.1))
+      val pMix    = mkMix()
+      val inTrig  = in > pThresh // (in - pThresh).max(0.0)
+      val pulse   = PulseDivider.ar(inTrig, pDiv)
+      val timer   = Timer.ar(pulse) // .max(0.0001)
+      val sd      = SampleDur.ir
+      val freq    = timer.max(sd * 2).reciprocal * pMul
+      val phSpeed = freq / SampleRate.ir
+      val phasor  = Phasor.ar(trig = pulse, speed = phSpeed)
+      val tr      = HPZ1.ar(phasor) < 0
+      val pTime   = pAudio("time", ParamSpec(0.0 , 1.0), default(0.0))
+      val sig     = DelayN.ar(tr /* pulse */, maxDelayTime = 1.0, delayTime = pTime) * pAmp
+
+      mix(in, sig, pMix)
+    }
+
+    filter("a~gate") { in =>
+      val pThresh = pAudio("thresh", ParamSpec(0.01, 1  , ExpWarp), default(0.1))
+      val pGate   = pAudio("gate"  , ParamSpec(0.0 , 1.0         ), default(0.0)) > pThresh
+      val pLeak   = pAudio("leak"  , ParamSpec(0   , 1  , IntWarp), default(0.0)) > pThresh
+      val pMix    = mkMix()
+      val sig0    = Gate.ar(in, pGate)
+      val leak    = LeakDC.ar(sig0)
+      val sig     = Select.ar(pLeak, Seq(sig0, leak))
+      mix(in, sig, pMix)
+    }
+
+    filter("a~ff") { in =>
+      val pLo     = pAudio("lo"  , ParamSpec(0.0, 1.0), default(0.0))
+      val pHi     = pAudio("hi"  , ParamSpec(0.0, 1.0), default(1.0))
+      val pMix    = mkMix()
+      val inTrig  = in - 0.001 // pAudio("trig", ParamSpec(0.0, 1.0), default(0.0))
+
+      val sig     = ToggleFF.ar(inTrig).linlin(0, 1, pLo, pHi)
+      mix(in, sig, pMix)
+    }
+
+    filter("a~trig") { in =>
+      val pThresh = pAudio("thresh", ParamSpec(0.01, 1, ExpWarp), default(0.1))
+      val pLo     = pAudio("lo"    , ParamSpec(0.0, 1.0), default(0.0))
+      val pHi     = pAudio("hi"    , ParamSpec(0.0, 1.0), default(1.0))
+      val inTrig  = in // pAudio("trig"  , ParamSpec(0.0, 1.0), default(0.0))
+      val pDur    = pAudio("dur"   , ParamSpec(0.001, 1.0, ExpWarp), default(0.01))
+      val pMix    = mkMix()
+
+      val sig     = Trig1.ar(inTrig - pThresh, pDur).linlin(0, 1, pLo, pHi)
+      mix(in, sig, pMix)
+    }
+
+    filter("a~step") { in =>
+      val pLo     = pAudio("lo"   , ParamSpec(0.0,  1.0       ), default(0.0))
+      val pHi     = pAudio("hi"   , ParamSpec(0.0,  1.0       ), default(1.0))
+      val pDiv    = pAudio("div"  , ParamSpec(1  , 16, IntWarp), default(1))
+      val inTrig  = in - 0.001 // pAudio("trig" , ParamSpec(0.0,  1.0       ), default(0.0))
+      val reset   = pAudio("reset", ParamSpec(0.0,  1.0       ), default(0.0))
+      val pMix    = mkMix()
+      val sig     = Stepper.ar(inTrig, reset = reset, lo = 0, hi = pDiv).linlin(0, pDiv, pLo, pHi)
+      mix(in, sig, pMix)
+    }
 
     // -------------- DIFFUSIONS --------------
 
