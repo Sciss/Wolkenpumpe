@@ -323,12 +323,13 @@ abstract class VisualControlImpl[S <: Sys[S]]  extends VisualParamImpl[S] with V
   private[this] def initGUI(): Unit = {
     requireEDT()
     mkPNodeAndEdge()
-    mapping.foreach { m =>
-      m.source.foreach { vSrc =>
-        main.graph.addEdge(vSrc.pNode, pNode)
-        vSrc.mappings += this
-      }
-    }
+// this is now done by `assignMapping`:
+//    mapping.foreach { m =>
+//      m.source.foreach { vSrc =>
+//        main.graph.addEdge(vSrc.pNode, pNode)
+//        vSrc.mappings += this
+//      }
+//    }
   }
 
   final override def itemPressed(vi: VisualItem, e: MouseEvent, pt: Point2D): Boolean = {

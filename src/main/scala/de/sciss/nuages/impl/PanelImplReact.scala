@@ -69,10 +69,15 @@ trait PanelImplReact[S <: Sys[S]] {
 
   def assignMapping(source: Scan[S], vSink: VisualControl[S])(implicit tx: S#Tx): Unit = {
     implicit val itx = tx.peer
+    // XXX TODO -- here we need something analogous to `waitForAux`
     scanMap.get(source.id).foreach { vScan =>
       val vObj = vScan.parent
         vSink.mapping.foreach { m =>
-          m.source = Some(vScan)  // XXX TODO -- not cool, should be on the EDT
+          deferVisTx {
+            m.source = Some(vScan)
+            main.graph.addEdge(vScan.pNode, vSink.pNode)
+            vScan.mappings += vSink
+          }
           // XXX TODO -- here we need something analogous to `waitForAux`
           viewToAuralMap.get(vObj).foreach { aural =>
             getAuralScanData(aural, vScan.key).foreach {
