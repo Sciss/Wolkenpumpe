@@ -4,11 +4,14 @@ package impl
 import de.sciss.lucre.stm
 import de.sciss.lucre.swing.{defer, deferTx, requireEDT}
 import de.sciss.lucre.synth.{Txn, Synth, Node, AudioBus, Sys}
+import de.sciss.osc
 import de.sciss.synth.proc.{Proc, AuralObj}
 import de.sciss.synth.{message, addToTail, SynthGraph}
 
 import PanelImpl.LAYOUT_TIME
 
+import scala.collection.breakOut
+import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm.{TMap, Ref}
 
 trait PanelImplMixer[S <: Sys[S]] {
@@ -27,14 +30,15 @@ trait PanelImplMixer[S <: Sys[S]] {
   // ---- impl ----
 
   // simple cache from num-channels to graph
-  private var meterGraphMap = Map.empty[Int, SynthGraph]
-  private val soloVolume    = Ref(NuagesPanel.soloAmpSpec._2)  // 0.5
-  private val soloInfo      = Ref(Option.empty[(VisualObj[S], Synth)])
-  private val _masterSynth  = Ref(Option.empty[Synth])
+  private var meterGraphMap   = Map.empty[Int, SynthGraph]
+  private var monitorGraphMap = Map.empty[Int, SynthGraph]
+  private val soloVolume      = Ref(NuagesPanel.soloAmpSpec._2)  // 0.5
+  private val soloInfo        = Ref(Option.empty[(VisualObj[S], Synth)])
+  private val _masterSynth    = Ref(Option.empty[Synth])
 
-  protected def mkMeter(bus: AudioBus, node: Node)(fun: Float => Unit)(implicit tx: S#Tx): Synth = {
-    val numCh       = bus.numChannels
-    val meterGraph  = meterGraphMap.getOrElse(numCh, {
+  protected def mkMeter(bus: AudioBus, node: Node)(fun: Double => Unit)(implicit tx: S#Tx): Synth = {
+    val numCh  = bus.numChannels
+    val graph  = meterGraphMap.getOrElse(numCh, {
       val res = SynthGraph {
         import de.sciss.synth._
         import de.sciss.synth.ugen._
@@ -47,20 +51,52 @@ trait PanelImplMixer[S <: Sys[S]] {
       meterGraphMap += numCh -> res
       res
     })
-    val meterSynth = Synth.play(meterGraph, Some("meter"))(node.server.defaultGroup, addAction = addToTail,
+    val syn = Synth.play(graph, Some("meter"))(node.server.defaultGroup, addAction = addToTail,
       dependencies = node :: Nil)
-    meterSynth.read(bus -> "in")
-    val NodeID = meterSynth.peer.id
+    syn.read(bus -> "in")
+    val NodeID = syn.peer.id
     val trigResp = message.Responder.add(node.server.peer) {
-      case m @ message.Trigger(NodeID, 0, peak: Float) =>
-        defer(fun(peak))
+      case message.Trigger(NodeID, 0, peak: Float) => defer(fun(peak))
     }
     // Responder.add is non-transactional. Thus, if the transaction fails, we need to remove it.
     scala.concurrent.stm.Txn.afterRollback { _ =>
       trigResp.remove()
     } (tx.peer)
-    meterSynth.onEnd(trigResp.remove())
-    meterSynth
+    syn.onEnd(trigResp.remove())
+    syn
+  }
+
+  protected def mkMonitor(bus: AudioBus, node: Node)(fun: Vec[Double] => Unit)(implicit tx: S#Tx): Synth = {
+    val numCh  = bus.numChannels
+    val graph  = monitorGraphMap.getOrElse(numCh, {
+      val res = SynthGraph {
+        import de.sciss.synth._
+        import de.sciss.synth.ugen._
+        val meterTr = Impulse.kr(1000.0 / LAYOUT_TIME)
+        val sig     = In.ar("in".kr, numCh)
+        SendReply.kr(meterTr, sig)
+      }
+      monitorGraphMap += numCh -> res
+      res
+    })
+    // de.sciss.synth.Server.default.dumpOSC()
+    val syn = Synth.play(graph, Some("monitor"))(node.server.defaultGroup, addAction = addToTail,
+      dependencies = node :: Nil)
+    syn.read(bus -> "in")
+    val NodeID = syn.peer.id
+    val trigResp = message.Responder.add(node.server.peer) {
+      case osc.Message("/reply", NodeID, 0, values0 @ _*) =>
+        val values: Vec[Double] = values0.map {
+          case d: Float => d.toDouble
+        } (breakOut)
+        defer(fun(values))
+    }
+    // Responder.add is non-transactional. Thus, if the transaction fails, we need to remove it.
+    scala.concurrent.stm.Txn.afterRollback { _ =>
+      trigResp.remove()
+    } (tx.peer)
+    syn.onEnd(trigResp.remove())
+    syn
   }
 
   def clearSolo()(implicit tx: S#Tx): Unit = {

@@ -15,9 +15,7 @@ package de.sciss.nuages
 
 import java.awt.geom.Point2D
 
-import de.sciss.lucre.expr.SpanLikeObj
-import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{Disposable, Obj}
+import de.sciss.lucre.stm.Obj
 import de.sciss.lucre.synth.{Synth, Sys}
 import de.sciss.synth.proc.Timeline.Timed
 import prefuse.visual.AggregateItem
@@ -61,7 +59,7 @@ trait VisualObj[S <: Sys[S]]
   /** GUI property: whether the object is heard through the solo function or not. */
   var soloed: Boolean
 
-  def meterUpdate(newPeak: Float): Unit
+  def meterUpdate(newPeak: Double): Unit
 
   // ---- transactional methods ----
 

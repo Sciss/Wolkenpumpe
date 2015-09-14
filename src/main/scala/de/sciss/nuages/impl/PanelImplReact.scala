@@ -22,6 +22,7 @@ import de.sciss.lucre.synth.{AudioBus, Node, Synth, Sys}
 import de.sciss.span.SpanLike
 import de.sciss.synth.proc.{AuralObj, Proc, Scan, Timeline}
 
+import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm.{Ref, TMap}
 
 trait PanelImplReact[S <: Sys[S]] {
@@ -45,7 +46,9 @@ trait PanelImplReact[S <: Sys[S]] {
   protected def auralToViewMap: TMap[AuralObj[S], VisualObj[S]]
   protected def viewToAuralMap: TMap[VisualObj[S], AuralObj[S]]
 
-  protected def mkMeter(bus: AudioBus, node: Node)(fun: Float => Unit)(implicit tx: S#Tx): Synth
+  protected def mkMeter  (bus: AudioBus, node: Node)(fun: Double => Unit)(implicit tx: S#Tx): Synth
+
+  protected def mkMonitor(bus: AudioBus, node: Node)(fun: Vec[Double] => Unit)(implicit tx: S#Tx): Synth
 
   protected def disposeObj(obj: Obj[S])(implicit tx: S#Tx): Unit
 
@@ -73,7 +76,7 @@ trait PanelImplReact[S <: Sys[S]] {
           viewToAuralMap.get(vObj).foreach { aural =>
             getAuralScanData(aural, vScan.key).foreach {
               case (bus, node) =>
-                m.synth() = Some(mkMeter(bus, node)(v => vSink.value1_=(v.toDouble)))
+                m.synth() = Some(mkMonitor(bus, node)(v => vSink.value = v))
             }
           }
         }
@@ -82,9 +85,12 @@ trait PanelImplReact[S <: Sys[S]] {
 
   protected def auralObjAdded(vp: VisualObj[S], aural: AuralObj[S])(implicit tx: S#Tx): Unit = {
     val config = main.config
-    if (config.meters) getAuralScanData(aural).foreach { case (bus, node) =>
-      val meterSynth = mkMeter(bus, node)(vp.meterUpdate)
-      vp.meterSynth = Some(meterSynth)
+    if (config.meters) {
+      val key = if (vp.outputs.contains(Proc.scanMainOut)(tx.peer)) Proc.scanMainOut else Proc.scanMainIn
+      getAuralScanData(aural, key = key).foreach { case (bus, node) =>
+        val meterSynth = mkMeter(bus, node)(vp.meterUpdate)
+        vp.meterSynth = Some(meterSynth)
+      }
     }
     auralToViewMap.put(aural, vp)(tx.peer)
     viewToAuralMap.put(vp, aural)(tx.peer)

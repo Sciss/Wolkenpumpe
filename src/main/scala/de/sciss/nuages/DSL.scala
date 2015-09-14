@@ -78,7 +78,9 @@ class DSL[S <: stm.Sys[S]] {
     val obj       = current.get(tx.peer)
     val sig       = ScanInFix(key, numChannels)
     obj.inputs.add(key)
-    spec.map(sig.clip(0, 1))
+    // val clip      = sig.clip(0, 1)
+    val clip      = sig.max(0).min(1)   // some crazy bugs in Clip
+    spec.map(clip)
   }
 
   def shortcut(implicit tx: S#Tx): String = {
@@ -109,7 +111,9 @@ class DSL[S <: stm.Sys[S]] {
     obj.attr.put(key, paramObj)
     obj.attr.put(s"$key-${ParamSpec.Key}", specObj)
     val sig       = Attribute(rate, key, default)
-    spec.map(sig.clip(0, 1))
+    // val clip      = sig.clip(0, 1)
+    val clip      = sig.max(0).min(1)   // some crazy bugs in Clip
+    spec.map(clip)
   }
 
   /** Inserts an element into a folder at the index

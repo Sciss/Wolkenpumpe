@@ -105,7 +105,6 @@ object ScissProcs {
 
     val dsl = new DSL[S]
     import dsl._
-    // val imp = ExprImplicits[S]
 
     val masterChansOption = nConfig.masterChannels
 
@@ -118,50 +117,10 @@ object ScissProcs {
 
     // -------------- GENERATORS --------------
 
-    //    generator("tape") {
-    //      val pSpeed    = pAudio  ("speed", ParamSpec(0.1, 10, ExpWarp), default(1))
-    //      val pLoop     = pControl("loop" , ParamSpec(0, 1, LinWarp, 1), default(0))
-    //
-    //      //      val pPos      = pScalar("pos"  , ParamSpec(0, 1), default(0))
-    //
-    //      //      val path      = tapePath.getOrElse(sys.error("No audio-file selected"))
-    //      //      val spec      = audioFileSpec(path)
-    //      //      val numFrames = spec.numFrames
-    //      //      val startPos  = pPos.v
-    //      //      val startFr   = ((if (startPos < 1) startPos else 0.0) * numFrames).toLong
-    //      //      val b         = bufCue(path, startFrame = startFr)
-    //      //      val numCh     = b.numChannels
-    //      val speed     = A2K.kr(pSpeed) // * BufRateScale.ir(b.id)
-    //
-    //      val disk      = proc.graph.VDiskIn.ar("tape", speed = speed, loop = pLoop, maxSpeed = 10)
-    //
-    //      //      val lp0       = pLoop.v
-    //      //
-    //      //      // pos feedback
-    //      //      val framesRead = Integrator.kr(speed) * (SampleRate.ir / ControlRate.ir)
-    //
-    //      //      val me = Proc.local
-    //      //      Impulse.kr( 10 ).react( framesRead ) { smp => ProcTxn.spawnAtomic { implicit tx =>
-    //      //        val frame  = startFr + smp( 0 )
-    //      //        // not sure we can access them in this scope, so just retrieve the controls...
-    //      //        val ppos   = me.control( "pos" )
-    //      //        //               val ploop  = me.control( "loop" )
-    //      //        if( lp0 == 1 ) {
-    //      //          ppos.v = (frame % numFrames).toDouble / numFrames
-    //      //        } else {
-    //      //          val pos = (frame.toDouble / numFrames).min( 1.0 )
-    //      //          ppos.v = pos
-    //      //          if( pos == 1.0 ) me.stop
-    //      //        }
-    //      //      }}
-    //
-    //      // val disk = VDiskIn.ar(numCh, b.id, speed, loop = pLoop)
-    //      disk // WrapExtendChannels( 2, disk )
-    //    }
-
     sConfig.audioFilesFolder.foreach { folder =>
       val loc = ArtifactLocation.newConst[S](folder)
 
+      // N.B. do not use ellipsis character (…) because synth-def names are ASCII-7
       def abbreviate(s: String) = if (s.length < 16) s else s"${s.take(7)}...${s.takeRight(7)}"
 
       val audioFiles = folder.children
@@ -197,7 +156,7 @@ object ScissProcs {
         val idx       = Stepper.kr(Impulse.kr(pFreq), lo = 0, hi = numChans)
         val sig0: GE  = Seq(WhiteNoise.ar(1), SinOsc.ar(441))
         val sig       = Select.ar(pSig, sig0) * pAmp
-        val sigOut: GE = Seq.tabulate(numChans)(ch => sig * (1 - (ch - idx).abs.min(1)))
+        val sigOut: GE = Seq.tabulate(numChans)(ch => sig.\(ch) * (1 - (ch - idx.\(ch)).abs.min(1)))
         sigOut
       }
     }
@@ -215,6 +174,7 @@ object ScissProcs {
         Attribute.Vector(Vector.fill(sConfig.generatorChannels)(in))
 
     def mkLoop(f: File)(implicit tx: S#Tx): Unit = {
+      val spec    = AudioFile.readSpec(f)
       val procObj = generator(f.base) {
         val pSpeed      = pAudio  ("speed", ParamSpec(0.125, 2.3511, ExpWarp), default(1.0))
         val pStart      = pControl("start", ParamSpec(0, 1), default(0.0))
@@ -222,20 +182,25 @@ object ScissProcs {
         val bufID       = proc.graph.Buffer("file")
         val loopFrames  = BufFrames.kr(bufID)
 
-        val trig1       = LocalIn.kr(1)
+        val numBufChans = spec.numChannels
+        val numChans    = if (sConfig.generatorChannels > 0) sConfig.generatorChannels else numBufChans
+
+        val trig1       = Pad.LocalIn.kr(pSpeed)
         val gateTrig1   = PulseDivider.kr(trig = trig1, div = 2, start = 1)
         val gateTrig2   = PulseDivider.kr(trig = trig1, div = 2, start = 0)
-        val startFrame  = pStart * loopFrames
-        val numFrames   = pDur * (loopFrames - startFrame)
+        val startFrame  = pStart *  loopFrames
+        val numFrames   = pDur   * (loopFrames - startFrame)
         val lOffset     = Latch.kr(in = startFrame, trig = trig1)
-        val lLength     = Latch.kr(in = numFrames, trig = trig1)
+        val lLength     = Latch.kr(in = numFrames , trig = trig1)
         val speed       = A2K.kr(pSpeed)
         val duration    = lLength / (speed * SampleRate.ir) - 2
         val gate1       = Trig1.kr(in = gateTrig1, dur = duration)
         val env         = Env.asr(2, 1, 2, Curve.lin) // \sin
         // val bufID       = Select.kr(pBuf, loopBufIDs)
-        val play1       = PlayBuf.ar(2, bufID, speed, gateTrig1, lOffset, loop = 0) // XXX TODO - numChannels
-        val play2       = PlayBuf.ar(2, bufID, speed, gateTrig2, lOffset, loop = 0)
+        val play1a      = PlayBuf.ar(numBufChans, bufID, speed, gateTrig1, lOffset, loop = 0)
+        val play1       = Flatten(Seq.tabulate(numChans)(play1a \ _))
+        val play2a      = PlayBuf.ar(numBufChans, bufID, speed, gateTrig2, lOffset, loop = 0)
+        val play2       = Flatten(Seq.tabulate(numChans)(play2a \ _))
         val amp0        = EnvGen.kr(env, gate1) // 0.999 = bug fix !!!
         val amp2        = 1.0 - amp0.squared
         val amp1        = 1.0 - (1.0 - amp0).squared
@@ -244,57 +209,19 @@ object ScissProcs {
         sig
       }
       val art   = Artifact(locH(), f) // locH().add(f)
-      val spec  = AudioFile.readSpec(f)
       val gr    = Grapheme.Expr.Audio(art, spec, 0L, 1.0)
       procObj.attr.put("file", gr) // Obj(AudioGraphemeElem(gr)))
       // val artObj  = Obj(ArtifactElem(art))
       // procObj.attr.put("file", artObj)
     }
 
-    //      masterBusOption.foreach { masterBus =>
-    //        gen( "sum_rec" ) {
-    //          val pbuf    = pControl( "buf",  ParamSpec( 0, settings.numLoops - 1, LinWarp, 1 ), 0 )
-    //          val pfeed   = pControl( "feed", ParamSpec( 0, 1 ), 0 )
-    //          val ploop   = pScalar( "loop", ParamSpec( 0, 1, LinWarp, 1 ), 0 )
-    //          /* val ppos = */ pControl( "pos", ParamSpec( 0, 1 ), 0 )
-    //          graph {
-    //            val in      = InFeedback.ar( masterBus.index, masterBus.numChannels )
-    //            val w       = 2.0 / in.numChannels // numOutputs
-    //            val sig     = SplayAz.ar( 2, in )
-    //
-    //            val sig1    = LeakDC.ar( Limiter.ar( sig /* .toSeq */ * w ))
-    //            val bufID   = Select.kr( pbuf.kr, loopBufIDs )
-    //            val feed    = pfeed.kr
-    //            val prelvl  = feed.sqrt
-    //            val reclvl  = (1 - feed).sqrt
-    //            val loop    = ploop.ir
-    //            val rec     = RecordBuf.ar( sig1, bufID, recLevel = reclvl, preLevel = prelvl, loop = loop )
-    //
-    //            // pos feedback
-    //            val bufFr   = BufFrames.kr( bufID )
-    //            val pos     = Phasor.kr( 1, SampleRate.ir/ControlRate.ir, 0, bufFr * 2 ) / bufFr // BufDur.kr( bufID ).reciprocal
-    //            val me      = Proc.local
-    //            val lp0     = ploop.v
-    //            Impulse.kr( 10 ).react( pos ) { smp => ProcTxn.spawnAtomic { implicit tx =>
-    //              val pos0 = smp( 0 )
-    //              // not sure we can access them in this scope, so just retrieve the controls...
-    //              val ppos = me.control( "pos" )
-    //              ppos.v   = if( lp0 == 1 ) (pos0 % 1.0) else pos0.min( 1.0 )
-    //            }}
-    //
-    //            Done.kr( rec ).react { ProcTxn.spawnAtomic { implicit tx => me.stop }}
-    //
-    //            Silent.ar( 2 )// dummy thru
-    //          }
-    //        }
-    //      }
-    //    }
-
     sConfig.micInputs.foreach { cfg =>
       generator(cfg.name) {
         val pBoost    = pAudio("gain", ParamSpec(0.1, 10, ExpWarp), default(0.1))
-        val pFeed     = pAudio("feed", ParamSpec(0, 1), default(0.0))
+        val pFeed0    = pAudio("feed", ParamSpec(0, 1), default(0.0))
 
+        val pFeed     = Mix.mono(pFeed0) / NumChannels(pFeed0)
+        // val boost     = Mix.mono(pBoost) / NumChannels(pBoost)
         val boost     = pBoost
         val pureIn    = In.ar(NumOutputBuses.ir + cfg.offset, cfg.numChannels) * boost
         val bandFrequencies = List(150, 800, 3000)
@@ -355,104 +282,42 @@ object ScissProcs {
     // -------------- SIGNAL GENERATORS --------------
 
     generator("~dust") {
-      val pFreq   = pAudio("freq" , ParamSpec(0.01, 1000, ExpWarp), default(0.1))
-      val pDecay  = pAudio("decay", ParamSpec(0.1 ,   10, ExpWarp), default(0.1))
+      val pFreq   = pAudio("freq" , ParamSpec(0.01, 1000, ExpWarp), default(1.0 ))
+      val pDecay  = pAudio("decay", ParamSpec(0.01,   10, ExpWarp), default(0.01))
 
-      val freq0 = pFreq
-      val freq  = ForceChan(freq0)
-      Decay.ar(Dust.ar(freq), pDecay)
+      val freq = pFreq
+      // val freq  = ForceChan(freq0)
+      Decay.ar(Dust2.ar(freq), pDecay)
     }
 
     generator("~gray") {
       val pAmp  = pAudio("amp", ParamSpec(0.01, 1, ExpWarp), default(0.1))
-      val amp0  = pAmp
-      val amp   = ForceChan(amp0)
+      val amp   = pAmp
+      // val amp   = ForceChan(amp0)
       GrayNoise.ar(amp)
     }
 
     generator("~sin") {
-      val pFreq1  = pAudio("freq"     , ParamSpec(0.1 , 10000, ExpWarp), default(15.0))
-      val pFreq2  = pAudio("freq-fact", ParamSpec(0.01,   100, ExpWarp), default( 1.0))
-      val pAmp    = pAudio("amp"      , ParamSpec(0.01,     1, ExpWarp), default( 0.1))
-
-      val numOut  = if (sConfig.generatorChannels <= 0) masterChansOption.fold(2)(_.size) else sConfig.generatorChannels
-
-      // val f1 = pFreq1
-      // val f2 = f1 * pFreq2
-      val freq = Vec.tabulate(numOut) { ch =>
-        val w = (ch: GE).linlin(0, (numOut - 1).max(1), 1, pFreq2)
-        (pFreq1 * w).clip(0.01, 20000)
-      }
+      val freq  = pAudio("freq", ParamSpec(0.1 , 10000, ExpWarp), default(15.0))
+      val pAmp  = pAudio("amp" , ParamSpec(0.01,     1, ExpWarp), default( 0.1))
       SinOsc.ar(freq) * pAmp
     }
 
     generator("~pulse") {
-      val pFreq1  = pAudio("freq"     , ParamSpec(0.1 , 10000, ExpWarp), default(15.0))
-      val pFreq2  = pAudio("freq-fact", ParamSpec(0.01,   100, ExpWarp), default( 1.0))
-      val pw1     = pAudio("width1"   , ParamSpec(0.0 ,     1.0),        default( 0.5))
-      val pw2     = pAudio("width2"   , ParamSpec(0.0 ,     1.0),        default( 0.5))
-      val pAmp    = pAudio("amp"      , ParamSpec(0.01,     1, ExpWarp), default( 0.1))
+      val freq  = pAudio("freq" , ParamSpec(0.1 , 10000, ExpWarp), default(15.0))
+      val width = pAudio("width", ParamSpec(0.0 ,     1.0),        default( 0.5))
+      val pAmp  = pAudio("amp"  , ParamSpec(0.01,     1, ExpWarp), default( 0.1))
 
-      //      val f1 = pFreq1
-      //      val f2 = f1 * pFreq2
-      //      val w1 = pw1
-      //      val w2 = pw2
-
-      // val numOut = masterChansOption.fold(2)(_.size)
-      val numOut  = if (sConfig.generatorChannels <= 0) masterChansOption.fold(2)(_.size) else sConfig.generatorChannels
-
-      val sig: GE = Vec.tabulate(numOut) { ch =>
-        val freqM = (ch: GE).linlin(0, (numOut - 1).max(1), 1, pFreq2)
-        val freq  = (pFreq1 * freqM).clip(0.01, 20000)
-        val width = (ch: GE).linlin(0, (numOut - 1).max(1), pw1, pw2)
-        Pulse.ar(freq, width)
-      }
-
-      // Pulse.ar(f1 :: f2 :: Nil, w1 :: w2 :: Nil) * pAmp
+      val sig   = Pulse.ar(freq, width)
       sig * pAmp
     }
 
     // -------------- FILTERS --------------
 
     def mix(in: GE, flt: GE, mix: GE): GE = LinXFade2.ar(in, flt, mix * 2 - 1)
-    def mkMix(): GE = pAudio("mix", ParamSpec(0, 1), default(0.0))
+    def mkMix(df: Double = 0.0): GE = pAudio("mix", ParamSpec(0, 1), default(df))
 
     def WrapExtendChannels(n: Int, sig: GE): GE = Vec.tabulate(n)(sig \ _)
-
-    //    if( settings.numLoops > 0 ) {
-    //      filter( ">rec" ) {
-    //        val pbuf    = pControl( "buf",  ParamSpec( 0, settings.numLoops - 1, LinWarp, 1 ), 0 )
-    //        val pfeed   = pControl( "feed", ParamSpec( 0, 1 ), 0 )
-    //        val ploop   = pScalar( "loop", ParamSpec( 0, 1, LinWarp, 1 ), 0 )
-    //        /* val ppos = */ pScalar( "pos", ParamSpec( 0, 1 ), 0 )
-    //        graph { in: In =>
-    //          val bufID   = Select.kr( pbuf.kr, loopBufIDs )
-    //          val feed    = pfeed.kr
-    //          val prelvl  = feed.sqrt
-    //          val reclvl  = (1 - feed).sqrt
-    //          val loop    = ploop.ir
-    //          val sig     = LeakDC.ar( Limiter.ar( in ))
-    //          val rec     = RecordBuf.ar( sig /* in */, bufID, recLevel = reclvl, preLevel = prelvl, loop = loop )
-    //
-    //          // pos feedback
-    //          //            val pos     = Line.kr( 0, 1, BufDur.kr( bufID ))
-    //          val bufFr   = BufFrames.kr( bufID )
-    //          val pos     = Phasor.kr( 1, SampleRate.ir/ControlRate.ir, 0, bufFr * 2 ) / bufFr // BufDur.kr( bufID ).reciprocal
-    //        val me      = Proc.local
-    //          val lp0     = ploop.v
-    //          Impulse.kr( 10 ).react( pos ) { smp => ProcTxn.spawnAtomic { implicit tx =>
-    //            val pos0 = smp( 0 )
-    //            // not sure we can access them in this scope, so just retrieve the controls...
-    //            val ppos = me.control( "pos" )
-    //            ppos.v   = if( lp0 == 1 ) (pos0 % 1.0) else pos0.min( 1.0 )
-    //          }}
-    //
-    //          Done.kr( rec ).react { ProcTxn.spawnAtomic { implicit tx => me.bypass }}
-    //
-    //          in  // dummy thru
-    //        }
-    //      }
-    //    }
 
     filter("staub") { in =>
       val pAmt      = pAudio("amt" , ParamSpec(0.0, 1.0), default(1.0))
@@ -463,7 +328,9 @@ object ScissProcs {
       val f2        = 2000
 
       val relIdx    = ChannelIndices(in) / (NumChannels(in) - 1).max(1)
-      val fade      = (pAmt * relIdx.linlin(0, 1, 1, pFact)).clip(0, 1)
+      val fade0     = pAmt * relIdx.linlin(0, 1, 1, pFact)
+      // val fade      = fade0.clip(0, 1)
+      val fade      = fade0.max(0).min(1) // some crazy bug in Clip
       val dustFreqS = fade.linexp(0, 1, f1, f2)
       // val dustFreqP = fade.linexp(1, 0, f1, f2)
 
@@ -505,8 +372,10 @@ object ScissProcs {
 
     filter("achil") { in =>
       shortcut = "A"
-      val pSpeed  = pAudio("speed", ParamSpec(0.125, 2.3511, ExpWarp), default(0.5))
-      val pMix    = mkMix()
+      val pSpeed      = pAudio("speed", ParamSpec(0.125, 2.3511, ExpWarp), default(0.5))
+      val pMix        = mkMix()
+
+      // proc.graph.Buffer.apply()
 
       val speed       = Lag.ar(pSpeed, 0.1)
       val numFrames   = SampleRate.ir // sampleRate.toInt
@@ -515,8 +384,8 @@ object ScissProcs {
       val readRate    = writeRate * speed
       val readPhasor  = Phasor.ar(0, readRate, 0, numFrames)
       val read0       = BufRd.ar(1, bufID, readPhasor, 0, 4)
-      val readBad     = CheckBadValues.ar(read0, id = 1000)
-      val read        = Gate.ar(read0, readBad sig_== 0)
+      // val readBad     = CheckBadValues.ar(read0, id = 1000)
+      val read        = read0 // Gate.ar(read0, readBad sig_== 0)
 
       val writePhasor = Phasor.ar(0, writeRate, 0, numFrames)
       val old         = BufRd.ar(1, bufID, writePhasor, 0, 1)
@@ -524,8 +393,8 @@ object ScissProcs {
       val dry         = 1 - wet0.squared
       val wet         = 1 - (1 - wet0).squared
       val write0      = (old * dry) + (in * wet)
-      val writeBad    = CheckBadValues.ar(write0, id = 1001)
-      val writeSig    = Gate.ar(write0, writeBad sig_== 0)
+      // val writeBad    = CheckBadValues.ar(write0, id = 1001)
+      val writeSig    = write0 // Gate.ar(write0, writeBad sig_== 0)
 
       // NOTE: `writeSig :: Nil: GE` does _not_ work because single
       // element seqs are not created by that conversion.
@@ -630,7 +499,11 @@ object ScissProcs {
       val fade        = LinExp.kr(grain, 0, 1, 0.25, 4)
       val rec         = (1 - feedBack).sqrt
       val pre         = feedBack.sqrt
-      val trig        = LocalIn.kr(1)
+
+      // val numChans    = if (sConfig.generatorChannels > 0) sConfig.generatorChannels else 1
+
+      val trig        = Pad.LocalIn.kr(pSpeed)
+
       val white       = TRand.kr(0, 1, trig)
       val dur         = LinExp.kr(white, 0, 1, minDur, maxDur)
       val off0        = numFrames * white
@@ -639,7 +512,7 @@ object ScissProcs {
       val lFade       = Latch.kr(fade, trig)
       val fadeIn      = lFade * 0.05
       val fadeOut     = lFade * 0.15
-      val env         = EnvGen.ar(Env.linen(fadeIn, dur, fadeOut, 1, Curve.sine), gate, doneAction = 0)
+      val env         = EnvGen.ar(Env.linen(fadeIn, dur, fadeOut, 1, Curve.sine), gate, doneAction = doNothing)
       val recLevel0   = env.sqrt
       val preLevel0   = (1 - env).sqrt
       val recLevel    = recLevel0 * rec
@@ -652,12 +525,15 @@ object ScissProcs {
       // RecordBuf.ar(ins, buf = buf, offset = off, recLevel = recLevel, preLevel = preLevel, run = run, loop = 1)
       val writeIdx    = Phasor.ar(speed = 1, lo = 0, hi = numFrames)
       val preSig      = BufRd.ar(1, buf = buf, index = (writeIdx + off) % numFrames, loop = 1)
+
       val write0      = in * recLevel + preSig * preLevel
-      val writeBad    = CheckBadValues.ar(write0, id = 2001)
-      val writeSig    = Gate.ar(write0, writeBad sig_== 0)
+      // val writeBad    = CheckBadValues.ar(write0, id = 2001)
+      val writeSig    = write0 // Gate.ar(write0, writeBad sig_== 0)
 
       // writeSig.poll(1, "write")
-      BufWr.ar(Pad.Split(writeSig), buf = buf, index = writeIdx, loop = 1)
+      val writeSigS = Pad.Split(writeSig)
+      BufWr.ar(writeSigS, buf = buf, index = writeIdx, loop = 1)
+
       LocalOut.kr(Impulse.kr(1.0 / (dur + fadeIn + fadeOut).max(0.01)))
 
       // NOTE: PlayBuf doesn't seem to work with LocalBuf !!!
@@ -666,26 +542,28 @@ object ScissProcs {
       // val play0       = PlayBuf.ar(1 /* numChannels */, buf, speed, loop = 1)
       val readIdx     = Phasor.ar(speed = speed, lo = 0, hi = numFrames)
       val read0       = BufRd.ar(1, buf = buf, index = readIdx, loop = 1)
-      val readBad     = CheckBadValues.ar(read0, id = 2000)
-      val play0       = Gate.ar(read0, readBad sig_== 0)
+      // val readBad     = CheckBadValues.ar(read0, id = 2000)
+      val play0       = read0 // Gate.ar(read0, readBad sig_== 0)
       val play        = Flatten(play0)
+
+//      in        .poll(1, "frgmnt-inp")
+//      buf       .poll(1, "frgmnt-buf")
+//      trig      .poll(trig, "frgmnt-TRG")
+//      preSig    .poll(1, "frgmnt-pre")
+//      rec       .poll(1, "frgmnt-rec")
+//      recLevel0 .poll(1, "frgmnt-lvl")
+//      writeSigS .poll(1, "frgmnt-wSg")
+//      writeIdx  .poll(1, "frgmnt-wIx")
+//      read0     .poll(1, "frgmnt-red")
+
       // play.poll(1, "outs")
       mix(in, play, pMix)
     }
 
-    //    filter("*") { in =>
-    //      val pmix = mkMix
-    //      val bin2 = pAudioIn("in2")
-    //
-    //      val in2 = bin2.ar
-    //      val flt = in * in2
-    //      mix(in, flt, pmix)
-    //    }
-
     filter("gain") { in =>
       shortcut = "G"
       val pGain = pAudio("gain", ParamSpec(-30, 30), default(0.0))
-      val pMix  = mkMix()
+      val pMix  = mkMix(1.0)
 
       val amp = pGain.dbamp
       val flt = in * amp

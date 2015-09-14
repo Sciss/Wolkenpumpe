@@ -18,12 +18,12 @@ import java.awt.event.MouseEvent
 import java.awt.geom.{Arc2D, Area, GeneralPath, Point2D}
 import java.awt.{Graphics2D, Shape}
 
-import de.sciss.lucre.expr.{DoubleVector, DoubleObj}
+import de.sciss.lucre.expr.{DoubleObj, DoubleVector}
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Disposable, Obj}
 import de.sciss.lucre.swing.requireEDT
 import de.sciss.lucre.synth.{Synth, Sys}
-import de.sciss.nuages.VisualControl.Mapping
+import de.sciss.numbers
 import de.sciss.synth.proc.Scan
 import prefuse.util.ColorLib
 import prefuse.visual.VisualItem
@@ -38,37 +38,36 @@ object VisualControlImpl {
     parent.obj.attr.$[ParamSpec.Obj](s"$key-${ParamSpec.Key}").map(_.value).getOrElse(defaultSpec)
 
   def scalar[S <: Sys[S]](parent: VisualObj[S], key: String,
-                          dObj: DoubleObj[S])(implicit tx: S#Tx): VisualControl[S] = {
-    val value = dObj.value
+                          obj: DoubleObj[S])(implicit tx: S#Tx): VisualControl[S] = {
+    val value = obj.value
     val spec  = getSpec(parent, key)
-    apply(parent, dObj, key = key, spec = spec, value = value, mapping = None)
+    // apply(parent, dObj, key = key, spec = spec, value = value, mapping = None)
+    new VisualScalarControl[S](parent, key = key, spec = spec, valueA = value, mapping = None).init(obj)
   }
 
   def vector[S <: Sys[S]](parent: VisualObj[S], key: String,
-                          dObj: DoubleVector[S])(implicit tx: S#Tx): VisualControl[S] = {
-    val value = dObj.value
+                          obj: DoubleVector[S])(implicit tx: S#Tx): VisualControl[S] = {
+    val value = obj.value
     val spec  = getSpec(parent, key)
-    val res = new VisualVectorControl[S](parent, key = key, spec = spec, valueA = value)
-    res.init(dObj)
-    res
+    new VisualVectorControl[S](parent, key = key, spec = spec, valueA = value, mapping = None).init(obj)
   }
+
+  private final val scanValue = Vector(0.5): Vec[Double] // XXX TODO
 
   def scan[S <: Sys[S]](parent: VisualObj[S], key: String,
-                        sObj: Scan[S])(implicit tx: S#Tx): VisualControl[S] = {
-    val value = 0.5 // XXX TODO
-    val spec  = getSpec(parent, key)
-    val scan  = sObj
-    val res = apply(parent, sObj, key = key, spec = spec, value = value, mapping = Some(new MappingImpl(tx.newHandle(scan))))
-    res
+                        obj: Scan[S])(implicit tx: S#Tx): VisualControl[S] = {
+    val value   = scanValue
+    val spec    = getSpec(parent, key)
+    val mapping = Some(new MappingImpl(tx.newHandle(obj)))
+    // val res   = apply(parent, sObj, key = key, spec = spec, value = value, mapping = Some())
+    new VisualVectorControl[S](parent, key = key, spec = spec, valueA = value, mapping = mapping).init(obj)
   }
 
-  private def apply[S <: Sys[S]](parent: VisualObj[S], obj: Obj[S], key: String, spec: ParamSpec, value: Double,
-                                 mapping: Option[VisualControl.Mapping[S]])
-                                (implicit tx: S#Tx): VisualControl[S] = {
-    val res = new VisualScalarControl[S](parent, key = key, spec = spec, valueA = value, mapping = mapping)
-    res.init(obj)
-    res
-  }
+//  private def apply[S <: Sys[S]](parent: VisualObj[S], obj: Obj[S], key: String, spec: ParamSpec, value: Double,
+//                                 mapping: Option[VisualControl.Mapping[S]])
+//                                (implicit tx: S#Tx): VisualControl[S] = {
+//    new VisualScalarControl[S](parent, key = key, spec = spec, valueA = value, mapping = mapping).init(obj)
+//  }
 
   private final class Drag(val angStart: Double, val valueStart: Vec[Double], val instant: Boolean) {
     var dragValue = valueStart
@@ -120,7 +119,7 @@ final class VisualScalarControl[S <: Sys[S]](val parent: VisualObj[S], val key: 
       case _ =>
     }
 
-  import VisualDataImpl.{gArc, gLine, threeDigits}
+  import VisualDataImpl.gLine
 
   protected def renderValueUpdated(): Unit = renderValueUpdated1(renderedValue)
 
@@ -133,19 +132,18 @@ final class VisualScalarControl[S <: Sys[S]](val parent: VisualObj[S], val key: 
 }
 
 final class VisualVectorControl[S <: Sys[S]](val parent: VisualObj[S], val key: String, val spec: ParamSpec,
-                                             @volatile var valueA: Vec[Double])
+                                             @volatile var valueA: Vec[Double],
+                                             val mapping: Option[VisualControl.Mapping[S]])
   extends VisualControlImpl[S] {
 
   type A = Vec[Double]
-
-  def mapping: Option[Mapping[S]] = None
 
   private[this] var allValuesEqual = false
 
   def value: Vec[Double] = valueA
   def value_=(v: Vec[Double]): Unit = {
-    if (v.size != valueA.size)
-      throw new IllegalArgumentException(s"Channel mismatch, expected $numChannels but given ${v.size}")
+//    if (v.size != valueA.size)
+//      throw new IllegalArgumentException(s"Channel mismatch, expected $numChannels but given ${v.size}")
     valueA = v
   }
 
@@ -177,12 +175,12 @@ final class VisualVectorControl[S <: Sys[S]](val parent: VisualObj[S], val key: 
       case _ =>
     }
 
-  import VisualDataImpl.{gArc, gLine, gEllipse}
+  import VisualDataImpl.{gArc, gEllipse, gLine}
 
   protected def renderValueUpdated(): Unit = {
     val rv: Vec[Double] = renderedValue // why IntelliJ !?
     val sz = rv.size
-    allValuesEqual = sz == 1 || (sz > 1 && {
+    val eq = sz == 1 || (sz > 1 && {
       val v0  = rv.head
       var ch  = 1
       var res = true
@@ -192,8 +190,9 @@ final class VisualVectorControl[S <: Sys[S]](val parent: VisualObj[S], val key: 
       }
       res
     })
+    allValuesEqual = eq
 
-    if (allValuesEqual) {
+    if (eq) {
       renderValueUpdated1(rv.head)
     } else {
       var ch = 0
@@ -204,7 +203,8 @@ final class VisualVectorControl[S <: Sys[S]](val parent: VisualObj[S], val key: 
       valueArea.reset()
       while (ch < sz) {
         val v         = rv(ch)
-        val angExtent = (v * 270).toInt
+        val vc        = math.max(0, math.min(1, v))
+        val angExtent = (vc * 270).toInt
         val angStart  = 225 - angExtent
         val m3        = m2 + m2
         gArc.setArc(m2, m2, w - m3, h - m3, angStart, angExtent, Arc2D.PIE)
@@ -218,7 +218,7 @@ final class VisualVectorControl[S <: Sys[S]](val parent: VisualObj[S], val key: 
     }
   }
 
-  protected def valueText(v: Vec[Double]): String = {
+  protected def valueText(v: Vec[Double]): String =
     if (allValuesEqual) {
       valueText1(v.head)
     } else {
@@ -226,9 +226,8 @@ final class VisualVectorControl[S <: Sys[S]](val parent: VisualObj[S], val key: 
       val s2 = valueText1(v.last)
       s"$s1…$s2"
     }
-  }
 
-  protected def drawAdjust(g: Graphics2D, v: Vec[Double]): Unit = {
+  protected def drawAdjust(g: Graphics2D, v: Vec[Double]): Unit =
     if (allValuesEqual) {
       setSpine(v.head)
       g.draw(gLine)
@@ -237,7 +236,6 @@ final class VisualVectorControl[S <: Sys[S]](val parent: VisualObj[S], val key: 
 //    setSpine(v.head)
 //    g.draw(gLine)
     }
-  }
 }
 
 abstract class VisualControlImpl[S <: Sys[S]]  extends VisualParamImpl[S] with VisualControl[S] {
@@ -443,7 +441,8 @@ abstract class VisualControlImpl[S <: Sys[S]]  extends VisualParamImpl[S] with V
   }
 
   final protected def renderValueUpdated1(v: Double): Unit = {
-    val angExtent = (v * 270).toInt
+    val vc        = math.max(0, math.min(1, v))
+    val angExtent = (vc * 270).toInt
     val angStart  = 225 - angExtent
     // val pValArc   = new Arc2D.Double(0, 0, r.getWidth, r.getHeight, angStart, angExtent, Arc2D.PIE)
     gArc.setArc(0, 0, r.getWidth, r.getHeight, angStart, angExtent, Arc2D.PIE)

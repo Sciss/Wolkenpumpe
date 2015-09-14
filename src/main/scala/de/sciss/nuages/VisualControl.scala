@@ -51,8 +51,8 @@ trait VisualControl[S <: Sys[S]] extends VisualParam[S] {
 
   def numChannels: Int
 
-  /** The value is normalized in the range 0 to 1 */
-  def value1_=(v: Double): Unit
+//  /** The value is normalized in the range 0 to 1 */
+//  def value1_=(v: Double): Unit
 
   def mapping: Option[VisualControl.Mapping[S]]
 

@@ -18,6 +18,7 @@ import java.awt.event.MouseEvent
 import java.awt.geom.{Arc2D, Area, Point2D}
 import java.awt.{Color, Graphics2D}
 
+import de.sciss.dsp.FastLog
 import de.sciss.intensitypalette.IntensityPalette
 import de.sciss.lucre.expr.{DoubleVector, DoubleObj}
 import de.sciss.lucre.stm
@@ -33,7 +34,7 @@ import prefuse.visual.{AggregateItem, VisualItem}
 import scala.concurrent.stm.{Ref, TMap}
 
 object VisualObjImpl {
-  private val logPeakCorr = 20.0 / math.log(10)
+  private val logPeakCorr = 20.0f // / math.log(10)
 
   private val colrPeak = Array.tabulate(91)(ang => new Color(IntensityPalette.apply(ang / 90f)))
 
@@ -46,6 +47,8 @@ object VisualObjImpl {
     res.init(timed, locOption)
     res
   }
+
+  private val fastLog = FastLog(base = 10, q = 11)
 }
 final class VisualObjImpl[S <: Sys[S]] private (val main: NuagesPanel[S],
                                                 timedH: stm.Source[S#Tx, Timed[S]],
@@ -186,9 +189,9 @@ final class VisualObjImpl[S <: Sys[S]] private (val main: NuagesPanel[S],
     } else -1f
   }
 
-  def meterUpdate(newPeak0: Float /*, newRMS0: Float */): Unit = {
-    val time = System.currentTimeMillis
-    val newPeak = (math.log(math.min(10f, newPeak0)) * logPeakCorr).toFloat
+  def meterUpdate(newPeak0: Double): Unit = {
+    val time = System.currentTimeMillis()
+    val newPeak = fastLog.calc(math.min(10.0f, newPeak0.toFloat)) * logPeakCorr
     if (newPeak >= peak) {
       peak = newPeak
     } else {
@@ -196,9 +199,9 @@ final class VisualObjImpl[S <: Sys[S]] private (val main: NuagesPanel[S],
       peak = math.max(newPeak, peak - (time - lastUpdate) * (if (peak > -20f) 0.013333333333333f else 0.016f))
     }
     peakToPaint = math.max(peakToPaint, peak)
-    peakNorm = paintToNorm(peakToPaint)
+    peakNorm    = paintToNorm(peakToPaint)
 
-    lastUpdate = time
+    lastUpdate  = time
   }
 
   override def itemPressed(vi: VisualItem, e: MouseEvent, pt: Point2D): Boolean = {

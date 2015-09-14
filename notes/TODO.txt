@@ -1,31 +1,21 @@
-[OK]    - server status / CPU
-[OK]    - multiple scan-ins, "mapping"
-[OK]    - soloing
-[OK]    - metering
-[OK]    - the diffs (all, pan, rnd) report NaNs upon initialisation // SuperCollider bug
-[OK]    - missing labels on VisualControl instances until display zoom changes
         - glide, fade
-        - keyboard control
-[OK]    - group selection
         - group filtering
         - fscape procs
-[high]  - avoid gaps with new synth-defs
         - main recorder
 [low]   - REPL
         - split screen; split versions; split time
-[OK]    - creation without diff
-[OK]    - creation on sinks without insert
         - creation of attr-link inserts
         - auto-mono reduction for patching into params
-[OK]    - raster param spec on mouse input
-[OK]    - visualize steps if discrete and small num
         - special vis for trigger (0 or 1) signals
         - keyboard new-object input (typing parts of a name)
-[OK]    - param value hovers
-        - param value keyboard input
+        - keyboard: increase/decrease inter-channel difference
         - undo/redo
         - envelope generator with specific GUI
         - duplicate objects (insert parallel, split tree)
-
-scan-out ---> (in) Mono (out) ---> attr
-
+        - keyboard: x for max: protect (double-press)
+[low]   - solve param ranges problems
+[OK]    - meter for collectors
+        - broken: achil (init cracks) -- to reproduce: tape -> all; insert a-hilb, delete a-hilb, insert achil
+[???]   - broken: frgmnt (silent)
+[OK]    - mapping: multi-channel display; clip value
+[OK]    - mapping: deleting mapping results in 'mono' param? (sets to DoubleObj?)

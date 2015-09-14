@@ -22,6 +22,7 @@ lazy val lucreSwingVersion          = "1.0.0"
 lazy val swingPlusVersion           = "0.2.1"
 lazy val intensityVersion           = "1.0.0"
 lazy val fileUtilVersion            = "1.1.1"
+lazy val scissDSPVersion            = "1.2.2"
 
 // ---- test ----
 
@@ -35,6 +36,7 @@ libraryDependencies ++= Seq(
   "de.sciss" %% "fileutil"                % fileUtilVersion,
   "de.sciss" %% "lucreswing"              % lucreSwingVersion,
   "de.sciss" %% "swingplus"               % swingPlusVersion,
+  "de.sciss" %% "scissdsp"                % scissDSPVersion,
   "de.sciss" %  "intensitypalette"        % intensityVersion,
   "de.sciss" %% "lucre-bdb"               % lucreVersion       % "test",
   "de.sciss" %  "weblaf"                  % webLaFVersion      % "test",
