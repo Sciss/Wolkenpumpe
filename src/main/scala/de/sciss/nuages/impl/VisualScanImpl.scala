@@ -36,7 +36,7 @@ object VisualScanImpl {
 
   private def addEdgeGUI[S <: Sys[S]](source: VisualScan[S], sink: VisualScan[S]): Unit = {
     val graph = source.parent.main.graph
-    val isNew = source.sinks.find(_.getTargetNode == sink.pNode).isEmpty
+    val isNew = !source.sinks.exists(_.getTargetNode == sink.pNode)
     if (isNew) {
       val pEdge = graph.addEdge(source.pNode, sink.pNode)
       source.sinks += pEdge
@@ -95,7 +95,7 @@ final class VisualScanImpl[S <: Sys[S]] private(val parent: VisualObj[S],
   private[this] def withScan(target: Scan.Link[S])(fun: VisualScan[S] => Unit)
                              (implicit tx: S#Tx): Unit =
     for {
-      targetVis <- main.scanMap.get(target.id)
+      targetVis <- main.scanMap.get(target.peerID)
     } main.deferVisTx {
       fun(targetVis)
     }
