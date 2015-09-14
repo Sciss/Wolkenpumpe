@@ -110,7 +110,7 @@ class DSL[S <: stm.Sys[S]] {
     val specObj   = ParamSpec.Obj.newConst[S](spec)
     obj.attr.put(key, paramObj)
     obj.attr.put(s"$key-${ParamSpec.Key}", specObj)
-    val sig       = Attribute(rate, key, default)
+    val sig       = Attribute(rate, key, default, fixed = default.numChannels > 1)  // XXX TODO -- is this always good?
     // val clip      = sig.clip(0, 1)
     val clip      = sig.max(0).min(1)   // some crazy bugs in Clip
     spec.map(clip)
