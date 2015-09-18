@@ -194,7 +194,7 @@ class Wolkenpumpe[S <: Sys[S]] {
 
       import de.sciss.synth.proc.WorkspaceHandle.Implicits._
       val view  = NuagesView(n, nCfg, sCfg)
-      /* val frame = */ NuagesFrame(view, undecorated = true)
+      /* val frame = */ NuagesFrame(view, undecorated = false /* true */)
       aural.start(aCfg)
     }
   }

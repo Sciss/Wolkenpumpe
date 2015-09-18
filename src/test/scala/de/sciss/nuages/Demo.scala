@@ -31,32 +31,32 @@ object Demo extends SwingApplication {
       type S = InMemory
       implicit val system = InMemory()
       val w = new Wolkenpumpe[S] {
-        /** Subclasses may want to override this. */
-        override protected def registerProcesses(sCfg: ScissProcs.Config, nCfg: Nuages.Config, nFinder: NuagesFinder)
-                                                (implicit tx: S#Tx, cursor: Cursor[S], nuages: Nuages[S],
-                                                 aural: AuralSystem): Unit = {
-          super.registerProcesses(sCfg, nCfg, nFinder)
-          val dsl = new DSL[S]
-          import dsl._
-
-          generator("a~pulse") {
-            import synth._
-            import ugen._
-
-            val pFreq   = pAudio("freq"     , ParamSpec(0.1 , 10000, ExpWarp), default = 15.0 /* 1 */)
-            val pw      = pAudio("width"    , ParamSpec(0.0 ,     1.0),        default =  0.5)
-            val pAmp    = pAudio("amp"      , ParamSpec(0.01,     1, ExpWarp), default =  0.1)
-            val pFreqMix= pAudio("freq-src" , TrigSpec, default = 0.0)
-
-            val inFreq  = pAudioIn("in-freq", 1, ParamSpec(0.1 , 10000, ExpWarp))
-
-            val freq  = LinXFade2.ar(pFreq, inFreq, pFreqMix)
-            val width = pw
-            val sig   = Pulse.ar(freq, width)
-
-            sig * pAmp
-          }
-        }
+//        /** Subclasses may want to override this. */
+//        override protected def registerProcesses(sCfg: ScissProcs.Config, nCfg: Nuages.Config, nFinder: NuagesFinder)
+//                                                (implicit tx: S#Tx, cursor: Cursor[S], nuages: Nuages[S],
+//                                                 aural: AuralSystem): Unit = {
+//          super.registerProcesses(sCfg, nCfg, nFinder)
+//          val dsl = new DSL[S]
+//          import dsl._
+//
+//          generator("a~pulse") {
+//            import synth._
+//            import ugen._
+//
+//            val pFreq   = pAudio("freq"     , ParamSpec(0.1 , 10000, ExpWarp), default = 15.0 /* 1 */)
+//            val pw      = pAudio("width"    , ParamSpec(0.0 ,     1.0),        default =  0.5)
+//            val pAmp    = pAudio("amp"      , ParamSpec(0.01,     1, ExpWarp), default =  0.1)
+//            val pFreqMix= pAudio("freq-src" , TrigSpec, default = 0.0)
+//
+//            val inFreq  = pAudioIn("in-freq", 1, ParamSpec(0.1 , 10000, ExpWarp))
+//
+//            val freq  = LinXFade2.ar(pFreq, inFreq, pFreqMix)
+//            val width = pw
+//            val sig   = Pulse.ar(freq, width)
+//
+//            sig * pAmp
+//          }
+//        }
 
         /** Subclasses may want to override this. */
         override protected def configure(sCfg: ScissProcs.ConfigBuilder, nCfg: Nuages.ConfigBuilder,
