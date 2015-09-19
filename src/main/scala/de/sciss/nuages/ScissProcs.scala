@@ -938,6 +938,47 @@ object ScissProcs {
       mix(in, flt, pMix)
     }
 
+    filter("z-onsets") { in =>
+      val pThresh0    = pControl("thresh", ParamSpec(0, 1), default(0.5))
+      val pAmp        = pAudio("amp"  , ParamSpec(0.01,     1, ExpWarp), default( 0.1))
+      val pMix        = mkMix()
+      val pThresh     = Mix.mono(pThresh0) / NumChannels(pThresh0)
+      val buf         = LocalBuf(numFrames = 1024, numChannels = 1)
+      val chain1      = FFT(buf, in)
+      val onsets      = Onsets.kr(chain1, pThresh)
+      val flt         = T2A.ar(onsets) * pAmp
+      mix(in, flt, pMix)
+    }
+
+    filter("z-centroid") { in =>
+      val pLo         = pAudio("lo", ParamSpec(0.0 , 1), default(0.0))
+      val pHi         = pAudio("hi", ParamSpec(0.0 , 1), default(1.0))
+      val pMix        = mkMix()
+      val buf         = LocalBuf(numFrames = 1024, numChannels = 1)
+      val chain1      = FFT(buf, in)
+      val cent        = SpecCentroid.kr(chain1)
+      val centN       = cent.clip(100, 10000).explin(100, 10000, pLo, pHi)
+      val flt         = centN // T2A.ar(onsets) * pAmp
+      mix(in, flt, pMix)
+    }
+
+    filter("z-flat") { in =>
+      val pLo         = pAudio("lo", ParamSpec(0.0 , 1), default(0.0))
+      val pHi         = pAudio("hi", ParamSpec(0.0 , 1), default(1.0))
+      val pMix        = mkMix()
+      val buf         = LocalBuf(numFrames = 1024, numChannels = 1)
+      val chain1      = FFT(buf, in)
+      val flat        = SpecFlatness.kr(chain1)
+      val flatN       = flat.clip(0, 1).linlin(0, 1, pLo, pHi)
+      val flt         = flatN // T2A.ar(onsets) * pAmp
+      mix(in, flt, pMix)
+    }
+
+    //        val buf         = LocalBuf(numFrames = 1024, numChannels = 1)
+    //        val chain1      = FFT(buf, in)
+    //        val loud        = Loudness    .kr(chain1)
+    //        val loudN       = (loud / 64).clip(0, 1)
+
     // -------------- SINKS --------------
     val recFormat = new SimpleDateFormat("'rec_'yyMMdd'_'HHmmss'.aif'", Locale.US)
 

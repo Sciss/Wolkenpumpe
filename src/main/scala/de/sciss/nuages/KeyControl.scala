@@ -16,7 +16,7 @@ package de.sciss.nuages
 import java.awt.datatransfer.{Clipboard, ClipboardOwner, DataFlavor, Transferable, UnsupportedFlavorException}
 import java.awt.event.{KeyEvent, MouseEvent}
 import java.awt.geom.Point2D
-import java.awt.{Color, Toolkit}
+import java.awt.{Point, Color, Toolkit}
 import javax.swing.KeyStroke
 import javax.swing.event.{AncestorEvent, AncestorListener}
 
@@ -90,8 +90,16 @@ object KeyControl {
   private final class Impl[S <: Sys[S]](main: NuagesPanel[S])
     extends ControlAdapter with Disposable[S#Tx] with ClipboardOwner {
 
-    private[this] var filters: Category[S] = _
+    private[this] var filters   : Category[S] = _
+    private[this] var generators: Category[S] = _
+
+    private[this] val lastPt = new Point
+    private[this] val p2d    = new Point2D.Float // throw-away
+
     private[this] val meta = KeyStrokes.menu1.mask
+
+    override def mouseDragged(e: MouseEvent): Unit = lastPt.setLocation(e.getX, e.getY)
+    override def mouseMoved  (e: MouseEvent): Unit = lastPt.setLocation(e.getX, e.getY)
 
     private def mkEmptyCategory()(implicit tx: S#Tx): Category[S] = new Category[S] {
       def dispose()(implicit tx: S#Tx) = ()
@@ -114,8 +122,9 @@ object KeyControl {
     }
 
     def init()(implicit tx: S#Tx): Unit = {
-      val n = main.nuages
-      filters = n.filters.fold(mkEmptyCategory())(mkCategory)
+      val n       = main.nuages
+      filters     = n.filters   .fold(mkEmptyCategory())(mkCategory)
+      generators  = n.generators.fold(mkEmptyCategory())(mkCategory)
     }
 
     override def mousePressed(e: MouseEvent): Unit = {
@@ -124,7 +133,19 @@ object KeyControl {
     }
 
     def dispose()(implicit tx: S#Tx): Unit = {
-      filters.dispose()
+      filters   .dispose()
+      generators.dispose()
+    }
+
+    override def keyPressed(e: KeyEvent): Unit = {
+      val ks = KeyStroke.getKeyStroke(e.getKeyCode, e.getModifiers)
+      generators.get(ks).foreach { objH =>
+        val display = main.display
+        display.getAbsoluteCoordinate(lastPt, p2d)
+        main.cursor.step { implicit tx =>
+          main.createGenerator(objH(), colOpt = None, pt = p2d)
+        }
+      }
     }
 
     override def itemKeyPressed(vi: VisualItem, e: KeyEvent): Unit = {
@@ -146,13 +167,13 @@ object KeyControl {
                   (srcData, tgtData) match {
                     case (vOut: VisualScan[S], vIn: VisualScan[S]) =>
                       val r  = ve.getBounds
-                      val pt = new Point2D.Double(r.getCenterX, r.getCenterY)
+                      p2d.setLocation(r.getCenterX, r.getCenterY)
                       // println("TODO: Insert Filter")
                       main.cursor.step { implicit tx =>
                         val pred = vOut.scan
                         val succ = vIn .scan
 
-                        main.insertFilter(pred = pred, succ = succ, flt = objH(), pt = pt)
+                        main.insertFilter(pred = pred, succ = succ, flt = objH(), pt = p2d)
                       }
                     case _ =>
                   }
@@ -179,6 +200,18 @@ object KeyControl {
                 } else {
 
                   if (e.getKeyCode == KeyEvent.VK_ENTER) showParamInput(vc)
+                }
+
+              case vs: VisualScan[S] if vs.name == "out" =>
+                val ks = KeyStroke.getKeyStroke(e.getKeyCode, e.getModifiers)
+                filters.get(ks).foreach { objH =>
+                  val vis   = main.visualization
+                  val _ve   = vis.getVisualItem(NuagesPanel.GROUP_GRAPH, ni)
+                  val r     = _ve.getBounds
+                  p2d.setLocation(r.getCenterX, r.getCenterY)
+                  main.cursor.step { implicit tx =>
+                    main.appendFilter(pred = vs.scan, flt = objH(), colOpt = None, pt = p2d)
+                  }
                 }
 
               case _ =>
