@@ -1,13 +1,10 @@
 package de.sciss.nuages
 
 import com.alee.laf.WebLookAndFeel
-import de.sciss.lucre.stm.Cursor
 import de.sciss.lucre.stm.store.BerkeleyDB
 import de.sciss.lucre.synth.InMemory
-import de.sciss.nuages.ScissProcs.NuagesFinder
-import de.sciss.synth
 import de.sciss.synth.Server
-import de.sciss.synth.proc.{AuralSystem, Durable}
+import de.sciss.synth.proc.Durable
 
 import scala.swing.SwingApplication
 

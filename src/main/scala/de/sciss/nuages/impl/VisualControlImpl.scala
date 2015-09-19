@@ -23,7 +23,6 @@ import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Disposable, Obj}
 import de.sciss.lucre.swing.requireEDT
 import de.sciss.lucre.synth.{Synth, Sys}
-import de.sciss.numbers
 import de.sciss.synth.proc.Scan
 import prefuse.util.ColorLib
 import prefuse.visual.VisualItem
@@ -238,7 +237,7 @@ final class VisualVectorControl[S <: Sys[S]](val parent: VisualObj[S], val key: 
     }
 }
 
-abstract class VisualControlImpl[S <: Sys[S]]  extends VisualParamImpl[S] with VisualControl[S] {
+abstract class VisualControlImpl[S <: Sys[S]] extends VisualParamImpl[S] with VisualControl[S] {
   import VisualControlImpl.Drag
   import VisualDataImpl._
 

@@ -26,6 +26,7 @@ import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Obj, Disposable, IdentifierMap}
 import de.sciss.lucre.synth.Sys
 import de.sciss.nuages.NuagesPanel._
+import de.sciss.numbers
 import de.sciss.synth.proc.Folder
 import prefuse.controls.{Control, ControlAdapter}
 import prefuse.visual.{EdgeItem, NodeItem, VisualItem}
@@ -189,7 +190,7 @@ object KeyControl {
 
     private def showParamInput(vc: VisualControl[S]): Unit = {
       val p = new OverlayPanel {
-        val ggValue = new TextField(??? /* f"${vc.spec.map(vc.value)}%1.3f" */, 12)
+        val ggValue = new TextField(f"${vc.spec.map(vc.value.head)}%1.3f", 12)
         ggValue.peer.addAncestorListener(new AncestorListener {
           def ancestorRemoved(e: AncestorEvent): Unit = ()
           def ancestorMoved  (e: AncestorEvent): Unit = ()
@@ -207,24 +208,39 @@ object KeyControl {
         onComplete {
           close()
           Try(ggValue.text.toDouble).toOption.foreach { newValue =>
-            val v = vc.spec.inverseMap(vc.spec.clip(newValue))
-            vc.setControl(??? /* v */, instant = true)
+            val v   = vc.spec.inverseMap(vc.spec.clip(newValue))
+            val vs  = Vector.fill(vc.numChannels)(v)
+            vc.setControl(vs, instant = true)
           }
         }
       }
       main.showOverlayPanel(p)
     }
 
+    private[this] var lastVi  : VisualItem = _
+    private[this] var lastChar: Char = _
+    private[this] var lastTyped: Long = _
+
     override def itemKeyTyped(vi: VisualItem, e: KeyEvent): Unit = {
       vi match {
         case ni: NodeItem =>
           ni.get(COL_NUAGES) match {
             case vc: VisualControl[S] =>
-              val v = (e.getKeyChar: @switch) match {
-                case 'r'  => val v = math.random; Vector.fill(vc.numChannels)(v)
-                case 'R'  => Vector.fill(vc.numChannels)(math.random)
+              val thisChar  = e.getKeyChar
+              val thisTyped = System.currentTimeMillis()
+
+              // for 'amp' and 'gain', key must be repeated twice
+              def checkDouble(out: Vec[Double]): Vec[Double] = {
+                val ok = (vc.name != "amp" && vc.name != "gain") ||
+                  ((lastVi == vi && lastChar == thisChar) && thisTyped - lastTyped < 500)
+                if (ok) out else Vector.empty
+              }
+
+              val v = (thisChar: @switch) match {
+                case 'r'  => val v = math.random; checkDouble(Vector.fill(vc.numChannels)(v))
+                case 'R'  => checkDouble(Vector.fill(vc.numChannels)(math.random))
                 case 'n'  => Vector.fill(vc.numChannels)(0.0)
-                case 'x'  => Vector.fill(vc.numChannels)(1.0)
+                case 'x'  => checkDouble(Vector.fill(vc.numChannels)(1.0))
                 case 'c'  => Vector.fill(vc.numChannels)(0.5)
                 case '['  =>
                   val s  = vc.spec
@@ -242,9 +258,40 @@ object KeyControl {
                   } else vs.map(_ + 0.005)
                   vNew.map(math.min(1.0, _))
 
-                case _    => Vector.empty
+                case '{'  =>  // decrease channel spacing
+                  val vs      = vc.value
+                  val max     = vs.max
+                  val min     = vs.min
+                  val mid     = (min + max) / 2
+                  val newMin  = math.min(mid, min + 0.0025)
+                  val newMax  = math.max(mid, max - 0.0025)
+                  if (newMin == min && newMax == max) Vector.empty else {
+                    import numbers.Implicits._
+                    vs.map(_.linlin(min, max, newMin, newMax))
+                  }
+
+                case '}'  =>  // increase channel spacing
+                  val vs      = vc.value
+                  val max     = vs.max
+                  val min     = vs.min
+                  val newMin  = math.max(0.0, min - 0.0025)
+                  val newMax  = math.min(1.0, max + 0.0025)
+                  if (newMin == min && newMax == max) Vector.empty else {
+                    import numbers.Implicits._
+                    if (min == max) { // all equal -- use a random spread
+                      vs.map(in => (in + math.random.linlin(0.0, 1.0, -0.0025, +0.0025)).clip(0.0, 1.0))
+                    } else {
+                      vs.map(_.linlin(min, max, newMin, newMax))
+                    }
+                  }
+
+                case _ => Vector.empty
               }
               if (v.nonEmpty) vc.setControl(v, instant = true)
+
+              lastVi    = vi
+              lastChar  = thisChar
+              lastTyped = thisTyped
 
             case _ =>
           }

@@ -5,31 +5,21 @@
 [low]   - REPL
         - split screen; split versions; split time
         - creation of attr-link inserts
-        - auto-mono reduction for patching into params
+[low]   - auto-mono reduction for patching into params
         - special vis for trigger (0 or 1) signals
         - keyboard new-object input (typing parts of a name)
-        - keyboard: increase/decrease inter-channel difference
+[OK]    - keyboard: increase/decrease inter-channel difference
         - undo/redo
         - envelope generator with specific GUI
         - duplicate objects (insert parallel, split tree)
-        - keyboard: x for max: protect (double-press)
+[OK]    - keyboard: x for max: protect (double-press)
 [low]   - solve param ranges problems
 [OK]    - meter for collectors
-        - broken: achil (init cracks) -- to reproduce: tape -> all; insert a-hilb, delete a-hilb, insert achil
-[???]   - broken: frgmnt (silent)
+[OK]    - broken: achil (init cracks) -- to reproduce: tape -> all; insert a-hilb, delete a-hilb, insert achil
+[OK]    - broken: frgmnt (silent)
 [OK]    - mapping: multi-channel display; clip value
 [OK]    - mapping: deleting mapping results in 'mono' param? (sets to DoubleObj?)
         - mono-mix filter, possibly with sample-and-hold option
 
-Exception in thread "AWT-EventQueue-0" java.lang.ClassCastException: de.sciss.synth.proc.impl.ScanImpl$Impl cannot be cast to de.sciss.synth.proc.Scan$Link
-	at de.sciss.synth.proc.impl.ScanImpl$Impl$$anonfun$copy$1$$anonfun$apply$mcV$sp$1.apply(ScanImpl.scala:107)
-	at de.sciss.synth.proc.impl.ScanImpl$Impl$$anonfun$copy$1$$anonfun$apply$mcV$sp$1.apply(ScanImpl.scala:105)
-	at scala.collection.Iterator$class.foreach(Iterator.scala:742)
-	at de.sciss.lucre.expr.impl.ListImpl$Iter.foreach(ListImpl.scala:75)
-	at de.sciss.synth.proc.impl.ScanImpl$Impl$$anonfun$copy$1.apply$mcV$sp(ScanImpl.scala:105)
-	at de.sciss.lucre.stm.impl.CopyImpl$$anonfun$finish$1.apply(CopyImpl.scala:47)
-	at de.sciss.lucre.stm.impl.CopyImpl$$anonfun$finish$1.apply(CopyImpl.scala:47)
-	at scala.collection.mutable.ResizableArray$class.foreach(ResizableArray.scala:59)
-	at scala.collection.mutable.ArrayBuffer.foreach(ArrayBuffer.scala:48)
-	at de.sciss.lucre.stm.impl.CopyImpl.finish(CopyImpl.scala:47)
-	at de.sciss.nuages.impl.NuagesImpl$.copyGraph(NuagesImpl.scala:61)
+[OK]    - Exception in thread "AWT-EventQueue-0" java.lang.ClassCastException: de.sciss.synth.proc.impl.ScanImpl$Impl cannot be cast to de.sciss.synth.proc.Scan$Link
+	      at de.sciss.synth.proc.impl.ScanImpl$Impl$$anonfun$copy$1$$anonfun$apply$mcV$sp$1.apply(ScanImpl.scala:107)
