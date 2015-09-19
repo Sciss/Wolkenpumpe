@@ -1,0 +1,14 @@
+VisualControlImpl.scala
+
+- init    --> calls main.assignMapping
+- initGUI --> checks mapping.source and calls addEdge
+              (THIS IS BAD -- assignMapping should call deferTx)
+
+PanelImplReact.scala
+
+- assignMapping --> checks scanMap, then viewToAuralMap and getAuralScanData
+
+PanelImpl.scala
+
+- getAuralScanData --> calls aural-proc-data getScanOut, then node-option
+
