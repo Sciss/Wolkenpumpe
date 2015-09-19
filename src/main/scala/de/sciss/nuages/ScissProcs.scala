@@ -316,6 +316,7 @@ object ScissProcs {
     // -------------- SIGNAL GENERATORS --------------
 
     generator("~dust") {
+      shortcut = "D"
       val pFreq   = pAudio("freq" , ParamSpec(0.01, 1000, ExpWarp), default(1.0 ))
       val pDecay  = pAudio("decay", ParamSpec(0.01,   10, ExpWarp), default(0.01))
 
@@ -332,12 +333,14 @@ object ScissProcs {
     }
 
     generator("~sin") {
+      shortcut = "S"
       val freq  = pAudio("freq", ParamSpec(0.1 , 10000, ExpWarp), default(15.0))
       val pAmp  = pAudio("amp" , ParamSpec(0.01,     1, ExpWarp), default( 0.1))
       SinOsc.ar(freq) * pAmp
     }
 
     generator("~pulse") {
+      shortcut = "P"
       val freq  = pAudio("freq" , ParamSpec(0.1 , 10000, ExpWarp), default(15.0))
       val width = pAudio("width", ParamSpec(0.0 ,     1.0),        default( 0.5))
       val pAmp  = pAudio("amp"  , ParamSpec(0.01,     1, ExpWarp), default( 0.1))
@@ -617,7 +620,7 @@ object ScissProcs {
     }
 
     filter("*") { in =>
-      shortcut = "ASTERISK"
+      shortcut = "M" // does not work: "ASTERISK"
       val pMix  = mkMix()
       val in2   = pAudio("mod", ParamSpec(0 /* -1 */, 1), default(0.0))
       val pLag  = pAudio("lag", ParamSpec(0.001, 0.1, ExpWarp), default(0.001))
@@ -910,6 +913,7 @@ object ScissProcs {
     }
 
     filter("env-perc") { in =>
+      shortcut = "E"
       //      def perc(attack: GE = 0.01, release: GE = 1, level: GE = 1,
       //               curve: Env.Curve = parametric(-4)): V =
       //        create(0, Vector[Seg]((attack, level, curve), (release, 0, curve)))
@@ -1052,7 +1056,7 @@ object ScissProcs {
       val pQuant  = pAudio("quant"  , ParamSpec(0.0 , 1), default(0.0))
       val pMix    = mkMix()
       val inTrig  = in - 0.001 // pAudio("tr", ParamSpec(0, 1), default(0.0))
-    val sig0    = K2A.ar(TRand.kr(0 /* A2K.kr(pLo) */ , 1 /* A2K.kr(pHi) */, T2K.kr(inTrig)))
+      val sig0    = K2A.ar(TRand.kr(0 /* A2K.kr(pLo) */ , 1 /* A2K.kr(pHi) */, T2K.kr(inTrig)))
       val sig     = sig0.roundTo(pQuant).linlin(0, 1, pLo, pHi)
       mix(in, sig, pMix)
     }
@@ -1065,6 +1069,7 @@ object ScissProcs {
     }
 
     filter("a~skew") { in =>
+      shortcut = "K"
       val pLo     = pAudio("lo" , ParamSpec(0, 1), default(0.0))
       val pHi     = pAudio("hi" , ParamSpec(0, 1), default(1.0))
       val pPow    = pAudio("pow", ParamSpec(0.125, 8, ExpWarp), default(1.0))
@@ -1079,7 +1084,7 @@ object ScissProcs {
     filter("a~step8") { in =>
       val vals    = Vector.tabulate(8)(i => pAudio(s"v${i+1}", ParamSpec(0, 1), default(0.0)))
       val trig    = in - 0.001 // pAudio("trig", ParamSpec(0.0, 1.0), default(0.0))
-    val hi      = pAudio("hi", ParamSpec(1, 8, IntWarp), default(1.0))
+      val hi      = pAudio("hi", ParamSpec(1, 8, IntWarp), default(1.0))
       val pMix    = mkMix()
       val index   = Stepper.ar(trig, lo = 0, hi = hi - 1)
       val sig     = Select.ar(index, vals)
@@ -1087,6 +1092,7 @@ object ScissProcs {
     }
 
     filter("a~dup") { in =>
+      shortcut = "U"
       val pThresh = pAudio("thresh", ParamSpec(0.01, 1, ExpWarp), default(0.1))
       val pMul    = pAudio("mul"   , ParamSpec(1  , 16, IntWarp), default(1.0))
       val pDiv    = pAudio("div"   , ParamSpec(1  , 16, IntWarp), default(1.0))
@@ -1102,6 +1108,7 @@ object ScissProcs {
     }
 
     filter("a~div") { in =>
+      shortcut = "V"
       val pThresh = pAudio("thresh", ParamSpec(0.01, 1, ExpWarp), default(0.1))
       val pMul    = pAudio("mul"   , ParamSpec(1, 16, IntWarp), default(1.0))
       val pDiv    = pAudio("div"   , ParamSpec(1, 16, IntWarp), default(1.0))
@@ -1133,6 +1140,7 @@ object ScissProcs {
     }
 
     filter("a~ff") { in =>
+      shortcut = "L"
       val pLo     = pAudio("lo"  , ParamSpec(0.0, 1.0), default(0.0))
       val pHi     = pAudio("hi"  , ParamSpec(0.0, 1.0), default(1.0))
       val pMix    = mkMix()
