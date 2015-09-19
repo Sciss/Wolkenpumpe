@@ -814,14 +814,14 @@ object ScissProcs {
       val pLag    = pAudio("lag"  , ParamSpec(0.001, 0.1, ExpWarp), default(0.01))
       val pMix    = mkMix()
 
-      val freq    = ZeroCrossing.ar(in).max(2)
-      val width0  = Lag.ar(pWidth, 0.1)
-      val width   = width0 // width0.reciprocal
-      val div     = Lag.ar(pDiv, 0.1)
       val lagTime = pLag
+      val freq    = ZeroCrossing.ar(in).max(2)
+      val width0  = Lag.ar(pWidth, lagTime)
+      val width   = width0 // width0.reciprocal
+      val div     = Lag.ar(pDiv, lagTime)
       val pulseF  = freq / div
       // pulseF.poll(1, "pulse")
-      val pulse   = Lag.ar(LFPulse.ar(pulseF, 0, width), lagTime) // XXX TODO -- width is not modulated
+      val pulse   = Lag.ar(LFPulse.ar(pulseF, width = width), lagTime)
       val amp     = Amplitude.kr(pulse).max(0.2).reciprocal
       // val amp     = PeakFollower.ar(pulse).max(0.1).reciprocal
       val flt     = in * pulse * amp
@@ -1011,7 +1011,7 @@ object ScissProcs {
 
       val freq  = pFreq // LinXFade2.ar(pFreq, inFreq, pFreqMix * 2 - 1)
       val width = pW // LinXFade2.ar(pW, inW, pWMix * 2 - 1)
-      val sig   = LFPulse.ar(freq, width)  // XXX TODO -- width is not modulated
+      val sig   = LFPulse.ar(freq, width = width)
 
       sig.linlin(0, 1, pLo, pHi)
     }
