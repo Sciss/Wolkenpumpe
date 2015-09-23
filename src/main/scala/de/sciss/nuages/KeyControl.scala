@@ -18,7 +18,7 @@ import java.awt.event.{KeyEvent, MouseEvent}
 import java.awt.geom.Point2D
 import java.awt.{Point, Color, Toolkit}
 import javax.swing.KeyStroke
-import javax.swing.event.{AncestorEvent, AncestorListener}
+import javax.swing.event.{DocumentEvent, DocumentListener, AncestorEvent, AncestorListener}
 
 import de.sciss.desktop.KeyStrokes
 import de.sciss.lucre.expr.StringObj
@@ -27,14 +27,15 @@ import de.sciss.lucre.stm.{Obj, Disposable, IdentifierMap}
 import de.sciss.lucre.synth.Sys
 import de.sciss.nuages.NuagesPanel._
 import de.sciss.numbers
-import de.sciss.synth.proc.Folder
+import de.sciss.swingplus.ListView
+import de.sciss.synth.proc.{ObjKeys, Folder}
 import prefuse.controls.{Control, ControlAdapter}
 import prefuse.visual.{EdgeItem, NodeItem, VisualItem}
 
 import scala.annotation.switch
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm.TMap
-import scala.swing.{Label, Orientation, Swing, TextField}
+import scala.swing.{ScrollPane, Label, Orientation, Swing, TextField}
 import scala.util.Try
 
 object KeyControl {
@@ -60,31 +61,52 @@ object KeyControl {
   private val ControlFlavor = internalFlavor[ControlDrag]
 
   private trait Category[S <: Sys[S]] extends Disposable[S#Tx] {
-    def get(ks: KeyStroke): Option[stm.Source[S#Tx, Obj[S]]]
+    def get(ks  : KeyStroke): Option[stm.Source[S#Tx, Obj[S]]]
+    def get(name: String   ): Option[stm.Source[S#Tx, Obj[S]]]
+
+    def names: Iterator[String]
   }
+
+  // private final val colrGreen = new Color(0x00, 0x80, 0x00)
 
   private abstract class CategoryImpl[S <: Sys[S]] extends Category[S] {
     protected def observer: Disposable[S#Tx]
     protected def idMap: IdentifierMap[S#ID, S#Tx, KeyStroke]
 
-    private val keyMap = TMap.empty[KeyStroke, stm.Source[S#Tx, Obj[S]]]
+    private val keyMap  = TMap.empty[KeyStroke, stm.Source[S#Tx, Obj[S]]]
+    private val nameMap = TMap.empty[String   , stm.Source[S#Tx, Obj[S]]]
 
     final def dispose()(implicit tx: S#Tx): Unit = observer.dispose()
 
-    protected final def elemAdded(elem: Obj[S])(implicit tx: S#Tx): Unit =
-      elem.attr.$[StringObj](Nuages.KeyShortcut).foreach { expr =>
+    def names: Iterator[String] = nameMap.single.keysIterator
+
+    protected final def elemAdded(elem: Obj[S])(implicit tx: S#Tx): Unit = {
+      implicit val itx = tx.peer
+      val attr    = elem.attr
+      val source  = tx.newHandle(elem)  // eagerly because we expect `name` to be present
+      attr.$[StringObj](Nuages.KeyShortcut).foreach { expr =>
         Option(KeyStroke.getKeyStroke(expr.value)).foreach { ks =>
-          keyMap.put(ks, tx.newHandle(elem))(tx.peer)
+          keyMap.put(ks, source)(tx.peer)
         }
       }
+      attr.$[StringObj](ObjKeys.attrName).foreach { expr =>
+        nameMap.put(expr.value, source)
+      }
+    }
 
-    protected final def elemRemoved(elem: Obj[S])(implicit tx: S#Tx): Unit =
+    protected final def elemRemoved(elem: Obj[S])(implicit tx: S#Tx): Unit = {
+      implicit val itx = tx.peer
       idMap.get(elem.id).foreach { ks =>
         idMap.remove(elem.id)
         keyMap.remove(ks)(tx.peer)
       }
+      elem.attr.$[StringObj](ObjKeys.attrName).foreach { expr =>
+        nameMap.remove(expr.value)
+      }
+    }
 
-    final def get(ks: KeyStroke): Option[stm.Source[S#Tx, Obj[S]]] = keyMap.single.get(ks)
+    final def get(ks  : KeyStroke): Option[stm.Source[S#Tx, Obj[S]]] = keyMap .single.get(ks  )
+    final def get(name: String   ): Option[stm.Source[S#Tx, Obj[S]]] = nameMap.single.get(name)
   }
 
   private final class Impl[S <: Sys[S]](main: NuagesPanel[S])
@@ -103,7 +125,11 @@ object KeyControl {
 
     private def mkEmptyCategory()(implicit tx: S#Tx): Category[S] = new Category[S] {
       def dispose()(implicit tx: S#Tx) = ()
-      def get(ks: KeyStroke): Option[stm.Source[S#Tx, Obj[S]]] = None
+
+      def get(ks  : KeyStroke): Option[stm.Source[S#Tx, Obj[S]]] = None
+      def get(name: String   ): Option[stm.Source[S#Tx, Obj[S]]] = None
+
+      def names: Iterator[String] = Iterator.empty
     }
 
     private def mkCategory(f: Folder[S])(implicit tx: S#Tx): Category[S] = new CategoryImpl[S] {
@@ -138,12 +164,18 @@ object KeyControl {
     }
 
     override def keyPressed(e: KeyEvent): Unit = {
-      val ks = KeyStroke.getKeyStroke(e.getKeyCode, e.getModifiers)
-      generators.get(ks).foreach { objH =>
-        val display = main.display
-        display.getAbsoluteCoordinate(lastPt, p2d)
-        main.cursor.step { implicit tx =>
-          main.createGenerator(objH(), colOpt = None, pt = p2d)
+      if (e.getKeyCode == KeyEvent.VK_ENTER) {
+        showCategoryInput(generators) { implicit tx => (gen, pt) =>
+          main.createGenerator(gen, None, pt)
+        }
+      } else {
+        val ks = KeyStroke.getKeyStroke(e.getKeyCode, e.getModifiers)
+        generators.get(ks).foreach { objH =>
+          val display = main.display
+          display.getAbsoluteCoordinate(lastPt, p2d)
+          main.cursor.step { implicit tx =>
+            main.createGenerator(objH(), colOpt = None, pt = p2d)
+          }
         }
       }
     }
@@ -221,9 +253,71 @@ object KeyControl {
       }
     }
 
+    // private val mCategList = ListView.Model.empty[String]
+
+    private def showCategoryInput(c: Category[S])(complete: S#Tx => (Obj[S], Point2D) => Unit): Unit = {
+      val p = new OverlayPanel { panel =>
+        val ggName = new TextField(12)
+        ggName.background = Color.black
+        ggName.foreground = Color.white
+        ggName.peer.addAncestorListener(new AncestorListener {
+          def ancestorRemoved(e: AncestorEvent): Unit = ()
+          def ancestorMoved  (e: AncestorEvent): Unit = ()
+          def ancestorAdded  (e: AncestorEvent): Unit = ggName.requestFocus()
+        })
+
+        var candidates = Vec.empty[String]
+
+        val ggCandidates              = new ListView(ListView.Model.wrap(candidates))
+        ggCandidates.background       = Color.black
+        ggCandidates.foreground       = Color.white
+        ggCandidates.visibleRowCount  = 3
+        ggCandidates.prototypeCellValue = "Gagaism one two"
+
+        def updateFilter(): Unit = {
+          val current = ggName.text
+          candidates  = c.names.filter(_.contains(current)).toIndexedSeq.sorted
+//          ggName.background =
+//            if      (candidates.isEmpty  ) Color.red
+//            else if (candidates.size == 1) colrGreen
+//            else                           Color.black
+          ggCandidates.model = ListView.Model.wrap(candidates)
+          if (candidates.nonEmpty) ggCandidates.selectIndices(0)
+        }
+
+        ggName.peer.getDocument.addDocumentListener(new DocumentListener {
+          def insertUpdate (e: DocumentEvent): Unit = updateFilter()
+          def removeUpdate (e: DocumentEvent): Unit = updateFilter()
+          def changedUpdate(e: DocumentEvent): Unit = ()
+        })
+
+        // mCategList.clear()
+        contents += new BasicPanel(Orientation.Vertical) {
+          contents += ggName
+          contents += new ScrollPane(ggCandidates) // new ListView(mCategList)
+        }
+        onComplete {
+          val sel = ggCandidates.selection.items
+          close()
+          if (sel.size == 1) {
+            val name = sel.head
+            c.get(name).foreach { source =>
+              val displayPt = main.display.getAbsoluteCoordinate(panel.location, null)
+              main.cursor.step { implicit tx =>
+                complete(tx)(source(), displayPt)
+              }
+            }
+          }
+        }
+      }
+      main.showOverlayPanel(p)
+    }
+
     private def showParamInput(vc: VisualControl[S]): Unit = {
       val p = new OverlayPanel {
         val ggValue = new TextField(f"${vc.spec.map(vc.value.head)}%1.3f", 12)
+        ggValue.background = Color.black
+        ggValue.foreground = Color.white
         ggValue.peer.addAncestorListener(new AncestorListener {
           def ancestorRemoved(e: AncestorEvent): Unit = ()
           def ancestorMoved  (e: AncestorEvent): Unit = ()
@@ -250,9 +344,9 @@ object KeyControl {
       main.showOverlayPanel(p)
     }
 
-    private[this] var lastVi  : VisualItem = _
-    private[this] var lastChar: Char = _
-    private[this] var lastTyped: Long = _
+    private[this] var lastVi    : VisualItem  = _
+    private[this] var lastChar  : Char        = _
+    private[this] var lastTyped : Long        = _
 
     override def itemKeyTyped(vi: VisualItem, e: KeyEvent): Unit = {
       vi match {
