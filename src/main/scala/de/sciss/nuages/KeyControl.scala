@@ -120,6 +120,10 @@ object KeyControl {
 
     private[this] val meta = KeyStrokes.menu1.mask
 
+    private[this] var lastVi    : VisualItem  = _
+    private[this] var lastChar  : Char        = _
+    private[this] var lastTyped : Long        = _
+
     override def mouseDragged(e: MouseEvent): Unit = lastPt.setLocation(e.getX, e.getY)
     override def mouseMoved  (e: MouseEvent): Unit = lastPt.setLocation(e.getX, e.getY)
 
@@ -302,7 +306,9 @@ object KeyControl {
           if (sel.size == 1) {
             val name = sel.head
             c.get(name).foreach { source =>
-              val displayPt = main.display.getAbsoluteCoordinate(panel.location, null)
+              val b         = panel.bounds
+              p2d.setLocation(b.getCenterX, b.getCenterY)
+              val displayPt = main.display.getAbsoluteCoordinate(p2d, null)
               main.cursor.step { implicit tx =>
                 complete(tx)(source(), displayPt)
               }
@@ -310,7 +316,11 @@ object KeyControl {
           }
         }
       }
-      main.showOverlayPanel(p)
+
+      val dim = p.preferredSize
+      val pt  = new Point(lastPt.x - dim.width/2, lastPt.y - 12)
+
+      main.showOverlayPanel(p, Some(pt))
     }
 
     private def showParamInput(vc: VisualControl[S]): Unit = {
@@ -341,12 +351,17 @@ object KeyControl {
           }
         }
       }
-      main.showOverlayPanel(p)
+      main.showOverlayPanel(p, Some(calcPanelPoint(p, vc)))
     }
 
-    private[this] var lastVi    : VisualItem  = _
-    private[this] var lastChar  : Char        = _
-    private[this] var lastTyped : Long        = _
+    private def calcPanelPoint(p: OverlayPanel, vc: VisualControl[S]): Point = {
+      val vis   = main.visualization
+      val _ve   = vis.getVisualItem(NuagesPanel.GROUP_GRAPH, vc.pNode)
+      val b     = _ve.getBounds
+      val dim   = p.preferredSize
+      main.display.getTransform.transform(new Point2D.Double(b.getCenterX , b.getMaxY), p2d)
+      new Point(p2d.getX.toInt - dim.width/2, p2d.getY.toInt - 12)
+    }
 
     override def itemKeyTyped(vi: VisualItem, e: KeyEvent): Unit = {
       vi match {
