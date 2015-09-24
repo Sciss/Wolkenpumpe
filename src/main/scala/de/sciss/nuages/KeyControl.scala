@@ -188,70 +188,101 @@ object KeyControl {
       // println(s"itemKeyPressed '${e.getKeyChar}'")
       vi match {
         case ei: EdgeItem =>
-          val ks = KeyStroke.getKeyStroke(e.getKeyCode, e.getModifiers)
-          filters.get(ks).foreach { objH =>
-            // println("found filter shortcut")
+          def perform[A](fun: (VisualScan[S], VisualScan[S], Point2D) => A): Option[A] = {
             val nSrc  = ei.getSourceItem
             val nTgt  = ei.getTargetItem
             val vis   = main.visualization
             val _ve   = vis.getVisualItem(NuagesPanel.GROUP_GRAPH, ei)
-            (vis.getRenderer(nSrc), vis.getRenderer(nTgt), _ve) match {
-              case (_: NuagesShapeRenderer[_], _: NuagesShapeRenderer[_], ve) =>
+            (vis.getRenderer(nSrc), vis.getRenderer(nTgt)) match {
+              case (_: NuagesShapeRenderer[_], _: NuagesShapeRenderer[_]) =>
                 val srcData = nSrc.get(COL_NUAGES).asInstanceOf[VisualData[S]]
                 val tgtData = nTgt.get(COL_NUAGES).asInstanceOf[VisualData[S]]
-                if (srcData != null && tgtData != null)
+                if (srcData == null || tgtData == null) None else
                   (srcData, tgtData) match {
                     case (vOut: VisualScan[S], vIn: VisualScan[S]) =>
-                      val r  = ve.getBounds
+                      val r = _ve.getBounds
                       p2d.setLocation(r.getCenterX, r.getCenterY)
-                      // println("TODO: Insert Filter")
-                      main.cursor.step { implicit tx =>
-                        val pred = vOut.scan
-                        val succ = vIn .scan
-
-                        main.insertFilter(pred = pred, succ = succ, flt = objH(), pt = p2d)
-                      }
-                    case _ =>
+                      // main.display.getTransform.transform(p2d, p2d)
+                      Some(fun(vOut, vIn, p2d))
+                    case _ => None
                   }
 
-              case _ =>
+              case _ => None
             }
           }
 
-          case ni: NodeItem =>
-            ni.get(COL_NUAGES) match {
-              case vc: VisualControl[S] =>
-                if ((e.getModifiers & meta) == meta) {
-                  val clip = Toolkit.getDefaultToolkit.getSystemClipboard
-                  if (e.getKeyCode == KeyEvent.VK_C) {        // copy
-                    val data = new ControlDrag(vc.value, vc.spec)
-                    clip.setContents(data, this)
+          if (e.getKeyCode == KeyEvent.VK_ENTER) {
+            perform { (vOut, vIn, pt) =>
+              showCategoryInput(filters) { implicit tx => (obj, pt0) =>
+                val pred = vOut.scan
+                val succ = vIn .scan
+                // main.display.getTransform.transform(pt0, p2d)
+                main.insertFilter(pred = pred, succ = succ, flt = obj, pt = pt0)
+              }
+            }
 
-                  } else if (e.getKeyCode == KeyEvent.VK_V) { // paste
-                    if (clip.isDataFlavorAvailable(ControlFlavor)) {
-                      val data = clip.getData(ControlFlavor).asInstanceOf[ControlDrag]
-                      vc.setControl(data.values, instant = true) // XXX TODO -- which want to rescale
-                    }
+          } else {
+            val ks = KeyStroke.getKeyStroke(e.getKeyCode, e.getModifiers)
+            filters.get(ks).foreach { objH =>
+              perform { (vOut, vIn, pt) =>
+                main.cursor.step { implicit tx =>
+                  val pred = vOut.scan
+                  val succ = vIn .scan
+                  main.insertFilter(pred = pred, succ = succ, flt = objH(), pt = pt)
+                }
+              }
+            }
+          }
+
+        case ni: NodeItem =>
+          ni.get(COL_NUAGES) match {
+            case vc: VisualControl[S] =>
+              if ((e.getModifiers & meta) == meta) {
+                val clip = Toolkit.getDefaultToolkit.getSystemClipboard
+                if (e.getKeyCode == KeyEvent.VK_C) {        // copy
+                  val data = new ControlDrag(vc.value, vc.spec)
+                  clip.setContents(data, this)
+
+                } else if (e.getKeyCode == KeyEvent.VK_V) { // paste
+                  if (clip.isDataFlavorAvailable(ControlFlavor)) {
+                    val data = clip.getData(ControlFlavor).asInstanceOf[ControlDrag]
+                    vc.setControl(data.values, instant = true) // XXX TODO -- which want to rescale
                   }
-                } else {
+                }
+              } else {
 
-                  if (e.getKeyCode == KeyEvent.VK_ENTER) showParamInput(vc)
+                if (e.getKeyCode == KeyEvent.VK_ENTER) showParamInput(vc)
+              }
+
+            case vs: VisualScan[S] if vs.name == "out" =>
+              def perform[A](fun: Point2D => A): A = {
+                val vis   = main.visualization
+                val _ve   = vis.getVisualItem(NuagesPanel.GROUP_GRAPH, ni)
+                val r     = _ve.getBounds
+                p2d.setLocation(r.getCenterX, r.getCenterY)
+                fun(p2d)
+              }
+
+              if (e.getKeyCode == KeyEvent.VK_ENTER) {
+                perform { pt =>
+                  showCategoryInput(filters) { implicit tx => (obj, pt0) =>
+                    main.appendFilter(pred = vs.scan, flt = obj, colOpt = None, pt = pt0)
+                  }
                 }
 
-              case vs: VisualScan[S] if vs.name == "out" =>
+              } else {
                 val ks = KeyStroke.getKeyStroke(e.getKeyCode, e.getModifiers)
                 filters.get(ks).foreach { objH =>
-                  val vis   = main.visualization
-                  val _ve   = vis.getVisualItem(NuagesPanel.GROUP_GRAPH, ni)
-                  val r     = _ve.getBounds
-                  p2d.setLocation(r.getCenterX, r.getCenterY)
-                  main.cursor.step { implicit tx =>
-                    main.appendFilter(pred = vs.scan, flt = objH(), colOpt = None, pt = p2d)
+                  perform { pt =>
+                    main.cursor.step { implicit tx =>
+                      main.appendFilter(pred = vs.scan, flt = objH(), colOpt = None, pt = pt)
+                    }
                   }
                 }
+              }
 
-              case _ =>
-            }
+            case _ =>
+          }
 
         case _ =>
       }
