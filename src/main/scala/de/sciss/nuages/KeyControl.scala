@@ -294,7 +294,9 @@ object KeyControl {
     // private val mCategList = ListView.Model.empty[String]
 
     private def showCategoryInput(c: Category[S])(complete: S#Tx => (Obj[S], Point2D) => Unit): Unit = {
-      val p = new OverlayPanel { panel =>
+      val lpx = lastPt.x
+      val lpy = lastPt.y
+      val p = new OverlayPanel(Orientation.Horizontal) { panel =>
         val ggName = new TextField(12)
         ggName.background = Color.black
         ggName.foreground = Color.white
@@ -330,18 +332,19 @@ object KeyControl {
         })
 
         // mCategList.clear()
-        contents += new BasicPanel(Orientation.Vertical) {
+        // contents += new BasicPanel(Orientation.Vertical) {
           contents += ggName
           contents += new ScrollPane(ggCandidates) // new ListView(mCategList)
-        }
+        // }
         onComplete {
           val sel = ggCandidates.selection.items
           close()
           if (sel.size == 1) {
             val name = sel.head
             c.get(name).foreach { source =>
-              val b         = panel.bounds
-              p2d.setLocation(b.getCenterX, b.getCenterY)
+              // val b         = panel.bounds
+              // p2d.setLocation(b.getCenterX, b.getCenterY)
+              p2d.setLocation(lpx, lpy)
               val displayPt = main.display.getAbsoluteCoordinate(p2d, null)
               main.cursor.step { implicit tx =>
                 complete(tx)(source(), displayPt)
@@ -352,7 +355,8 @@ object KeyControl {
       }
 
       val dim = p.preferredSize
-      val pt  = new Point(lastPt.x - dim.width/2, lastPt.y - 12)
+      val dh  = main.display.getHeight
+      val pt  = new Point(lpx - dim.width/2, /* lpy - 12 */ dh - dim.height)
 
       main.showOverlayPanel(p, Some(pt))
     }
