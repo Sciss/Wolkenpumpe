@@ -114,6 +114,7 @@ object KeyControl {
 
     private[this] var filters   : Category[S] = _
     private[this] var generators: Category[S] = _
+    private[this] var collectors: Category[S] = _
 
     private[this] val lastPt = new Point
     private[this] val p2d    = new Point2D.Float // throw-away
@@ -155,6 +156,7 @@ object KeyControl {
       val n       = main.nuages
       filters     = n.filters   .fold(mkEmptyCategory())(mkCategory)
       generators  = n.generators.fold(mkEmptyCategory())(mkCategory)
+      collectors  = n.collectors.fold(mkEmptyCategory())(mkCategory)
     }
 
     override def mousePressed(e: MouseEvent): Unit = {
@@ -265,7 +267,8 @@ object KeyControl {
 
               if (e.getKeyCode == KeyEvent.VK_ENTER) {
                 perform { pt =>
-                  showCategoryInput(filters) { implicit tx => (obj, pt0) =>
+                  val category = if (e.isShiftDown) collectors else filters
+                  showCategoryInput(category) { implicit tx => (obj, pt0) =>
                     main.appendFilter(pred = vs.scan, flt = obj, colOpt = None, pt = pt0)
                   }
                 }

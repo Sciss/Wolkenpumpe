@@ -21,7 +21,7 @@ import de.sciss.synth.proc._
 import prefuse.visual.{VisualItem, EdgeItem}
 import prefuse.util.GraphicsLib
 import prefuse.util.display.DisplayLib
-import java.awt.geom.Rectangle2D
+import java.awt.geom.{Point2D, Rectangle2D}
 
 ///** Simple interface to query currently selected
 //  * proc factory and to feedback on-display positions
@@ -51,7 +51,13 @@ class ClickControl[S <: Sys[S]](main: NuagesPanel[S]) extends ControlAdapter {
   override def mousePressed(e: MouseEvent): Unit = {
     if (e.isMetaDown) {
       zoomToFit(e)
-    } else if (e.getClickCount == 2) {
+    } else
+    if (e.isControlDown) {
+      val d  = getDisplay(e)
+      val pt = d.getInverseTransform.transform(e.getPoint, null)
+      pan(e, pt)
+    } else
+    if (e.getClickCount == 2) {
       main.showCreateGenDialog(e.getPoint)
     }
   }
@@ -66,6 +72,9 @@ class ClickControl[S <: Sys[S]](main: NuagesPanel[S]) extends ControlAdapter {
     }
     if (e.isMetaDown) {
       zoom(e, vi.getBounds)
+    } else if (e.isControlDown) {
+      val b = vi.getBounds
+      pan(e, new Point2D.Double(b.getCenterX, b.getCenterY))
     } else {
       if (e.getClickCount == 2) doubleClick(vi, e)
     }
@@ -76,6 +85,13 @@ class ClickControl[S <: Sys[S]](main: NuagesPanel[S]) extends ControlAdapter {
     val vis     = d.getVisualization
     val bounds  = vis.getBounds(NuagesPanel.GROUP_GRAPH)
     zoom(e, bounds)
+  }
+
+  private def pan(e: MouseEvent, pt: Point2D): Unit = {
+    val d = getDisplay(e)
+    if (d.isTranformInProgress) return
+    val duration  = 1000 // XXX could be customized
+    d.animatePanToAbs(pt, duration)
   }
 
   private def zoom(e: MouseEvent, bounds: Rectangle2D): Unit = {

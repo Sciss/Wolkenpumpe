@@ -72,7 +72,7 @@ final class GlobalControl[S <: Sys[S]](main: NuagesPanel[S]) extends MouseMotion
         // println(s"Index = $i")
         val b = vi.getBounds
         p2d.setLocation(b.getCenterX, b.getCenterY) // vi.getX + b.getWidth/2, vi.getY + b.getHeight/2)
-        display.animatePanToAbs(p2d, 200)
+        display.animatePanToAbs(p2d, 500 /* 200 */)
       }
     }
   }
@@ -84,7 +84,7 @@ final class GlobalControl[S <: Sys[S]](main: NuagesPanel[S]) extends MouseMotion
     display.getAbsoluteCoordinate(lastPt, p2d)
     val scale = display.getScale
     // display.zoomAbs(p2d, v / scale)
-    display.animateZoomAbs(p2d, v / scale, 200)
+    display.animateZoomAbs(p2d, v / scale, 500 /* 200 */)
   }
 
   def keyPressed (e: KeyEvent): Unit = ()

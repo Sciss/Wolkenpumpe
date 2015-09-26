@@ -31,6 +31,7 @@ The current version `v` is `"1.6.0"`.
 - double-click on node fixes/unfixes position
 - alt-click on node deletes node
 - shift-drag from scan-out brings up connector rubber-band
+- shift-drag on parameter allows to find target value before releasing mouse
 
 ## keyboard shortcuts
 
@@ -38,19 +39,33 @@ Global:
 
 - <tt>1</tt> zoom 100%
 - <tt>2</tt> zoom 200%
-- <tt>O</tt> pan to next collector (O for output)
+- <tt>O</tt> pan to next collector (O is for output)
 - <tt>Control</tt>-<tt>Shift</tt>-<tt>F</tt> toggle full-screen
 - <tt>Escape</tt> cancel on-screen dialogs
+- <tt>Enter</tt> new-generator prompt
+
+Dialogs:
+
+- <tt>Control</tt>-<tt>Enter</tt> commit
 
 Scan-out:
 
 - custom filter insertion short-cuts via object attribute `Nuages.KeyShortcut`
+- <tt>Enter</tt> new-filter append prompt
+- <tt>Shift</tt>-<tt>Enter</tt> new-collector append prompt
+
+Edge:
+
+- <tt>Enter</tt> new-filter insertion prompt
 
 Parameter values:
 
 - <tt>n</tt> minimum
 - <tt>c</tt> center
-- <tt>x</tt> maximum
-- <tt>r</tt> random
+- <tt>x</tt> maximum. If parameter is `amp` or `gain`: type twice fast
+- <tt>r</tt> random. If parameter is `amp` or `gain`: type twice fast
+- <tt>R</tt> multi-channel random. If parameter is `amp` or `gain`: type twice fast
 - <tt>[</tt> decrement
 - <tt>]</tt> increment
+- <tt>{</tt> decrement random inter-channel spread
+- <tt>}</tt> increment random inter-channel spread
