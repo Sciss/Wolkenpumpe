@@ -19,6 +19,8 @@ import de.sciss.lucre.synth.Sys
 import de.sciss.synth.proc.{WorkspaceHandle, AuralSystem}
 import impl.{NuagesViewImpl => Impl}
 
+import scala.swing.Component
+
 object NuagesView {
   def apply[S <: Sys[S]](nuages: Nuages[S], nuagesConfig: Nuages.Config, scissConfig: ScissProcs.Config)
                         (implicit tx: S#Tx, aural: AuralSystem, workspace: WorkspaceHandle[S],
@@ -31,4 +33,5 @@ trait NuagesView[S <: Sys[S]] extends View.Cursor[S] {
 
   def installFullScreenKey(frame: scala.swing.Window): Unit
 
+  def addSouthComponent(c: Component): Unit
 }

@@ -21,7 +21,7 @@ import javax.swing.{AbstractAction, JComponent, KeyStroke}
 import de.sciss.audiowidgets.TimelineModel
 import de.sciss.lucre.stm
 import de.sciss.lucre.swing.impl.ComponentHolder
-import de.sciss.lucre.swing.{View, defer, deferTx}
+import de.sciss.lucre.swing.{View, defer, deferTx, requireEDT}
 import de.sciss.lucre.synth.{Server, Synth, Sys, Txn}
 import de.sciss.osc
 import de.sciss.span.Span
@@ -33,7 +33,7 @@ import de.sciss.synth.{SynthGraph, addAfter, message}
 import scala.collection.breakOut
 import scala.swing.Swing._
 import scala.swing.event.ButtonClicked
-import scala.swing.{Action, BorderPanel, Button, Component, GridBagPanel, Label, MenuItem, Orientation, TextField}
+import scala.swing.{BoxPanel, Action, BorderPanel, Button, Component, GridBagPanel, Label, MenuItem, Orientation, TextField}
 
 object NuagesViewImpl {
   def apply[S <: Sys[S]](nuages: Nuages[S], nuagesConfig: Nuages.Config, scissConfig: ScissProcs.Config)
@@ -53,6 +53,8 @@ object NuagesViewImpl {
     extends NuagesView[S] with ComponentHolder[Component] with AuralSystem.Client { impl =>
 
     import panel.config
+
+    private var _southBox: BoxPanel = _
 
     def init()(implicit tx: S#Tx): this.type = {
       deferTx(guiInit())
@@ -90,7 +92,6 @@ object NuagesViewImpl {
         }
       })
     }
-
 
     private def guiInit(): Unit = {
       // val transition = new NuagesTransitionPanel(view)
@@ -158,6 +159,8 @@ object NuagesViewImpl {
       if (config.masterChannels.isDefined) mkFader(NuagesPanel.masterAmpSpec, 0.75)(panel.setMasterVolume(_)(_))
       if (config.soloChannels  .isDefined) mkFader(NuagesPanel.soloAmpSpec  , 0.25)(panel.setSoloVolume  (_)(_))
 
+      _southBox = ggSouthBox
+
       component = new BorderPanel {
         background = Color.black
         add(panel.component, BorderPanel.Position.Center)
@@ -166,6 +169,11 @@ object NuagesViewImpl {
       }
 
       // if (config.fullScreenKey) installFullScreenKey(frame)
+    }
+
+    def addSouthComponent(c: Component): Unit = {
+      requireEDT()
+      _southBox.contents += c
     }
 
     private def showMenu(parent: Component): Unit = {

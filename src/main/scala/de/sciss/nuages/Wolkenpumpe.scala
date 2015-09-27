@@ -129,6 +129,19 @@ object Wolkenpumpe {
   }
 }
 class Wolkenpumpe[S <: Sys[S]] {
+  private[this] var _view : NuagesView[S] = _
+  private[this] var _aural: AuralSystem   = _
+
+  def view: NuagesView[S] = {
+    if (_view == null) throw new IllegalStateException(s"NuagesView not yet initialized")
+    _view
+  }
+
+  def auralSystem: AuralSystem = {
+    if (_aural == null) throw new IllegalStateException(s"AuralSystem not yet initialized")
+    _aural
+  }
+
   /** Subclasses may want to override this. */
   protected def configure(sCfg: ScissProcs.ConfigBuilder, nCfg: Nuages.ConfigBuilder,
                           aCfg: SServer.ConfigBuilder): Unit = {
@@ -182,6 +195,7 @@ class Wolkenpumpe[S <: Sys[S]] {
     /* val f = */ cursor.step { implicit tx =>
       implicit val n      = nuagesH() // Nuages[S]
       implicit val aural  = AuralSystem()
+      _aural = aural
 
       // val nuagesH = tx.newHandle(n)
       val finder  = new NuagesFinder {
@@ -193,8 +207,8 @@ class Wolkenpumpe[S <: Sys[S]] {
       registerProcesses(sCfg, nCfg, finder)
 
       import de.sciss.synth.proc.WorkspaceHandle.Implicits._
-      val view  = NuagesView(n, nCfg, sCfg)
-      /* val frame = */ NuagesFrame(view, undecorated = false /* true */)
+      _view = NuagesView(n, nCfg, sCfg)
+      /* val frame = */ NuagesFrame(_view, undecorated = false /* true */)
       aural.start(aCfg)
     }
   }
