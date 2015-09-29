@@ -72,7 +72,7 @@ trait PanelImplTxnFuns[S <: Sys[S]] {
     // val imp = ExprImplicits[S]
     val time    = transport.position
     val span    = Span.From(time)
-    val spanEx  = SpanLikeObj.newVar(span)
+    val spanEx  = SpanLikeObj.newVar[S](span)
     tl.add(spanEx, obj)
   }
 

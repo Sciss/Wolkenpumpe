@@ -1,6 +1,6 @@
 name               := "Wolkenpumpe"
 
-version            := "2.2.0-SNAPSHOT"
+version            := "2.2.0"
 
 organization       := "de.sciss"
 

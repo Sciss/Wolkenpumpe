@@ -230,7 +230,7 @@ trait PanelImplDialogs[S <: Sys[S]] {
 
       def ancestorRemoved(e: AncestorEvent): Unit = {
         pp.removeAncestorListener(this)
-        if (overlay.contains(p)) {
+        if (overlay == Some(p)) {
           overlay = None
           display.requestFocus()
         }

@@ -14,7 +14,7 @@ object Demo extends SwingApplication {
   def startup(args: Array[String]): Unit = {
     WebLookAndFeel.install()
 
-    if (args.headOption.contains("--durable")) {
+    if (args.headOption == Some("--durable")) {
       type S = Durable
       val factory = BerkeleyDB.tmp()
       implicit val system = Durable(factory)

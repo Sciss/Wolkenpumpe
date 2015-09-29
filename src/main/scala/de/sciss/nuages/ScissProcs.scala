@@ -171,7 +171,7 @@ object ScissProcs {
 
         val art   = Artifact(loc, f) // loc.add(f)
         val spec  = AudioFile.readSpec(f)
-        val gr    = Grapheme.Expr.Audio(art, spec, 0L, 1.0)
+        val gr    = Grapheme.Expr.Audio[S](art, spec, 0L, 1.0)
         procObj.attr.put("file", gr)
       })
     }
@@ -243,7 +243,7 @@ object ScissProcs {
         sig
       }
       // val art   = Artifact(locH(), f) // locH().add(f)
-      val gr    = Grapheme.Expr.Audio(art, spec, 0L, 1.0)
+      val gr    = Grapheme.Expr.Audio[T](art, spec, 0L, 1.0)
       procObj.attr.put("file", gr) // Obj(AudioGraphemeElem(gr)))
       // val artObj  = Obj(ArtifactElem(art))
       // procObj.attr.put("file", artObj)
