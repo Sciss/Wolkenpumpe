@@ -20,7 +20,7 @@ import de.sciss.lucre.stm.{Obj, TxnLike}
 import de.sciss.lucre.swing.View
 import de.sciss.lucre.synth.{Synth, Sys, Txn}
 import de.sciss.nuages.impl.{PanelImpl => Impl}
-import de.sciss.synth.proc.{AuralSystem, Scan, Transport, WorkspaceHandle}
+import de.sciss.synth.proc.{AuralSystem, Transport, WorkspaceHandle}
 import prefuse.data.Graph
 import prefuse.visual.{AggregateTable, VisualGraph}
 import prefuse.{Display, Visualization}

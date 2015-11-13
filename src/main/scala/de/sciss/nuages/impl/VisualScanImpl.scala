@@ -22,7 +22,6 @@ import de.sciss.lucre.stm
 import de.sciss.lucre.stm.Disposable
 import de.sciss.lucre.swing.requireEDT
 import de.sciss.lucre.synth.Sys
-import de.sciss.synth.proc.Scan
 import prefuse.data.Edge
 import prefuse.visual.VisualItem
 

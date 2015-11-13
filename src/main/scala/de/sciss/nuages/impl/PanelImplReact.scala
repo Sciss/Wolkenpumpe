@@ -20,7 +20,7 @@ import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Obj, TxnLike}
 import de.sciss.lucre.synth.{AudioBus, Node, Synth, Sys}
 import de.sciss.span.SpanLike
-import de.sciss.synth.proc.{AuralObj, Proc, Scan, Timeline}
+import de.sciss.synth.proc.{AuralObj, Proc, Timeline}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm.{Ref, TMap}

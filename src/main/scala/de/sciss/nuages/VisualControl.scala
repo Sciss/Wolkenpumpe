@@ -15,7 +15,6 @@ package de.sciss.nuages
 
 import de.sciss.lucre.expr.{DoubleVector, DoubleObj}
 import de.sciss.lucre.synth.{Synth, Sys}
-import de.sciss.synth.proc.Scan
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm.Ref

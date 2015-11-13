@@ -18,7 +18,7 @@ import java.awt.geom.{Line2D, Point2D}
 import java.awt.{Color, Graphics2D}
 
 import de.sciss.lucre.synth.Sys
-import de.sciss.synth.proc.{Proc, Scan}
+import de.sciss.synth.proc.Proc
 import prefuse.Display
 import prefuse.controls.ControlAdapter
 import prefuse.util.display.PaintListener

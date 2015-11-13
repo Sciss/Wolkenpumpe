@@ -9,7 +9,7 @@ import de.sciss.lucre.stm
 import de.sciss.lucre.stm.Obj
 import de.sciss.lucre.swing.{ListView, requireEDT}
 import de.sciss.lucre.synth.Sys
-import de.sciss.synth.proc.{Scan, Folder, Proc}
+import de.sciss.synth.proc.{Folder, Proc}
 import prefuse.Display
 
 import scala.collection.immutable.{IndexedSeq => Vec}

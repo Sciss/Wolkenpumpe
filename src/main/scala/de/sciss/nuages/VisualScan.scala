@@ -14,7 +14,6 @@
 package de.sciss.nuages
 
 import de.sciss.lucre.synth.Sys
-import de.sciss.synth.proc.Scan
 import prefuse.data.Edge
 
 object VisualScan {

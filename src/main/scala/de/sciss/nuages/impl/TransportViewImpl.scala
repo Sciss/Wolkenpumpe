@@ -22,7 +22,7 @@ import de.sciss.lucre.swing.impl.ComponentHolder
 import de.sciss.lucre.synth.Sys
 import de.sciss.synth.proc.gui.TimeDisplay
 import de.sciss.synth.proc.gui.impl.CursorHolder
-import de.sciss.synth.proc.{Timeline, Transport}
+import de.sciss.synth.proc.{TimeRef, Timeline, Transport}
 
 import scala.swing.Swing._
 import scala.swing.{BoxPanel, Component, Orientation, Swing}
@@ -33,7 +33,7 @@ object TransportViewImpl {
                          model: TimelineModel)
                         (implicit tx: S#Tx, cursor: Cursor[S]): View[S] = {
     val view    = new Impl(transport, model)
-    val srk     = 1000 / Timeline.SampleRate // transport.sampleRate
+    val srk     = 1000 / TimeRef.SampleRate // transport.sampleRate
 
     view.observer = transport.react { implicit tx => {
       case Transport.Play(_, time) => view.startedPlaying(time)
@@ -64,7 +64,7 @@ object TransportViewImpl {
 
     private var timerFrame  = 0L
     private var timerSys    = 0L
-    private val srm         = 0.001 * Timeline.SampleRate // transport.sampleRate
+    private val srm         = 0.001 * TimeRef.SampleRate // transport.sampleRate
 
     private var transportStrip: Component with GUITransport.ButtonStrip = _
 

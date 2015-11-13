@@ -27,7 +27,7 @@ import de.sciss.lucre.swing.requireEDT
 import de.sciss.lucre.synth.{Synth, Sys}
 import de.sciss.synth.proc.Implicits._
 import de.sciss.synth.proc.Timeline.Timed
-import de.sciss.synth.proc.{Proc, Scan}
+import de.sciss.synth.proc.Proc
 import prefuse.util.ColorLib
 import prefuse.visual.{AggregateItem, VisualItem}
 

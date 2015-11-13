@@ -26,7 +26,7 @@ import de.sciss.lucre.synth.{Server, Synth, Sys, Txn}
 import de.sciss.osc
 import de.sciss.span.Span
 import de.sciss.swingplus.PopupMenu
-import de.sciss.synth.proc.{AuralSystem, Timeline, WorkspaceHandle}
+import de.sciss.synth.proc.{TimeRef, AuralSystem, Timeline, WorkspaceHandle}
 import de.sciss.synth.swing.j.JServerStatusPanel
 import de.sciss.synth.{SynthGraph, addAfter, message}
 
@@ -40,7 +40,7 @@ object NuagesViewImpl {
                         (implicit tx: S#Tx, aural: AuralSystem, workspace: WorkspaceHandle[S],
                          cursor: stm.Cursor[S]): NuagesView[S] = {
     val panel     = NuagesPanel(nuages, nuagesConfig)
-    val tlm       = TimelineModel(Span(0L, (Timeline.SampleRate * 60 * 60 * 10).toLong), Timeline.SampleRate)
+    val tlm       = TimelineModel(Span(0L, (TimeRef.SampleRate * 60 * 60 * 10).toLong), TimeRef.SampleRate)
     val transport = panel.transport
     val trnspView = TransportViewImpl(transport, tlm)
     val res       = new Impl[S](panel, trnspView, scissConfig).init()

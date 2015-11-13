@@ -26,7 +26,7 @@ import de.sciss.lucre.swing.impl.ComponentHolder
 import de.sciss.lucre.swing.{ListView, defer, deferTx, requireEDT}
 import de.sciss.lucre.synth.{AudioBus, Node, Synth, Sys, Txn}
 import de.sciss.span.{Span, SpanLike}
-import de.sciss.synth.proc.{Action, AuralObj, AuralSystem, Folder, Proc, Scan, Timeline, Transport, WorkspaceHandle}
+import de.sciss.synth.proc.{Action, AuralObj, AuralSystem, Folder, Proc, Timeline, Transport, WorkspaceHandle}
 import de.sciss.synth.{proc, SynthGraph, addToTail, message}
 import prefuse.action.assignment.ColorAction
 import prefuse.action.layout.graph.ForceDirectedLayout

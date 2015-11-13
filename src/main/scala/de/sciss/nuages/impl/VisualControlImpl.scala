@@ -23,7 +23,6 @@ import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Disposable, Obj}
 import de.sciss.lucre.swing.requireEDT
 import de.sciss.lucre.synth.{Synth, Sys}
-import de.sciss.synth.proc.Scan
 import prefuse.util.ColorLib
 import prefuse.visual.VisualItem
 
