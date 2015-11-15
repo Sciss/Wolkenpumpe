@@ -113,12 +113,13 @@ class ClickControl[S <: Sys[S]](main: NuagesPanel[S]) extends ControlAdapter {
           case (_: NuagesShapeRenderer[_], _: NuagesShapeRenderer[_]) =>
             val srcData = nSrc.get(COL_NUAGES).asInstanceOf[VisualData[S]]
             val tgtData = nTgt.get(COL_NUAGES).asInstanceOf[VisualData[S]]
-            if (srcData != null && tgtData != null)
-              (srcData, tgtData) match {
-                case (vOut: VisualScan[S], vIn: VisualScan[S]) =>
-                  main.showInsertFilterDialog(vOut, vIn, e.getPoint)
-                case _ =>
-              }
+            ??? // SCAN
+//            if (srcData != null && tgtData != null)
+//              (srcData, tgtData) match {
+//                case (vOut: VisualScan[S], vIn: VisualScan[S]) =>
+//                  main.showInsertFilterDialog(vOut, vIn, e.getPoint)
+//                case _ =>
+//              }
 
           case _ =>
         }
@@ -134,34 +135,35 @@ class ClickControl[S <: Sys[S]](main: NuagesPanel[S]) extends ControlAdapter {
       case (_: NuagesShapeRenderer[_], _: NuagesShapeRenderer[_]) =>
         val srcData = nSrc.get(COL_NUAGES).asInstanceOf[VisualData[S]]
         val tgtData = nTgt.get(COL_NUAGES).asInstanceOf[VisualData[S]]
-        if (srcData != null && tgtData != null)
-          (srcData, tgtData) match {
-            case (srcVScan: VisualScan[S], tgtVScan: VisualScan[S]) =>
-              main.cursor.step { implicit tx =>
-                (srcVScan.parent.obj, tgtVScan.parent.obj) match {
-                  case (srcProc: Proc[S], tgtProc: Proc[S]) =>
-                    for {
-                      srcScan <- srcProc.outputs.get(srcVScan.key)
-                      tgtScan <- tgtProc.inputs .get(tgtVScan.key)
-                    } {
-                      srcScan.remove(Scan.Link.Scan(tgtScan))
-                    }
-                  case _ =>
-                }
-              }
-
-            case (srcVScan: VisualScan[S], tgtCtl: VisualControl[S]) =>
-              main.cursor.step { implicit tx =>
-                tgtCtl.mapping.foreach { m =>
-                  // make sure there are no more /tr updates
-                  m.synth.swap(None)(tx.peer).foreach(_.dispose())
-                }
-                // this causes AttrRemoved and AttrAdded succession
-                tgtCtl.removeMapping()
-              }
-
-            case _ =>
-          }
+        ??? // SCAN
+//        if (srcData != null && tgtData != null)
+//          (srcData, tgtData) match {
+//            case (srcVScan: VisualScan[S], tgtVScan: VisualScan[S]) =>
+//              main.cursor.step { implicit tx =>
+//                (srcVScan.parent.obj, tgtVScan.parent.obj) match {
+//                  case (srcProc: Proc[S], tgtProc: Proc[S]) =>
+//                    for {
+//                      srcScan <- srcProc.outputs.get(srcVScan.key)
+//                      tgtScan <- tgtProc.inputs .get(tgtVScan.key)
+//                    } {
+//                      srcScan.remove(Scan.Link.Scan(tgtScan))
+//                    }
+//                  case _ =>
+//                }
+//              }
+//
+//            case (srcVScan: VisualScan[S], tgtCtl: VisualControl[S]) =>
+//              main.cursor.step { implicit tx =>
+//                tgtCtl.mapping.foreach { m =>
+//                  // make sure there are no more /tr updates
+//                  m.synth.swap(None)(tx.peer).foreach(_.dispose())
+//                }
+//                // this causes AttrRemoved and AttrAdded succession
+//                tgtCtl.removeMapping()
+//              }
+//
+//            case _ =>
+//          }
 
       case _ =>
     }

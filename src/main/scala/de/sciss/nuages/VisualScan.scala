@@ -17,13 +17,15 @@ import de.sciss.lucre.synth.Sys
 import prefuse.data.Edge
 
 object VisualScan {
-  def apply[S <: Sys[S]](parent: VisualObj[S], scan: Scan[S], key: String, isInput: Boolean)(implicit tx: S#Tx): VisualScan[S] =
-    impl.VisualScanImpl(parent, scan = scan, key = key, isInput = isInput)
+  // SCAN
+//  def apply[S <: Sys[S]](parent: VisualObj[S], scan: Scan[S], key: String, isInput: Boolean)(implicit tx: S#Tx): VisualScan[S] =
+//    impl.VisualScanImpl(parent, scan = scan, key = key, isInput = isInput)
 }
 trait VisualScan[S <: Sys[S]] extends VisualParam[S] {
   var sources : Set[Edge]
   var sinks   : Set[Edge]
   var mappings: Set[VisualControl[S]]
 
-  def scan(implicit tx: S#Tx): Scan[S]
+  // SCAN
+  // def scan(implicit tx: S#Tx): Scan[S]
 }

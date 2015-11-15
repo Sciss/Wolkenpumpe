@@ -93,8 +93,10 @@ trait NuagesPanel[S <: Sys[S]] extends View[S] {
   def deferVisTx(thunk: => Unit)(implicit tx: TxnLike): Unit
 
   def createGenerator(gen: Obj[S], colOpt: Option[Obj[S]], pt: Point2D)(implicit tx: S#Tx): Unit
-  def insertFilter(pred: Scan[S], succ: Scan[S], flt: Obj[S], pt: Point2D)(implicit tx: S#Tx): Unit
-  def appendFilter(pred: Scan[S], flt: Obj[S], colOpt: Option[Obj[S]], pt: Point2D)(implicit tx: S#Tx): Unit
+
+  // SCAN
+//  def insertFilter(pred: Scan[S], succ: Scan[S], flt: Obj[S], pt: Point2D)(implicit tx: S#Tx): Unit
+//  def appendFilter(pred: Scan[S], flt: Obj[S], colOpt: Option[Obj[S]], pt: Point2D)(implicit tx: S#Tx): Unit
 
   def nodeMap: stm.IdentifierMap[S#ID, S#Tx, VisualObj [S]]
 
@@ -109,5 +111,6 @@ trait NuagesPanel[S <: Sys[S]] extends View[S] {
 
   // ---- these are left-overs from refactoring, they should not go in public API ----
 
-  def assignMapping(source: Scan[S], vSink: VisualControl[S])(implicit tx: S#Tx): Unit
+  // SCAN
+//   def assignMapping(source: Scan[S], vSink: VisualControl[S])(implicit tx: S#Tx): Unit
 }

@@ -89,22 +89,23 @@ final class VisualObjImpl[S <: Sys[S]] private (val main: NuagesPanel[S],
   }
 
   private[this] def initProc(proc: Proc[S])(implicit tx: S#Tx): Unit = {
-    proc.inputs .iterator.foreach { case (key, scan) =>
-      VisualScan(this, scan, key, isInput = true )
-    }
-    proc.outputs.iterator.foreach { case (key, scan) =>
-      VisualScan(this, scan, key, isInput = false)
-    }
-
-    observers ::= proc.changed.react { implicit tx => upd =>
-      upd.changes.foreach {
-        case Proc.InputAdded   (key, scan) => VisualScan(this, scan, key, isInput = true )
-        case Proc.InputRemoved (key, scan) => inputs.get(key)(tx.peer).foreach(_.dispose())
-        case Proc.OutputAdded  (key, scan) => VisualScan(this, scan, key, isInput = false)
-        case Proc.OutputRemoved(key, scan) => inputs.get(key)(tx.peer).foreach(_.dispose())
-        case _ =>
-      }
-    }
+    ??? // SCAN
+//    proc.inputs .iterator.foreach { case (key, scan) =>
+//      VisualScan(this, scan, key, isInput = true )
+//    }
+//    proc.outputs.iterator.foreach { case (key, scan) =>
+//      VisualScan(this, scan, key, isInput = false)
+//    }
+//
+//    observers ::= proc.changed.react { implicit tx => upd =>
+//      upd.changes.foreach {
+//        case Proc.InputAdded   (key, scan) => VisualScan(this, scan, key, isInput = true )
+//        case Proc.InputRemoved (key, scan) => inputs.get(key)(tx.peer).foreach(_.dispose())
+//        case Proc.OutputAdded  (key, scan) => VisualScan(this, scan, key, isInput = false)
+//        case Proc.OutputRemoved(key, scan) => inputs.get(key)(tx.peer).foreach(_.dispose())
+//        case _ =>
+//      }
+//    }
 
     val attr = proc.attr
     attr.iterator.foreach { case (key, obj) => mkParam(key, obj) }
@@ -119,7 +120,7 @@ final class VisualObjImpl[S <: Sys[S]] private (val main: NuagesPanel[S],
   private[this] def mkParam(key: String, obj: Obj[S])(implicit tx: S#Tx): Unit = obj match {
     case dObj: DoubleObj[S]     => VisualControl.scalar(this, key, dObj)
     case dObj: DoubleVector[S]  => VisualControl.vector(this, key, dObj)
-    case sObj: Scan[S]          => VisualControl.scan  (this, key, sObj)
+    // SCAN case sObj: Scan[S]          => VisualControl.scan  (this, key, sObj)
     case _ =>
   }
 
@@ -234,24 +235,24 @@ final class VisualObjImpl[S <: Sys[S]] private (val main: NuagesPanel[S],
         obj match {
           case objT: Proc[S] =>
             val proc  = objT
-            // val scans = proc.scans
-            val ins   = proc.inputs .get(Proc.scanMainIn ).fold(List.empty[Scan[S]])(_.iterator.collect { case Scan.Link.Scan(source) => source } .toList)
-            val outs  = proc.outputs.get(Proc.scanMainOut).fold(List.empty[Scan[S]])(_.iterator.collect { case Scan.Link.Scan(sink  ) => sink   } .toList)
-            inKeys.foreach { key =>
-              proc.inputs.get(key).foreach { scan =>
-                scan.iterator.foreach(scan.remove)
-              }
-            }
-            outKeys.foreach { key =>
-              proc.outputs.get(key).foreach { scan =>
-                scan.iterator.foreach(scan.remove)
-              }
-            }
-            ins.foreach { in =>
-              outs.foreach { out =>
-                in.add(out)
-              }
-            }
+            ??? // SCAN
+//            val ins   = proc.inputs .get(Proc.scanMainIn ).fold(List.empty[Scan[S]])(_.iterator.collect { case Scan.Link.Scan(source) => source } .toList)
+//            val outs  = proc.outputs.get(Proc.scanMainOut).fold(List.empty[Scan[S]])(_.iterator.collect { case Scan.Link.Scan(sink  ) => sink   } .toList)
+//            inKeys.foreach { key =>
+//              proc.inputs.get(key).foreach { scan =>
+//                scan.iterator.foreach(scan.remove)
+//              }
+//            }
+//            outKeys.foreach { key =>
+//              proc.outputs.get(key).foreach { scan =>
+//                scan.iterator.foreach(scan.remove)
+//              }
+//            }
+//            ins.foreach { in =>
+//              outs.foreach { out =>
+//                in.add(out)
+//              }
+//            }
 
           case _ =>
         }

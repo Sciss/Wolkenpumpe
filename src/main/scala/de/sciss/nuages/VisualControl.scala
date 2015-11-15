@@ -28,9 +28,10 @@ object VisualControl {
                           dObj: DoubleVector[S])(implicit tx: S#Tx): VisualControl[S] =
     impl.VisualControlImpl.vector(parent, key, dObj)
 
-  def scan[S <: Sys[S]](parent: VisualObj[S], key: String,
-                        sObj: Scan[S])(implicit tx: S#Tx): VisualControl[S] =
-    impl.VisualControlImpl.scan(parent, key, sObj)
+  // SCAN
+//  def scan[S <: Sys[S]](parent: VisualObj[S], key: String,
+//                        sObj: Scan[S])(implicit tx: S#Tx): VisualControl[S] =
+//    impl.VisualControlImpl.scan(parent, key, sObj)
 
   trait Mapping[S <: Sys[S]] {
     /** The metering synth that via `SendTrig` updates the control's current value. */
@@ -38,7 +39,8 @@ object VisualControl {
 
     var source: Option[VisualScan[S]]
 
-    def scan(implicit tx: S#Tx): Scan[S]
+    // SCAN
+    // def scan(implicit tx: S#Tx): Scan[S]
   }
 }
 trait VisualControl[S <: Sys[S]] extends VisualParam[S] {

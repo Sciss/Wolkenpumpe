@@ -33,12 +33,14 @@ trait PanelImplDialogs[S <: Sys[S]] {
 
   protected def component: Component
 
-  protected def insertFilter(pred: Scan[S], succ: Scan[S], fltSrc: Obj[S], fltPt: Point2D)(implicit tx: S#Tx): Unit
+  // SCAN
+//  protected def insertFilter(pred: Scan[S], succ: Scan[S], fltSrc: Obj[S], fltPt: Point2D)(implicit tx: S#Tx): Unit
 
   protected def createGenerator(genSrc: Obj[S], colSrcOpt: Option[Obj[S]], pt: Point2D)(implicit tx: S#Tx): Unit
 
-  protected def appendFilter(pred: Scan[S], fltSrc: Obj[S], colSrcOpt: Option[Obj[S]], fltPt: Point2D)
-                            (implicit tx: S#Tx): Unit
+  // SCAN
+//  protected def appendFilter(pred: Scan[S], fltSrc: Obj[S], colSrcOpt: Option[Obj[S]], fltPt: Point2D)
+//                            (implicit tx: S#Tx): Unit
 
   protected def insertMacro(macroF: Folder[S], pt: Point2D)(implicit tx: S#Tx): Unit
 
@@ -58,12 +60,13 @@ trait PanelImplDialogs[S <: Sys[S]] {
                 case flt: Proc[S] =>
                   (fltPred.parent.obj, fltSucc.parent.obj) match {
                     case (pred: Proc[S], succ: Proc[S]) =>
-                      for {
-                        predScan <- pred.outputs.get(fltPred.key)
-                        succScan <- succ.inputs .get(fltSucc.key)
-                      } {
-                        insertFilter(predScan, succScan, flt, displayPt)
-                      }
+                      ??? // SCAN
+//                      for {
+//                        predScan <- pred.outputs.get(fltPred.key)
+//                        succScan <- succ.inputs .get(fltSucc.key)
+//                      } {
+//                        insertFilter(predScan, succScan, flt, displayPt)
+//                      }
                     case _ =>
                   }
                 case _ =>
@@ -118,7 +121,8 @@ trait PanelImplDialogs[S <: Sys[S]] {
               for {
                 predScan <- pred.outputs.get(fltPred.key)
               } {
-                appendFilter(predScan, flt, None, displayPt)
+                ??? // SCAN
+//                appendFilter(predScan, flt, None, displayPt)
               }
             case _ =>
           }
@@ -168,7 +172,8 @@ trait PanelImplDialogs[S <: Sys[S]] {
                             for {
                               predScan <- pred.outputs.get(fltPred.key)
                             } {
-                              appendFilter(predScan, flt, Some(col), displayPt)
+                              ??? // SCAN
+//                              appendFilter(predScan, flt, Some(col), displayPt)
                             }
                           case _ =>
                         }

@@ -135,8 +135,9 @@ class ConnectControl[S <: Sys[S]](main: NuagesPanel[S])
           srcProc.outputs.get(srcVScan.key).foreach { srcScan =>
             tgtV match {
               case tgtVScan: VisualScan[S] =>
-                for (tgtScan <- tgtProc.inputs.get(tgtVScan.key))
-                  srcScan.add(Scan.Link.Scan(tgtScan))
+                ??? // SCAN
+//                for (tgtScan <- tgtProc.inputs.get(tgtVScan.key))
+//                  srcScan.add(Scan.Link.Scan(tgtScan))
               case vCtl: VisualControl[S] =>
                 // println(s"Mapping from $srcScan")
                 tgtObj.attr.put(vCtl.key, srcScan)

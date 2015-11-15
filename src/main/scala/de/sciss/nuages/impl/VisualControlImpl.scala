@@ -52,14 +52,15 @@ object VisualControlImpl {
 
   private final val scanValue = Vector(0.5): Vec[Double] // XXX TODO
 
-  def scan[S <: Sys[S]](parent: VisualObj[S], key: String,
-                        obj: Scan[S])(implicit tx: S#Tx): VisualControl[S] = {
-    val value   = scanValue
-    val spec    = getSpec(parent, key)
-    val mapping = Some(new MappingImpl(tx.newHandle(obj)))
-    // val res   = apply(parent, sObj, key = key, spec = spec, value = value, mapping = Some())
-    new VisualVectorControl[S](parent, key = key, spec = spec, valueA = value, mapping = mapping).init(obj)
-  }
+  // SCAN
+//  def scan[S <: Sys[S]](parent: VisualObj[S], key: String,
+//                        obj: Scan[S])(implicit tx: S#Tx): VisualControl[S] = {
+//    val value   = scanValue
+//    val spec    = getSpec(parent, key)
+//    val mapping = Some(new MappingImpl(tx.newHandle(obj)))
+//    // val res   = apply(parent, sObj, key = key, spec = spec, value = value, mapping = Some())
+//    new VisualVectorControl[S](parent, key = key, spec = spec, valueA = value, mapping = mapping).init(obj)
+//  }
 
 //  private def apply[S <: Sys[S]](parent: VisualObj[S], obj: Obj[S], key: String, spec: ParamSpec, value: Double,
 //                                 mapping: Option[VisualControl.Mapping[S]])
@@ -71,12 +72,13 @@ object VisualControlImpl {
     var dragValue = valueStart
   }
 
-  private final class MappingImpl[S <: Sys[S]](scanH: stm.Source[S#Tx, Scan[S]]) extends VisualControl.Mapping[S] {
-    val synth   = Ref(Option.empty[Synth])
-    var source  = Option.empty[VisualScan[S]]
-
-    def scan(implicit tx: S#Tx): Scan[S] = scanH()
-  }
+  // SCAN
+//  private final class MappingImpl[S <: Sys[S]](scanH: stm.Source[S#Tx, Scan[S]]) extends VisualControl.Mapping[S] {
+//    val synth   = Ref(Option.empty[Synth])
+//    var source  = Option.empty[VisualScan[S]]
+//
+//    def scan(implicit tx: S#Tx): Scan[S] = scanH()
+//  }
 }
 
 final class VisualScalarControl[S <: Sys[S]](val parent: VisualObj[S], val key: String, val spec: ParamSpec,
@@ -311,9 +313,10 @@ abstract class VisualControlImpl[S <: Sys[S]] extends VisualParamImpl[S] with Vi
   final def init(obj: Obj[S])(implicit tx: S#Tx): this.type = {
     parent.params.put(key, this)(tx.peer) // .foreach(_.dispose())
     main.deferVisTx(initGUI())
-    mapping.foreach { m =>
-      main.assignMapping(source = m.scan, vSink = this)
-    }
+    ??? // SCAN
+//    mapping.foreach { m =>
+//      main.assignMapping(source = m.scan, vSink = this)
+//    }
     init1(obj)
     this
   }

@@ -216,10 +216,11 @@ object KeyControl {
           if (e.getKeyCode == KeyEvent.VK_ENTER) {
             perform { (vOut, vIn, pt) =>
               showCategoryInput(filters) { implicit tx => (obj, pt0) =>
-                val pred = vOut.scan
-                val succ = vIn .scan
-                // main.display.getTransform.transform(pt0, p2d)
-                main.insertFilter(pred = pred, succ = succ, flt = obj, pt = pt0)
+                ??? // SCAN
+//                val pred = vOut.scan
+//                val succ = vIn .scan
+//                // main.display.getTransform.transform(pt0, p2d)
+//                main.insertFilter(pred = pred, succ = succ, flt = obj, pt = pt0)
               }
             }
 
@@ -228,9 +229,10 @@ object KeyControl {
             filters.get(ks).foreach { objH =>
               perform { (vOut, vIn, pt) =>
                 main.cursor.step { implicit tx =>
-                  val pred = vOut.scan
-                  val succ = vIn .scan
-                  main.insertFilter(pred = pred, succ = succ, flt = objH(), pt = pt)
+                  ??? // SCAN
+//                  val pred = vOut.scan
+//                  val succ = vIn .scan
+//                  main.insertFilter(pred = pred, succ = succ, flt = objH(), pt = pt)
                 }
               }
             }
@@ -269,7 +271,8 @@ object KeyControl {
                 perform { pt =>
                   val category = if (e.isShiftDown) collectors else filters
                   showCategoryInput(category) { implicit tx => (obj, pt0) =>
-                    main.appendFilter(pred = vs.scan, flt = obj, colOpt = None, pt = pt0)
+                    ??? // SCAN
+//                    main.appendFilter(pred = vs.scan, flt = obj, colOpt = None, pt = pt0)
                   }
                 }
 
@@ -278,7 +281,8 @@ object KeyControl {
                 filters.get(ks).foreach { objH =>
                   perform { pt =>
                     main.cursor.step { implicit tx =>
-                      main.appendFilter(pred = vs.scan, flt = objH(), colOpt = None, pt = pt)
+                      ??? // SCAN
+//                      main.appendFilter(pred = vs.scan, flt = objH(), colOpt = None, pt = pt)
                     }
                   }
                 }

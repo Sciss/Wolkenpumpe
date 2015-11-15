@@ -74,14 +74,15 @@ class DSL[S <: stm.Sys[S]] {
   def pScalar(key: String, spec: ParamSpec, default: Attribute.Default)(implicit tx: S#Tx): GE =
     mkPar(scalar, key = key, spec = spec, default = default)
 
-  def pAudioIn(key: String, numChannels: Int, spec: ParamSpec)(implicit tx: S#Tx): GE = {
-    val obj       = current.get(tx.peer)
-    val sig       = ScanInFix(key, numChannels)
-    obj.inputs.add(key)
-    // val clip      = sig.clip(0, 1)
-    val clip      = sig.max(0).min(1)   // some crazy bugs in Clip
-    spec.map(clip)
-  }
+  // SCAN
+//  def pAudioIn(key: String, numChannels: Int, spec: ParamSpec)(implicit tx: S#Tx): GE = {
+//    val obj       = current.get(tx.peer)
+//    val sig       = ScanInFix(key, numChannels)
+//    obj.inputs.add(key)
+//    // val clip      = sig.clip(0, 1)
+//    val clip      = sig.max(0).min(1)   // some crazy bugs in Clip
+//    spec.map(clip)
+//  }
 
   def shortcut(implicit tx: S#Tx): String = {
     val obj = current.get(tx.peer)
@@ -157,7 +158,8 @@ class DSL[S <: stm.Sys[S]] {
       ScanOut(Proc.scanMainOut, out)
     }
     val proc  = obj
-    proc.inputs .add(Proc.scanMainIn )
+    ??? // SCAN
+    // proc.inputs .add(Proc.scanMainIn )
     proc.outputs.add(Proc.scanMainOut)
     insertByName(n.filters.get, obj)
     obj
@@ -181,7 +183,8 @@ class DSL[S <: stm.Sys[S]] {
       val in = ScanIn(Proc.scanMainIn)
       fun(in)
     }
-    obj.inputs.add(Proc.scanMainIn)
+    ??? // SCAN
+//    obj.inputs.add(Proc.scanMainIn)
     insertByName(folder, obj)
     obj
   }

@@ -39,9 +39,10 @@ trait PanelImplTxnFuns[S <: Sys[S]] {
         case (genP: Proc[S], Some(colP: Proc[S])) =>
           val procGen = genP
           val procCol = colP
-          val scanOut = procGen.outputs.add(Proc.scanMainOut)
-          val scanIn  = procCol.inputs .add(Proc.scanMainIn )
-          scanOut.add(scanIn)
+          ??? // SCAN
+//          val scanOut = procGen.outputs.add(Proc.scanMainOut)
+//          val scanIn  = procCol.inputs .add(Proc.scanMainIn )
+//          scanOut.add(scanIn)
 
         case _ =>
       }
@@ -76,40 +77,42 @@ trait PanelImplTxnFuns[S <: Sys[S]] {
     tl.add(spanEx, obj)
   }
 
-  def insertFilter(pred: Scan[S], succ: Scan[S], fltSrc: Obj[S], fltPt: Point2D)(implicit tx: S#Tx): Unit = {
-    val flt = Obj.copy(fltSrc)
+  // SCAN
+//  def insertFilter(pred: Scan[S], succ: Scan[S], fltSrc: Obj[S], fltPt: Point2D)(implicit tx: S#Tx): Unit = {
+//    val flt = Obj.copy(fltSrc)
+//
+//    flt match {
+//      case fltP: Proc[S] =>
+//        val procFlt  = fltP
+//        pred.add(procFlt.inputs.add(Proc.scanMainIn))
+//        // we may handle 'sinks' here by ignoring them when they don't have an `"out"` scan.
+//        for {
+//          fltOut <- procFlt.outputs.get(Proc.scanMainOut)
+//        } {
+//          pred  .remove(succ)
+//          fltOut.add   (succ)
+//        }
+//
+//      case _ =>
+//    }
+//
+//    finalizeProcAndCollector(flt, None, fltPt)
+//  }
 
-    flt match {
-      case fltP: Proc[S] =>
-        val procFlt  = fltP
-        pred.add(procFlt.inputs.add(Proc.scanMainIn))
-        // we may handle 'sinks' here by ignoring them when they don't have an `"out"` scan.
-        for {
-          fltOut <- procFlt.outputs.get(Proc.scanMainOut)
-        } {
-          pred  .remove(succ)
-          fltOut.add   (succ)
-        }
-
-      case _ =>
-    }
-
-    finalizeProcAndCollector(flt, None, fltPt)
-  }
-
-  def appendFilter(pred: Scan[S], fltSrc: Obj[S], colSrcOpt: Option[Obj[S]], fltPt: Point2D)
-                  (implicit tx: S#Tx): Unit = {
-    val flt = Obj.copy(fltSrc)
-
-    flt match {
-      case fltP: Proc[S] =>
-        val procFlt  = fltP
-        pred.add(procFlt.inputs.add(Proc.scanMainIn))
-      case _ =>
-    }
-
-    finalizeProcAndCollector(flt, colSrcOpt, fltPt)
-  }
+  // SCAN
+//  def appendFilter(pred: Scan[S], fltSrc: Obj[S], colSrcOpt: Option[Obj[S]], fltPt: Point2D)
+//                  (implicit tx: S#Tx): Unit = {
+//    val flt = Obj.copy(fltSrc)
+//
+//    flt match {
+//      case fltP: Proc[S] =>
+//        val procFlt  = fltP
+//        pred.add(procFlt.inputs.add(Proc.scanMainIn))
+//      case _ =>
+//    }
+//
+//    finalizeProcAndCollector(flt, colSrcOpt, fltPt)
+//  }
 
   private def exec(obj: Obj[S], key: String)(implicit tx: S#Tx): Unit =
     for (self <- obj.attr.$[Action](key)) {

@@ -73,36 +73,37 @@ trait PanelImplReact[S <: Sys[S]] {
     }
   }
 
-  def assignMapping(source: Scan[S], vSink: VisualControl[S])(implicit tx: S#Tx): Unit = {
-    implicit val itx = tx.peer
-
-    def withView(/* debug: Boolean, */ vScan: VisualScan[S]): Unit = {
-      val vObj = vScan.parent
-      vSink.mapping.foreach { m =>
-        // println(s"---flonky1 $debug")
-        deferVisTx {
-          // println(s"---flonky2 $debug")
-          m.source        = Some(vScan)
-          val sourceNode  = vScan.pNode
-          val sinkNode    = vSink.pNode
-          main.graph.addEdge(sourceNode, sinkNode)
-          vScan.mappings += vSink
-        }
-        // XXX TODO -- here we need something analogous to `waitForAux`
-        // XXX TODO -- total hack, defer till last moment
-        tx.beforeCommit { implicit tx =>
-          viewToAuralMap.get(vObj).foreach { aural =>
-            getAuralScanData(aural, vScan.key).foreach {
-              case (bus, node) =>
-                m.synth() = Some(mkMonitor(bus, node)(v => vSink.value = v))
-            }
-          }
-        }
-      }
-    }
-
-    scanMapGet(source.id).fold(waitForScanView(source.id)(withView))(withView)
-  }
+  // SCAN
+//  def assignMapping(source: Scan[S], vSink: VisualControl[S])(implicit tx: S#Tx): Unit = {
+//    implicit val itx = tx.peer
+//
+//    def withView(/* debug: Boolean, */ vScan: VisualScan[S]): Unit = {
+//      val vObj = vScan.parent
+//      vSink.mapping.foreach { m =>
+//        // println(s"---flonky1 $debug")
+//        deferVisTx {
+//          // println(s"---flonky2 $debug")
+//          m.source        = Some(vScan)
+//          val sourceNode  = vScan.pNode
+//          val sinkNode    = vSink.pNode
+//          main.graph.addEdge(sourceNode, sinkNode)
+//          vScan.mappings += vSink
+//        }
+//        // XXX TODO -- here we need something analogous to `waitForAux`
+//        // XXX TODO -- total hack, defer till last moment
+//        tx.beforeCommit { implicit tx =>
+//          viewToAuralMap.get(vObj).foreach { aural =>
+//            getAuralScanData(aural, vScan.key).foreach {
+//              case (bus, node) =>
+//                m.synth() = Some(mkMonitor(bus, node)(v => vSink.value = v))
+//            }
+//          }
+//        }
+//      }
+//    }
+//
+//    scanMapGet(source.id).fold(waitForScanView(source.id)(withView))(withView)
+//  }
 
   protected def auralObjAdded(vp: VisualObj[S], aural: AuralObj[S])(implicit tx: S#Tx): Unit = {
     val config = main.config
