@@ -26,7 +26,7 @@ import de.sciss.lucre.synth.{Server, Synth, Sys, Txn}
 import de.sciss.osc
 import de.sciss.span.Span
 import de.sciss.swingplus.PopupMenu
-import de.sciss.synth.proc.{TimeRef, AuralSystem, Timeline, WorkspaceHandle}
+import de.sciss.synth.proc.{TimeRef, AuralSystem, WorkspaceHandle}
 import de.sciss.synth.swing.j.JServerStatusPanel
 import de.sciss.synth.{SynthGraph, addAfter, message}
 
@@ -39,6 +39,7 @@ object NuagesViewImpl {
   def apply[S <: Sys[S]](nuages: Nuages[S], nuagesConfig: Nuages.Config, scissConfig: ScissProcs.Config)
                         (implicit tx: S#Tx, aural: AuralSystem, workspace: WorkspaceHandle[S],
                          cursor: stm.Cursor[S]): NuagesView[S] = {
+    implicit val context: NuagesContext[S] = new NuagesContext[S] {}
     val panel     = NuagesPanel(nuages, nuagesConfig)
     val tlm       = TimelineModel(Span(0L, (TimeRef.SampleRate * 60 * 60 * 10).toLong), TimeRef.SampleRate)
     val transport = panel.transport
@@ -178,7 +179,7 @@ object NuagesViewImpl {
 
     private def showMenu(parent: Component): Unit = {
       val selectedObjects = panel.selection.collect {
-        case v: VisualObj[S] => v
+        case v: NuagesObj[S] => v
       }
       val pop = new PopupMenu {
         contents += new MenuItem(new Action("Save Macro...") {

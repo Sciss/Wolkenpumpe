@@ -1,5 +1,5 @@
 /*
- *  VisualControlImpl.scala
+ *  NuagesAttributeImpl.scala
  *  (Wolkenpumpe)
  *
  *  Copyright (c) 2008-2015 Hanns Holger Rutz. All rights reserved.
@@ -18,37 +18,78 @@ import java.awt.event.MouseEvent
 import java.awt.geom.{Arc2D, Area, GeneralPath, Point2D}
 import java.awt.{Graphics2D, Shape}
 
-import de.sciss.lucre.expr.{DoubleObj, DoubleVector}
+import de.sciss.lucre.expr.{IntObj, BooleanObj, DoubleObj, DoubleVector}
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Disposable, Obj}
 import de.sciss.lucre.swing.requireEDT
 import de.sciss.lucre.synth.{Synth, Sys}
+import de.sciss.nuages.NuagesAttribute.Factory
+import de.sciss.synth.proc.{Folder, Timeline, Output}
 import prefuse.util.ColorLib
 import prefuse.visual.VisualItem
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm.Ref
 
-object VisualControlImpl {
+object NuagesAttributeImpl {
+  private[this] final val sync = new AnyRef
+  
+  def addFactory(f: Factory): Unit = sync.synchronized {
+    val tid = f.typeID
+    if (map.contains(tid)) throw new IllegalArgumentException(s"View factory for type $tid already installed")
+    map += tid -> f
+  }
+
+  def factories: Iterable[Factory] = map.values
+
+  def apply[S <: Sys[S]](key: String, value: Obj[S], parent: NuagesObj[S])
+                        (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute[S] = {
+    val tid     = value.tpe.typeID
+    val factory = map.getOrElse(tid,
+      throw new IllegalArgumentException(s"No NuagesAttribute available for $value / type 0x${tid.toHexString}"))
+    factory(key, value.asInstanceOf[factory.Repr[S]], parent)
+  }
+
+  def tryApply[S <: Sys[S]](key: String, value: Obj[S], parent: NuagesObj[S])
+                           (implicit tx: S#Tx, context: NuagesContext[S]): Option[NuagesAttribute[S]] = {
+    val tid = value.tpe.typeID
+    val opt = map.get(tid)
+    opt.map(f => f(key, value.asInstanceOf[f.Repr[S]], parent))
+  }
+
+  private[this] var map = Map[Int, Factory](
+    IntObj              .typeID -> NuagesIntAttribute,
+    DoubleObj           .typeID -> NuagesDoubleAttribute,
+    BooleanObj          .typeID -> NuagesBooleanAttribute
+//    FadeSpec.Obj        .typeID -> FadeSpecAttribute,
+    //    DoubleVector        .typeID -> DoubleVectorAttribute,
+    //    Grapheme.Expr.Audio .typeID -> AudioGraphemeAttribute,
+//    Output              .typeID -> NuagesOutputAttribute,
+//    Folder              .typeID -> NuagesFolderAttribute,
+//    Timeline            .typeID -> NuagesTimelineAttribute
+  )
+  
+  // ----
+  
   private val defaultSpec = ParamSpec()
 
-  private def getSpec[S <: Sys[S]](parent: VisualObj[S], key: String)(implicit tx: S#Tx): ParamSpec =
+  def getSpec[S <: Sys[S]](parent: NuagesObj[S], key: String)(implicit tx: S#Tx): ParamSpec =
     parent.obj.attr.$[ParamSpec.Obj](s"$key-${ParamSpec.Key}").map(_.value).getOrElse(defaultSpec)
 
-  def scalar[S <: Sys[S]](parent: VisualObj[S], key: String,
-                          obj: DoubleObj[S])(implicit tx: S#Tx): VisualControl[S] = {
-    val value = obj.value
-    val spec  = getSpec(parent, key)
-    // apply(parent, dObj, key = key, spec = spec, value = value, mapping = None)
-    new VisualScalarControl[S](parent, key = key, spec = spec, valueA = value, mapping = None).init(obj)
-  }
-
-  def vector[S <: Sys[S]](parent: VisualObj[S], key: String,
-                          obj: DoubleVector[S])(implicit tx: S#Tx): VisualControl[S] = {
-    val value = obj.value
-    val spec  = getSpec(parent, key)
-    new VisualVectorControl[S](parent, key = key, spec = spec, valueA = value, mapping = None).init(obj)
-  }
+//  def scalar[S <: Sys[S]](parent: NuagesObj[S], key: String,
+//                          obj: DoubleObj[S])(implicit tx: S#Tx): NuagesAttribute[S] = {
+//    val value = obj.value
+//    val spec  = getSpec(parent, key)
+//    // apply(parent, dObj, key = key, spec = spec, value = value, mapping = None)
+//    new NuagesDoubleAttribute[S](parent, key = key, spec = spec, valueA = value, mapping = None).init(obj)
+//  }
+//
+//  def vector[S <: Sys[S]](parent: NuagesObj[S], key: String,
+//                          obj: DoubleVector[S])(implicit tx: S#Tx): NuagesAttribute[S] = {
+//    val value = obj.value
+//    val spec  = getSpec(parent, key)
+//    new VisualVectorControl[S](parent, key = key, spec = spec, valueA = value, mapping = None).init(obj)
+//  }
 
   private final val scanValue = Vector(0.5): Vec[Double] // XXX TODO
 
@@ -65,7 +106,7 @@ object VisualControlImpl {
 //  private def apply[S <: Sys[S]](parent: VisualObj[S], obj: Obj[S], key: String, spec: ParamSpec, value: Double,
 //                                 mapping: Option[VisualControl.Mapping[S]])
 //                                (implicit tx: S#Tx): VisualControl[S] = {
-//    new VisualScalarControl[S](parent, key = key, spec = spec, valueA = value, mapping = mapping).init(obj)
+//    new NuagesDoubleAttribute[S](parent, key = key, spec = spec, valueA = value, mapping = mapping).init(obj)
 //  }
 
   private final class Drag(val angStart: Double, val valueStart: Vec[Double], val instant: Boolean) {
@@ -81,60 +122,10 @@ object VisualControlImpl {
 //  }
 }
 
-final class VisualScalarControl[S <: Sys[S]](val parent: VisualObj[S], val key: String, val spec: ParamSpec,
-                                             @volatile var valueA: Double,
-                                             val mapping: Option[VisualControl.Mapping[S]])
- extends VisualControlImpl[S] {
-
-  type A = Double
-
-  def value: Vec[Double] = Vector(valueA)
-  def value_=(v: Vec[Double]): Unit = {
-    if (v.size != 1) throw new IllegalArgumentException("Trying to set multi-channel parameter on scalar control")
-    valueA = v.head
-  }
-
-  def value1_=(v: Double): Unit = valueA = v
-
-  protected def invalidRenderedValue: Double = Double.NaN
-
-  def numChannels = 1
-
-  protected def setControlTxn(v: Vec[Double])(implicit tx: S#Tx): Unit = {
-    if (v.size != 1) throw new IllegalArgumentException("Trying to set multi-channel parameter on scalar control")
-    val attr = parent.obj.attr
-    val vc   = DoubleObj.newConst[S](v.head)
-    attr.$[DoubleObj](key) match {
-      case Some(DoubleObj.Var(vr)) => vr() = vc
-      case _ => attr.put(key, DoubleObj.newVar(vc))
-    }
-  }
-
-  protected def init1(obj: Obj[S])(implicit tx: S#Tx): Unit =
-    obj match {
-      case dObj: DoubleObj[S] =>
-        observers ::= dObj.changed.react { implicit tx => upd =>
-          updateValueAndRefresh(upd.now)
-        }
-      case _ =>
-    }
-
-  import VisualDataImpl.gLine
-
-  protected def renderValueUpdated(): Unit = renderValueUpdated1(renderedValue)
-
-  protected def valueText(v: Vec[Double]): String = valueText1(v.head)
-
-  protected def drawAdjust(g: Graphics2D, v: Vec[Double]): Unit = {
-    setSpine(v.head)
-    g.draw(gLine)
-  }
-}
-
-final class VisualVectorControl[S <: Sys[S]](val parent: VisualObj[S], val key: String, val spec: ParamSpec,
+final class VisualVectorControl[S <: Sys[S]](val parent: NuagesObj[S], val key: String, val spec: ParamSpec,
                                              @volatile var valueA: Vec[Double],
-                                             val mapping: Option[VisualControl.Mapping[S]])
-  extends VisualControlImpl[S] {
+                                             val mapping: Option[NuagesAttribute.Mapping[S]])
+  extends NuagesAttributeImpl[S] {
 
   type A = Vec[Double]
 
@@ -151,8 +142,6 @@ final class VisualVectorControl[S <: Sys[S]](val parent: VisualObj[S], val key: 
     if (valueA.size != 1) throw new IllegalArgumentException(s"Channel mismatch, expected $numChannels but given 1")
     valueA = Vector.empty :+ v
   }
-
-  protected def invalidRenderedValue: Vec[Double] = Vector.empty
 
   def numChannels = valueA.size
 
@@ -175,7 +164,7 @@ final class VisualVectorControl[S <: Sys[S]](val parent: VisualObj[S], val key: 
       case _ =>
     }
 
-  import VisualDataImpl.{gArc, gEllipse, gLine}
+  import NuagesDataImpl.{gArc, gEllipse, gLine}
 
   protected def renderValueUpdated(): Unit = {
     val rv: Vec[Double] = renderedValue // why IntelliJ !?
@@ -196,7 +185,7 @@ final class VisualVectorControl[S <: Sys[S]](val parent: VisualObj[S], val key: 
       renderValueUpdated1(rv.head)
     } else {
       var ch = 0
-      val m1 = VisualDataImpl.margin / sz
+      val m1 = NuagesDataImpl.margin / sz
       val w  = r.getWidth
       val h  = r.getHeight
       var m2 = 0.0
@@ -238,9 +227,9 @@ final class VisualVectorControl[S <: Sys[S]](val parent: VisualObj[S], val key: 
     }
 }
 
-abstract class VisualControlImpl[S <: Sys[S]] extends VisualParamImpl[S] with VisualControl[S] {
-  import VisualControlImpl.Drag
-  import VisualDataImpl._
+abstract class NuagesAttributeImpl[S <: Sys[S]] extends NuagesParamImpl[S] with NuagesAttribute[S] {
+  import NuagesAttributeImpl.Drag
+  import NuagesDataImpl._
 
   // ---- abstract ----
 
@@ -249,8 +238,6 @@ abstract class VisualControlImpl[S <: Sys[S]] extends VisualParamImpl[S] with Vi
   protected var valueA: A
 
   protected def setControlTxn(v: Vec[Double])(implicit tx: S#Tx): Unit
-
-  protected def invalidRenderedValue: A
 
   protected def init1(obj: Obj[S])(implicit tx: S#Tx): Unit
 
@@ -262,7 +249,9 @@ abstract class VisualControlImpl[S <: Sys[S]] extends VisualParamImpl[S] with Vi
 
   // ---- impl ----
 
-  final protected var renderedValue: A = invalidRenderedValue
+  final protected var renderedValue: A = null.asInstanceOf[A] // invalidRenderedValue
+
+  private[this] var renderedValid: Boolean = false
 
   final protected def nodeSize = 1f
 
@@ -313,7 +302,7 @@ abstract class VisualControlImpl[S <: Sys[S]] extends VisualParamImpl[S] with Vi
   final def init(obj: Obj[S])(implicit tx: S#Tx): this.type = {
     parent.params.put(key, this)(tx.peer) // .foreach(_.dispose())
     main.deferVisTx(initGUI())
-    ??? // SCAN
+    // SCAN
 //    mapping.foreach { m =>
 //      main.assignMapping(source = m.scan, vSink = this)
 //    }
@@ -397,7 +386,8 @@ abstract class VisualControlImpl[S <: Sys[S]] extends VisualParamImpl[S] with Vi
     containerArea.add(new Area(gArc))
     containerArea.subtract(new Area(innerE))
     gp.append(containerArea, false)
-    renderedValue = invalidRenderedValue // Vector.empty // Double.NaN // triggers updateRenderValue
+    // renderedValue = invalidRenderedValue // Vector.empty // Double.NaN // triggers updateRenderValue
+    renderedValid = false
   }
 
   // changes `gLine`
@@ -412,9 +402,10 @@ abstract class VisualControlImpl[S <: Sys[S]] extends VisualParamImpl[S] with Vi
 
   final protected def renderDetail(g: Graphics2D, vi: VisualItem): Unit = {
     val v = valueA // .currentApprox
-    if (renderedValue != v) {
+    if (!renderedValid || renderedValue != v) {
       renderedValue = v
       renderValueUpdated()
+      renderedValid = true
     }
 
     g.setColor(if (mapped) colrMapped else /* if (gliding) colrGliding else */ colrManual)

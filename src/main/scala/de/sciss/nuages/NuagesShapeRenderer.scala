@@ -41,7 +41,7 @@ class NuagesShapeRenderer[S <: Sys[S]](size: Int)
   }
 
   override def render(g: Graphics2D, vi: VisualItem): Unit = {
-    val data = vi.get(COL_NUAGES).asInstanceOf[VisualData[S]]
+    val data = vi.get(COL_NUAGES).asInstanceOf[NuagesData[S]]
     if (data == null) return
     data.update(getShape(vi))
     data.render(g, vi)

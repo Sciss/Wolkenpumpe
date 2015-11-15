@@ -24,9 +24,9 @@ import java.awt.geom.Point2D
   *
   * The next sub-type is `VisualNode` that is represented by a graph node.
   *
-  * @see [[VisualNode]]
+  * @see [[NuagesNode]]
   */
-trait VisualData[S <: Sys[S]] {
+trait NuagesData[S <: Sys[S]] {
   // ---- methods to be called on the EDT ----
 
   /** GUI property: whether the node is allowed to move around

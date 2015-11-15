@@ -1,5 +1,5 @@
 /*
- *  VisualObjImpl.scala
+ *  NuagesObjImpl.scala
  *  (Wolkenpumpe)
  *
  *  Copyright (c) 2008-2015 Hanns Holger Rutz. All rights reserved.
@@ -33,32 +33,32 @@ import prefuse.visual.{AggregateItem, VisualItem}
 
 import scala.concurrent.stm.{Ref, TMap}
 
-object VisualObjImpl {
+object NuagesObjImpl {
   private val logPeakCorr = 20.0f // / math.log(10)
 
   private val colrPeak = Array.tabulate(91)(ang => new Color(IntensityPalette.apply(ang / 90f)))
 
   def apply[S <: Sys[S]](main: NuagesPanel[S], locOption: Option[Point2D], timed: Timed[S],
                          hasMeter: Boolean, hasSolo: Boolean)
-                        (implicit tx: S#Tx): VisualObj[S] = {
+                        (implicit tx: S#Tx, context: NuagesContext[S]): NuagesObj[S] = {
     val obj = timed.value
     // import BiGroup.Entry.serializer
-    val res = new VisualObjImpl(main, tx.newHandle(timed), obj.name, hasMeter = hasMeter, hasSolo = hasSolo)
+    val res = new NuagesObjImpl(main, tx.newHandle(timed), obj.name, hasMeter = hasMeter, hasSolo = hasSolo)
     res.init(timed, locOption)
     res
   }
 
   private val fastLog = FastLog(base = 10, q = 11)
 }
-final class VisualObjImpl[S <: Sys[S]] private (val main: NuagesPanel[S],
-                                                timedH: stm.Source[S#Tx, Timed[S]],
-                                                var name: String,
-                                                hasMeter: Boolean, hasSolo: Boolean)
-  extends VisualNodeImpl[S] with VisualObj[S] {
+final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
+                                               timedH: stm.Source[S#Tx, Timed[S]],
+                                               var name: String,
+                                               hasMeter: Boolean, hasSolo: Boolean)(implicit context: NuagesContext[S])
+  extends NuagesNodeImpl[S] with NuagesObj[S] {
   vProc =>
 
-  import VisualDataImpl._
-  import VisualObjImpl._
+  import NuagesDataImpl._
+  import NuagesObjImpl._
 
   protected def nodeSize = 1f
 
@@ -66,15 +66,15 @@ final class VisualObjImpl[S <: Sys[S]] private (val main: NuagesPanel[S],
 
   private[this] var _aggr: AggregateItem = _
 
-  val inputs  = TMap.empty[String, VisualScan   [S]]
-  val outputs = TMap.empty[String, VisualScan   [S]]
-  val params  = TMap.empty[String, VisualControl[S]]
+  val inputs  = TMap.empty[String, NuagesOutput   [S]]
+  val outputs = TMap.empty[String, NuagesOutput   [S]]
+  val params  = TMap.empty[String, NuagesAttribute[S]]
 
   private[this] val _meterSynth = Ref(Option.empty[Synth])
 
   def timed(implicit tx: S#Tx): Timed[S] = timedH()
 
-  def parent: VisualObj[S] = this
+  def parent: NuagesObj[S] = this
 
   def aggr: AggregateItem = _aggr
 
@@ -88,27 +88,30 @@ final class VisualObjImpl[S <: Sys[S]] private (val main: NuagesPanel[S],
     this
   }
 
+  private[this] val specSuffix = s"-${ParamSpec.Key}"
+
   private[this] def initProc(proc: Proc[S])(implicit tx: S#Tx): Unit = {
-    ??? // SCAN
 //    proc.inputs .iterator.foreach { case (key, scan) =>
 //      VisualScan(this, scan, key, isInput = true )
 //    }
-//    proc.outputs.iterator.foreach { case (key, scan) =>
-//      VisualScan(this, scan, key, isInput = false)
-//    }
-//
-//    observers ::= proc.changed.react { implicit tx => upd =>
-//      upd.changes.foreach {
+    proc.outputs.iterator.foreach { case (key, output) =>
+      NuagesOutput(this, output)
+    }
+
+    observers ::= proc.changed.react { implicit tx => upd =>
+      upd.changes.foreach {
 //        case Proc.InputAdded   (key, scan) => VisualScan(this, scan, key, isInput = true )
 //        case Proc.InputRemoved (key, scan) => inputs.get(key)(tx.peer).foreach(_.dispose())
-//        case Proc.OutputAdded  (key, scan) => VisualScan(this, scan, key, isInput = false)
-//        case Proc.OutputRemoved(key, scan) => inputs.get(key)(tx.peer).foreach(_.dispose())
-//        case _ =>
-//      }
-//    }
+        case Proc.OutputAdded  (output) => NuagesOutput(this, output)
+        case Proc.OutputRemoved(output) => outputs.get(output.key)(tx.peer).foreach(_.dispose())
+        case _ =>
+      }
+    }
 
     val attr = proc.attr
-    attr.iterator.foreach { case (key, obj) => mkParam(key, obj) }
+    attr.iterator.foreach { case (key, obj) =>
+      if (!key.endsWith(specSuffix)) mkParam(key, obj)
+    }
     observers ::= attr.changed.react { implicit tx => upd =>
       upd.changes.foreach {
         case Obj.AttrAdded  (key, obj) => mkParam(key, obj)
@@ -117,12 +120,8 @@ final class VisualObjImpl[S <: Sys[S]] private (val main: NuagesPanel[S],
     }
   }
 
-  private[this] def mkParam(key: String, obj: Obj[S])(implicit tx: S#Tx): Unit = obj match {
-    case dObj: DoubleObj[S]     => VisualControl.scalar(this, key, dObj)
-    case dObj: DoubleVector[S]  => VisualControl.vector(this, key, dObj)
-    // SCAN case sObj: Scan[S]          => VisualControl.scan  (this, key, sObj)
-    case _ =>
-  }
+  private[this] def mkParam(key: String, obj: Obj[S])(implicit tx: S#Tx): Unit =
+    NuagesAttribute.tryApply(key = key, value = obj, parent = this)
 
   private[this] def initGUI(locOption: Option[Point2D]): Unit = {
     requireEDT()
@@ -236,8 +235,12 @@ final class VisualObjImpl[S <: Sys[S]] private (val main: NuagesPanel[S],
           case objT: Proc[S] =>
             val proc  = objT
             ??? // SCAN
-//            val ins   = proc.inputs .get(Proc.scanMainIn ).fold(List.empty[Scan[S]])(_.iterator.collect { case Scan.Link.Scan(source) => source } .toList)
-//            val outs  = proc.outputs.get(Proc.scanMainOut).fold(List.empty[Scan[S]])(_.iterator.collect { case Scan.Link.Scan(sink  ) => sink   } .toList)
+//            val ins   = proc.inputs .get(Proc.scanMainIn ).fold(List.empty[Scan[S]])(_.iterator.collect {
+//              case Scan.Link.Scan(source) => source
+//            } .toList)
+//            val outs  = proc.outputs.get(Proc.scanMainOut).fold(List.empty[Scan[S]])(_.iterator.collect {
+//              case Scan.Link.Scan(sink  ) => sink
+//            } .toList)
 //            inKeys.foreach { key =>
 //              proc.inputs.get(key).foreach { scan =>
 //                scan.iterator.foreach(scan.remove)

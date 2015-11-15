@@ -190,18 +190,18 @@ object KeyControl {
       // println(s"itemKeyPressed '${e.getKeyChar}'")
       vi match {
         case ei: EdgeItem =>
-          def perform[A](fun: (VisualScan[S], VisualScan[S], Point2D) => A): Option[A] = {
+          def perform[A](fun: (NuagesOutput[S], NuagesOutput[S], Point2D) => A): Option[A] = {
             val nSrc  = ei.getSourceItem
             val nTgt  = ei.getTargetItem
             val vis   = main.visualization
             val _ve   = vis.getVisualItem(NuagesPanel.GROUP_GRAPH, ei)
             (vis.getRenderer(nSrc), vis.getRenderer(nTgt)) match {
               case (_: NuagesShapeRenderer[_], _: NuagesShapeRenderer[_]) =>
-                val srcData = nSrc.get(COL_NUAGES).asInstanceOf[VisualData[S]]
-                val tgtData = nTgt.get(COL_NUAGES).asInstanceOf[VisualData[S]]
+                val srcData = nSrc.get(COL_NUAGES).asInstanceOf[NuagesData[S]]
+                val tgtData = nTgt.get(COL_NUAGES).asInstanceOf[NuagesData[S]]
                 if (srcData == null || tgtData == null) None else
                   (srcData, tgtData) match {
-                    case (vOut: VisualScan[S], vIn: VisualScan[S]) =>
+                    case (vOut: NuagesOutput[S], vIn: NuagesOutput[S]) =>
                       val r = _ve.getBounds
                       p2d.setLocation(r.getCenterX, r.getCenterY)
                       // main.display.getTransform.transform(p2d, p2d)
@@ -240,7 +240,7 @@ object KeyControl {
 
         case ni: NodeItem =>
           ni.get(COL_NUAGES) match {
-            case vc: VisualControl[S] =>
+            case vc: NuagesAttribute[S] =>
               if ((e.getModifiers & meta) == meta) {
                 val clip = Toolkit.getDefaultToolkit.getSystemClipboard
                 if (e.getKeyCode == KeyEvent.VK_C) {        // copy
@@ -258,7 +258,7 @@ object KeyControl {
                 if (e.getKeyCode == KeyEvent.VK_ENTER) showParamInput(vc)
               }
 
-            case vs: VisualScan[S] if vs.name == "out" =>
+            case vs: NuagesOutput[S] if vs.name == "out" =>
               def perform[A](fun: Point2D => A): A = {
                 val vis   = main.visualization
                 val _ve   = vis.getVisualItem(NuagesPanel.GROUP_GRAPH, ni)
@@ -365,7 +365,7 @@ object KeyControl {
       main.showOverlayPanel(p, Some(pt))
     }
 
-    private def showParamInput(vc: VisualControl[S]): Unit = {
+    private def showParamInput(vc: NuagesAttribute[S]): Unit = {
       val p = new OverlayPanel {
         val ggValue = new TextField(f"${vc.spec.map(vc.value.head)}%1.3f", 12)
         ggValue.background = Color.black
@@ -396,7 +396,7 @@ object KeyControl {
       main.showOverlayPanel(p, Some(calcPanelPoint(p, vc)))
     }
 
-    private def calcPanelPoint(p: OverlayPanel, vc: VisualControl[S]): Point = {
+    private def calcPanelPoint(p: OverlayPanel, vc: NuagesAttribute[S]): Point = {
       val vis   = main.visualization
       val _ve   = vis.getVisualItem(NuagesPanel.GROUP_GRAPH, vc.pNode)
       val b     = _ve.getBounds
@@ -409,7 +409,7 @@ object KeyControl {
       vi match {
         case ni: NodeItem =>
           ni.get(COL_NUAGES) match {
-            case vc: VisualControl[S] =>
+            case vc: NuagesAttribute[S] =>
               val thisChar  = e.getKeyChar
               val thisTyped = System.currentTimeMillis()
 

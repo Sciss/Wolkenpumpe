@@ -39,7 +39,8 @@ object NuagesPanel {
 
   def apply[S <: Sys[S]](nuages: Nuages[S], config: Nuages.Config)
                         (implicit tx: S#Tx, aural: AuralSystem,
-                         cursor: stm.Cursor[S], workspace: WorkspaceHandle[S]): NuagesPanel[S] =
+                         cursor: stm.Cursor[S], workspace: WorkspaceHandle[S],
+                         context: NuagesContext[S]): NuagesPanel[S] =
     Impl(nuages, config)
 }
 trait NuagesPanel[S <: Sys[S]] extends View[S] {
@@ -51,6 +52,8 @@ trait NuagesPanel[S <: Sys[S]] extends View[S] {
   def cursor: stm.Cursor[S]
 
   def config : Nuages.Config
+
+  implicit def context: NuagesContext[S]
 
   // ---- methods to be called on the EDT ----
 
@@ -65,17 +68,17 @@ trait NuagesPanel[S <: Sys[S]] extends View[S] {
   // -- dialogs --
 
   def showCreateGenDialog(pt: Point): Boolean
-  def showInsertFilterDialog(vOut: VisualScan[S], vIn: VisualScan[S], pt: Point): Boolean
-  def showAppendFilterDialog(vOut: VisualScan[S], pt: Point): Boolean
+  def showInsertFilterDialog(vOut: NuagesOutput[S], vIn: NuagesOutput[S], pt: Point): Boolean
+  def showAppendFilterDialog(vOut: NuagesOutput[S], pt: Point): Boolean
   def showInsertMacroDialog(): Boolean
 
   def showOverlayPanel(p: OverlayPanel, pt: Option[Point] = None): Boolean
 
-  def setSolo(vp: VisualObj[S], onOff: Boolean): Unit
+  def setSolo(vp: NuagesObj[S], onOff: Boolean): Unit
 
-  def selection: Set[VisualNode[S]]
+  def selection: Set[NuagesNode[S]]
 
-  def saveMacro(name: String, obj: Set[VisualObj[S]]): Unit
+  def saveMacro(name: String, obj: Set[NuagesObj[S]]): Unit
 
   // ---- transactional methods ----
 
@@ -98,12 +101,12 @@ trait NuagesPanel[S <: Sys[S]] extends View[S] {
 //  def insertFilter(pred: Scan[S], succ: Scan[S], flt: Obj[S], pt: Point2D)(implicit tx: S#Tx): Unit
 //  def appendFilter(pred: Scan[S], flt: Obj[S], colOpt: Option[Obj[S]], pt: Point2D)(implicit tx: S#Tx): Unit
 
-  def nodeMap: stm.IdentifierMap[S#ID, S#Tx, VisualObj [S]]
+  def nodeMap: stm.IdentifierMap[S#ID, S#Tx, NuagesObj [S]]
 
   // def scanMap: stm.IdentifierMap[S#ID, S#Tx, VisualScan[S]]
 
-  def scanMapPut(id: S#ID, view: VisualScan[S])(implicit tx: S#Tx): Unit
-  def scanMapGet(id: S#ID)(implicit tx: S#Tx): Option[VisualScan[S]]
+  def scanMapPut(id: S#ID, view: NuagesOutput[S])(implicit tx: S#Tx): Unit
+  def scanMapGet(id: S#ID)(implicit tx: S#Tx): Option[NuagesOutput[S]]
   def scanMapRemove(id: S#ID)(implicit tx: S#Tx): Unit
 
 //  /** Transaction local hack */

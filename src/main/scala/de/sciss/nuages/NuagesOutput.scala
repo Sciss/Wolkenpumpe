@@ -14,17 +14,18 @@
 package de.sciss.nuages
 
 import de.sciss.lucre.synth.Sys
+import de.sciss.synth.proc.Output
 import prefuse.data.Edge
 
-object VisualScan {
-  // SCAN
-//  def apply[S <: Sys[S]](parent: VisualObj[S], scan: Scan[S], key: String, isInput: Boolean)(implicit tx: S#Tx): VisualScan[S] =
-//    impl.VisualScanImpl(parent, scan = scan, key = key, isInput = isInput)
+object NuagesOutput {
+  def apply[S <: Sys[S]](parent: NuagesObj[S], output: Output[S])
+                        (implicit tx: S#Tx): NuagesOutput[S] =
+    impl.NuagesOutputImpl(parent, output = output)
 }
-trait VisualScan[S <: Sys[S]] extends VisualParam[S] {
+trait NuagesOutput[S <: Sys[S]] extends NuagesParam[S] {
   var sources : Set[Edge]
   var sinks   : Set[Edge]
-  var mappings: Set[VisualControl[S]]
+  var mappings: Set[NuagesAttribute[S]]
 
   // SCAN
   // def scan(implicit tx: S#Tx): Scan[S]

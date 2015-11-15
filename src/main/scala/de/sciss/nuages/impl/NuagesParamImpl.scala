@@ -1,5 +1,5 @@
 /*
- *  VisualParamImpl.scala
+ *  NuagesParamImpl.scala
  *  (Wolkenpumpe)
  *
  *  Copyright (c) 2008-2015 Hanns Holger Rutz. All rights reserved.
@@ -18,7 +18,7 @@ import de.sciss.lucre.synth.Sys
 import prefuse.data.{Edge => PEdge}
 import prefuse.visual.VisualItem
 
-trait VisualParamImpl[S <: Sys[S]] extends VisualNodeImpl[S] with VisualParam[S] {
+trait NuagesParamImpl[S <: Sys[S]] extends NuagesNodeImpl[S] with NuagesParam[S] {
   private[this] var _pEdge: PEdge = _
 
   final def pEdge: PEdge = {

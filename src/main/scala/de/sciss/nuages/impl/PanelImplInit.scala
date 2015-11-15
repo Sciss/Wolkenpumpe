@@ -22,11 +22,11 @@ trait PanelImplInit[S <: Sys[S]] {
   protected def auralObserver: Ref[Option[Disposable[S#Tx]]]
   protected def auralTimeline: Ref[Option[AuralObj.Timeline[S]]]
 
-  protected def nodeMap: stm.IdentifierMap[S#ID, S#Tx, VisualObj[S]]
+  protected def nodeMap: stm.IdentifierMap[S#ID, S#Tx, NuagesObj[S]]
 
   protected def transport: Transport[S]
 
-  protected def auralObjAdded(vp: VisualObj[S], aural: AuralObj[S])(implicit tx: S#Tx): Unit
+  protected def auralObjAdded(vp: NuagesObj[S], aural: AuralObj[S])(implicit tx: S#Tx): Unit
 
   protected def auralObjRemoved(aural: AuralObj[S])(implicit tx: S#Tx): Unit
 

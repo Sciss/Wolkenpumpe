@@ -25,8 +25,8 @@ import prefuse.util.display.PaintListener
 import prefuse.visual.{NodeItem, VisualItem}
 
 object ConnectControl {
-  private final case class DragSource[S <: Sys[S]](vi: VisualItem, visual: VisualScan [S])
-  private final case class DragTarget[S <: Sys[S]](vi: VisualItem, visual: VisualParam[S])
+  private final case class DragSource[S <: Sys[S]](vi: VisualItem, visual: NuagesOutput [S])
+  private final case class DragTarget[S <: Sys[S]](vi: VisualItem, visual: NuagesParam[S])
 
   private final class Drag[S <: Sys[S]](val source: DragSource[S], val targetLoc: Point2D,
                                         var target: Option[DragTarget[S]])
@@ -60,10 +60,10 @@ class ConnectControl[S <: Sys[S]](main: NuagesPanel[S])
     if (!e.isShiftDown) return
     vi match {
       case ni: NodeItem =>
-        val data = ni.get(COL_NUAGES).asInstanceOf[VisualData[S]]
+        val data = ni.get(COL_NUAGES).asInstanceOf[NuagesData[S]]
         if (data == null) return
         data match {
-          case vBus: VisualScan[S] =>
+          case vBus: NuagesOutput[S] =>
             val d         = getDisplay(e)
             val displayPt = d.getAbsoluteCoordinate(e.getPoint, null)
             val dr        = new Drag(DragSource(vi, vBus), displayPt, None)
@@ -98,12 +98,12 @@ class ConnectControl[S <: Sys[S]](main: NuagesPanel[S])
     val vi        = d.findItem(screenPt)
     val tgt       = vi match {
       case ni: NodeItem =>
-        val data = vi.get(COL_NUAGES).asInstanceOf[VisualData[S]]
+        val data = vi.get(COL_NUAGES).asInstanceOf[NuagesData[S]]
         if (data == null) None
         else data match {
-          case vBus: VisualScan   [S] if vBus.parent != dr.source.visual.parent =>
+          case vBus: NuagesOutput   [S] if vBus.parent != dr.source.visual.parent =>
             Some(DragTarget(vi, vBus))
-          case vCtl: VisualControl[S] if vCtl.parent != dr.source.visual.parent =>
+          case vCtl: NuagesAttribute[S] if vCtl.parent != dr.source.visual.parent =>
             Some(DragTarget(vi, vCtl))
           case _ => None
         }
@@ -134,11 +134,11 @@ class ConnectControl[S <: Sys[S]](main: NuagesPanel[S])
           case (srcProc: Proc[S], tgtProc: Proc[S]) =>
           srcProc.outputs.get(srcVScan.key).foreach { srcScan =>
             tgtV match {
-              case tgtVScan: VisualScan[S] =>
+              case tgtVScan: NuagesOutput[S] =>
                 ??? // SCAN
 //                for (tgtScan <- tgtProc.inputs.get(tgtVScan.key))
 //                  srcScan.add(Scan.Link.Scan(tgtScan))
-              case vCtl: VisualControl[S] =>
+              case vCtl: NuagesAttribute[S] =>
                 // println(s"Mapping from $srcScan")
                 tgtObj.attr.put(vCtl.key, srcScan)
             }

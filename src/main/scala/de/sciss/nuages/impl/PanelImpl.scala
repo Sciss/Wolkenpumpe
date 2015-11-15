@@ -53,7 +53,7 @@ object PanelImpl {
 
   def apply[S <: Sys[S]](nuages: Nuages[S], config: Nuages.Config)
                         (implicit tx: S#Tx, aural: AuralSystem, cursor: stm.Cursor[S],
-                         workspace: WorkspaceHandle[S]): NuagesPanel[S] = {
+                         workspace: WorkspaceHandle[S], context: NuagesContext[S]): NuagesPanel[S] = {
     val nuagesH       = tx.newHandle(nuages)
 
     val listGen       = mkListView(nuages.generators)
@@ -63,9 +63,9 @@ object PanelImpl {
     val listCol2      = mkListView(nuages.collectors)
     val listMacro     = mkListView(nuages.macros    )
 
-    val nodeMap       = tx.newInMemoryIDMap[VisualObj[S]]
-    val scanMap       = tx.newInMemoryIDMap[VisualScan[S]] // ScanInfo [S]]
-    val missingScans  = tx.newInMemoryIDMap[List[VisualControl[S]]]
+    val nodeMap       = tx.newInMemoryIDMap[NuagesObj[S]]
+    val scanMap       = tx.newInMemoryIDMap[NuagesOutput[S]] // ScanInfo [S]]
+    val missingScans  = tx.newInMemoryIDMap[List[NuagesAttribute[S]]]
     val transport     = Transport[S](aural)
     val timelineObj   = nuages.timeline
     // transport.addObject(timelineObj)
@@ -111,9 +111,9 @@ object PanelImpl {
 
 // nodeMap: uses timed-id as key
 final class PanelImpl[S <: Sys[S]](nuagesH: stm.Source[S#Tx, Nuages[S]],
-                                   val nodeMap: stm.IdentifierMap[S#ID, S#Tx, VisualObj[S]],
-                                   scanMap: stm.IdentifierMap[S#ID, S#Tx, VisualScan[S]],
-                                   protected val missingScans: stm.IdentifierMap[S#ID, S#Tx, List[VisualControl[S]]],
+                                   val nodeMap: stm.IdentifierMap[S#ID, S#Tx, NuagesObj[S]],
+                                   scanMap: stm.IdentifierMap[S#ID, S#Tx, NuagesOutput[S]],
+                                   protected val missingScans: stm.IdentifierMap[S#ID, S#Tx, List[NuagesAttribute[S]]],
                                    val config   : Nuages.Config,
                                    val transport: Transport[S],
                                    val aural    : AuralSystem,
@@ -123,7 +123,9 @@ final class PanelImpl[S <: Sys[S]](nuagesH: stm.Source[S#Tx, Nuages[S]],
                                    protected val listFlt2 : ListView[S, Obj[S], Unit /* Obj.Update[S] */],
                                    protected val listCol2 : ListView[S, Obj[S], Unit /* Obj.Update[S] */],
                                    protected val listMacro: ListView[S, Obj[S], Unit /* Obj.Update[S] */])
-                                 (implicit val cursor: stm.Cursor[S], protected val workspace: WorkspaceHandle[S])
+                                 (implicit val cursor: stm.Cursor[S],
+                                  protected val workspace: WorkspaceHandle[S],
+                                  val context: NuagesContext[S])
   extends NuagesPanel[S]
   // here comes your cake!
   with PanelImplInit   [S]
@@ -146,8 +148,8 @@ final class PanelImpl[S <: Sys[S]](nuagesH: stm.Source[S#Tx, Nuages[S]],
   protected val auralObserver = Ref(Option.empty[Disposable[S#Tx]])
   protected val auralTimeline = Ref(Option.empty[AuralObj.Timeline[S]])
 
-  protected val auralToViewMap  = TMap.empty[AuralObj[S], VisualObj[S]]
-  protected val viewToAuralMap  = TMap.empty[VisualObj[S], AuralObj[S]]
+  protected val auralToViewMap  = TMap.empty[AuralObj[S], NuagesObj[S]]
+  protected val viewToAuralMap  = TMap.empty[NuagesObj[S], AuralObj[S]]
 
   def nuages(implicit tx: S#Tx): Nuages[S] = nuagesH()
   
@@ -171,11 +173,11 @@ final class PanelImpl[S <: Sys[S]](nuagesH: stm.Source[S#Tx, Nuages[S]],
     keyControl    .dispose()
   }
 
-  private[this] val waiting = TxnLocal(Map.empty[S#ID, List[VisualScan[S] => Unit]])
+  private[this] val waiting = TxnLocal(Map.empty[S#ID, List[NuagesOutput[S] => Unit]])
 
-  def scanMapGet(id: S#ID)(implicit tx: S#Tx): Option[VisualScan[S]] = scanMap.get(id)
+  def scanMapGet(id: S#ID)(implicit tx: S#Tx): Option[NuagesOutput[S]] = scanMap.get(id)
 
-  def scanMapPut(id: S#ID, view: VisualScan[S])(implicit tx: S#Tx): Unit = {
+  def scanMapPut(id: S#ID, view: NuagesOutput[S])(implicit tx: S#Tx): Unit = {
     scanMap.put(id, view)
     implicit val itx = tx.peer
     if (waiting.isInitialized) waiting.transform { m0 =>
@@ -188,7 +190,7 @@ final class PanelImpl[S <: Sys[S]](nuagesH: stm.Source[S#Tx, Nuages[S]],
 
   def scanMapRemove(id: S#ID)(implicit tx: S#Tx): Unit = scanMap.remove(id)
 
-  def waitForScanView(id: S#ID)(fun: (VisualScan[S]) => Unit)(implicit tx: S#Tx): Unit =
+  def waitForScanView(id: S#ID)(fun: (NuagesOutput[S]) => Unit)(implicit tx: S#Tx): Unit =
     waiting.transform { m0 =>
       val list = m0.getOrElse(id, Nil) :+ fun
       m0 + (id -> list)
@@ -199,14 +201,14 @@ final class PanelImpl[S <: Sys[S]](nuagesH: stm.Source[S#Tx, Nuages[S]],
     auralObserver.swap(None)(tx.peer).foreach(_.dispose())
   }
 
-  def selection: Set[VisualNode[S]] = {
+  def selection: Set[NuagesNode[S]] = {
     requireEDT()
     val selectedItems = visualization.getGroup(GROUP_SELECTION)
     import scala.collection.JavaConversions._
     selectedItems.tuples().flatMap {
       case ni: NodeItem =>
         ni.get(COL_NUAGES) match {
-          case vn: VisualNode[S] => Some(vn)
+          case vn: NuagesNode[S] => Some(vn)
           case _ => None
         }
       case _ => None
@@ -266,7 +268,7 @@ final class PanelImpl[S <: Sys[S]](nuagesH: stm.Source[S#Tx, Nuages[S]],
 
   // private def close(p: Container): Unit = p.peer.getParent.remove(p.peer)
 
-  def saveMacro(name: String, sel: Set[VisualObj[S]]): Unit =
+  def saveMacro(name: String, sel: Set[NuagesObj[S]]): Unit =
     cursor.step { implicit tx =>
      val copies = Nuages.copyGraph(sel.map(_.obj)(breakOut))
 

@@ -55,7 +55,7 @@ final class GlobalControl[S <: Sys[S]](main: NuagesPanel[S]) extends MouseMotion
     while (it.hasNext && !stop) {
       val ni = it.next().asInstanceOf[NodeItem]
       val ok = ni.get(NuagesPanel.COL_NUAGES) match {
-        case vo: VisualObj[_] => vo.outputs.single.isEmpty && vo.inputs.single.keySet == Set("in")
+        case vo: NuagesObj[_] => vo.outputs.single.isEmpty && vo.inputs.single.keySet == Set("in")
         case _ => false
       }
       if (ok) {

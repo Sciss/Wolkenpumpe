@@ -1,5 +1,5 @@
 /*
- *  VisualNodeImpl.scala
+ *  NuagesNodeImpl.scala
  *  (Wolkenpumpe)
  *
  *  Copyright (c) 2008-2015 Hanns Holger Rutz. All rights reserved.
@@ -18,10 +18,10 @@ import de.sciss.lucre.synth.Sys
 import prefuse.data.{Node => PNode}
 import prefuse.visual.VisualItem
 
-trait VisualNodeImpl[S <: Sys[S]] extends VisualDataImpl[S] with VisualNode[S] {
+trait NuagesNodeImpl[S <: Sys[S]] extends NuagesDataImpl[S] with NuagesNode[S] {
   private[this] var _pNode: PNode = _
 
-  protected def parent: VisualObj[S]
+  protected def parent: NuagesObj[S]
 
   protected def nodeSize: Float
 

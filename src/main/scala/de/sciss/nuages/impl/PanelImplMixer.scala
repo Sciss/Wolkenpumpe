@@ -21,8 +21,8 @@ trait PanelImplMixer[S <: Sys[S]] {
 
   protected def cursor: stm.Cursor[S]
 
-  protected def auralToViewMap: TMap[AuralObj[S], VisualObj[S]]
-  protected def viewToAuralMap: TMap[VisualObj[S], AuralObj[S]]
+  protected def auralToViewMap: TMap[AuralObj[S], NuagesObj[S]]
+  protected def viewToAuralMap: TMap[NuagesObj[S], AuralObj[S]]
 
   protected def getAuralScanData(aural: AuralObj[S], key: String = Proc.scanMainOut)
                                 (implicit tx: S#Tx): Option[(AudioBus, Node)]
@@ -33,7 +33,7 @@ trait PanelImplMixer[S <: Sys[S]] {
   private var meterGraphMap   = Map.empty[Int, SynthGraph]
   private var monitorGraphMap = Map.empty[Int, SynthGraph]
   private val soloVolume      = Ref(NuagesPanel.soloAmpSpec._2)  // 0.5
-  private val soloInfo        = Ref(Option.empty[(VisualObj[S], Synth)])
+  private val soloInfo        = Ref(Option.empty[(NuagesObj[S], Synth)])
   private val _masterSynth    = Ref(Option.empty[Synth])
 
   protected def mkMeter(bus: AudioBus, node: Node)(fun: Double => Unit)(implicit tx: S#Tx): Synth = {
@@ -107,7 +107,7 @@ trait PanelImplMixer[S <: Sys[S]] {
     }
   }
 
-  def setSolo(vp: VisualObj[S], onOff: Boolean): Unit = main.config.soloChannels.foreach { outChans =>
+  def setSolo(vp: NuagesObj[S], onOff: Boolean): Unit = main.config.soloChannels.foreach { outChans =>
     requireEDT()
     cursor.step { implicit tx =>
       implicit val itx = tx.peer

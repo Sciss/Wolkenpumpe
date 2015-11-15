@@ -1,5 +1,5 @@
 /*
- *  VisualDataImpl.scala
+ *  NuagesDataImpl.scala
  *  (Wolkenpumpe)
  *
  *  Copyright (c) 2008-2015 Hanns Holger Rutz. All rights reserved.
@@ -23,7 +23,7 @@ import de.sciss.lucre.synth.Sys
 import prefuse.util.ColorLib
 import prefuse.visual.VisualItem
 
-object VisualDataImpl {
+object NuagesDataImpl {
   final val diam    = 50
   final val diam05  = 25 // diam * 0.5
 
@@ -51,9 +51,9 @@ object VisualDataImpl {
 
   final val threeDigits   = new MathContext(3, RoundingMode.HALF_UP)
 }
-trait VisualDataImpl[S <: Sys[S]] extends VisualData[S] {
+trait NuagesDataImpl[S <: Sys[S]] extends NuagesData[S] {
 
-  import VisualDataImpl._
+  import NuagesDataImpl._
 
   protected val r: Rectangle2D = new Rectangle2D.Double()
   protected var outline: Shape = r

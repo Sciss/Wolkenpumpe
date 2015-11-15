@@ -34,23 +34,23 @@ trait PanelImplReact[S <: Sys[S]] {
 
   protected def removeLocationHint(obj: Obj[S])(implicit tx: S#Tx): Option[Point2D]
 
-  protected def nodeMap     : stm.IdentifierMap[S#ID, S#Tx, VisualObj [S]]
+  protected def nodeMap     : stm.IdentifierMap[S#ID, S#Tx, NuagesObj [S]]
 //  protected def scanMap     : stm.IdentifierMap[S#ID, S#Tx, VisualScan[S]]
-  protected def missingScans: stm.IdentifierMap[S#ID, S#Tx, List[VisualControl[S]]]
+  protected def missingScans: stm.IdentifierMap[S#ID, S#Tx, List[NuagesAttribute[S]]]
 
-  protected def scanMapPut     (id: S#ID, view: VisualScan[S])(implicit tx: S#Tx): Unit
-  protected def scanMapGet     (id: S#ID)(implicit tx: S#Tx): Option[VisualScan[S]]
+  protected def scanMapPut(id: S#ID, view: NuagesOutput[S])(implicit tx: S#Tx): Unit
+  protected def scanMapGet     (id: S#ID)(implicit tx: S#Tx): Option[NuagesOutput[S]]
 
   /** Transaction local hack */
-  protected def waitForScanView(id: S#ID)(fun: VisualScan[S] => Unit)(implicit tx: S#Tx): Unit
+  protected def waitForScanView(id: S#ID)(fun: NuagesOutput[S] => Unit)(implicit tx: S#Tx): Unit
 
   protected def auralTimeline: Ref[Option[AuralObj.Timeline[S]]]
 
   protected def getAuralScanData(aural: AuralObj[S], key: String = Proc.scanMainOut)
                                 (implicit tx: S#Tx): Option[(AudioBus, Node)]
 
-  protected def auralToViewMap: TMap[AuralObj[S], VisualObj[S]]
-  protected def viewToAuralMap: TMap[VisualObj[S], AuralObj[S]]
+  protected def auralToViewMap: TMap[AuralObj[S], NuagesObj[S]]
+  protected def viewToAuralMap: TMap[NuagesObj[S], AuralObj[S]]
 
   protected def mkMeter  (bus: AudioBus, node: Node)(fun: Double => Unit)(implicit tx: S#Tx): Synth
 
@@ -64,7 +64,8 @@ trait PanelImplReact[S <: Sys[S]] {
     val obj   = timed.value
     val config = main.config
     val locO  = removeLocationHint(obj)
-    val vp    = VisualObj[S](main, locO, timed, hasMeter = config.meters, hasSolo = config.soloChannels.isDefined)
+    implicit val context = main.context
+    val vp    = NuagesObj[S](main, locO, timed, hasMeter = config.meters, hasSolo = config.soloChannels.isDefined)
 
     auralTimeline.get(tx.peer).foreach { auralTL =>
       auralTL.getView(timed).foreach { auralObj =>
@@ -105,7 +106,7 @@ trait PanelImplReact[S <: Sys[S]] {
 //    scanMapGet(source.id).fold(waitForScanView(source.id)(withView))(withView)
 //  }
 
-  protected def auralObjAdded(vp: VisualObj[S], aural: AuralObj[S])(implicit tx: S#Tx): Unit = {
+  protected def auralObjAdded(vp: NuagesObj[S], aural: AuralObj[S])(implicit tx: S#Tx): Unit = {
     val config = main.config
     if (config.meters) {
       val key = if (vp.outputs.contains(Proc.scanMainOut)(tx.peer)) Proc.scanMainOut else Proc.scanMainIn

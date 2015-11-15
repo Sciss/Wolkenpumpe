@@ -16,8 +16,8 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.swing.{Component, Swing}
 
 trait PanelImplDialogs[S <: Sys[S]] {
-  private var fltPred: VisualScan[S] = _
-  private var fltSucc: VisualScan[S] = _
+  private var fltPred: NuagesOutput[S] = _
+  private var fltSucc: NuagesOutput[S] = _
   private var overlay = Option.empty[Component]
 
   protected def listGen  : ListView[S, Obj[S], Unit]
@@ -254,7 +254,7 @@ trait PanelImplDialogs[S <: Sys[S]] {
     showOverlayPanel(createGenDialog, Some(pt))
   }
 
-  def showInsertFilterDialog(pred: VisualScan[S], succ: VisualScan[S], pt: Point): Boolean = {
+  def showInsertFilterDialog(pred: NuagesOutput[S], succ: NuagesOutput[S], pt: Point): Boolean = {
     requireEDT()
     fltPred = pred
     fltSucc = succ
@@ -266,7 +266,7 @@ trait PanelImplDialogs[S <: Sys[S]] {
     showOverlayPanel(createInsertMacroDialog)
   }
 
-  def showAppendFilterDialog(pred: VisualScan[S], pt: Point): Boolean = {
+  def showAppendFilterDialog(pred: NuagesOutput[S], pt: Point): Boolean = {
     requireEDT()
     fltPred = pred
     showOverlayPanel(createFilterAppendDialog, Some(pt))

@@ -22,20 +22,20 @@ import prefuse.visual.AggregateItem
 
 import scala.concurrent.stm.TMap
 
-object VisualObj {
+object NuagesObj {
   def apply[S <: Sys[S]](main: NuagesPanel[S], locOption: Option[Point2D],
                          timed: Timed[S],
                          hasMeter: Boolean, hasSolo: Boolean)
-                        (implicit tx: S#Tx): VisualObj[S] =
-    impl.VisualObjImpl(main, locOption, timed, hasMeter = hasMeter, hasSolo = hasSolo)
+                        (implicit tx: S#Tx, context: NuagesContext[S]): NuagesObj[S] =
+    impl.NuagesObjImpl(main, locOption, timed, hasMeter = hasMeter, hasSolo = hasSolo)
 }
 
 /** The GUI representation of a `proc.Obj`.
   *
   * @see [[Obj]]
   */
-trait VisualObj[S <: Sys[S]]
-  extends VisualNode[S] {
+trait NuagesObj[S <: Sys[S]]
+  extends NuagesNode[S] {
 
   def main: NuagesPanel[S]
 
@@ -52,9 +52,9 @@ trait VisualObj[S <: Sys[S]]
 
   def aggr: AggregateItem
 
-  val inputs : TMap[String, VisualScan   [S]]
-  val outputs: TMap[String, VisualScan   [S]]
-  val params : TMap[String, VisualControl[S]]
+  val inputs : TMap[String, NuagesOutput   [S]]
+  val outputs: TMap[String, NuagesOutput   [S]]
+  val params : TMap[String, NuagesAttribute[S]]
 
   /** GUI property: whether the object is heard through the solo function or not. */
   var soloed: Boolean

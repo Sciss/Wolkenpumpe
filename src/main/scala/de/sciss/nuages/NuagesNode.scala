@@ -22,10 +22,10 @@ import prefuse.data.{Node => PNode}
   *
   * The sub-types are `VisualObj` and `VisualParam`.
   *
-  * @see [[VisualObj]]
-  * @see [[VisualParam]]
+  * @see [[NuagesObj]]
+  * @see [[NuagesParam]]
   */
-trait VisualNode[S <: Sys[S]] extends VisualData[S] with Disposable[S#Tx] {
+trait NuagesNode[S <: Sys[S]] extends NuagesData[S] with Disposable[S#Tx] {
   // ---- methods to be called on the EDT ----
 
   /** The corresponding Prefuse node. */

@@ -158,7 +158,7 @@ class DSL[S <: stm.Sys[S]] {
       ScanOut(Proc.scanMainOut, out)
     }
     val proc  = obj
-    ??? // SCAN
+    // SCAN
     // proc.inputs .add(Proc.scanMainIn )
     proc.outputs.add(Proc.scanMainOut)
     insertByName(n.filters.get, obj)
@@ -183,7 +183,7 @@ class DSL[S <: stm.Sys[S]] {
       val in = ScanIn(Proc.scanMainIn)
       fun(in)
     }
-    ??? // SCAN
+    // SCAN
 //    obj.inputs.add(Proc.scanMainIn)
     insertByName(folder, obj)
     obj
