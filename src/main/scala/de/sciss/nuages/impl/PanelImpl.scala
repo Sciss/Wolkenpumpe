@@ -253,7 +253,7 @@ final class PanelImpl[S <: Sys[S]](nuagesH: stm.Source[S#Tx, Nuages[S]],
   protected def getAuralScanData(aural: AuralObj[S], key: String = Proc.scanMainOut)
                               (implicit tx: S#Tx): Option[(AudioBus, Node)] = aural match {
     case ap: AuralObj.Proc[S] =>
-      ??? // SCAN
+      None // SCAN
 //      val d = ap.data
 //      for {
 //        either  <- d.getScanOut(key)

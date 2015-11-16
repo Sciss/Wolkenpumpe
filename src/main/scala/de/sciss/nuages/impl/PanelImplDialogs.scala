@@ -9,7 +9,7 @@ import de.sciss.lucre.stm
 import de.sciss.lucre.stm.Obj
 import de.sciss.lucre.swing.{ListView, requireEDT}
 import de.sciss.lucre.synth.Sys
-import de.sciss.synth.proc.{Folder, Proc}
+import de.sciss.synth.proc.{Output, Folder, Proc}
 import prefuse.Display
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -38,9 +38,8 @@ trait PanelImplDialogs[S <: Sys[S]] {
 
   protected def createGenerator(genSrc: Obj[S], colSrcOpt: Option[Obj[S]], pt: Point2D)(implicit tx: S#Tx): Unit
 
-  // SCAN
-//  protected def appendFilter(pred: Scan[S], fltSrc: Obj[S], colSrcOpt: Option[Obj[S]], fltPt: Point2D)
-//                            (implicit tx: S#Tx): Unit
+  protected def appendFilter(pred: Output[S], fltSrc: Obj[S], colSrcOpt: Option[Obj[S]], fltPt: Point2D)
+                            (implicit tx: S#Tx): Unit
 
   protected def insertMacro(macroF: Folder[S], pt: Point2D)(implicit tx: S#Tx): Unit
 
@@ -121,8 +120,7 @@ trait PanelImplDialogs[S <: Sys[S]] {
               for {
                 predScan <- pred.outputs.get(fltPred.key)
               } {
-                ??? // SCAN
-//                appendFilter(predScan, flt, None, displayPt)
+                appendFilter(predScan, flt, None, displayPt)
               }
             case _ =>
           }
@@ -172,8 +170,7 @@ trait PanelImplDialogs[S <: Sys[S]] {
                             for {
                               predScan <- pred.outputs.get(fltPred.key)
                             } {
-                              ??? // SCAN
-//                              appendFilter(predScan, flt, Some(col), displayPt)
+                              appendFilter(predScan, flt, Some(col), displayPt)
                             }
                           case _ =>
                         }

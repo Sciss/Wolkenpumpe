@@ -99,20 +99,28 @@ trait PanelImplTxnFuns[S <: Sys[S]] {
 //    finalizeProcAndCollector(flt, None, fltPt)
 //  }
 
-  // SCAN
-//  def appendFilter(pred: Scan[S], fltSrc: Obj[S], colSrcOpt: Option[Obj[S]], fltPt: Point2D)
-//                  (implicit tx: S#Tx): Unit = {
-//    val flt = Obj.copy(fltSrc)
-//
-//    flt match {
-//      case fltP: Proc[S] =>
-//        val procFlt  = fltP
-//        pred.add(procFlt.inputs.add(Proc.scanMainIn))
-//      case _ =>
-//    }
-//
-//    finalizeProcAndCollector(flt, colSrcOpt, fltPt)
-//  }
+  def appendFilter(pred: Output[S], fltSrc: Obj[S], colSrcOpt: Option[Obj[S]], fltPt: Point2D)
+                  (implicit tx: S#Tx): Unit = {
+    val flt = Obj.copy(fltSrc)
+
+    flt match {
+      case fltP: Proc[S] =>
+        val fltAttr = fltSrc.attr
+        fltAttr.get(Proc.scanMainIn) match {
+          case Some(f: Folder[S]) => f.addLast(pred)
+          // case Some(tl: Timeline.Modifiable[S]) => tl.add(..., pred)
+          case Some(other) =>
+            val f = Folder[S]
+            f.addLast(other)
+            f.addLast(pred)
+            fltAttr.put(Proc.scanMainIn, f)
+          case None => fltAttr.put(Proc.scanMainIn, pred)
+        }
+      case _ =>
+    }
+
+    finalizeProcAndCollector(flt, colSrcOpt, fltPt)
+  }
 
   private def exec(obj: Obj[S], key: String)(implicit tx: S#Tx): Unit =
     for (self <- obj.attr.$[Action](key)) {

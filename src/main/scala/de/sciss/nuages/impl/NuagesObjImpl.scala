@@ -27,7 +27,7 @@ import de.sciss.lucre.swing.requireEDT
 import de.sciss.lucre.synth.{Synth, Sys}
 import de.sciss.synth.proc.Implicits._
 import de.sciss.synth.proc.Timeline.Timed
-import de.sciss.synth.proc.Proc
+import de.sciss.synth.proc.{ObjKeys, Proc}
 import prefuse.util.ColorLib
 import prefuse.visual.{AggregateItem, VisualItem}
 
@@ -110,7 +110,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
 
     val attr = proc.attr
     attr.iterator.foreach { case (key, obj) =>
-      if (!key.endsWith(specSuffix)) mkParam(key, obj)
+      mkParam(key, obj)
     }
     observers ::= attr.changed.react { implicit tx => upd =>
       upd.changes.foreach {
@@ -120,8 +120,10 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
     }
   }
 
-  private[this] def mkParam(key: String, obj: Obj[S])(implicit tx: S#Tx): Unit =
-    NuagesAttribute.tryApply(key = key, value = obj, parent = this)
+  private[this] def mkParam(key: String, obj: Obj[S])(implicit tx: S#Tx): Unit = {
+    if (!key.endsWith(specSuffix) && key != ObjKeys.attrName)
+      NuagesAttribute /* .tryApply */ (key = key, value = obj, parent = this)
+  }
 
   private[this] def initGUI(locOption: Option[Point2D]): Unit = {
     requireEDT()
