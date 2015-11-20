@@ -3,7 +3,7 @@ package impl
 
 import java.awt.geom.Point2D
 
-import de.sciss.lucre.expr.{SpanObj, SpanLikeObj}
+import de.sciss.lucre.expr.SpanLikeObj
 import de.sciss.lucre.stm.Obj
 import de.sciss.lucre.synth.Sys
 import de.sciss.nuages.Nuages.Surface
@@ -19,7 +19,7 @@ trait PanelImplTxnFuns[S <: Sys[S]] {
 
   protected def workspace: WorkspaceHandle[S]
 
-  protected def transport: Transport[S]
+  def transport: Transport[S]
 
   // ---- impl ----
 
@@ -46,34 +46,60 @@ trait PanelImplTxnFuns[S <: Sys[S]] {
         val time    = transport.position
         val span    = Span.From(time): SpanLikeObj[S]
 
+        def addToTimeline(tl0: Timeline.Modifiable[S], obj: Obj[S])(implicit tx: S#Tx): Unit = {
+          val spanEx = SpanLikeObj.newVar[S](span)
+          tl0.add(spanEx, obj)
+        }
+
         (proc, colOpt) match {
           case (genP: Proc[S], Some(colP: Proc[S])) =>
 
             val out     = genP.outputs.add(Proc.scanMainOut)
             val colAttr = colP.attr
-            val in      = colAttr.$[Timeline](Proc.scanMainIn).fold[Unit] {
-              val links = Timeline[S]
-              links.add(SpanLikeObj.newVar(span), out)
-              colAttr.put(Proc.scanMainIn, links)
+            val in      = colAttr.get(Proc.scanMainIn).fold[Timeline.Modifiable[S]] {
+              val _links = Timeline[S]
+              colAttr.put(Proc.scanMainIn, _links)
+              _links
             } {
-              case links: Timeline.Modifiable[S] =>
-                links.add(SpanLikeObj.newVar(span), out)
-              case _ => // XXX TODO --- what to here, immutable timeline?
+              case _links: Timeline.Modifiable[S] => _links
+              case prev => // what to here, immutable timeline?
+                val _links = Timeline[S]
+                addToTimeline(_links, prev) // XXX TODO -- or Span.all?
+                colAttr.put(Proc.scanMainIn, _links)
+                _links
             }
+            addToTimeline(in, out)
 
           case _ =>
         }
 
-        def addToTimeline(obj: Obj[S])(implicit tx: S#Tx): Unit = {
-          val spanEx  = SpanLikeObj.newVar[S](span)
-          tl.add(spanEx, obj)
+        addToTimeline(tl, proc)
+        colOpt.foreach(addToTimeline(tl, _))
+
+      case Surface.Folder(f) =>
+        (proc, colOpt) match {
+          case (genP: Proc[S], Some(colP: Proc[S])) =>
+            val out     = genP.outputs.add(Proc.scanMainOut)
+            val colAttr = colP.attr
+            val in      = colAttr.get(Proc.scanMainIn).fold[Folder[S]] {
+              val _links = Folder[S]
+              colAttr.put(Proc.scanMainIn, _links)
+              _links
+            } {
+              case _links: Folder[S] => _links
+              case prev => // what to here, immutable timeline?
+                val _links = Folder[S]
+                _links.addLast(prev)
+                colAttr.put(Proc.scanMainIn, _links)
+                _links
+            }
+            in.addLast(out)
+
+          case _ =>
         }
 
-        addToTimeline(proc)
-        colOpt.foreach(addToTimeline)
-
-      case Surface.Folder   (f) =>
-        ???
+        f.addLast(proc)
+        colOpt.foreach(f.addLast)
     }
   }
 

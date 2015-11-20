@@ -14,16 +14,13 @@
 package de.sciss.nuages
 package impl
 
-import java.awt.geom.Point2D
-
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{Obj, TxnLike}
+import de.sciss.lucre.stm.TxnLike
 import de.sciss.lucre.synth.{AudioBus, Node, Synth, Sys}
-import de.sciss.span.SpanLike
-import de.sciss.synth.proc.{AuralObj, Proc, Timeline}
+import de.sciss.synth.proc.{AuralObj, Proc}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
-import scala.concurrent.stm.{Ref, TMap}
+import scala.concurrent.stm.TMap
 
 trait PanelImplReact[S <: Sys[S]] {
   // ---- abstract ----
@@ -32,9 +29,8 @@ trait PanelImplReact[S <: Sys[S]] {
 
   protected def main: NuagesPanel[S]
 
-  protected def removeLocationHint(obj: Obj[S])(implicit tx: S#Tx): Option[Point2D]
+  def nodeMap     : stm.IdentifierMap[S#ID, S#Tx, NuagesObj [S]]
 
-  protected def nodeMap     : stm.IdentifierMap[S#ID, S#Tx, NuagesObj [S]]
 //  protected def scanMap     : stm.IdentifierMap[S#ID, S#Tx, VisualScan[S]]
   protected def missingScans: stm.IdentifierMap[S#ID, S#Tx, List[NuagesAttribute[S]]]
 
@@ -44,7 +40,7 @@ trait PanelImplReact[S <: Sys[S]] {
   /** Transaction local hack */
   protected def waitForScanView(id: S#ID)(fun: NuagesOutput[S] => Unit)(implicit tx: S#Tx): Unit
 
-  protected def auralTimeline: Ref[Option[AuralObj.Timeline[S]]]
+//  protected def auralTimeline: Ref[Option[AuralObj.Timeline[S]]]
 
   protected def getAuralScanData(aural: AuralObj[S], key: String = Proc.scanMainOut)
                                 (implicit tx: S#Tx): Option[(AudioBus, Node)]
@@ -56,23 +52,9 @@ trait PanelImplReact[S <: Sys[S]] {
 
   protected def mkMonitor(bus: AudioBus, node: Node)(fun: Vec[Double] => Unit)(implicit tx: S#Tx): Synth
 
-  protected def disposeObj(obj: Obj[S])(implicit tx: S#Tx): Unit
+//  protected def disposeObj(obj: Obj[S])(implicit tx: S#Tx): Unit
 
   // ---- impl ----
-
-  def addNode(span: SpanLike, timed: Timeline.Timed[S])(implicit tx: S#Tx): Unit = {
-    val obj   = timed.value
-    val config = main.config
-    val locO  = removeLocationHint(obj)
-    implicit val context = main.context
-    val vp    = NuagesObj[S](main, locO, timed, hasMeter = config.meters, hasSolo = config.soloChannels.isDefined)
-
-    auralTimeline.get(tx.peer).foreach { auralTL =>
-      auralTL.getView(timed).foreach { auralObj =>
-        auralObjAdded(vp, auralObj)
-      }
-    }
-  }
 
   // SCAN
 //  def assignMapping(source: Scan[S], vSink: VisualControl[S])(implicit tx: S#Tx): Unit = {
@@ -123,21 +105,6 @@ trait PanelImplReact[S <: Sys[S]] {
     auralToViewMap.remove(aural)(tx.peer).foreach { vp =>
       viewToAuralMap.remove(vp)(tx.peer)
       vp.meterSynth = None
-    }
-  }
-
-  def removeNode(span: SpanLike, timed: Timeline.Timed[S])(implicit tx: S#Tx): Unit = {
-    val id   = timed.id
-    val obj  = timed.value
-    nodeMap.get(id).foreach { vp =>
-      vp.dispose()
-      disposeObj(obj)
-
-      // note: we could look for `solo` and clear it
-      // if relevant; but the bus-reader will automatically
-      // go to dummy, so let's just save the effort.
-      // orphaned solo will be cleared when calling
-      // `setSolo` another time or upon frame disposal.
     }
   }
 }

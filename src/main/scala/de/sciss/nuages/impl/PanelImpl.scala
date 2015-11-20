@@ -25,6 +25,7 @@ import de.sciss.lucre.stm.{Obj, Disposable, TxnLike}
 import de.sciss.lucre.swing.impl.ComponentHolder
 import de.sciss.lucre.swing.{ListView, defer, deferTx, requireEDT}
 import de.sciss.lucre.synth.{AudioBus, Node, Synth, Sys, Txn}
+import de.sciss.nuages.Nuages.Surface
 import de.sciss.span.{Span, SpanLike}
 import de.sciss.synth.proc.{Action, AuralObj, AuralSystem, Folder, Proc, Timeline, Transport, WorkspaceHandle}
 import de.sciss.synth.{proc, SynthGraph, addToTail, message}
@@ -70,10 +71,16 @@ object PanelImpl {
     val surface       = nuages.surface
     // transport.addObject(timelineObj)
 
-    new PanelImpl[S](nuagesH, nodeMap, scanMap, missingScans, config, transport, aural,
-                listGen = listGen, listFlt1 = listFlt1, listCol1 = listCol1, listFlt2 = listFlt2, listCol2 = listCol2,
-                listMacro = listMacro)
-      .init(surface)
+    surface match {
+      case Surface.Timeline(tl) =>
+        new PanelImplTimeline[S](nuagesH, nodeMap, scanMap, missingScans, config, transport, aural,
+          listGen = listGen, listFlt1 = listFlt1, listCol1 = listCol1, listFlt2 = listFlt2, listCol2 = listCol2,
+          listMacro = listMacro)
+          .init(tl)
+
+      case Surface.Folder(f) =>
+        ???
+    }
   }
 
   final val GROUP_NODES   = "graph.nodes"
@@ -101,18 +108,11 @@ object PanelImpl {
     res.list = folderOpt
     res
   }
-
-//  final class VisualLink[S <: Sys[S]](val source: VisualObj[S], val sourceKey: String,
-//                                      val sink  : VisualObj[S], val sinkKey  : String, val isScan: Boolean)
-
-//  /* Contains the `id` of the parent `timed` object, and the scan key */
-//  final case class ScanInfo[S <: Sys[S]](timedID: S#ID, key: String, isInput: Boolean)
 }
 
-// nodeMap: uses timed-id as key
-final class PanelImpl[S <: Sys[S]](nuagesH: stm.Source[S#Tx, Nuages[S]],
+final class PanelImplTimeline[S <: Sys[S]](protected val nuagesH: stm.Source[S#Tx, Nuages[S]],
                                    val nodeMap: stm.IdentifierMap[S#ID, S#Tx, NuagesObj[S]],
-                                   scanMap: stm.IdentifierMap[S#ID, S#Tx, NuagesOutput[S]],
+                                   protected val scanMap: stm.IdentifierMap[S#ID, S#Tx, NuagesOutput[S]],
                                    protected val missingScans: stm.IdentifierMap[S#ID, S#Tx, List[NuagesAttribute[S]]],
                                    val config   : Nuages.Config,
                                    val transport: Transport[S],
@@ -123,12 +123,15 @@ final class PanelImpl[S <: Sys[S]](nuagesH: stm.Source[S#Tx, Nuages[S]],
                                    protected val listFlt2 : ListView[S, Obj[S], Unit /* Obj.Update[S] */],
                                    protected val listCol2 : ListView[S, Obj[S], Unit /* Obj.Update[S] */],
                                    protected val listMacro: ListView[S, Obj[S], Unit /* Obj.Update[S] */])
-                                 (implicit val cursor: stm.Cursor[S],
-                                  protected val workspace: WorkspaceHandle[S],
-                                  val context: NuagesContext[S])
-  extends NuagesPanel[S]
+                                  (implicit val cursor: stm.Cursor[S],
+                                   protected val workspace: WorkspaceHandle[S],
+                                   val context: NuagesContext[S])
+  extends PanelImpl[S]
+  with PanelImplTimelineInit[S]
+
+// nodeMap: uses timed-id as key
+trait PanelImpl[S <: Sys[S]] extends NuagesPanel[S]
   // here comes your cake!
-  with PanelImplInit   [S]
   with PanelImplDialogs[S]
   with PanelImplTxnFuns[S]
   with PanelImplReact  [S]
@@ -141,12 +144,20 @@ final class PanelImpl[S <: Sys[S]](nuagesH: stm.Source[S#Tx, Nuages[S]],
   import NuagesPanel.{GROUP_SELECTION, GROUP_GRAPH, COL_NUAGES}
   import PanelImpl._
 
+  // ---- abstract ----
+
+  protected def nuagesH: stm.Source[S#Tx, Nuages[S]]
+
+  protected def scanMap: stm.IdentifierMap[S#ID, S#Tx, NuagesOutput[S]]
+
+  protected def keyControl: Control with Disposable[S#Tx]
+
+  // ---- impl ----
+
   protected def main: NuagesPanel[S] = this
 
-  protected var timelineObserver : Disposable[S#Tx] = _
-  protected var transportObserver: Disposable[S#Tx] = _
+  protected var observers     = List.empty[Disposable[S#Tx]]
   protected val auralObserver = Ref(Option.empty[Disposable[S#Tx]])
-  protected val auralTimeline = Ref(Option.empty[AuralObj.Timeline[S]])
 
   protected val auralToViewMap  = TMap.empty[AuralObj[S], NuagesObj[S]]
   protected val viewToAuralMap  = TMap.empty[NuagesObj[S], AuralObj[S]]
@@ -157,8 +168,7 @@ final class PanelImpl[S <: Sys[S]](nuagesH: stm.Source[S#Tx, Nuages[S]],
     implicit val itx = tx.peer
     deferTx(stopAnimation())
     clearSolo()
-    transportObserver.dispose()
-    timelineObserver .dispose()
+    observers.foreach(_.dispose())
     disposeAuralObserver()
     transport.dispose()
     auralToViewMap.foreach { case (_, vp) =>
@@ -197,7 +207,7 @@ final class PanelImpl[S <: Sys[S]](nuagesH: stm.Source[S#Tx, Nuages[S]],
     } (tx.peer)
 
   protected def disposeAuralObserver()(implicit tx: S#Tx): Unit = {
-    auralTimeline.set (None)(tx.peer)
+    ??? // auralTimeline.set (None)(tx.peer)
     auralObserver.swap(None)(tx.peer).foreach(_.dispose())
   }
 

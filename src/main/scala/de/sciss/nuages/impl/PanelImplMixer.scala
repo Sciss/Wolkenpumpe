@@ -19,7 +19,7 @@ trait PanelImplMixer[S <: Sys[S]] {
 
   protected def main: NuagesPanel[S]
 
-  protected def cursor: stm.Cursor[S]
+  def cursor: stm.Cursor[S]
 
   protected def auralToViewMap: TMap[AuralObj[S], NuagesObj[S]]
   protected def viewToAuralMap: TMap[NuagesObj[S], AuralObj[S]]

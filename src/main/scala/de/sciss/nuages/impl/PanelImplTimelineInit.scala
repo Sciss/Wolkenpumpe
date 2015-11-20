@@ -1,27 +1,32 @@
 package de.sciss.nuages
 package impl
 
+import java.awt.geom.Point2D
+
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.Disposable
+import de.sciss.lucre.stm.{Obj, Disposable}
 import de.sciss.lucre.swing.deferTx
 import de.sciss.lucre.synth.Sys
-import de.sciss.nuages.Nuages.Surface
 import de.sciss.span.SpanLike
-import de.sciss.synth.proc.{AuralObj, Transport, Timeline}
+import de.sciss.synth.proc.{AuralObj, Timeline, Transport}
 import prefuse.controls.Control
 
 import scala.concurrent.stm.Ref
 
-trait PanelImplInit[S <: Sys[S]] {
+trait PanelImplTimelineInit[S <: Sys[S]] {
   // _: PanelImpl[S] =>
 
   // ---- abstract ----
 
-  protected var transportObserver: Disposable[S#Tx]
-  protected var timelineObserver : Disposable[S#Tx]
+//  protected var transportObserver: Disposable[S#Tx]
+//  protected var timelineObserver : Disposable[S#Tx]
+
+  protected var observers: List[Disposable[S#Tx]]
 
   protected def auralObserver: Ref[Option[Disposable[S#Tx]]]
-  protected def auralTimeline: Ref[Option[AuralObj.Timeline[S]]]
+//  protected def auralTimeline: Ref[Option[AuralObj.Timeline[S]]]
+
+  protected def removeLocationHint(obj: Obj[S])(implicit tx: S#Tx): Option[Point2D]
 
   protected def nodeMap: stm.IdentifierMap[S#ID, S#Tx, NuagesObj[S]]
 
@@ -33,22 +38,26 @@ trait PanelImplInit[S <: Sys[S]] {
 
   protected def disposeAuralObserver()(implicit tx: S#Tx): Unit
 
+  protected def disposeObj(obj: Obj[S])(implicit tx: S#Tx): Unit
+
   protected def guiInit(): Unit
 
-  def addNode   (span: SpanLike, timed: Timeline.Timed[S])(implicit tx: S#Tx): Unit
-  def removeNode(span: SpanLike, timed: Timeline.Timed[S])(implicit tx: S#Tx): Unit
+//  def addNode   (span: SpanLike, timed: Timeline.Timed[S])(implicit tx: S#Tx): Unit
+//  def removeNode(span: SpanLike, timed: Timeline.Timed[S])(implicit tx: S#Tx): Unit
 
   protected def main: NuagesPanel[S]
 
   // ---- impl ----
 
+  private val auralTimeline = Ref(Option.empty[AuralObj.Timeline[S]])
+
   private var  _keyControl: Control with Disposable[S#Tx] = _
   protected def keyControl: Control with Disposable[S#Tx] = _keyControl
 
-  def init(surface: Surface[S])(implicit tx: S#Tx): this.type = {
+  def init(tl: Timeline[S])(implicit tx: S#Tx): this.type = {
     _keyControl = KeyControl(main)
     deferTx(guiInit())
-    transportObserver = transport.react { implicit tx => {
+    observers ::= transport.react { implicit tx => {
       case Transport.ViewAdded(_, auralTL: AuralObj.Timeline[S]) =>
         val obs = auralTL.contents.react { implicit tx => {
           case AuralObj.Timeline.ViewAdded  (_, timed, view) =>
@@ -67,10 +76,9 @@ trait PanelImplInit[S <: Sys[S]] {
 
       case _ =>
     }}
-    transport.addObject(surface.peer)
+    transport.addObject(tl)
 
-    val tl = ??? : Timeline[S]
-    timelineObserver = tl.changed.react { implicit tx => upd =>
+    observers ::= tl.changed.react { implicit tx => upd =>
       upd.changes.foreach {
         case Timeline.Added(span, timed) =>
           if (span.contains(transport.position)) addNode(span, timed)
@@ -80,27 +88,6 @@ trait PanelImplInit[S <: Sys[S]] {
           if (span.contains(transport.position)) removeNode(span, timed)
         // XXX TODO - update scheduler
 
-        // ELEM
-        //          case Timeline.Element(timed, Obj.UpdateT(obj, changes)) =>
-        //            nodeMap.get(timed.id).foreach { visObj =>
-        //              changes.foreach {
-        //                case Obj.AttrRemoved(key, elem) =>
-        //                  deferVisTx {
-        //                    visObj.params.get(key).foreach { vc =>
-        //                      removeControlGUI(visObj, vc)
-        //                    }
-        //                  }
-        //
-        //                case Obj.AttrAdded(key, elem) =>
-        //                  elem match {
-        //                    case dObj: DoubleObj[S] => addScalarControl(visObj, key, dObj)
-        //                    case sObj: Scan     [S] => addScanControl  (visObj, key, sObj)
-        //                    case _ =>
-        //                  }
-        //
-        //                case other => if (DEBUG) println(s"OBSERVED: Timeline.Element - $other")
-        //              }
-        //            }
 
         case other => if (PanelImpl.DEBUG) println(s"OBSERVED: $other")
       }
@@ -110,5 +97,34 @@ trait PanelImplInit[S <: Sys[S]] {
       elems.foreach(addNode(span, _))
     }
     this
+  }
+
+  private def removeNode(span: SpanLike, timed: Timeline.Timed[S])(implicit tx: S#Tx): Unit = {
+    val id   = timed.id
+    val obj  = timed.value
+    nodeMap.get(id).foreach { vp =>
+      vp.dispose()
+      disposeObj(obj)
+
+      // note: we could look for `solo` and clear it
+      // if relevant; but the bus-reader will automatically
+      // go to dummy, so let's just save the effort.
+      // orphaned solo will be cleared when calling
+      // `setSolo` another time or upon frame disposal.
+    }
+  }
+
+  private def addNode(span: SpanLike, timed: Timeline.Timed[S])(implicit tx: S#Tx): Unit = {
+    val obj   = timed.value
+    val config = main.config
+    val locO  = removeLocationHint(obj)
+    implicit val context = main.context
+    val vp    = NuagesObj[S](main, locO, timed, hasMeter = config.meters, hasSolo = config.soloChannels.isDefined)
+
+    auralTimeline.get(tx.peer).foreach { auralTL =>
+      auralTL.getView(timed).foreach { auralObj =>
+        auralObjAdded(vp, auralObj)
+      }
+    }
   }
 }

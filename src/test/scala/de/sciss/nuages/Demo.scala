@@ -80,7 +80,8 @@ object Demo extends SwingApplication {
         }
       }
 
-      val nuagesH = system.step { implicit tx => tx.newHandle(Nuages.timeline[S]) }
+      // val nuagesH = system.step { implicit tx => tx.newHandle(Nuages.timeline[S]) }
+      val nuagesH = system.step { implicit tx => tx.newHandle(Nuages.folder[S]) }
       w.run(nuagesH)
     }
   }
