@@ -16,9 +16,9 @@ package de.sciss.nuages
 import java.awt.geom.Point2D
 
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{Obj, TxnLike}
+import de.sciss.lucre.stm.{Sys, Obj, TxnLike}
 import de.sciss.lucre.swing.View
-import de.sciss.lucre.synth.{Synth, Sys, Txn}
+import de.sciss.lucre.synth.{Synth, Sys => SSys, Txn}
 import de.sciss.nuages.impl.{PanelImpl => Impl}
 import de.sciss.synth.proc.{AuralSystem, Transport, WorkspaceHandle}
 import prefuse.data.Graph
@@ -37,7 +37,7 @@ object NuagesPanel {
   final val masterAmpSpec       = ParamSpec(0.01, 10.0, ExponentialWarp) -> 1.0
   final val soloAmpSpec         = ParamSpec(0.10, 10.0, ExponentialWarp) -> 0.5
 
-  def apply[S <: Sys[S]](nuages: Nuages[S], config: Nuages.Config)
+  def apply[S <: SSys[S]](nuages: Nuages[S], config: Nuages.Config)
                         (implicit tx: S#Tx, aural: AuralSystem,
                          cursor: stm.Cursor[S], workspace: WorkspaceHandle[S],
                          context: NuagesContext[S]): NuagesPanel[S] =

@@ -13,22 +13,20 @@
 
 package de.sciss.nuages
 
-import de.sciss.lucre.expr.{DoubleVector, DoubleObj}
-import de.sciss.lucre.stm.Obj
-import de.sciss.lucre.synth.{Synth, Sys}
+import de.sciss.lucre.stm.{Sys, Obj}
+import de.sciss.lucre.synth.{Synth, Sys => SSys}
+import de.sciss.nuages.impl.{NuagesAttributeImpl => Impl}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm.Ref
-import impl.{NuagesAttributeImpl => Impl}
-
 import scala.language.higherKinds
 
 object NuagesAttribute {
-  def apply[S <: Sys[S]](key: String, value: Obj[S], parent: NuagesObj[S])
+  def apply[S <: SSys[S]](key: String, value: Obj[S], parent: NuagesObj[S])
                         (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute[S] =
     Impl(key, value, parent)
 
-  def tryApply[S <: Sys[S]](key: String, value: Obj[S], parent: NuagesObj[S])
+  def tryApply[S <: SSys[S]](key: String, value: Obj[S], parent: NuagesObj[S])
                            (implicit tx: S#Tx, context: NuagesContext[S]): Option[NuagesAttribute[S]] =
     Impl.tryApply(key, value, parent)
 
@@ -39,7 +37,7 @@ object NuagesAttribute {
 
     type Repr[~ <: Sys[~]] <: Obj[~]
 
-    def apply[S <: Sys[S]](key: String, value: Repr[S], parent: NuagesObj[S])
+    def apply[S <: SSys[S]](key: String, value: Repr[S], parent: NuagesObj[S])
                           (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute[S]
   }
 

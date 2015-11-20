@@ -13,12 +13,13 @@
 
 package de.sciss.nuages
 
-import de.sciss.lucre.synth.Sys
+import de.sciss.lucre.stm.Sys
+import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.synth.proc.Output
 import prefuse.data.Edge
 
 object NuagesOutput {
-  def apply[S <: Sys[S]](parent: NuagesObj[S], output: Output[S])
+  def apply[S <: SSys[S]](parent: NuagesObj[S], output: Output[S])
                         (implicit tx: S#Tx): NuagesOutput[S] =
     impl.NuagesOutputImpl(parent, output = output)
 }

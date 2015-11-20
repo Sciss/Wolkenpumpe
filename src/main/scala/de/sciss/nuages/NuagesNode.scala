@@ -13,8 +13,7 @@
 
 package de.sciss.nuages
 
-import de.sciss.lucre.stm.Disposable
-import de.sciss.lucre.synth.Sys
+import de.sciss.lucre.stm.{Sys, Disposable}
 import prefuse.data.{Node => PNode}
 
 /** The common super type of all Prefuse objects

@@ -19,9 +19,9 @@ import java.awt.geom.{Arc2D, Area, GeneralPath, Point2D}
 import java.awt.{Graphics2D, Shape}
 
 import de.sciss.lucre.expr.{DoubleVector, BooleanObj, DoubleObj, IntObj}
-import de.sciss.lucre.stm.{Disposable, Obj}
+import de.sciss.lucre.stm.{Disposable, Obj, Sys}
 import de.sciss.lucre.swing.requireEDT
-import de.sciss.lucre.synth.Sys
+import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.nuages.NuagesAttribute.Factory
 import prefuse.util.ColorLib
 import prefuse.visual.VisualItem
@@ -39,7 +39,7 @@ object NuagesAttributeImpl {
 
   def factories: Iterable[Factory] = map.values
 
-  def apply[S <: Sys[S]](key: String, value: Obj[S], parent: NuagesObj[S])
+  def apply[S <: SSys[S]](key: String, value: Obj[S], parent: NuagesObj[S])
                         (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute[S] = {
     val tid     = value.tpe.typeID
     val factory = map.getOrElse(tid,
@@ -47,7 +47,7 @@ object NuagesAttributeImpl {
     factory(key, value.asInstanceOf[factory.Repr[S]], parent)
   }
 
-  def tryApply[S <: Sys[S]](key: String, value: Obj[S], parent: NuagesObj[S])
+  def tryApply[S <: SSys[S]](key: String, value: Obj[S], parent: NuagesObj[S])
                            (implicit tx: S#Tx, context: NuagesContext[S]): Option[NuagesAttribute[S]] = {
     val tid = value.tpe.typeID
     val opt = map.get(tid)
@@ -119,7 +119,7 @@ object NuagesAttributeImpl {
 //  }
 }
 
-abstract class NuagesAttributeImpl[S <: Sys[S]] extends NuagesParamImpl[S] with NuagesAttribute[S] {
+abstract class NuagesAttributeImpl[S <: SSys[S]] extends NuagesParamImpl[S] with NuagesAttribute[S] {
   import NuagesAttributeImpl.Drag
   import NuagesDataImpl._
 

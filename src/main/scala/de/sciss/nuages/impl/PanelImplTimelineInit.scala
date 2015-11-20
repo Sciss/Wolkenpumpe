@@ -4,12 +4,10 @@ package impl
 import java.awt.geom.Point2D
 
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{Obj, Disposable}
-import de.sciss.lucre.swing.deferTx
+import de.sciss.lucre.stm.{Disposable, Obj}
 import de.sciss.lucre.synth.Sys
 import de.sciss.span.SpanLike
 import de.sciss.synth.proc.{AuralObj, Timeline, Transport}
-import prefuse.controls.Control
 
 import scala.concurrent.stm.Ref
 
@@ -40,8 +38,6 @@ trait PanelImplTimelineInit[S <: Sys[S]] {
 
   protected def disposeObj(obj: Obj[S])(implicit tx: S#Tx): Unit
 
-  protected def guiInit(): Unit
-
 //  def addNode   (span: SpanLike, timed: Timeline.Timed[S])(implicit tx: S#Tx): Unit
 //  def removeNode(span: SpanLike, timed: Timeline.Timed[S])(implicit tx: S#Tx): Unit
 
@@ -51,12 +47,7 @@ trait PanelImplTimelineInit[S <: Sys[S]] {
 
   private val auralTimeline = Ref(Option.empty[AuralObj.Timeline[S]])
 
-  private var  _keyControl: Control with Disposable[S#Tx] = _
-  protected def keyControl: Control with Disposable[S#Tx] = _keyControl
-
-  def init(tl: Timeline[S])(implicit tx: S#Tx): this.type = {
-    _keyControl = KeyControl(main)
-    deferTx(guiInit())
+  def init(timeline: Timeline[S])(implicit tx: S#Tx): this.type = {
     observers ::= transport.react { implicit tx => {
       case Transport.ViewAdded(_, auralTL: AuralObj.Timeline[S]) =>
         val obs = auralTL.contents.react { implicit tx => {
@@ -76,9 +67,9 @@ trait PanelImplTimelineInit[S <: Sys[S]] {
 
       case _ =>
     }}
-    transport.addObject(tl)
+    transport.addObject(timeline)
 
-    observers ::= tl.changed.react { implicit tx => upd =>
+    observers ::= timeline.changed.react { implicit tx => upd =>
       upd.changes.foreach {
         case Timeline.Added(span, timed) =>
           if (span.contains(transport.position)) addNode(span, timed)
@@ -93,7 +84,7 @@ trait PanelImplTimelineInit[S <: Sys[S]] {
       }
     }
 
-    tl.intersect(transport.position).foreach { case (span, elems) =>
+    timeline.intersect(transport.position).foreach { case (span, elems) =>
       elems.foreach(addNode(span, _))
     }
     this
@@ -115,11 +106,11 @@ trait PanelImplTimelineInit[S <: Sys[S]] {
   }
 
   private def addNode(span: SpanLike, timed: Timeline.Timed[S])(implicit tx: S#Tx): Unit = {
-    val obj   = timed.value
-    val config = main.config
-    val locO  = removeLocationHint(obj)
+    val obj     = timed.value
+    val config  = main.config
+    val locO    = removeLocationHint(obj)
     implicit val context = main.context
-    val vp    = NuagesObj[S](main, locO, timed, hasMeter = config.meters, hasSolo = config.soloChannels.isDefined)
+    val vp      = NuagesObj[S](main, locO, timed, hasMeter = config.meters, hasSolo = config.soloChannels.isDefined)
 
     auralTimeline.get(tx.peer).foreach { auralTL =>
       auralTL.getView(timed).foreach { auralObj =>

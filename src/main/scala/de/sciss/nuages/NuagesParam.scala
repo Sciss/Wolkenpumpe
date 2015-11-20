@@ -13,7 +13,7 @@
 
 package de.sciss.nuages
 
-import de.sciss.lucre.synth.Sys
+import de.sciss.lucre.stm.Sys
 import prefuse.data.Edge
 
 trait NuagesParam[S <: Sys[S]] extends NuagesNode[S] {

@@ -4,8 +4,8 @@ package impl
 import java.awt.geom.{Arc2D, Area}
 
 import de.sciss.lucre.expr.DoubleVector
-import de.sciss.lucre.stm.Obj
-import de.sciss.lucre.synth.Sys
+import de.sciss.lucre.stm.{Sys, Obj}
+import de.sciss.lucre.synth.{Sys => SSys}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.swing.Graphics2D
@@ -15,14 +15,14 @@ object NuagesDoubleVectorAttribute extends NuagesAttribute.Factory {
 
   type Repr[~ <: Sys[~]] = DoubleVector[~]
 
-  def apply[S <: Sys[S]](key: String, obj: DoubleVector[S], parent: NuagesObj[S])
+  def apply[S <: SSys[S]](key: String, obj: DoubleVector[S], parent: NuagesObj[S])
                         (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute[S] = {
     val spec  = NuagesAttributeImpl.getSpec(parent, key)
     val value = obj.value
     new NuagesDoubleVectorAttribute[S](parent, key = key, spec = spec, valueA = value, mapping = None).init(obj)
   }
 }
-final class NuagesDoubleVectorAttribute[S <: Sys[S]](val parent: NuagesObj[S], val key: String, val spec: ParamSpec,
+final class NuagesDoubleVectorAttribute[S <: SSys[S]](val parent: NuagesObj[S], val key: String, val spec: ParamSpec,
                                                @volatile var valueA: Vec[Double],
                                                val mapping: Option[NuagesAttribute.Mapping[S]])
   extends NuagesAttributeImpl[S] {

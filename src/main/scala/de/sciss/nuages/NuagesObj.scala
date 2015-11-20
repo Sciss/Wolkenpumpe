@@ -15,15 +15,15 @@ package de.sciss.nuages
 
 import java.awt.geom.Point2D
 
-import de.sciss.lucre.stm.Obj
-import de.sciss.lucre.synth.{Synth, Sys}
+import de.sciss.lucre.stm.{Sys, Obj}
+import de.sciss.lucre.synth.{Synth, Sys => SSys}
 import de.sciss.synth.proc.Timeline.Timed
 import prefuse.visual.AggregateItem
 
 import scala.concurrent.stm.TMap
 
 object NuagesObj {
-  def apply[S <: Sys[S]](main: NuagesPanel[S], locOption: Option[Point2D],
+  def apply[S <: SSys[S]](main: NuagesPanel[S], locOption: Option[Point2D],
                          timed: Timed[S],
                          hasMeter: Boolean, hasSolo: Boolean)
                         (implicit tx: S#Tx, context: NuagesContext[S]): NuagesObj[S] =

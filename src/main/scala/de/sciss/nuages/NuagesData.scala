@@ -13,11 +13,12 @@
 
 package de.sciss.nuages
 
-import java.awt.{Graphics2D, Shape}
 import java.awt.event.MouseEvent
-import de.sciss.lucre.synth.Sys
-import prefuse.visual.VisualItem
 import java.awt.geom.Point2D
+import java.awt.{Graphics2D, Shape}
+
+import de.sciss.lucre.stm.Sys
+import prefuse.visual.VisualItem
 
 /** The common trait of all visible objects on the
   * Prefuse display.
