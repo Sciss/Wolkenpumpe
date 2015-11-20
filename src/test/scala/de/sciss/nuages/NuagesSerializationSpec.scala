@@ -2,6 +2,7 @@ package de.sciss.nuages
 
 import de.sciss.lucre.stm.Obj
 import de.sciss.lucre.stm.store.BerkeleyDB
+import de.sciss.nuages.Nuages.Surface
 import de.sciss.span.Span
 import de.sciss.synth.proc.{Folder, Proc, Durable}
 import de.sciss.synth.proc.Implicits._
@@ -31,8 +32,8 @@ class NuagesSerializationSpec extends fixture.FlatSpec with Matchers {
 
   "Nuages" should "serialize and deserialize" in { system =>
     val nH = system.step { implicit tx =>
-      val n = Nuages[S]
-      val t = n.timeline
+      val n = Nuages.timeline[S]
+      val Surface.Timeline(t) = n.surface
       val p = Proc[S]
       p.name = "Schoko"
       assert(p.name === "Schoko")
@@ -43,7 +44,7 @@ class NuagesSerializationSpec extends fixture.FlatSpec with Matchers {
 
     val oH = system.step { implicit tx =>
       val n = nH()  // uses direct serializer
-      val t = n.timeline
+      val Surface.Timeline(t) = n.surface
       val objects = t.intersect(0L).toList.flatMap(_._2.map(_.value))
       assert(objects.map(_.name) === List("Schoko"))
       tx.newHandle(n: Obj[S])
@@ -66,7 +67,7 @@ class NuagesSerializationSpec extends fixture.FlatSpec with Matchers {
       val o = f.last    // this was revealing a de-serialization bug in Timeline
       assert(o.isInstanceOf[Nuages[S]])
       val n = o.asInstanceOf[Nuages[S]]
-      val t = n.timeline
+      val Surface.Timeline(t) = n.surface
       val objects = t.intersect(0L).toList.flatMap(_._2.map(_.value))
       assert(objects.map(_.name) === List("Schoko"))
     }

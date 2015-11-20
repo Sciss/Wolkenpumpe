@@ -25,9 +25,10 @@ import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Disposable, Obj}
 import de.sciss.lucre.swing.requireEDT
 import de.sciss.lucre.synth.{Synth, Sys}
+import de.sciss.nuages.Nuages.Surface
 import de.sciss.synth.proc.Implicits._
 import de.sciss.synth.proc.Timeline.Timed
-import de.sciss.synth.proc.{ObjKeys, Proc}
+import de.sciss.synth.proc.{Timeline, ObjKeys, Proc}
 import prefuse.util.ColorLib
 import prefuse.visual.{AggregateItem, VisualItem}
 
@@ -262,10 +263,16 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
           case _ =>
         }
 
-        main.nuages.timeline.modifiableOption.foreach { tl =>
-          // XXX TODO --- ought to be an update to the span variable
-          val t = timed
-          tl.remove(t.span, t.value)
+        main.nuages.surface match {
+          case Surface.Timeline(tlm: Timeline.Modifiable[S]) =>
+            // XXX TODO --- ought to be an update to the span variable
+            val t = timed
+            tlm.remove(t.span, t.value)
+          case Surface.Folder  (f) =>
+            f.remove(timed.value)
+            ???
+
+          case _ =>
         }
         // XXX TODO --- remove orphaned input or output procs
       }

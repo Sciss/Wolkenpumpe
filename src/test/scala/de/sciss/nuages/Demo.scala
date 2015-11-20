@@ -20,7 +20,7 @@ object Demo extends SwingApplication {
       implicit val system = Durable(factory)
       val w = new Wolkenpumpe[S]
       val nuagesH = system.root { implicit tx =>
-        Nuages[S]
+        Nuages.timeline[S]
       }
       w.run(nuagesH)
 
@@ -80,7 +80,7 @@ object Demo extends SwingApplication {
         }
       }
 
-      val nuagesH = system.step { implicit tx => tx.newHandle(Nuages[S]) }
+      val nuagesH = system.step { implicit tx => tx.newHandle(Nuages.timeline[S]) }
       w.run(nuagesH)
     }
   }

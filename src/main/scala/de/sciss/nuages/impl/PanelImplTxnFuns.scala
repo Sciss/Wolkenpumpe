@@ -3,9 +3,10 @@ package impl
 
 import java.awt.geom.Point2D
 
-import de.sciss.lucre.expr.SpanLikeObj
+import de.sciss.lucre.expr.{SpanObj, SpanLikeObj}
 import de.sciss.lucre.stm.Obj
 import de.sciss.lucre.synth.Sys
+import de.sciss.nuages.Nuages.Surface
 import de.sciss.span.Span
 import de.sciss.synth.proc._
 
@@ -31,31 +32,50 @@ trait PanelImplTxnFuns[S <: Sys[S]] {
   private val locHintMap = TxnLocal(Map.empty[Obj[S], Point2D])
 
   private def finalizeProcAndCollector(proc: Obj[S], colSrcOpt: Option[Obj[S]], pt: Point2D)
-                                      (implicit tx: S#Tx): Unit =
-    for (tl <- nuages.timeline.modifiableOption) {
-      val colOpt = colSrcOpt.map(in => Obj.copy(in))
+                                      (implicit tx: S#Tx): Unit = {
+    val colOpt = colSrcOpt.map(in => Obj.copy(in))
 
-      (proc, colOpt) match {
-        case (genP: Proc[S], Some(colP: Proc[S])) =>
-          val procGen = genP
-          val procCol = colP
-          ??? // SCAN
-//          val scanOut = procGen.outputs.add(Proc.scanMainOut)
-//          val scanIn  = procCol.inputs .add(Proc.scanMainIn )
-//          scanOut.add(scanIn)
+    prepareObj(proc)
+    colOpt.foreach(prepareObj)
 
-        case _ =>
-      }
+    setLocationHint(proc, if (colOpt.isEmpty) pt else new Point2D.Double(pt.getX, pt.getY - 30))
+    colOpt.foreach(setLocationHint(_, new Point2D.Double(pt.getX, pt.getY + 30)))
 
-      prepareObj(proc)
-      colOpt.foreach(prepareObj)
+    nuages.surface match {
+      case Surface.Timeline(tl) =>
+        val time    = transport.position
+        val span    = Span.From(time): SpanLikeObj[S]
 
-      setLocationHint(proc, if (colOpt.isEmpty) pt else new Point2D.Double(pt.getX, pt.getY - 30))
-      colOpt.foreach(setLocationHint(_, new Point2D.Double(pt.getX, pt.getY + 30)))
+        (proc, colOpt) match {
+          case (genP: Proc[S], Some(colP: Proc[S])) =>
 
-      addToTimeline(tl, proc)
-      colOpt.foreach(addToTimeline(tl, _))
+            val out     = genP.outputs.add(Proc.scanMainOut)
+            val colAttr = colP.attr
+            val in      = colAttr.$[Timeline](Proc.scanMainIn).fold[Unit] {
+              val links = Timeline[S]
+              links.add(SpanLikeObj.newVar(span), out)
+              colAttr.put(Proc.scanMainIn, links)
+            } {
+              case links: Timeline.Modifiable[S] =>
+                links.add(SpanLikeObj.newVar(span), out)
+              case _ => // XXX TODO --- what to here, immutable timeline?
+            }
+
+          case _ =>
+        }
+
+        def addToTimeline(obj: Obj[S])(implicit tx: S#Tx): Unit = {
+          val spanEx  = SpanLikeObj.newVar[S](span)
+          tl.add(spanEx, obj)
+        }
+
+        addToTimeline(proc)
+        colOpt.foreach(addToTimeline)
+
+      case Surface.Folder   (f) =>
+        ???
     }
+  }
 
   def insertMacro(macroF: Folder[S], pt: Point2D)(implicit tx: S#Tx): Unit = {
     val copies = Nuages.copyGraph(macroF.iterator.toIndexedSeq)
@@ -67,14 +87,6 @@ trait PanelImplTxnFuns[S <: Sys[S]] {
   def createGenerator(genSrc: Obj[S], colSrcOpt: Option[Obj[S]], pt: Point2D)(implicit tx: S#Tx): Unit = {
     val gen = Obj.copy(genSrc)
     finalizeProcAndCollector(gen, colSrcOpt, pt)
-  }
-
-  private def addToTimeline(tl: Timeline.Modifiable[S], obj: Obj[S])(implicit tx: S#Tx): Unit = {
-    // val imp = ExprImplicits[S]
-    val time    = transport.position
-    val span    = Span.From(time)
-    val spanEx  = SpanLikeObj.newVar[S](span)
-    tl.add(spanEx, obj)
   }
 
   // SCAN

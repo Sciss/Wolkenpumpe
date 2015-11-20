@@ -13,20 +13,24 @@
 
 package de.sciss.nuages
 
-import de.sciss.lucre.stm.{Obj, Sys}
+import de.sciss.lucre.stm.{Disposable, NoSys, Obj, Sys}
 import de.sciss.lucre.{event => evt}
 import de.sciss.nuages.impl.{NuagesImpl => Impl}
-import de.sciss.serial.{DataInput, Serializer}
-import de.sciss.synth.proc.{Folder, Timeline}
+import de.sciss.serial.{Writable, DataOutput, DataInput, Serializer}
+import de.sciss.synth.proc
+import de.sciss.synth.proc.Folder
 
+import scala.annotation.switch
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.language.implicitConversions
 
 object Nuages extends Obj.Type {
   final val typeID = 0x1000A
 
-  def apply[S <: Sys[S]]()(implicit tx: S#Tx): Nuages[S] =
-    Impl[S]
+  def folder  [S <: Sys[S]](implicit tx: S#Tx): Nuages[S] = Impl.folder  [S]
+  def timeline[S <: Sys[S]](implicit tx: S#Tx): Nuages[S] = Impl.timeline[S]
+
+  def apply[S <: Sys[S]](surface: Surface[S])(implicit tx: S#Tx): Nuages[S] = Impl[S](surface)
 
   implicit def serializer[S <: Sys[S]]: Serializer[S#Tx, S#Acc, Nuages[S]] = Impl.serializer[S]
 
@@ -131,6 +135,40 @@ object Nuages extends Obj.Type {
   // ---- functions ----
 
   def copyGraph[S <: Sys[S]](xs: Vec[Obj[S]])(implicit tx: S#Tx): Vec[Obj[S]] = Impl.copyGraph(xs)
+
+  // ---- surface ----
+
+  object Surface {
+    case class Timeline[S <: Sys[S]](peer: proc.Timeline.Modifiable[S]) extends Surface[S] { def isTimeline = true  }
+    case class Folder  [S <: Sys[S]](peer: proc.Folder             [S]) extends Surface[S] { def isTimeline = false }
+
+    implicit def serializer[S <: Sys[S]]: Serializer[S#Tx, S#Acc, Surface[S]] = anySer.asInstanceOf[Ser[S]]
+
+    def read[S <: Sys[S]](in: DataInput, access: S#Acc)(implicit tx: S#Tx): Surface[S] =
+      (in.readByte(): @switch) match {
+        case 0      => Surface.Folder  (proc.Folder.read(in, access))
+        case 1      => Surface.Timeline(proc.Timeline.Modifiable.read(in, access))
+        case other  => sys.error(s"Unexpected cookie $other")
+      }
+
+    private[this] val anySer = new Ser[NoSys]
+
+    private[this] final class Ser[S <: Sys[S]] extends Serializer[S#Tx, S#Acc, Surface[S]] {
+      def read(in: DataInput, access: S#Acc)(implicit tx: S#Tx): Surface[S] = Surface.read(in, access)
+      def write(v: Surface[S], out: DataOutput): Unit = v.write(out)
+    }
+  }
+  sealed trait Surface[S <: Sys[S]] extends Disposable[S#Tx] with Writable {
+    def peer: Obj[S]
+    def isTimeline: Boolean
+
+    final def dispose()(implicit tx: S#Tx): Unit = peer.dispose()
+
+    final def write(out: DataOutput): Unit = {
+      out.writeByte(if (isTimeline) 1 else 0)
+      peer.write(out)
+    }
+  }
 }
 trait Nuages[S <: Sys[S]] extends Obj[S] with evt.Publisher[S, Nuages.Update[S]] {
   def folder(implicit tx: S#Tx): Folder[S]
@@ -140,5 +178,5 @@ trait Nuages[S <: Sys[S]] extends Obj[S] with evt.Publisher[S, Nuages.Update[S]]
   def collectors(implicit tx: S#Tx): Option[Folder[S]]
   def macros    (implicit tx: S#Tx): Option[Folder[S]]
 
-  def timeline  : Timeline[S]
+  def surface: Nuages.Surface[S]
 }

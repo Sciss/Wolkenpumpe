@@ -5,6 +5,7 @@ import de.sciss.lucre.stm
 import de.sciss.lucre.stm.Disposable
 import de.sciss.lucre.swing.deferTx
 import de.sciss.lucre.synth.Sys
+import de.sciss.nuages.Nuages.Surface
 import de.sciss.span.SpanLike
 import de.sciss.synth.proc.{AuralObj, Transport, Timeline}
 import prefuse.controls.Control
@@ -44,7 +45,7 @@ trait PanelImplInit[S <: Sys[S]] {
   private var  _keyControl: Control with Disposable[S#Tx] = _
   protected def keyControl: Control with Disposable[S#Tx] = _keyControl
 
-  def init(tlObj: Timeline[S])(implicit tx: S#Tx): this.type = {
+  def init(surface: Surface[S])(implicit tx: S#Tx): this.type = {
     _keyControl = KeyControl(main)
     deferTx(guiInit())
     transportObserver = transport.react { implicit tx => {
@@ -66,9 +67,9 @@ trait PanelImplInit[S <: Sys[S]] {
 
       case _ =>
     }}
-    transport.addObject(tlObj)
+    transport.addObject(surface.peer)
 
-    val tl = tlObj
+    val tl = ??? : Timeline[S]
     timelineObserver = tl.changed.react { implicit tx => upd =>
       upd.changes.foreach {
         case Timeline.Added(span, timed) =>

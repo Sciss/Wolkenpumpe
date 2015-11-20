@@ -18,23 +18,39 @@ import de.sciss.lucre.event.Targets
 import de.sciss.lucre.stm.impl.ObjSerializer
 import de.sciss.lucre.stm.{Copy, Elem, NoSys, Obj, Sys}
 import de.sciss.lucre.{event => evt}
+import de.sciss.nuages.Nuages.Surface
 import de.sciss.serial.{DataInput, DataOutput, Serializer}
+import de.sciss.synth.proc
 import de.sciss.synth.proc.Implicits._
 import de.sciss.synth.proc.{Folder, Proc, Timeline}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
 object NuagesImpl {
-  def apply[S <: Sys[S]]()(implicit tx: S#Tx): Nuages[S] = {
-    val targets   = Targets[S]
-    val tl        = Timeline[S]
-    val folder    = Folder[S]
+  private[this] def mkCategFolder[S <: Sys[S]]()(implicit tx: S#Tx): proc.Folder[S] = {
+    val folder    = proc.Folder[S]
     folder.addLast(mkFolderObj(Nuages.NameGenerators))
     folder.addLast(mkFolderObj(Nuages.NameFilters   ))
     folder.addLast(mkFolderObj(Nuages.NameCollectors))
     folder.addLast(mkFolderObj(Nuages.NameMacros    ))
-    val res       = new Impl(targets, _folder = folder, timeline = tl).connect()
+    folder
+  }
+
+  def apply[S <: Sys[S]](surface: Surface[S])(implicit tx: S#Tx): Nuages[S] = {
+    val targets   = Targets[S]
+    val folder    = mkCategFolder[S]()
+    val res       = new Impl(targets, _folder = folder, surface = surface).connect()
     res
+  }
+
+  def folder[S <: Sys[S]](implicit tx: S#Tx): Nuages[S] = {
+    val sPeer = Folder[S]
+    apply(Surface.Folder(sPeer))
+  }
+
+  def timeline[S <: Sys[S]](implicit tx: S#Tx): Nuages[S] = {
+    val sPeer = Timeline[S]
+    apply(Surface.Timeline(sPeer))
   }
 
   // `isScan` is true for scan-links and `false` for attribute mappings
@@ -87,20 +103,26 @@ object NuagesImpl {
     val cookie      = in.readInt()
     if (cookie != COOKIE) sys.error(s"Unexpected cookie (found $cookie, expected $COOKIE)")
     val folder      = Folder  .read[S](in, access)
-    val timeline    = Timeline.read(in, access)
-    new Impl(targets, _folder = folder, timeline = timeline)
+//    val timeline    = Timeline.read(in, access)
+    val surface     = Surface.read[S](in, access)
+    new Impl(targets, _folder = folder, surface = surface)
   }
 
   private final val COOKIE = 0x4E7501
 
   private final class Impl[S <: Sys[S]](protected val targets: Targets[S],
-                                        _folder: Folder[S], val timeline: Timeline[S])
+                                        _folder: Folder[S], val surface: Surface[S])
     extends Nuages[S] with evt.impl.SingleNode[S, Nuages.Update[S]] {
 
     def tpe: Obj.Type = Nuages
 
-    def copy[Out <: Sys[Out]]()(implicit tx: S#Tx, txOut: Out#Tx, context: Copy[S, Out]): Elem[Out] =
-      new Impl[Out](Targets[Out], context(_folder), context(timeline)).connect()
+    def copy[Out <: Sys[Out]]()(implicit tx: S#Tx, txOut: Out#Tx, context: Copy[S, Out]): Elem[Out] = {
+      val surfaceCopy = surface match {
+        case s @ Surface.Timeline(peer) => s.copy(context(peer))
+        case s @ Surface.Folder  (peer) => s.copy(context(peer: Folder[S]))
+      }
+      new Impl[Out](Targets[Out], context(_folder), surfaceCopy).connect()
+    }
 
     object changed extends Changed {
       def pullUpdate(pull: evt.Pull[S])(implicit tx: S#Tx): Option[Nuages.Update[S]] = None
@@ -131,13 +153,13 @@ object NuagesImpl {
     protected def disposeData()(implicit tx: S#Tx): Unit = {
       disconnect()
       _folder .dispose()
-      timeline.dispose()
+      surface.dispose()
     }
 
     protected def writeData(out: DataOutput): Unit = {
       out.writeInt(COOKIE)
       _folder   .write(out)
-      timeline  .write(out)
+      surface  .write(out)
     }
   }
 

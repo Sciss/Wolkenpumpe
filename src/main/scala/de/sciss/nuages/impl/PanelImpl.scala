@@ -67,13 +67,13 @@ object PanelImpl {
     val scanMap       = tx.newInMemoryIDMap[NuagesOutput[S]] // ScanInfo [S]]
     val missingScans  = tx.newInMemoryIDMap[List[NuagesAttribute[S]]]
     val transport     = Transport[S](aural)
-    val timelineObj   = nuages.timeline
+    val surface       = nuages.surface
     // transport.addObject(timelineObj)
 
     new PanelImpl[S](nuagesH, nodeMap, scanMap, missingScans, config, transport, aural,
                 listGen = listGen, listFlt1 = listFlt1, listCol1 = listCol1, listFlt2 = listFlt2, listCol2 = listCol2,
                 listMacro = listMacro)
-      .init(timelineObj)
+      .init(surface)
   }
 
   final val GROUP_NODES   = "graph.nodes"

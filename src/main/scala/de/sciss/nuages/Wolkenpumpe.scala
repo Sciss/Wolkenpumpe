@@ -29,7 +29,7 @@ object Wolkenpumpe {
     type S = InMemory
     implicit val system = InMemory()
     val w = new Wolkenpumpe[S]
-    val nuagesH = system.step { implicit tx => tx.newHandle(Nuages[S]) }
+    val nuagesH = system.step { implicit tx => tx.newHandle(Nuages.timeline[S]) }
     w.run(nuagesH)
   }
 
