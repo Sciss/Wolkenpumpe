@@ -47,7 +47,7 @@ trait PanelImplTimelineInit[S <: Sys[S]] {
 
   private val auralTimeline = Ref(Option.empty[AuralObj.Timeline[S]])
 
-  def init(timeline: Timeline[S])(implicit tx: S#Tx): this.type = {
+  final protected def initObservers(timeline: Timeline[S])(implicit tx: S#Tx): Unit = {
     observers ::= transport.react { implicit tx => {
       case Transport.ViewAdded(_, auralTL: AuralObj.Timeline[S]) =>
         val obs = auralTL.contents.react { implicit tx => {
@@ -87,7 +87,6 @@ trait PanelImplTimelineInit[S <: Sys[S]] {
     timeline.intersect(transport.position).foreach { case (span, elems) =>
       elems.foreach(addNode(span, _))
     }
-    this
   }
 
   private def removeNode(span: SpanLike, timed: Timeline.Timed[S])(implicit tx: S#Tx): Unit = {

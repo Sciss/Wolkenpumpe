@@ -129,7 +129,7 @@ final class PanelImplTimeline[S <: Sys[S]](protected val nuagesH: stm.Source[S#T
     (implicit val cursor: stm.Cursor[S],
      protected val workspace: WorkspaceHandle[S],
      val context: NuagesContext[S])
-  extends PanelImpl[S]
+  extends PanelImpl[S, Timeline[S]]
   with PanelImplTimelineInit[S]
 
 final class PanelImplFolder[S <: Sys[S]](protected val nuagesH: stm.Source[S#Tx, Nuages[S]],
@@ -148,11 +148,11 @@ final class PanelImplFolder[S <: Sys[S]](protected val nuagesH: stm.Source[S#Tx,
     (implicit val cursor: stm.Cursor[S],
      protected val workspace: WorkspaceHandle[S],
      val context: NuagesContext[S])
-  extends PanelImpl[S]
+  extends PanelImpl[S, Folder[S]]
   with PanelImplFolderInit[S]
 
 // nodeMap: uses timed-id as key
-trait PanelImpl[S <: Sys[S]] extends NuagesPanel[S]
+trait PanelImpl[S <: Sys[S], Repr <: Obj[S]] extends NuagesPanel[S]
   // here comes your cake!
   with PanelImplDialogs[S]
   with PanelImplTxnFuns[S]
@@ -187,9 +187,12 @@ trait PanelImpl[S <: Sys[S]] extends NuagesPanel[S]
   private var  _keyControl: Control with Disposable[S#Tx] = _
   protected def keyControl: Control with Disposable[S#Tx] = _keyControl
 
-  final def init()(implicit tx: S#Tx): this.type = {
+  protected def initObservers(repr: Repr)(implicit tx: S#Tx): Unit
+
+  final def init(repr: Repr)(implicit tx: S#Tx): this.type = {
     _keyControl = KeyControl(main)
     deferTx(guiInit())
+    initObservers(repr)
     this
   }
 

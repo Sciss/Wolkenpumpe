@@ -28,7 +28,7 @@ trait PanelImplFolderInit[S <: Sys[S]] {
 
   // ---- impl ----
 
-  final def init(folder: Folder[S])(implicit tx: S#Tx): this.type = {
+  final protected def initObservers(folder: Folder[S])(implicit tx: S#Tx): Unit = {
     observers ::= transport.react { implicit tx => {
       case Transport.ViewAdded(_, auralTL: AuralObj.Timeline[S]) =>
         val obs = auralTL.contents.react { implicit tx => {
@@ -67,7 +67,6 @@ trait PanelImplFolderInit[S <: Sys[S]] {
     }
 
     folder.iterator.foreach(addNode)
-    this
   }
 
   private def addNode(obj: Obj[S])(implicit tx: S#Tx): Unit = {
