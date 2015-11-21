@@ -4,13 +4,20 @@ package impl
 import java.awt.geom.Point2D
 
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{Obj, Disposable, Sys}
+import de.sciss.lucre.stm.{TxnLike, Obj, Disposable}
+import de.sciss.lucre.synth.Sys
 import de.sciss.synth.proc.{AuralObj, Transport, Folder}
 
+import scala.concurrent.stm.Ref
+
 trait PanelImplFolderInit[S <: Sys[S]] {
+  import TxnLike.peer
+
   // ---- abstract ----
 
   protected var observers: List[Disposable[S#Tx]]
+
+  protected def auralObserver: Ref[Option[Disposable[S#Tx]]]
 
   protected def removeLocationHint(obj: Obj[S])(implicit tx: S#Tx): Option[Point2D]
 
@@ -24,25 +31,29 @@ trait PanelImplFolderInit[S <: Sys[S]] {
 
   protected def disposeAuralObserver()(implicit tx: S#Tx): Unit
 
+  protected def disposeObj(obj: Obj[S])(implicit tx: S#Tx): Unit
+
   protected def main: NuagesPanel[S]
 
   // ---- impl ----
 
+  private val auralFolderRef = Ref(Option.empty[AuralObj.Folder[S]])
+
   final protected def initObservers(folder: Folder[S])(implicit tx: S#Tx): Unit = {
     observers ::= transport.react { implicit tx => {
-      case Transport.ViewAdded(_, auralTL: AuralObj.Timeline[S]) =>
-        val obs = auralTL.contents.react { implicit tx => {
-          case AuralObj.Timeline.ViewAdded  (_, timed, view) =>
-            nodeMap.get(timed).foreach { vp =>
+      case Transport.ViewAdded(_, auralFolder: AuralObj.Folder[S]) =>
+        val obs = auralFolder.contents.react { implicit tx => {
+          case AuralObj.FolderLike.ViewAdded  (_, view) =>
+            val id = view.obj().id
+            nodeMap.get(id).foreach { vp =>
               auralObjAdded(vp, view)
             }
-          case AuralObj.Timeline.ViewRemoved(_, view) =>
+          case AuralObj.FolderLike.ViewRemoved(_, view) =>
             auralObjRemoved(view)
         }}
         disposeAuralObserver()
-        ???
-//        auralTimeline.set(Some(auralTL))(tx.peer)
-//        auralObserver.set(Some(obs    ))(tx.peer)
+        auralFolderRef() = Some(auralFolder)
+        auralObserver () = Some(obs        )
 
       case Transport.ViewRemoved(_, auralTL: AuralObj.Timeline[S]) =>
         disposeAuralObserver()
@@ -53,16 +64,8 @@ trait PanelImplFolderInit[S <: Sys[S]] {
 
     observers ::= folder.changed.react { implicit tx => upd =>
       upd.changes.foreach {
-//        case Timeline.Added(span, timed) =>
-//          if (span.contains(transport.position)) addNode(span, timed)
-//        // XXX TODO - update scheduler
-//
-//        case Timeline.Removed(span, timed) =>
-//          if (span.contains(transport.position)) removeNode(span, timed)
-//        // XXX TODO - update scheduler
-
-
-        case other => if (PanelImpl.DEBUG) println(s"OBSERVED: $other")
+        case Folder.Added  (index, child) => addNode   (child)
+        case Folder.Removed(index, child) => removeNode(child)
       }
     }
 
@@ -73,13 +76,27 @@ trait PanelImplFolderInit[S <: Sys[S]] {
     val config  = main.config
     val locO    = removeLocationHint(obj)
     implicit val context = main.context
-    val vp    = ??? // NuagesObj[S](main, locO, timed, hasMeter = config.meters, hasSolo = config.soloChannels.isDefined)
+    val vp      = NuagesObj[S](main, locO, obj.id, obj, hasMeter = config.meters,
+      hasSolo = config.soloChannels.isDefined)
 
-    ???
-//    auralTimeline.get(tx.peer).foreach { auralTL =>
-//      auralTL.getView(timed).foreach { auralObj =>
-//        auralObjAdded(vp, auralObj)
-//      }
-//    }
+    auralFolderRef().foreach { auralFolder =>
+      auralFolder.getView(obj).foreach { auralObj =>
+        auralObjAdded(vp, auralObj)
+      }
+    }
+  }
+
+  private def removeNode(obj: Obj[S])(implicit tx: S#Tx): Unit = {
+    val id   = obj.id
+    nodeMap.get(id).foreach { vp =>
+      vp.dispose()
+      disposeObj(obj)
+
+      // note: we could look for `solo` and clear it
+      // if relevant; but the bus-reader will automatically
+      // go to dummy, so let's just save the effort.
+      // orphaned solo will be cleared when calling
+      // `setSolo` another time or upon frame disposal.
+    }
   }
 }

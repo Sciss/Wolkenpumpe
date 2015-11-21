@@ -22,7 +22,7 @@ import de.sciss.dsp.FastLog
 import de.sciss.intensitypalette.IntensityPalette
 import de.sciss.lucre.expr.{DoubleVector, DoubleObj}
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{Disposable, Obj}
+import de.sciss.lucre.stm.{TxnLike, Disposable, Obj}
 import de.sciss.lucre.swing.requireEDT
 import de.sciss.lucre.synth.{Synth, Sys}
 import de.sciss.nuages.Nuages.Surface
@@ -39,20 +39,19 @@ object NuagesObjImpl {
 
   private val colrPeak = Array.tabulate(91)(ang => new Color(IntensityPalette.apply(ang / 90f)))
 
-  def apply[S <: Sys[S]](main: NuagesPanel[S], locOption: Option[Point2D], timed: Timed[S],
+  def apply[S <: Sys[S]](main: NuagesPanel[S], locOption: Option[Point2D], id: S#ID, obj: Obj[S],
                          hasMeter: Boolean, hasSolo: Boolean)
                         (implicit tx: S#Tx, context: NuagesContext[S]): NuagesObj[S] = {
-    val obj = timed.value
-    // import BiGroup.Entry.serializer
-    val res = new NuagesObjImpl(main, tx.newHandle(timed), obj.name, hasMeter = hasMeter, hasSolo = hasSolo)
-    res.init(timed, locOption)
-    res
+    val res = new NuagesObjImpl(main, tx.newHandle(id), tx.newHandle(obj),
+      obj.name, hasMeter = hasMeter, hasSolo = hasSolo)
+    res.init(id, obj, locOption)
   }
 
   private val fastLog = FastLog(base = 10, q = 11)
 }
 final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
-                                               timedH: stm.Source[S#Tx, Timed[S]],
+                                               idH: stm.Source[S#Tx, S#ID],
+                                               objH: stm.Source[S#Tx, Obj[S]],
                                                var name: String,
                                                hasMeter: Boolean, hasSolo: Boolean)(implicit context: NuagesContext[S])
   extends NuagesNodeImpl[S] with NuagesObj[S] {
@@ -60,6 +59,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
 
   import NuagesDataImpl._
   import NuagesObjImpl._
+  import TxnLike.peer
 
   protected def nodeSize = 1f
 
@@ -73,16 +73,16 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
 
   private[this] val _meterSynth = Ref(Option.empty[Synth])
 
-  def timed(implicit tx: S#Tx): Timed[S] = timedH()
-
   def parent: NuagesObj[S] = this
 
   def aggr: AggregateItem = _aggr
 
-  def init(timed: Timed[S], locOption: Option[Point2D])(implicit tx: S#Tx): this.type = {
-    main.nodeMap.put(timed.id, this)
+  def obj(implicit tx: S#Tx): Obj[S] = objH()
+
+  def init(id: S#ID, obj: Obj[S], locOption: Option[Point2D])(implicit tx: S#Tx): this.type = {
+    main.nodeMap.put(id, this)
     main.deferVisTx(initGUI(locOption))
-    timed.value match {
+    obj match {
       case proc: Proc[S] => initProc(proc)
       case _ =>
     }
@@ -102,9 +102,9 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
     observers ::= proc.changed.react { implicit tx => upd =>
       upd.changes.foreach {
 //        case Proc.InputAdded   (key, scan) => VisualScan(this, scan, key, isInput = true )
-//        case Proc.InputRemoved (key, scan) => inputs.get(key)(tx.peer).foreach(_.dispose())
+//        case Proc.InputRemoved (key, scan) => inputs.get(key).foreach(_.dispose())
         case Proc.OutputAdded  (output) => NuagesOutput(this, output)
-        case Proc.OutputRemoved(output) => outputs.get(output.key)(tx.peer).foreach(_.dispose())
+        case Proc.OutputRemoved(output) => outputs.get(output.key).foreach(_.dispose())
         case _ =>
       }
     }
@@ -116,7 +116,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
     observers ::= attr.changed.react { implicit tx => upd =>
       upd.changes.foreach {
         case Obj.AttrAdded  (key, obj) => mkParam(key, obj)
-        case Obj.AttrRemoved(key, obj) => params.get(key)(tx.peer).foreach(_.dispose())
+        case Obj.AttrRemoved(key, obj) => params.get(key).foreach(_.dispose())
       }
     }
   }
@@ -137,20 +137,19 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
     }
   }
 
-  def meterSynth(implicit tx: S#Tx): Option[Synth] = _meterSynth.get(tx.peer)
+  def meterSynth(implicit tx: S#Tx): Option[Synth] = _meterSynth()
   def meterSynth_=(value: Option[Synth])(implicit tx: S#Tx): Unit = {
-    val old = _meterSynth.swap(value)(tx.peer)
+    val old = _meterSynth.swap(value)
     old.foreach(_.dispose())
   }
 
   def dispose()(implicit tx: S#Tx): Unit = {
-    implicit val itx = tx.peer
     observers.foreach(_.dispose())
     meterSynth = None
     params .foreach(_._2.dispose())
     inputs .foreach(_._2.dispose())
     outputs.foreach(_._2.dispose())
-    main.nodeMap.remove(timed.id)
+    main.nodeMap.remove(idH())
     main.deferVisTx(disposeGUI())
   }
 
@@ -223,7 +222,6 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
     } else if (outerE.contains(xt, yt) & e.isAltDown) {
       // val instant = !stateVar.playing || stateVar.bypassed || (main.transition(0) == Instant)
       atomic { implicit tx =>
-        implicit val itx = tx.peer
         val visScans  = inputs ++ outputs
         val inKeys    = inputs .keySet
         val outKeys   = outputs.keySet
@@ -233,7 +231,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
           vc.removeMapping()
         }
 
-        val obj = timed.value
+        val obj = objH()
         obj match {
           case objT: Proc[S] =>
             val proc  = objT
@@ -266,10 +264,9 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
         main.nuages.surface match {
           case Surface.Timeline(tlm: Timeline.Modifiable[S]) =>
             // XXX TODO --- ought to be an update to the span variable
-            val t = timed
-            tlm.remove(t.span, t.value)
+            tlm.remove(???, objH())
           case Surface.Folder  (f) =>
-            f.remove(timed.value)
+            f.remove(objH())
             ???
 
           case _ =>

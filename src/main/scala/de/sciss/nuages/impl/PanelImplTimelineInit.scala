@@ -4,7 +4,7 @@ package impl
 import java.awt.geom.Point2D
 
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{Disposable, Obj}
+import de.sciss.lucre.stm.{TxnLike, Disposable, Obj}
 import de.sciss.lucre.synth.Sys
 import de.sciss.span.SpanLike
 import de.sciss.synth.proc.{AuralObj, Timeline, Transport}
@@ -12,17 +12,13 @@ import de.sciss.synth.proc.{AuralObj, Timeline, Transport}
 import scala.concurrent.stm.Ref
 
 trait PanelImplTimelineInit[S <: Sys[S]] {
-  // _: PanelImpl[S] =>
+  import TxnLike.peer
 
   // ---- abstract ----
-
-//  protected var transportObserver: Disposable[S#Tx]
-//  protected var timelineObserver : Disposable[S#Tx]
 
   protected var observers: List[Disposable[S#Tx]]
 
   protected def auralObserver: Ref[Option[Disposable[S#Tx]]]
-//  protected def auralTimeline: Ref[Option[AuralObj.Timeline[S]]]
 
   protected def removeLocationHint(obj: Obj[S])(implicit tx: S#Tx): Option[Point2D]
 
@@ -38,19 +34,16 @@ trait PanelImplTimelineInit[S <: Sys[S]] {
 
   protected def disposeObj(obj: Obj[S])(implicit tx: S#Tx): Unit
 
-//  def addNode   (span: SpanLike, timed: Timeline.Timed[S])(implicit tx: S#Tx): Unit
-//  def removeNode(span: SpanLike, timed: Timeline.Timed[S])(implicit tx: S#Tx): Unit
-
   protected def main: NuagesPanel[S]
 
   // ---- impl ----
 
-  private val auralTimeline = Ref(Option.empty[AuralObj.Timeline[S]])
+  private val auralTimelineRef = Ref(Option.empty[AuralObj.Timeline[S]])
 
   final protected def initObservers(timeline: Timeline[S])(implicit tx: S#Tx): Unit = {
     observers ::= transport.react { implicit tx => {
-      case Transport.ViewAdded(_, auralTL: AuralObj.Timeline[S]) =>
-        val obs = auralTL.contents.react { implicit tx => {
+      case Transport.ViewAdded(_, auralTimeline: AuralObj.Timeline[S]) =>
+        val obs = auralTimeline.contents.react { implicit tx => {
           case AuralObj.Timeline.ViewAdded  (_, timed, view) =>
             nodeMap.get(timed).foreach { vp =>
               auralObjAdded(vp, view)
@@ -59,8 +52,8 @@ trait PanelImplTimelineInit[S <: Sys[S]] {
             auralObjRemoved(view)
         }}
         disposeAuralObserver()
-        auralTimeline.set(Some(auralTL))(tx.peer)
-        auralObserver.set(Some(obs    ))(tx.peer)
+        auralTimelineRef() = Some(auralTimeline)
+        auralObserver   () = Some(obs          )
 
       case Transport.ViewRemoved(_, auralTL: AuralObj.Timeline[S]) =>
         disposeAuralObserver()
@@ -109,10 +102,11 @@ trait PanelImplTimelineInit[S <: Sys[S]] {
     val config  = main.config
     val locO    = removeLocationHint(obj)
     implicit val context = main.context
-    val vp      = NuagesObj[S](main, locO, timed, hasMeter = config.meters, hasSolo = config.soloChannels.isDefined)
+    val vp      = NuagesObj[S](main, locO, timed.id, obj, hasMeter = config.meters,
+      hasSolo = config.soloChannels.isDefined)
 
-    auralTimeline.get(tx.peer).foreach { auralTL =>
-      auralTL.getView(timed).foreach { auralObj =>
+    auralTimelineRef().foreach { auralTimeline =>
+      auralTimeline.getView(timed).foreach { auralObj =>
         auralObjAdded(vp, auralObj)
       }
     }

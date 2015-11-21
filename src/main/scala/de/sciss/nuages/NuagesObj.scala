@@ -24,10 +24,10 @@ import scala.concurrent.stm.TMap
 
 object NuagesObj {
   def apply[S <: SSys[S]](main: NuagesPanel[S], locOption: Option[Point2D],
-                         timed: Timed[S],
+                         id: S#ID, obj: Obj[S],
                          hasMeter: Boolean, hasSolo: Boolean)
                         (implicit tx: S#Tx, context: NuagesContext[S]): NuagesObj[S] =
-    impl.NuagesObjImpl(main, locOption, timed, hasMeter = hasMeter, hasSolo = hasSolo)
+    impl.NuagesObjImpl(main, locOption, id, obj, hasMeter = hasMeter, hasSolo = hasSolo)
 }
 
 /** The GUI representation of a `proc.Obj`.
@@ -42,8 +42,7 @@ trait NuagesObj[S <: Sys[S]]
 //  def spanH: stm.Source[S#Tx, SpanLikeObj[S]]
 //  def objH : stm.Source[S#Tx, Obj[S]]
 
-  def timed(implicit tx: S#Tx): Timed[S]
-  def obj  (implicit tx: S#Tx): Obj[S]    = timed.value
+  def obj(implicit tx: S#Tx): Obj[S]
 
   // ---- methods to be called on the EDT ----
 
