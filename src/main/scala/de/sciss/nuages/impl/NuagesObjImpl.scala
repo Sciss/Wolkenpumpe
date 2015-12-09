@@ -20,15 +20,14 @@ import java.awt.{Color, Graphics2D}
 
 import de.sciss.dsp.FastLog
 import de.sciss.intensitypalette.IntensityPalette
-import de.sciss.lucre.expr.{DoubleVector, DoubleObj}
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{TxnLike, Disposable, Obj}
+import de.sciss.lucre.stm.{Disposable, Obj, TxnLike}
 import de.sciss.lucre.swing.requireEDT
 import de.sciss.lucre.synth.{Synth, Sys}
 import de.sciss.nuages.Nuages.Surface
 import de.sciss.synth.proc.Implicits._
-import de.sciss.synth.proc.Timeline.Timed
-import de.sciss.synth.proc.{Timeline, ObjKeys, Proc}
+import de.sciss.synth.proc.{ObjKeys, Proc, Timeline}
+import prefuse.data.Node
 import prefuse.util.ColorLib
 import prefuse.visual.{AggregateItem, VisualItem}
 
@@ -54,7 +53,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
                                                objH: stm.Source[S#Tx, Obj[S]],
                                                var name: String,
                                                hasMeter: Boolean, hasSolo: Boolean)(implicit context: NuagesContext[S])
-  extends NuagesNodeImpl[S] with NuagesObj[S] {
+  extends NuagesNodeRootImpl[S] with NuagesObj[S] with NuagesAttribute.NodeProvider[S] {
   vProc =>
 
   import NuagesDataImpl._
@@ -91,6 +90,23 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
 
   private[this] val specSuffix = s"-${ParamSpec.Key}"
 
+  def acquirePNode(a: NuagesAttribute[S]): Node = {
+    requireEDT()
+    val n   = main.graph.addNode()
+    val vi  = main.visualization.getVisualItem(NuagesPanel.GROUP_GRAPH, n)
+    vi.set(NuagesPanel.COL_NUAGES, a)
+    aggr.addItem(vi)
+    n
+  }
+
+  def releasePNode(a: NuagesAttribute[S]): Unit = {
+    requireEDT()
+    val n   = a.pNode
+    val vi  = main.visualization.getVisualItem(NuagesPanel.GROUP_GRAPH, n)
+    aggr.removeItem(vi)
+    main.graph.removeNode(n)
+  }
+
   private[this] def initProc(proc: Proc[S])(implicit tx: S#Tx): Unit = {
 //    proc.inputs .iterator.foreach { case (key, scan) =>
 //      VisualScan(this, scan, key, isInput = true )
@@ -123,7 +139,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
 
   private[this] def mkParam(key: String, obj: Obj[S])(implicit tx: S#Tx): Unit = {
     if (!key.endsWith(specSuffix) && key != ObjKeys.attrName)
-      NuagesAttribute /* .tryApply */ (key = key, value = obj, parent = this)
+      NuagesAttribute /* .tryApply */ (key = key, value = obj, parent = this, np = this)
   }
 
   private[this] def initGUI(locOption: Option[Point2D]): Unit = {

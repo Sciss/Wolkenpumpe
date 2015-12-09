@@ -19,11 +19,19 @@ import prefuse.data.{Node => PNode}
 import prefuse.visual.VisualItem
 
 trait NuagesNodeImpl[S <: Sys[S]] extends NuagesDataImpl[S] with NuagesNode[S] {
+  protected final def atomic[A](fun: S#Tx => A): A = main.transport.scheduler.cursor.step(fun)
+}
+
+trait NuagesNodeRootImpl[S <: Sys[S]] extends NuagesNodeImpl[S] {
   private[this] var _pNode: PNode = _
 
-  protected def parent: NuagesObj[S]
+  // ---- abstract ----
+
+  def parent: NuagesObj[S]
 
   protected def nodeSize: Float
+
+  // ---- implementation ----
 
   final def pNode: PNode = {
     if (_pNode == null) throw new IllegalStateException(s"Component $this has no initialized GUI")
@@ -49,6 +57,4 @@ trait NuagesNodeImpl[S <: Sys[S]] extends NuagesDataImpl[S] with NuagesNode[S] {
     parent.aggr.removeItem(_vi)
     main.graph.removeNode(pNode)
   }
-
-  protected final def atomic[A](fun: S#Tx => A): A = main.transport.scheduler.cursor.step(fun)
 }

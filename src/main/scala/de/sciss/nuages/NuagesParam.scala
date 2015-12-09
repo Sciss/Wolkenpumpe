@@ -19,8 +19,9 @@ import prefuse.data.Edge
 trait NuagesParam[S <: Sys[S]] extends NuagesNode[S] {
   // ---- methods to be called on the EDT ----
 
-  /** The corresponding Prefuse edge. */
-  def pEdge: Edge
+// we currently refer to it:
+//  /** The corresponding Prefuse edge. */
+//  def pEdge: Edge
 
   def parent: NuagesObj[S]
 

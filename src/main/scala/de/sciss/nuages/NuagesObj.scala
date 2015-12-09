@@ -15,9 +15,9 @@ package de.sciss.nuages
 
 import java.awt.geom.Point2D
 
-import de.sciss.lucre.stm.{Sys, Obj}
+import de.sciss.lucre.stm.{Obj, Sys}
 import de.sciss.lucre.synth.{Synth, Sys => SSys}
-import de.sciss.synth.proc.Timeline.Timed
+import prefuse.data.{Node => PNode}
 import prefuse.visual.AggregateItem
 
 import scala.concurrent.stm.TMap
@@ -51,16 +51,16 @@ trait NuagesObj[S <: Sys[S]]
 
   def aggr: AggregateItem
 
-  val inputs : TMap[String, NuagesOutput   [S]]
-  val outputs: TMap[String, NuagesOutput   [S]]
-  val params : TMap[String, NuagesAttribute[S]]
-
   /** GUI property: whether the object is heard through the solo function or not. */
   var soloed: Boolean
 
   def meterUpdate(newPeak: Double): Unit
 
   // ---- transactional methods ----
+
+  def inputs : TMap[String, NuagesOutput   [S]]
+  def outputs: TMap[String, NuagesOutput   [S]]
+  def params : TMap[String, NuagesAttribute[S]]
 
   def meterSynth(implicit tx: S#Tx): Option[Synth]
   def meterSynth_=(value: Option[Synth])(implicit tx: S#Tx): Unit

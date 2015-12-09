@@ -16,19 +16,20 @@ package de.sciss.nuages
 import de.sciss.lucre.stm.{Sys, Obj}
 import de.sciss.lucre.synth.{Synth, Sys => SSys}
 import de.sciss.nuages.impl.{NuagesAttributeImpl => Impl}
+import prefuse.data.{Node => PNode}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm.Ref
 import scala.language.higherKinds
 
 object NuagesAttribute {
-  def apply[S <: SSys[S]](key: String, value: Obj[S], parent: NuagesObj[S])
+  def apply[S <: SSys[S]](key: String, value: Obj[S], parent: NuagesObj[S], np: NodeProvider[S])
                         (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute[S] =
-    Impl(key, value, parent)
+    Impl(key, value, parent, np)
 
-  def tryApply[S <: SSys[S]](key: String, value: Obj[S], parent: NuagesObj[S])
+  def tryApply[S <: SSys[S]](key: String, value: Obj[S], parent: NuagesObj[S], np: NodeProvider[S])
                            (implicit tx: S#Tx, context: NuagesContext[S]): Option[NuagesAttribute[S]] =
-    Impl.tryApply(key, value, parent)
+    Impl.tryApply(key, value, parent, np)
 
     // ---- Factory ----
 
@@ -37,7 +38,7 @@ object NuagesAttribute {
 
     type Repr[~ <: Sys[~]] <: Obj[~]
 
-    def apply[S <: SSys[S]](key: String, value: Repr[S], parent: NuagesObj[S])
+    def apply[S <: SSys[S]](key: String, value: Repr[S], parent: NuagesObj[S], np: NodeProvider[S])
                           (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute[S]
   }
 
@@ -68,6 +69,11 @@ object NuagesAttribute {
 
     // SCAN
     // def scan(implicit tx: S#Tx): Scan[S]
+  }
+
+  trait NodeProvider[S <: Sys[S]] {
+    def acquirePNode(a: NuagesAttribute[S]): PNode
+    def releasePNode(a: NuagesAttribute[S]): Unit
   }
 }
 trait NuagesAttribute[S <: Sys[S]] extends NuagesParam[S] {

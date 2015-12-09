@@ -19,12 +19,17 @@ import prefuse.data.{Edge => PEdge}
 import prefuse.visual.VisualItem
 
 trait NuagesParamImpl[S <: Sys[S]] extends NuagesNodeImpl[S] with NuagesParam[S] {
-  private[this] var _pEdge: PEdge = _
+//  final def pEdge: PEdge = {
+//    if (_pEdge == null) throw new IllegalStateException(s"Component $this has no initialized GUI")
+//    _pEdge
+//  }
 
-  final def pEdge: PEdge = {
-    if (_pEdge == null) throw new IllegalStateException(s"Component $this has no initialized GUI")
-    _pEdge
-  }
+  final def name: String = key
+  final def main = parent.main
+}
+
+trait NuagesParamRootImpl[S <: Sys[S]] extends NuagesParamImpl[S] with NuagesNodeRootImpl[S] {
+  private[this] var _pEdge: PEdge = _
 
   protected final def mkPNodeAndEdge(): VisualItem = {
     val vi = mkPNode()
@@ -34,15 +39,8 @@ trait NuagesParamImpl[S <: Sys[S]] extends NuagesNodeImpl[S] with NuagesParam[S]
     log(s"mkPNodeAndEdge($name)")
     val pVi = main.visualization.getVisualItem(NuagesPanel.GROUP_GRAPH, parent.pNode)
 
-//    val x0 = pVi.getStartX
-//    val x1 = pVi.getEndX
-//    val x2 = pVi.getX
-
     vi.setEndX(pVi.getEndX)
     vi.setEndY(pVi.getEndY)
     vi
   }
-
-  final def name: String = key
-  final def main = parent.main
 }

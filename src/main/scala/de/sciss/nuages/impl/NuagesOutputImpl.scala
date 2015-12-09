@@ -47,7 +47,7 @@ object NuagesOutputImpl {
 final class NuagesOutputImpl[S <: Sys[S]] private(val parent: NuagesObj[S],
                                                   val outputH: stm.Source[S#Tx, Output[S]],
                                                   val key: String)
-  extends NuagesParamImpl[S] with NuagesOutput[S] {
+  extends NuagesParamRootImpl[S] with NuagesOutput[S] {
 
   import NuagesDataImpl._
   import NuagesOutputImpl.addEdgeGUI

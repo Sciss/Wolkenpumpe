@@ -22,7 +22,9 @@ import de.sciss.lucre.expr.{DoubleVector, BooleanObj, DoubleObj, IntObj}
 import de.sciss.lucre.stm.{Disposable, Obj, Sys}
 import de.sciss.lucre.swing.requireEDT
 import de.sciss.lucre.synth.{Sys => SSys}
-import de.sciss.nuages.NuagesAttribute.Factory
+import de.sciss.nuages.NuagesAttribute.{NodeProvider, Factory}
+import de.sciss.synth.proc.Folder
+import prefuse.data.{Node => PNode}
 import prefuse.util.ColorLib
 import prefuse.visual.VisualItem
 
@@ -39,19 +41,19 @@ object NuagesAttributeImpl {
 
   def factories: Iterable[Factory] = map.values
 
-  def apply[S <: SSys[S]](key: String, value: Obj[S], parent: NuagesObj[S])
+  def apply[S <: SSys[S]](key: String, value: Obj[S], parent: NuagesObj[S], np: NodeProvider[S])
                         (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute[S] = {
     val tid     = value.tpe.typeID
     val factory = map.getOrElse(tid,
       throw new IllegalArgumentException(s"No NuagesAttribute available for $value / type 0x${tid.toHexString}"))
-    factory(key, value.asInstanceOf[factory.Repr[S]], parent)
+    factory(key, value.asInstanceOf[factory.Repr[S]], parent, np)
   }
 
-  def tryApply[S <: SSys[S]](key: String, value: Obj[S], parent: NuagesObj[S])
+  def tryApply[S <: SSys[S]](key: String, value: Obj[S], parent: NuagesObj[S], np: NodeProvider[S])
                            (implicit tx: S#Tx, context: NuagesContext[S]): Option[NuagesAttribute[S]] = {
     val tid = value.tpe.typeID
     val opt = map.get(tid)
-    opt.map(f => f(key, value.asInstanceOf[f.Repr[S]], parent))
+    opt.map(f => f(key, value.asInstanceOf[f.Repr[S]], parent, np))
   }
 
   private[this] var map = Map[Int, Factory](
@@ -59,10 +61,10 @@ object NuagesAttributeImpl {
     DoubleObj           .typeID -> NuagesDoubleAttribute,
     BooleanObj          .typeID -> NuagesBooleanAttribute,
 //    FadeSpec.Obj        .typeID -> FadeSpecAttribute,
-    DoubleVector        .typeID -> NuagesDoubleVectorAttribute
+    DoubleVector        .typeID -> NuagesDoubleVectorAttribute,
 //    Grapheme.Expr.Audio .typeID -> AudioGraphemeAttribute,
 //    Output              .typeID -> NuagesOutputAttribute,
-//    Folder              .typeID -> NuagesFolderAttribute,
+    Folder              .typeID -> NuagesFolderAttribute
 //    Timeline            .typeID -> NuagesTimelineAttribute
   )
   
@@ -139,6 +141,8 @@ abstract class NuagesAttributeImpl[S <: SSys[S]] extends NuagesParamImpl[S] with
 
   protected def drawAdjust(g: Graphics2D, v: Vec[Double]): Unit
 
+  protected def nodeProvider: NuagesAttribute.NodeProvider[S]
+
   // ---- impl ----
 
   final protected var renderedValue: A = null.asInstanceOf[A] // invalidRenderedValue
@@ -191,6 +195,10 @@ abstract class NuagesAttributeImpl[S <: SSys[S]] extends NuagesParamImpl[S] with
     main.deferVisTx(disposeGUI())
   }
 
+  private[this] def disposeGUI(): Unit = {
+    nodeProvider.releasePNode(this)
+  }
+
   final def init(obj: Obj[S])(implicit tx: S#Tx): this.type = {
     parent.params.put(key, this)(tx.peer) // .foreach(_.dispose())
     main.deferVisTx(initGUI())
@@ -202,9 +210,17 @@ abstract class NuagesAttributeImpl[S <: SSys[S]] extends NuagesParamImpl[S] with
     this
   }
 
+  private[this] var _pNode: PNode = _
+
+  final def pNode: PNode = {
+    if (_pNode == null) throw new IllegalStateException(s"Component $this has no initialized GUI")
+    _pNode
+  }
+
   private[this] def initGUI(): Unit = {
-    requireEDT()
-    mkPNodeAndEdge()
+    // requireEDT()
+    _pNode = nodeProvider.acquirePNode(this)
+    // mkPNodeAndEdge()
 // this is now done by `assignMapping`:
 //    mapping.foreach { m =>
 //      m.source.foreach { vSrc =>
