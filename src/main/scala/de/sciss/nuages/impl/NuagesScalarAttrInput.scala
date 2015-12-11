@@ -3,12 +3,11 @@ package impl
 
 import java.awt.Graphics2D
 
-import de.sciss.lucre.expr.DoubleObj
 import de.sciss.lucre.synth.Sys
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-trait NuagesScalarAttribute[S <: Sys[S]] extends NuagesAttributeImpl[S] {
+trait NuagesScalarAttrInput[S <: Sys[S]] extends NuagesAttrInputImpl[S] {
   protected def toDouble(in: A): Double
   protected def fromDouble(in: Double): A
 

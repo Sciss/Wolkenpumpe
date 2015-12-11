@@ -16,7 +16,7 @@ package de.sciss.nuages
 import de.sciss.lucre.stm.Sys
 import prefuse.data.Edge
 
-trait NuagesParam[S <: Sys[S]] extends NuagesNode[S] {
+trait NuagesParam[S <: Sys[S]] extends NuagesData[S] /* NuagesNode[S] */ {
   // ---- methods to be called on the EDT ----
 
 // we currently refer to it:

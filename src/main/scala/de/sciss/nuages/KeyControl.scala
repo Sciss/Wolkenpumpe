@@ -255,7 +255,11 @@ object KeyControl {
                 }
               } else {
 
-                if (e.getKeyCode == KeyEvent.VK_ENTER) showParamInput(vc)
+                if (e.getKeyCode == KeyEvent.VK_ENTER) {
+                  val vis   = main.visualization
+                  val vi    = vis.getVisualItem(NuagesPanel.GROUP_GRAPH, ni)
+                  showParamInput(vc, vi)
+                }
               }
 
             case vs: NuagesOutput[S] if vs.name == "out" =>
@@ -365,7 +369,7 @@ object KeyControl {
       main.showOverlayPanel(p, Some(pt))
     }
 
-    private def showParamInput(vc: NuagesAttribute[S]): Unit = {
+    private def showParamInput(vc: NuagesAttribute[S], vi: VisualItem): Unit = {
       val p = new OverlayPanel {
         val ggValue = new TextField(f"${vc.spec.map(vc.value.head)}%1.3f", 12)
         ggValue.background = Color.black
@@ -393,13 +397,12 @@ object KeyControl {
           }
         }
       }
-      main.showOverlayPanel(p, Some(calcPanelPoint(p, vc)))
+      main.showOverlayPanel(p, Some(calcPanelPoint(p, vi)))
     }
 
-    private def calcPanelPoint(p: OverlayPanel, vc: NuagesAttribute[S]): Point = {
+    private def calcPanelPoint(p: OverlayPanel, vi: VisualItem): Point = {
       val vis   = main.visualization
-      val _ve   = vis.getVisualItem(NuagesPanel.GROUP_GRAPH, vc.pNode)
-      val b     = _ve.getBounds
+      val b     = vi.getBounds
       val dim   = p.preferredSize
       main.display.getTransform.transform(new Point2D.Double(b.getCenterX , b.getMaxY), p2d)
       new Point(p2d.getX.toInt - dim.width/2, p2d.getY.toInt - 12)

@@ -5,7 +5,7 @@ import de.sciss.lucre.expr.IntObj
 import de.sciss.lucre.stm.{Obj, Sys}
 import de.sciss.lucre.synth.{Sys => SSys}
 
-object NuagesIntAttribute extends NuagesAttribute.Factory {
+object NuagesIntAttrInput extends NuagesAttribute.Factory {
   def typeID: Int = IntObj.typeID
 
   type Repr[~ <: Sys[~]] = IntObj[~]
@@ -14,11 +14,11 @@ object NuagesIntAttribute extends NuagesAttribute.Factory {
                         (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute.Input[S] = {
 //    val spec  = NuagesAttributeImpl.getSpec(parent, key)
     val value = obj.value
-    new NuagesIntAttribute[S](attr, valueA = value).init(obj)
+    new NuagesIntAttrInput[S](attr, valueA = value).init(obj)
   }
 }
-final class NuagesIntAttribute[S <: SSys[S]](val attribute: NuagesAttribute[S], @volatile var valueA: Int)
-  extends NuagesScalarAttribute[S] {
+final class NuagesIntAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S], @volatile var valueA: Int)
+  extends NuagesScalarAttrInput[S] {
 
   type A = Int
 

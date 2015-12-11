@@ -10,7 +10,7 @@ import de.sciss.lucre.synth.{Sys => SSys}
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.swing.Graphics2D
 
-object NuagesDoubleVectorAttribute extends NuagesAttribute.Factory {
+object NuagesDoubleVectorAttrInput extends NuagesAttribute.Factory {
   def typeID: Int = DoubleVector.typeID
 
   type Repr[~ <: Sys[~]] = DoubleVector[~]
@@ -19,12 +19,12 @@ object NuagesDoubleVectorAttribute extends NuagesAttribute.Factory {
                         (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute.Input[S] = {
 //    val spec  = NuagesAttributeImpl.getSpec(parent, key)
     val value = obj.value
-    new NuagesDoubleVectorAttribute[S](attr, valueA = value).init(obj)
+    new NuagesDoubleVectorAttrInput[S](attr, valueA = value).init(obj)
   }
 }
-final class NuagesDoubleVectorAttribute[S <: SSys[S]](val attribute: NuagesAttribute[S],
+final class NuagesDoubleVectorAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S],
                                                       @volatile var valueA: Vec[Double])
-  extends NuagesAttributeImpl[S] {
+  extends NuagesAttrInputImpl[S] {
 
   type A = Vec[Double]
 

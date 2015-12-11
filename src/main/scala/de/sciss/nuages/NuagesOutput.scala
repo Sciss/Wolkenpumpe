@@ -23,7 +23,7 @@ object NuagesOutput {
                         (implicit tx: S#Tx): NuagesOutput[S] =
     impl.NuagesOutputImpl(parent, output = output)
 }
-trait NuagesOutput[S <: Sys[S]] extends NuagesParam[S] {
+trait NuagesOutput[S <: Sys[S]] extends NuagesParam[S] with NuagesNode[S] {
   var sources : Set[Edge]
   var sinks   : Set[Edge]
   var mappings: Set[NuagesAttribute[S]]

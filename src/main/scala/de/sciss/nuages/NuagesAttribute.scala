@@ -48,33 +48,12 @@ object NuagesAttribute {
 
   // ----
 
-//  def scalar[S <: Sys[S]](parent: NuagesObj[S], key: String,
-//                          dObj: DoubleObj[S])(implicit tx: S#Tx): NuagesAttribute[S] =
-//    impl.NuagesAttributeImpl.scalar(parent, key, dObj)
-//
-//  def vector[S <: Sys[S]](parent: NuagesObj[S], key: String,
-//                          dObj: DoubleVector[S])(implicit tx: S#Tx): NuagesAttribute[S] =
-//    impl.NuagesAttributeImpl.vector(parent, key, dObj)
-
-  // SCAN
-//  def scan[S <: Sys[S]](parent: VisualObj[S], key: String,
-//                        sObj: Scan[S])(implicit tx: S#Tx): VisualControl[S] =
-//    impl.VisualControlImpl.scan(parent, key, sObj)
-
   trait Mapping[S <: Sys[S]] {
     /** The metering synth that via `SendTrig` updates the control's current value. */
     def synth: Ref[Option[Synth]]
 
     var source: Option[NuagesOutput[S]]
-
-    // SCAN
-    // def scan(implicit tx: S#Tx): Scan[S]
   }
-
-//  trait NodeProvider[S <: Sys[S]] {
-//    def addPNode(in: Input[S], n: PNode, isFree: Boolean): Unit
-//    def removePNode(in: Input[S], n: PNode): Unit
-//  }
 
   trait Input[S <: Sys[S]] extends NuagesData[S] {
     def attribute: NuagesAttribute[S]
