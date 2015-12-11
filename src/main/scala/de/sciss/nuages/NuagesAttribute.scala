@@ -23,13 +23,13 @@ import scala.concurrent.stm.Ref
 import scala.language.higherKinds
 
 object NuagesAttribute {
-  def apply[S <: SSys[S]](key: String, value: Obj[S], parent: NuagesObj[S], np: NodeProvider[S])
+  def apply[S <: SSys[S]](key: String, value: Obj[S], parent: NuagesObj[S])
                         (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute[S] =
-    Impl(key, value, parent, np)
+    Impl(key, value, parent)
 
-  def tryApply[S <: SSys[S]](key: String, value: Obj[S], parent: NuagesObj[S], np: NodeProvider[S])
+  def tryApply[S <: SSys[S]](key: String, value: Obj[S], parent: NuagesObj[S])
                            (implicit tx: S#Tx, context: NuagesContext[S]): Option[NuagesAttribute[S]] =
-    Impl.tryApply(key, value, parent, np)
+    Impl.tryApply(key, value, parent)
 
     // ---- Factory ----
 
@@ -38,8 +38,8 @@ object NuagesAttribute {
 
     type Repr[~ <: Sys[~]] <: Obj[~]
 
-    def apply[S <: SSys[S]](key: String, value: Repr[S], parent: NuagesObj[S], np: NodeProvider[S])
-                          (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute[S]
+    def apply[S <: SSys[S]](key: String, value: Repr[S], attr: NuagesAttribute[S])
+                          (implicit tx: S#Tx, context: NuagesContext[S]): Input[S]
   }
 
   def addFactory(f: Factory): Unit = Impl.addFactory(f)
@@ -71,12 +71,24 @@ object NuagesAttribute {
     // def scan(implicit tx: S#Tx): Scan[S]
   }
 
-  trait NodeProvider[S <: Sys[S]] {
-    def acquirePNode(a: NuagesAttribute[S]): PNode
-    def releasePNode(a: NuagesAttribute[S]): Unit
+//  trait NodeProvider[S <: Sys[S]] {
+//    def addPNode(in: Input[S], n: PNode, isFree: Boolean): Unit
+//    def removePNode(in: Input[S], n: PNode): Unit
+//  }
+
+  trait Input[S <: Sys[S]] extends NuagesData[S] {
+    def attribute: NuagesAttribute[S]
+
+    def value: Vec[Double]
+
+    def numChannels: Int
   }
 }
-trait NuagesAttribute[S <: Sys[S]] extends NuagesParam[S] {
+trait NuagesAttribute[S <: Sys[S]] extends /* NuagesData[S] */ NuagesParam[S] {
+  // def parent: NuagesObj[S]
+
+  def addPNode   (in: NuagesAttribute.Input[S], n: PNode, isFree: Boolean): Unit
+  def removePNode(in: NuagesAttribute.Input[S], n: PNode                 ): Unit
 
   def spec: ParamSpec
 

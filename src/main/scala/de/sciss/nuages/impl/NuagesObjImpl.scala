@@ -53,7 +53,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
                                                objH: stm.Source[S#Tx, Obj[S]],
                                                var name: String,
                                                hasMeter: Boolean, hasSolo: Boolean)(implicit context: NuagesContext[S])
-  extends NuagesNodeRootImpl[S] with NuagesObj[S] with NuagesAttribute.NodeProvider[S] {
+  extends NuagesNodeRootImpl[S] with NuagesObj[S] {
   vProc =>
 
   import NuagesDataImpl._
@@ -139,7 +139,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
 
   private[this] def mkParam(key: String, obj: Obj[S])(implicit tx: S#Tx): Unit = {
     if (!key.endsWith(specSuffix) && key != ObjKeys.attrName)
-      NuagesAttribute /* .tryApply */ (key = key, value = obj, parent = this, np = this)
+      NuagesAttribute /* .tryApply */ (key = key, value = obj, parent = this)
   }
 
   private[this] def initGUI(locOption: Option[Point2D]): Unit = {

@@ -23,13 +23,14 @@ trait NuagesScalarAttribute[S <: Sys[S]] extends NuagesAttributeImpl[S] {
   def numChannels = 1
 
   protected def setControlTxn(v: Vec[Double])(implicit tx: S#Tx): Unit = {
-    if (v.size != 1) throw new IllegalArgumentException("Trying to set multi-channel parameter on scalar control")
-    val attr = parent.obj.attr
-    val vc   = DoubleObj.newConst[S](v.head)
-    attr.$[DoubleObj](key) match {
-      case Some(DoubleObj.Var(vr)) => vr() = vc
-      case _ => attr.put(key, DoubleObj.newVar(vc))
-    }
+    ???
+//    if (v.size != 1) throw new IllegalArgumentException("Trying to set multi-channel parameter on scalar control")
+//    val attr = parent.obj.attr
+//    val vc   = DoubleObj.newConst[S](v.head)
+//    attr.$[DoubleObj](key) match {
+//      case Some(DoubleObj.Var(vr)) => vr() = vc
+//      case _ => attr.put(key, DoubleObj.newVar(vc))
+//    }
   }
 
   import NuagesDataImpl.gLine

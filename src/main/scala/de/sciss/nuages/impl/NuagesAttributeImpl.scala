@@ -22,7 +22,7 @@ import de.sciss.lucre.expr.{DoubleVector, BooleanObj, DoubleObj, IntObj}
 import de.sciss.lucre.stm.{Disposable, Obj, Sys}
 import de.sciss.lucre.swing.requireEDT
 import de.sciss.lucre.synth.{Sys => SSys}
-import de.sciss.nuages.NuagesAttribute.{NodeProvider, Factory}
+import de.sciss.nuages.NuagesAttribute.Factory
 import de.sciss.synth.proc.Folder
 import prefuse.data.{Node => PNode}
 import prefuse.util.ColorLib
@@ -41,19 +41,19 @@ object NuagesAttributeImpl {
 
   def factories: Iterable[Factory] = map.values
 
-  def apply[S <: SSys[S]](key: String, value: Obj[S], parent: NuagesObj[S], np: NodeProvider[S])
+  def apply[S <: SSys[S]](key: String, value: Obj[S], parent: NuagesObj[S])
                         (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute[S] = {
     val tid     = value.tpe.typeID
     val factory = map.getOrElse(tid,
       throw new IllegalArgumentException(s"No NuagesAttribute available for $value / type 0x${tid.toHexString}"))
-    factory(key, value.asInstanceOf[factory.Repr[S]], parent, np)
+    ??? // factory(key, value.asInstanceOf[factory.Repr[S]], parent)
   }
 
-  def tryApply[S <: SSys[S]](key: String, value: Obj[S], parent: NuagesObj[S], np: NodeProvider[S])
+  def tryApply[S <: SSys[S]](key: String, value: Obj[S], parent: NuagesObj[S])
                            (implicit tx: S#Tx, context: NuagesContext[S]): Option[NuagesAttribute[S]] = {
     val tid = value.tpe.typeID
     val opt = map.get(tid)
-    opt.map(f => f(key, value.asInstanceOf[f.Repr[S]], parent, np))
+    ??? // opt.map(f => f(key, value.asInstanceOf[f.Repr[S]], parent))
   }
 
   private[this] var map = Map[Int, Factory](
@@ -121,7 +121,7 @@ object NuagesAttributeImpl {
 //  }
 }
 
-abstract class NuagesAttributeImpl[S <: SSys[S]] extends NuagesParamImpl[S] with NuagesAttribute[S] {
+abstract class NuagesAttributeImpl[S <: SSys[S]] extends NuagesDataImpl[S] with NuagesAttribute.Input[S] {
   import NuagesAttributeImpl.Drag
   import NuagesDataImpl._
 
@@ -141,7 +141,9 @@ abstract class NuagesAttributeImpl[S <: SSys[S]] extends NuagesParamImpl[S] with
 
   protected def drawAdjust(g: Graphics2D, v: Vec[Double]): Unit
 
-  protected def nodeProvider: NuagesAttribute.NodeProvider[S]
+//  protected def nodeProvider: NuagesAttribute.NodeProvider[S]
+
+  protected def editable: Boolean
 
   // ---- impl ----
 
@@ -151,12 +153,18 @@ abstract class NuagesAttributeImpl[S <: SSys[S]] extends NuagesParamImpl[S] with
 
   final protected def nodeSize = 1f
 
-  private[this] val mapped: Boolean = mapping.isDefined
-
-  private[this] val containerArea = new Area()
+  private[this] val containerArea   = new Area()
   protected final val valueArea     = new Area()
 
-  private[this] var drag: Drag = null
+  private[this] var drag: Drag      = null
+
+  private[this] def spec: ParamSpec = attribute.spec
+
+  def main: NuagesPanel[S]  = attribute.parent.main
+
+  private[this] def atomic[A](fun: S#Tx => A): A = main.transport.scheduler.cursor.step(fun)
+
+  def name: String = attribute.name
 
   private[this] val spikes: Shape = if (spec.warp == IntWarp) {
     val loInt = spec.map(0.0).toInt
@@ -188,19 +196,19 @@ abstract class NuagesAttributeImpl[S <: SSys[S]] extends NuagesParamImpl[S] with
 
   def dispose()(implicit tx: S#Tx): Unit = {
     observers.foreach(_.dispose())
-    mapping.foreach { m =>
-      m.synth.swap(None)(tx.peer).foreach(_.dispose())
-    }
-    parent.params.remove(key)(tx.peer)
+//    mapping.foreach { m =>
+//      m.synth.swap(None)(tx.peer).foreach(_.dispose())
+//    }
+    ??? // parent.params.remove(key)(tx.peer)
     main.deferVisTx(disposeGUI())
   }
 
   private[this] def disposeGUI(): Unit = {
-    nodeProvider.releasePNode(this)
+    ??? // nodeProvider.releasePNode(this)
   }
 
   final def init(obj: Obj[S])(implicit tx: S#Tx): this.type = {
-    parent.params.put(key, this)(tx.peer) // .foreach(_.dispose())
+    ??? // parent.params.put(key, this)(tx.peer) // .foreach(_.dispose())
     main.deferVisTx(initGUI())
     // SCAN
 //    mapping.foreach { m =>
@@ -219,7 +227,7 @@ abstract class NuagesAttributeImpl[S <: SSys[S]] extends NuagesParamImpl[S] with
 
   private[this] def initGUI(): Unit = {
     // requireEDT()
-    _pNode = nodeProvider.acquirePNode(this)
+    ??? // _pNode = nodeProvider.acquirePNode(this)
     // mkPNodeAndEdge()
 // this is now done by `assignMapping`:
 //    mapping.foreach { m =>
@@ -232,7 +240,7 @@ abstract class NuagesAttributeImpl[S <: SSys[S]] extends NuagesParamImpl[S] with
 
   final override def itemPressed(vi: VisualItem, e: MouseEvent, pt: Point2D): Boolean = {
     // if (!vProc.isAlive) return false
-    if (mapped) return true
+    if (!editable) return true
 
     if (containerArea.contains(pt.getX - r.getX, pt.getY - r.getY)) {
       val dy      = r.getCenterY - pt.getY
@@ -316,7 +324,7 @@ abstract class NuagesAttributeImpl[S <: SSys[S]] extends NuagesParamImpl[S] with
       renderedValid = true
     }
 
-    g.setColor(if (mapped) colrMapped else /* if (gliding) colrGliding else */ colrManual)
+    g.setColor(if (editable) colrManual else colrMapped)
     g.fill(valueArea)
     val isDrag = drag != null
     if (isDrag) {

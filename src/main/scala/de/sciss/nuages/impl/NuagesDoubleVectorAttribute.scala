@@ -6,7 +6,6 @@ import java.awt.geom.{Arc2D, Area}
 import de.sciss.lucre.expr.DoubleVector
 import de.sciss.lucre.stm.{Sys, Obj}
 import de.sciss.lucre.synth.{Sys => SSys}
-import de.sciss.nuages.NuagesAttribute.NodeProvider
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.swing.Graphics2D
@@ -16,23 +15,22 @@ object NuagesDoubleVectorAttribute extends NuagesAttribute.Factory {
 
   type Repr[~ <: Sys[~]] = DoubleVector[~]
 
-  def apply[S <: SSys[S]](key: String, obj: DoubleVector[S], parent: NuagesObj[S], np: NodeProvider[S])
-                        (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute[S] = {
-    val spec  = NuagesAttributeImpl.getSpec(parent, key)
+  def apply[S <: SSys[S]](key: String, obj: DoubleVector[S], attr: NuagesAttribute[S])
+                        (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute.Input[S] = {
+//    val spec  = NuagesAttributeImpl.getSpec(parent, key)
     val value = obj.value
-    new NuagesDoubleVectorAttribute[S](parent, key = key, spec = spec, valueA = value, mapping = None,
-      nodeProvider = np).init(obj)
+    new NuagesDoubleVectorAttribute[S](attr, valueA = value).init(obj)
   }
 }
-final class NuagesDoubleVectorAttribute[S <: SSys[S]](val parent: NuagesObj[S], val key: String, val spec: ParamSpec,
-                                               @volatile var valueA: Vec[Double],
-                                               val mapping: Option[NuagesAttribute.Mapping[S]],
-                                               protected val nodeProvider: NodeProvider[S])
+final class NuagesDoubleVectorAttribute[S <: SSys[S]](val attribute: NuagesAttribute[S],
+                                                      @volatile var valueA: Vec[Double])
   extends NuagesAttributeImpl[S] {
 
   type A = Vec[Double]
 
   private[this] var allValuesEqual = false
+
+  protected def editable: Boolean = ???
 
   def value: Vec[Double] = valueA
   def value_=(v: Vec[Double]): Unit = {
@@ -49,13 +47,13 @@ final class NuagesDoubleVectorAttribute[S <: SSys[S]](val parent: NuagesObj[S], 
   def numChannels = valueA.size
 
   protected def setControlTxn(v: Vec[Double])(implicit tx: S#Tx): Unit = {
-    // if (v.size != 1) throw new IllegalArgumentException("Trying to set multi-channel parameter on scalar control")
-    val attr = parent.obj.attr
-    val vc   = DoubleVector.newConst[S](v)
-    attr.$[DoubleVector](key) match {
-      case Some(DoubleVector.Var(vr)) => vr() = vc
-      case _ => attr.put(key, DoubleVector.newVar(vc))
-    }
+    ???
+//    val attr = parent.obj.attr
+//    val vc   = DoubleVector.newConst[S](v)
+//    attr.$[DoubleVector](key) match {
+//      case Some(DoubleVector.Var(vr)) => vr() = vc
+//      case _ => attr.put(key, DoubleVector.newVar(vc))
+//    }
   }
 
   protected def init1(obj: Obj[S])(implicit tx: S#Tx): Unit =

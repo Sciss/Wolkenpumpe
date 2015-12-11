@@ -17,7 +17,7 @@ import java.awt.event.MouseEvent
 import java.awt.geom.Point2D
 import java.awt.{Graphics2D, Shape}
 
-import de.sciss.lucre.stm.Sys
+import de.sciss.lucre.stm.{Disposable, Sys}
 import prefuse.visual.VisualItem
 
 /** The common trait of all visible objects on the
@@ -27,7 +27,7 @@ import prefuse.visual.VisualItem
   *
   * @see [[NuagesNode]]
   */
-trait NuagesData[S <: Sys[S]] {
+trait NuagesData[S <: Sys[S]] extends Disposable[S#Tx] {
   // ---- methods to be called on the EDT ----
 
   /** GUI property: whether the node is allowed to move around

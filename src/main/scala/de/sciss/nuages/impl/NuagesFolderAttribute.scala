@@ -5,7 +5,6 @@ import java.awt.Graphics2D
 
 import de.sciss.lucre.stm.{Obj, Sys}
 import de.sciss.lucre.synth.{Sys => SSys}
-import de.sciss.nuages.NuagesAttribute.NodeProvider
 import de.sciss.synth.proc.Folder
 import prefuse.data.{Node => PNode}
 import prefuse.visual.VisualItem
@@ -17,17 +16,18 @@ object NuagesFolderAttribute extends NuagesAttribute.Factory {
 
   type Repr[S <: Sys[S]] = Folder[S]
 
-  def apply[S <: SSys[S]](key: String, value: Folder[S], parent: NuagesObj[S], np: NodeProvider[S])
-                         (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute[S] = {
+  def apply[S <: SSys[S]](key: String, value: Folder[S], attr: NuagesAttribute[S])
+                         (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute.Input[S] = {
 
     ???
   }
 }
-final class NuagesFolderAttribute[S <: SSys[S]](val parent: NuagesObj[S], val key: String, val spec: ParamSpec,
-                                                val mapping: Option[NuagesAttribute.Mapping[S]],
-                                                protected val nodeProvider: NodeProvider[S])
-  extends /* NuagesAttributeImpl[S] */ NuagesParamImpl[S] with NuagesAttribute[S] {
+final class NuagesFolderAttribute[S <: SSys[S]](val attribute: NuagesAttribute[S])
+  extends /* NuagesAttributeImpl[S] */ NuagesDataImpl[S] with NuagesAttribute.Input[S] {
 
+  def main: NuagesPanel[S]  = attribute.parent.main
+
+  def name: String = attribute.name
 
   private[this] var _pNode: PNode = _
 

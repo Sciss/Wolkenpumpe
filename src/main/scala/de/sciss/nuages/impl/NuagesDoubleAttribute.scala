@@ -4,28 +4,25 @@ package impl
 import de.sciss.lucre.expr.DoubleObj
 import de.sciss.lucre.stm.{Sys, Obj}
 import de.sciss.lucre.synth.{Sys => SSys}
-import de.sciss.nuages.NuagesAttribute.NodeProvider
 
 object NuagesDoubleAttribute extends NuagesAttribute.Factory {
   def typeID: Int = DoubleObj.typeID
 
   type Repr[~ <: Sys[~]] = DoubleObj[~]
 
-  def apply[S <: SSys[S]](key: String, obj: DoubleObj[S], parent: NuagesObj[S], np: NodeProvider[S])
-                        (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute[S] = {
-    val spec  = NuagesAttributeImpl.getSpec(parent, key)
+  def apply[S <: SSys[S]](key: String, obj: DoubleObj[S], attr: NuagesAttribute[S])
+                        (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute.Input[S] = {
+//    val spec  = NuagesAttributeImpl.getSpec(parent, key)
     val value = obj.value
-    new NuagesDoubleAttribute[S](parent, key = key, spec = spec, valueA = value, mapping = None,
-      nodeProvider = np).init(obj)
+    new NuagesDoubleAttribute[S](attr, valueA = value).init(obj)
   }
 }
-final class NuagesDoubleAttribute[S <: SSys[S]](val parent: NuagesObj[S], val key: String, val spec: ParamSpec,
-                                               @volatile var valueA: Double,
-                                               val mapping: Option[NuagesAttribute.Mapping[S]],
-                                               protected val nodeProvider: NodeProvider[S])
+final class NuagesDoubleAttribute[S <: SSys[S]](val attribute: NuagesAttribute[S], @volatile var valueA: Double)
   extends NuagesScalarAttribute[S] {
 
   type A = Double
+
+  protected def editable: Boolean = ???
 
   protected def toDouble  (in: Double): Double = in
   protected def fromDouble(in: Double): Double = in
