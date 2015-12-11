@@ -18,7 +18,7 @@ import de.sciss.lucre.synth.Sys
 import prefuse.data.{Edge => PEdge}
 import prefuse.visual.VisualItem
 
-trait NuagesParamImpl[S <: Sys[S]] extends NuagesNodeImpl[S] with NuagesParam[S] {
+trait NuagesParamImpl[S <: Sys[S]] extends NuagesDataImpl[S] /* NuagesNodeImpl[S] */ with NuagesParam[S] {
 //  final def pEdge: PEdge = {
 //    if (_pEdge == null) throw new IllegalStateException(s"Component $this has no initialized GUI")
 //    _pEdge

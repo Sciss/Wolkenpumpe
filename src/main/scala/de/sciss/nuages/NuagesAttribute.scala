@@ -55,7 +55,7 @@ object NuagesAttribute {
     var source: Option[NuagesOutput[S]]
   }
 
-  trait Input[S <: Sys[S]] extends NuagesData[S] {
+  trait Input[S <: Sys[S]] /* extends NuagesData[S] */ {
     def attribute: NuagesAttribute[S]
 
     def value: Vec[Double]
@@ -79,7 +79,7 @@ trait NuagesAttribute[S <: Sys[S]] extends /* NuagesData[S] */ NuagesParam[S] {
 //  /** The value is normalized in the range 0 to 1 */
 //  def value1_=(v: Double): Unit
 
-  def mapping: Option[NuagesAttribute.Mapping[S]]
+  // def mapping: Option[NuagesAttribute.Mapping[S]]
 
   def removeMapping()(implicit tx: S#Tx): Unit
 

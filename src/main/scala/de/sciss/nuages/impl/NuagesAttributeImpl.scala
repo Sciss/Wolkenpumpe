@@ -14,18 +14,15 @@
 package de.sciss.nuages
 package impl
 
-import java.awt.event.MouseEvent
-import java.awt.geom.{Arc2D, Area, GeneralPath, Point2D}
-import java.awt.{Graphics2D, Shape}
+import java.awt.Graphics2D
 
-import de.sciss.lucre.expr.{DoubleVector, BooleanObj, DoubleObj, IntObj}
-import de.sciss.lucre.stm.{Disposable, Obj, Sys}
+import de.sciss.lucre.expr.{BooleanObj, DoubleObj, DoubleVector, IntObj}
+import de.sciss.lucre.stm.{Obj, Sys}
 import de.sciss.lucre.swing.requireEDT
 import de.sciss.lucre.synth.{Sys => SSys}
-import de.sciss.nuages.NuagesAttribute.{Input, Mapping, Factory}
+import de.sciss.nuages.NuagesAttribute.{Factory, Input, Mapping}
 import de.sciss.synth.proc.Folder
 import prefuse.data.{Node => PNode}
-import prefuse.util.ColorLib
 import prefuse.visual.VisualItem
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -42,19 +39,22 @@ object NuagesAttributeImpl {
   def factories: Iterable[Factory] = map.values
 
   def apply[S <: SSys[S]](key: String, value: Obj[S], parent: NuagesObj[S])
-                        (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute[S] = {
-    val tid     = value.tpe.typeID
-    val factory = map.getOrElse(tid,
-      throw new IllegalArgumentException(s"No NuagesAttribute available for $value / type 0x${tid.toHexString}"))
-    val input   = factory(key = key, value = value.asInstanceOf[factory.Repr[S]], attr = ???)
-    ??? // factory(key, value.asInstanceOf[factory.Repr[S]], parent)
-  }
+                        (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute[S] =
+    tryApply(key, value, parent).getOrElse {
+      val tid = value.tpe.typeID
+      throw new IllegalArgumentException(s"No NuagesAttribute available for $value / type 0x${tid.toHexString}")
+    }
 
-  def tryApply[S <: SSys[S]](key: String, value: Obj[S], parent: NuagesObj[S])
+  def tryApply[S <: SSys[S]](key: String, _value: Obj[S], parent: NuagesObj[S])
                            (implicit tx: S#Tx, context: NuagesContext[S]): Option[NuagesAttribute[S]] = {
-    val tid = value.tpe.typeID
+    val tid = _value.tpe.typeID
     val opt = map.get(tid)
-    ??? // opt.map(f => f(key, value.asInstanceOf[f.Repr[S]], parent))
+    opt.map { factory =>
+      val spec = getSpec(parent, key)
+      new Impl[S](parent = parent, key = key, spec = spec) { self =>
+        protected val input = factory[S](key = key, value = _value.asInstanceOf[factory.Repr[S]], attr = self)
+      }
+    }
   }
 
   private[this] var map = Map[Int, Factory](
@@ -78,15 +78,21 @@ object NuagesAttributeImpl {
 
 //  private final val scanValue = Vector(0.5): Vec[Double] // XXX TODO
 
-  private final class Impl[S <: SSys[S]](val parent: NuagesObj[S], val key: String, val spec: ParamSpec,
-                                         input: NuagesAttribute.Input[S])
+  private abstract class Impl[S <: SSys[S]](val parent: NuagesObj[S], val key: String, val spec: ParamSpec)
     extends NuagesParamImpl[S] with NuagesAttribute[S] {
+
+    // ---- abstract ----
+
+    protected def input: NuagesAttribute.Input[S]
+
+    // ---- impl ----
 
     def numChannels: Int = input.numChannels
 
     var value: Vec[Double] = ???
 
     def addPNode(in: Input[S], n: PNode, isFree: Boolean): Unit = {
+      requireEDT()
       ???
     }
 
@@ -94,9 +100,7 @@ object NuagesAttributeImpl {
       ???
     }
 
-    def pNode: PNode = ???
-
-    def mapping: Option[Mapping[S]] = ???
+    //    def mapping: Option[Mapping[S]] = ...
 
     def removeMapping()(implicit tx: S#Tx): Unit = ???
 
