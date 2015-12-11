@@ -121,7 +121,7 @@ object Nuages extends Obj.Type {
     *
     * @see [[javax.swing.KeyStroke#getKeyStroke(String)]]
     */
-  final val KeyShortcut = "nuages-shortcut"
+  final val attrShortcut    = "nuages-shortcut"
 
   final val NameFilters     = "filters"
   final val NameGenerators  = "generators"

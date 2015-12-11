@@ -84,7 +84,7 @@ object KeyControl {
       implicit val itx = tx.peer
       val attr    = elem.attr
       val source  = tx.newHandle(elem)  // eagerly because we expect `name` to be present
-      attr.$[StringObj](Nuages.KeyShortcut).foreach { expr =>
+      attr.$[StringObj](Nuages.attrShortcut).foreach { expr =>
         Option(KeyStroke.getKeyStroke(expr.value)).foreach { ks =>
           keyMap.put(ks, source)(tx.peer)
         }

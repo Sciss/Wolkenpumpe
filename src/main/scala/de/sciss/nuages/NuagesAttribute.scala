@@ -72,7 +72,7 @@ trait NuagesAttribute[S <: Sys[S]] extends /* NuagesData[S] */ NuagesParam[S] {
   def spec: ParamSpec
 
   /** The value is normalized in the range 0 to 1 */
-  var value: Vec[Double]
+  def value: Vec[Double]
 
   def numChannels: Int
 

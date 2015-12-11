@@ -18,19 +18,19 @@ object NuagesDoubleVectorAttrInput extends NuagesAttribute.Factory {
   def apply[S <: SSys[S]](key: String, obj: DoubleVector[S], attr: NuagesAttribute[S])
                         (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute.Input[S] = {
 //    val spec  = NuagesAttributeImpl.getSpec(parent, key)
-    val value = obj.value
-    new NuagesDoubleVectorAttrInput[S](attr, valueA = value).init(obj)
+    val value     = obj.value
+    val editable  = DoubleVector.Var.unapply(obj).isDefined
+    new NuagesDoubleVectorAttrInput[S](attr, valueA = value, editable = editable).init(obj)
   }
 }
 final class NuagesDoubleVectorAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S],
-                                                      @volatile var valueA: Vec[Double])
+                                                      @volatile var valueA: Vec[Double],
+                                                      protected val editable: Boolean)
   extends NuagesAttrInputImpl[S] {
 
   type A = Vec[Double]
 
   private[this] var allValuesEqual = false
-
-  protected def editable: Boolean = ???
 
   def value: Vec[Double] = valueA
   def value_=(v: Vec[Double]): Unit = {

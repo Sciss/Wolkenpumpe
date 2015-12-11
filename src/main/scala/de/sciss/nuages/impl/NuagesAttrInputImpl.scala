@@ -105,7 +105,6 @@ trait NuagesAttrInputImpl[S <: SSys[S]] extends NuagesDataImpl[S] with NuagesAtt
   }
 
   final def init(obj: Obj[S])(implicit tx: S#Tx): this.type = {
-    ??? // parent.params.put(key, this)(tx.peer) // .foreach(_.dispose())
     main.deferVisTx(initGUI())
     // SCAN
     //    mapping.foreach { m =>
@@ -122,17 +121,16 @@ trait NuagesAttrInputImpl[S <: SSys[S]] extends NuagesDataImpl[S] with NuagesAtt
     _pNode
   }
 
-  private[this] def initGUI(): Unit = {
-    // requireEDT()
-    ??? // _pNode = nodeProvider.acquirePNode(this)
-    // mkPNodeAndEdge()
-    // this is now done by `assignMapping`:
-    //    mapping.foreach { m =>
-    //      m.source.foreach { vSrc =>
-    //        main.graph.addEdge(vSrc.pNode, pNode)
-    //        vSrc.mappings += this
-    //      }
-    //    }
+  private[this] def initGUI(): Unit = mkPNode()
+
+  private[this] def mkPNode(): Unit = {
+    if (_pNode != null) throw new IllegalStateException(s"Component $this has already been initialized")
+    log(s"mkPNode($name)")
+    _pNode  = main.graph.addNode()
+    val vis = main.visualization
+    val vi  = vis.getVisualItem(NuagesPanel.GROUP_GRAPH, _pNode)
+    vi.set(NuagesPanel.COL_NUAGES, this)
+    attribute.addPNode(this, _pNode, isFree = true)
   }
 
   final override def itemPressed(vi: VisualItem, e: MouseEvent, pt: Point2D): Boolean = {

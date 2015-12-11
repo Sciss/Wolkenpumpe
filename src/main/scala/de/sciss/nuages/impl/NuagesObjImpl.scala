@@ -27,7 +27,6 @@ import de.sciss.lucre.synth.{Synth, Sys}
 import de.sciss.nuages.Nuages.Surface
 import de.sciss.synth.proc.Implicits._
 import de.sciss.synth.proc.{ObjKeys, Proc, Timeline}
-import prefuse.data.Node
 import prefuse.util.ColorLib
 import prefuse.visual.{AggregateItem, VisualItem}
 
@@ -47,6 +46,14 @@ object NuagesObjImpl {
   }
 
   private val fastLog = FastLog(base = 10, q = 11)
+
+  private[this] val specSuffix  = s"-${ParamSpec.Key}"
+  private[this] val ignoredKeys = Set(ObjKeys.attrName, Nuages.attrShortcut)
+
+  private def mkParam[S <: Sys[S]](parent: NuagesObj[S], key: String, obj: Obj[S])
+                                  (implicit tx: S#Tx, context: NuagesContext[S]): Unit =
+    if (!(key.endsWith(specSuffix) || ignoredKeys.contains(key)))
+      NuagesAttribute /* .tryApply */ (key = key, value = obj, parent = parent)
 }
 final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
                                                idH: stm.Source[S#Tx, S#ID],
@@ -88,8 +95,6 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
     this
   }
 
-  private[this] val specSuffix = s"-${ParamSpec.Key}"
-
 //  def acquirePNode(a: NuagesAttribute[S]): Node = {
 //    requireEDT()
 //    val n   = main.graph.addNode()
@@ -127,19 +132,14 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
 
     val attr = proc.attr
     attr.iterator.foreach { case (key, obj) =>
-      mkParam(key, obj)
+      mkParam(this, key, obj)
     }
     observers ::= attr.changed.react { implicit tx => upd =>
       upd.changes.foreach {
-        case Obj.AttrAdded  (key, obj) => mkParam(key, obj)
+        case Obj.AttrAdded  (key, obj) => mkParam(this, key, obj)
         case Obj.AttrRemoved(key, obj) => params.get(key).foreach(_.dispose())
       }
     }
-  }
-
-  private[this] def mkParam(key: String, obj: Obj[S])(implicit tx: S#Tx): Unit = {
-    if (!key.endsWith(specSuffix) && key != ObjKeys.attrName)
-      NuagesAttribute /* .tryApply */ (key = key, value = obj, parent = this)
   }
 
   private[this] def initGUI(locOption: Option[Point2D]): Unit = {

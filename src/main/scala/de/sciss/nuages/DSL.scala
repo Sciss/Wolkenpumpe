@@ -86,15 +86,15 @@ class DSL[S <: stm.Sys[S]] {
 
   def shortcut(implicit tx: S#Tx): String = {
     val obj = current.get(tx.peer)
-    obj.attr.$[StringObj](Nuages.KeyShortcut).map(_.value).getOrElse("")
+    obj.attr.$[StringObj](Nuages.attrShortcut).map(_.value).getOrElse("")
   }
   def shortcut_=(value: String)(implicit tx: S#Tx): Unit = {
     val obj       = current.get(tx.peer)
     if (value.isEmpty) {
-      obj.attr.remove(Nuages.KeyShortcut)
+      obj.attr.remove(Nuages.attrShortcut)
     } else {
       val paramObj = StringObj.newConst[S](value)
-      obj.attr.put(Nuages.KeyShortcut, paramObj)
+      obj.attr.put(Nuages.attrShortcut, paramObj)
     }
   }
 

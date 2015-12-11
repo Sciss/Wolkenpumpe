@@ -17,12 +17,12 @@ package impl
 import java.awt.Graphics2D
 
 import de.sciss.lucre.expr.{BooleanObj, DoubleObj, DoubleVector, IntObj}
-import de.sciss.lucre.stm.{Obj, Sys}
+import de.sciss.lucre.stm.{TxnLike, Obj, Sys}
 import de.sciss.lucre.swing.requireEDT
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.nuages.NuagesAttribute.{Factory, Input, Mapping}
 import de.sciss.synth.proc.Folder
-import prefuse.data.{Node => PNode}
+import prefuse.data.{Node => PNode, Edge => PEdge}
 import prefuse.visual.VisualItem
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -42,18 +42,21 @@ object NuagesAttributeImpl {
                         (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute[S] =
     tryApply(key, value, parent).getOrElse {
       val tid = value.tpe.typeID
-      throw new IllegalArgumentException(s"No NuagesAttribute available for $value / type 0x${tid.toHexString}")
+      throw new IllegalArgumentException(s"No NuagesAttribute available for $key / $value / type 0x${tid.toHexString}")
     }
 
   def tryApply[S <: SSys[S]](key: String, _value: Obj[S], parent: NuagesObj[S])
                            (implicit tx: S#Tx, context: NuagesContext[S]): Option[NuagesAttribute[S]] = {
+    import TxnLike.peer
     val tid = _value.tpe.typeID
     val opt = map.get(tid)
     opt.map { factory =>
       val spec = getSpec(parent, key)
-      new Impl[S](parent = parent, key = key, spec = spec) { self =>
+      val res = new Impl[S](parent = parent, key = key, spec = spec) { self =>
         protected val input = factory[S](key = key, value = _value.asInstanceOf[factory.Repr[S]], attr = self)
       }
+      parent.params.put(key, res)
+      res
     }
   }
 
@@ -78,6 +81,15 @@ object NuagesAttributeImpl {
 
 //  private final val scanValue = Vector(0.5): Vec[Double] // XXX TODO
 
+  // updated on EDT
+  private sealed trait State
+  private case object EmptyState extends State
+  private case class InternalState(pNode: PNode, pEdge: PEdge) extends State
+  private case class SummaryState (pNode: PNode, pEdge: PEdge) extends State {
+    var freeNodes  = Set.empty[PNode]
+    var boundNodes = Set.empty[PNode]
+  }
+
   private abstract class Impl[S <: SSys[S]](val parent: NuagesObj[S], val key: String, val spec: ParamSpec)
     extends NuagesParamImpl[S] with NuagesAttribute[S] {
 
@@ -89,15 +101,91 @@ object NuagesAttributeImpl {
 
     def numChannels: Int = input.numChannels
 
-    var value: Vec[Double] = ???
+    def value: Vec[Double] = ???
+
+    private[this] var _state: State = EmptyState
+    private[this] var _freeNodes  = Set.empty[PNode]
+    private[this] var _boundNodes = Set.empty[PNode]
 
     def addPNode(in: Input[S], n: PNode, isFree: Boolean): Unit = {
       requireEDT()
-      ???
+      if (isFree) {
+        require (!_freeNodes.contains(n))
+        _freeNodes += n
+      } else {
+        require (!_boundNodes.contains(n))
+        _boundNodes += n
+      }
+
+      val g = main.graph
+
+      def mkSummary() = {
+        val ni  = g.addNode()
+        val vii = main.visualization.getVisualItem(NuagesPanel.GROUP_GRAPH, ni)
+        vii.set(NuagesPanel.COL_NUAGES, this)
+        val ei  = g.addEdge(ni, parent.pNode)
+        /* val ee = */ g.addEdge(n , ni)
+        parent.aggr.addItem(vii)
+        SummaryState(ni, ei)
+      }
+
+      _state = _state match {
+        case EmptyState =>
+          if (isFree) {
+            val e   = g.addEdge(n, parent.pNode)
+            val vi  = main.visualization.getVisualItem(NuagesPanel.GROUP_GRAPH, n)
+            parent.aggr.addItem(vi)
+            InternalState(n, e)
+          } else {
+            mkSummary()
+          }
+
+        case InternalState(ni, ei0) =>
+          g.removeEdge(ei0)
+          mkSummary()
+
+        case other => other
+      }
     }
 
     def removePNode(in: Input[S], n: PNode): Unit = {
-      ???
+      val isFree = _freeNodes.contains(n)
+      if (isFree) {
+        _freeNodes -= n
+      } else {
+        require (_boundNodes.contains(n))
+        _boundNodes -= n
+      }
+
+      def mkEmpty() = {
+        val vi = main.visualization.getVisualItem(NuagesPanel.GROUP_GRAPH, n)
+        parent.aggr.removeItem(vi)
+        EmptyState
+      }
+
+      _state = _state match {
+        case InternalState(`n`, _) => mkEmpty()
+
+        case prev @ SummaryState(ni, ei) if _boundNodes.isEmpty =>
+          _freeNodes.size match {
+            case 0 => mkEmpty()
+            case 1 => // become internal
+              val g   = main.graph
+              g.removeNode(ni)
+              val vis = main.visualization
+              val vi  = vis.getVisualItem(NuagesPanel.GROUP_GRAPH, ni)
+              parent.aggr.removeItem(vi)
+              val n1  = _freeNodes.head
+              val e   = g.addEdge(n1, parent.pNode)
+              val vi1 = vis.getVisualItem(NuagesPanel.GROUP_GRAPH, n1)
+              parent.aggr.addItem(vi1)
+              InternalState(n, e)
+
+            case _ => prev // no change
+          }
+
+        case other => other
+      }
     }
 
     //    def mapping: Option[Mapping[S]] = ...
