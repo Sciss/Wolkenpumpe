@@ -34,11 +34,11 @@ trait PanelImplReact[S <: Sys[S]] {
 //  protected def scanMap     : stm.IdentifierMap[S#ID, S#Tx, VisualScan[S]]
   protected def missingScans: stm.IdentifierMap[S#ID, S#Tx, List[NuagesAttribute[S]]]
 
-  protected def scanMapPut(id: S#ID, view: NuagesOutput[S])(implicit tx: S#Tx): Unit
-  protected def scanMapGet     (id: S#ID)(implicit tx: S#Tx): Option[NuagesOutput[S]]
+//  protected def scanMapPut(id: S#ID, view: NuagesOutput[S])(implicit tx: S#Tx): Unit
+//  protected def scanMapGet     (id: S#ID)(implicit tx: S#Tx): Option[NuagesOutput[S]]
 
-  /** Transaction local hack */
-  protected def waitForScanView(id: S#ID)(fun: NuagesOutput[S] => Unit)(implicit tx: S#Tx): Unit
+//  /** Transaction local hack */
+//  protected def waitForScanView(id: S#ID)(fun: NuagesOutput[S] => Unit)(implicit tx: S#Tx): Unit
 
 //  protected def auralTimeline: Ref[Option[AuralObj.Timeline[S]]]
 

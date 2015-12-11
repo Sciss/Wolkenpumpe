@@ -37,7 +37,7 @@ object NuagesObj {
 trait NuagesObj[S <: Sys[S]]
   extends NuagesNode[S] {
 
-  def main: NuagesPanel[S]
+  val main: NuagesPanel[S]
 
 //  def spanH: stm.Source[S#Tx, SpanLikeObj[S]]
 //  def objH : stm.Source[S#Tx, Obj[S]]

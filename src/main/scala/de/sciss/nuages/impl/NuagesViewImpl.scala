@@ -39,7 +39,7 @@ object NuagesViewImpl {
   def apply[S <: Sys[S]](nuages: Nuages[S], nuagesConfig: Nuages.Config, scissConfig: ScissProcs.Config)
                         (implicit tx: S#Tx, aural: AuralSystem, workspace: WorkspaceHandle[S],
                          cursor: stm.Cursor[S]): NuagesView[S] = {
-    implicit val context: NuagesContext[S] = new NuagesContext[S] {}
+    implicit val context = NuagesContext[S]
     val panel     = NuagesPanel(nuages, nuagesConfig)
     val tlm       = TimelineModel(Span(0L, (TimeRef.SampleRate * 60 * 60 * 10).toLong), TimeRef.SampleRate)
     val transport = panel.transport

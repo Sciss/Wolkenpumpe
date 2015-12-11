@@ -23,7 +23,7 @@ trait NuagesParam[S <: Sys[S]] extends NuagesData[S] /* NuagesNode[S] */ {
 //  /** The corresponding Prefuse edge. */
 //  def pEdge: Edge
 
-  def parent: NuagesObj[S]
+  val parent: NuagesObj[S]
 
   /** The scan or attribute key in `parent` to point to this component. */
   def key: String

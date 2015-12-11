@@ -26,7 +26,7 @@ package object nuages {
 
   private lazy val logHeader = new SimpleDateFormat("[d MMM yyyy, HH:mm''ss.SSS] 'Nuages' ", Locale.US)
 
-  var showLog = false
+  var showLog = true
 
   @elidable(CONFIG) private[nuages] def log(what: => String): Unit =
     if (showLog) println(logHeader.format(new Date()) + what)

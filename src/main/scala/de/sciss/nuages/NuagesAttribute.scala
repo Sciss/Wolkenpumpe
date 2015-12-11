@@ -13,7 +13,7 @@
 
 package de.sciss.nuages
 
-import de.sciss.lucre.stm.{Sys, Obj}
+import de.sciss.lucre.stm.{Disposable, Sys, Obj}
 import de.sciss.lucre.synth.{Synth, Sys => SSys}
 import de.sciss.nuages.impl.{NuagesAttributeImpl => Impl}
 import prefuse.data.{Node => PNode}
@@ -55,7 +55,7 @@ object NuagesAttribute {
     var source: Option[NuagesOutput[S]]
   }
 
-  trait Input[S <: Sys[S]] /* extends NuagesData[S] */ {
+  trait Input[S <: Sys[S]] extends /* NuagesData[S] */ Disposable[S#Tx] {
     def attribute: NuagesAttribute[S]
 
     def value: Vec[Double]

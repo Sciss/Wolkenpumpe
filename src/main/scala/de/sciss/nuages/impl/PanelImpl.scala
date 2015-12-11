@@ -65,7 +65,7 @@ object PanelImpl {
     val listMacro     = mkListView(nuages.macros    )
 
     val nodeMap       = tx.newInMemoryIDMap[NuagesObj[S]]
-    val scanMap       = tx.newInMemoryIDMap[NuagesOutput[S]] // ScanInfo [S]]
+    // val scanMap       = tx.newInMemoryIDMap[NuagesOutput[S]] // ScanInfo [S]]
     val missingScans  = tx.newInMemoryIDMap[List[NuagesAttribute[S]]]
     val transport     = Transport[S](aural)
     val surface       = nuages.surface
@@ -73,13 +73,13 @@ object PanelImpl {
 
     surface match {
       case Surface.Timeline(tl) =>
-        new PanelImplTimeline[S](nuagesH, nodeMap, scanMap, missingScans, config, transport, aural,
+        new PanelImplTimeline[S](nuagesH, nodeMap, /* scanMap, */ missingScans, config, transport, aural,
           listGen = listGen, listFlt1 = listFlt1, listCol1 = listCol1, listFlt2 = listFlt2, listCol2 = listCol2,
           listMacro = listMacro)
           .init(tl)
 
       case Surface.Folder(f) =>
-        new PanelImplFolder[S](nuagesH, nodeMap, scanMap, missingScans, config, transport, aural,
+        new PanelImplFolder[S](nuagesH, nodeMap, /* scanMap, */ missingScans, config, transport, aural,
           listGen = listGen, listFlt1 = listFlt1, listCol1 = listCol1, listFlt2 = listFlt2, listCol2 = listCol2,
           listMacro = listMacro)
           .init(f)
@@ -115,7 +115,7 @@ object PanelImpl {
 
 final class PanelImplTimeline[S <: Sys[S]](protected val nuagesH: stm.Source[S#Tx, Nuages[S]],
      val nodeMap: stm.IdentifierMap[S#ID, S#Tx, NuagesObj[S]],
-     protected val scanMap: stm.IdentifierMap[S#ID, S#Tx, NuagesOutput[S]],
+//     protected val scanMap: stm.IdentifierMap[S#ID, S#Tx, NuagesOutput[S]],
      protected val missingScans: stm.IdentifierMap[S#ID, S#Tx, List[NuagesAttribute[S]]],
      val config   : Nuages.Config,
      val transport: Transport[S],
@@ -134,7 +134,7 @@ final class PanelImplTimeline[S <: Sys[S]](protected val nuagesH: stm.Source[S#T
 
 final class PanelImplFolder[S <: Sys[S]](protected val nuagesH: stm.Source[S#Tx, Nuages[S]],
      val nodeMap: stm.IdentifierMap[S#ID, S#Tx, NuagesObj[S]],
-     protected val scanMap: stm.IdentifierMap[S#ID, S#Tx, NuagesOutput[S]],
+//     protected val scanMap: stm.IdentifierMap[S#ID, S#Tx, NuagesOutput[S]],
      protected val missingScans: stm.IdentifierMap[S#ID, S#Tx, List[NuagesAttribute[S]]],
      val config   : Nuages.Config,
      val transport: Transport[S],
@@ -170,7 +170,7 @@ trait PanelImpl[S <: Sys[S], Repr <: Obj[S]] extends NuagesPanel[S]
 
   protected def nuagesH: stm.Source[S#Tx, Nuages[S]]
 
-  protected def scanMap: stm.IdentifierMap[S#ID, S#Tx, NuagesOutput[S]]
+  // protected def scanMap: stm.IdentifierMap[S#ID, S#Tx, NuagesOutput[S]]
 
   // ---- impl ----
 
@@ -209,34 +209,34 @@ trait PanelImpl[S <: Sys[S], Repr <: Obj[S]] extends NuagesPanel[S]
     viewToAuralMap.clear()
     auralToViewMap.clear()
     nodeMap       .dispose()
-    scanMap       .dispose()
+    // scanMap       .dispose()
     missingScans  .dispose()
 
     keyControl    .dispose()
   }
 
-  private[this] val waiting = TxnLocal(Map.empty[S#ID, List[NuagesOutput[S] => Unit]])
-
-  def scanMapGet(id: S#ID)(implicit tx: S#Tx): Option[NuagesOutput[S]] = scanMap.get(id)
-
-  def scanMapPut(id: S#ID, view: NuagesOutput[S])(implicit tx: S#Tx): Unit = {
-    scanMap.put(id, view)
-    implicit val itx = tx.peer
-    if (waiting.isInitialized) waiting.transform { m0 =>
-      m0.get(id).fold(m0) { list =>
-        list.foreach(_.apply(view))
-        m0 - id
-      }
-    }
-  }
-
-  def scanMapRemove(id: S#ID)(implicit tx: S#Tx): Unit = scanMap.remove(id)
-
-  def waitForScanView(id: S#ID)(fun: (NuagesOutput[S]) => Unit)(implicit tx: S#Tx): Unit =
-    waiting.transform { m0 =>
-      val list = m0.getOrElse(id, Nil) :+ fun
-      m0 + (id -> list)
-    } (tx.peer)
+//  private[this] val waiting = TxnLocal(Map.empty[S#ID, List[NuagesOutput[S] => Unit]])
+//
+//  def scanMapGet(id: S#ID)(implicit tx: S#Tx): Option[NuagesOutput[S]] = scanMap.get(id)
+//
+//  def scanMapPut(id: S#ID, view: NuagesOutput[S])(implicit tx: S#Tx): Unit = {
+//    scanMap.put(id, view)
+//    implicit val itx = tx.peer
+//    if (waiting.isInitialized) waiting.transform { m0 =>
+//      m0.get(id).fold(m0) { list =>
+//        list.foreach(_.apply(view))
+//        m0 - id
+//      }
+//    }
+//  }
+//
+//  def scanMapRemove(id: S#ID)(implicit tx: S#Tx): Unit = scanMap.remove(id)
+//
+//  def waitForScanView(id: S#ID)(fun: (NuagesOutput[S]) => Unit)(implicit tx: S#Tx): Unit =
+//    waiting.transform { m0 =>
+//      val list = m0.getOrElse(id, Nil) :+ fun
+//      m0 + (id -> list)
+//    } (tx.peer)
 
   protected def disposeAuralObserver()(implicit tx: S#Tx): Unit = {
     ??? // auralTimeline.set (None)(tx.peer)

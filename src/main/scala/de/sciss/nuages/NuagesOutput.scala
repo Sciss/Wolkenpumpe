@@ -20,7 +20,7 @@ import prefuse.data.Edge
 
 object NuagesOutput {
   def apply[S <: SSys[S]](parent: NuagesObj[S], output: Output[S])
-                        (implicit tx: S#Tx): NuagesOutput[S] =
+                        (implicit tx: S#Tx, context: NuagesContext[S]): NuagesOutput[S] =
     impl.NuagesOutputImpl(parent, output = output)
 }
 trait NuagesOutput[S <: Sys[S]] extends NuagesParam[S] with NuagesNode[S] {

@@ -28,10 +28,9 @@ import prefuse.visual.VisualItem
 
 object NuagesOutputImpl {
   def apply[S <: Sys[S]](parent: NuagesObj[S], output: Output[S])
-                        (implicit tx: S#Tx): NuagesOutputImpl[S] = {
+                        (implicit tx: S#Tx, context: NuagesContext[S]): NuagesOutputImpl[S] = {
     val res = new NuagesOutputImpl(parent, tx.newHandle(output), key = output.key)
     res.init(output)
-    res
   }
 
   private def addEdgeGUI[S <: Sys[S]](source: NuagesOutput[S], sink: NuagesOutput[S]): Unit = {
@@ -46,7 +45,7 @@ object NuagesOutputImpl {
 }
 final class NuagesOutputImpl[S <: Sys[S]] private(val parent: NuagesObj[S],
                                                   val outputH: stm.Source[S#Tx, Output[S]],
-                                                  val key: String)
+                                                  val key: String)(implicit context: NuagesContext[S])
   extends NuagesParamRootImpl[S] with NuagesOutput[S] {
 
   import NuagesDataImpl._
@@ -62,11 +61,13 @@ final class NuagesOutputImpl[S <: Sys[S]] private(val parent: NuagesObj[S],
 
   private[this] var observers = List.empty[Disposable[S#Tx]]
 
-  def init(output: Output[S])(implicit tx: S#Tx): this.type = {
+  private def init(output: Output[S])(implicit tx: S#Tx): this.type = {
     val map = parent.outputs
     map.put(key, this)(tx.peer)
     main.deferVisTx(initGUI())      // IMPORTANT: first
-    main.scanMapPut(output.id, this)  // IMPORTANT: second
+//    main.scanMapPut(output.id, this)  // IMPORTANT: second
+    context.putAux[NuagesOutput[S]](output.id, this)
+
     // SCAN
 //    observers ::= output.changed.react { implicit tx => upd =>
 //      upd.changes.foreach {
@@ -100,7 +101,8 @@ final class NuagesOutputImpl[S <: Sys[S]] private(val parent: NuagesObj[S],
   def dispose()(implicit tx: S#Tx): Unit = {
     val map = parent.outputs
     map.remove(key)(tx.peer)
-    main.scanMapRemove(output.id)
+    // main.scanMapRemove(output.id)
+    context.removeAux(output.id)
     observers.foreach(_.dispose())
     main.deferVisTx(disposeGUI())
   }
