@@ -21,7 +21,7 @@ import de.sciss.lucre.stm.{TxnLike, Obj, Sys}
 import de.sciss.lucre.swing.requireEDT
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.nuages.NuagesAttribute.{Factory, Input, Mapping}
-import de.sciss.synth.proc.Folder
+import de.sciss.synth.proc.{Output, Folder}
 import prefuse.data.{Node => PNode, Edge => PEdge}
 import prefuse.visual.VisualItem
 
@@ -67,8 +67,8 @@ object NuagesAttributeImpl {
 //    FadeSpec.Obj        .typeID -> FadeSpecAttribute,
     DoubleVector        .typeID -> NuagesDoubleVectorAttrInput,
 //    Grapheme.Expr.Audio .typeID -> AudioGraphemeAttribute,
-//    Output              .typeID -> NuagesOutputAttribute,
-    Folder              .typeID -> NuagesFolderAttribute
+    Output              .typeID -> NuagesOutputAttrInput,
+    Folder              .typeID -> NuagesFolderAttrInput
 //    Timeline            .typeID -> NuagesTimelineAttribute
   )
   

@@ -11,18 +11,17 @@ import prefuse.visual.VisualItem
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-object NuagesFolderAttribute extends NuagesAttribute.Factory {
+object NuagesFolderAttrInput extends NuagesAttribute.Factory {
   def typeID: Int = Folder.typeID
 
   type Repr[S <: Sys[S]] = Folder[S]
 
   def apply[S <: SSys[S]](key: String, value: Folder[S], attr: NuagesAttribute[S])
                          (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute.Input[S] = {
-
-    ???
+    new NuagesFolderAttrInput(attr)
   }
 }
-final class NuagesFolderAttribute[S <: SSys[S]](val attribute: NuagesAttribute[S])
+final class NuagesFolderAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S])
   extends /* NuagesAttributeImpl[S] */ NuagesDataImpl[S] with NuagesAttribute.Input[S] {
 
   def main: NuagesPanel[S]  = attribute.parent.main
