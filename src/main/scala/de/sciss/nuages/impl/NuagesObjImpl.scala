@@ -73,7 +73,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
 
   private[this] var _aggr: AggregateItem = _
 
-  val inputs  = TMap.empty[String, NuagesOutput   [S]]
+  // val inputs  = TMap.empty[String, NuagesOutput   [S]]
   val outputs = TMap.empty[String, NuagesOutput   [S]]
   val params  = TMap.empty[String, NuagesAttribute[S]]
 
@@ -163,7 +163,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
     observers.foreach(_.dispose())
     meterSynth = None
     params .foreach(_._2.dispose())
-    inputs .foreach(_._2.dispose())
+    // inputs .foreach(_._2.dispose())
     outputs.foreach(_._2.dispose())
     main.nodeMap.remove(idH())
     main.deferVisTx(disposeGUI())
@@ -238,8 +238,8 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
     } else if (outerE.contains(xt, yt) & e.isAltDown) {
       // val instant = !stateVar.playing || stateVar.bypassed || (main.transition(0) == Instant)
       atomic { implicit tx =>
-        val visScans  = inputs ++ outputs
-        val inKeys    = inputs .keySet
+        val visScans  = /* inputs ++ */ outputs
+        // val inKeys    = inputs .keySet
         val outKeys   = outputs.keySet
         val mappings  = visScans.valuesIterator.flatMap(_.mappings)
 
@@ -251,7 +251,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
         obj match {
           case objT: Proc[S] =>
             val proc  = objT
-            ??? // SCAN
+            // SCAN
 //            val ins   = proc.inputs .get(Proc.scanMainIn ).fold(List.empty[Scan[S]])(_.iterator.collect {
 //              case Scan.Link.Scan(source) => source
 //            } .toList)
@@ -283,7 +283,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
             tlm.remove(???, objH())
           case Surface.Folder  (f) =>
             f.remove(objH())
-            ???
+            // ...
 
           case _ =>
         }

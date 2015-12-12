@@ -58,7 +58,7 @@ trait NuagesObj[S <: Sys[S]]
 
   // ---- transactional methods ----
 
-  def inputs : TMap[String, NuagesOutput   [S]]
+  // def inputs : TMap[String, NuagesOutput   [S]]
   def outputs: TMap[String, NuagesOutput   [S]]
   def params : TMap[String, NuagesAttribute[S]]
 

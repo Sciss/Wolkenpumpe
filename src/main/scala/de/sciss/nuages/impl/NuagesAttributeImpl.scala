@@ -113,6 +113,8 @@ object NuagesAttributeImpl {
     private[this] var _freeNodes  = Set.empty[PNode]
     private[this] var _boundNodes = Set.empty[PNode]
 
+    private[this] def nodeSize = 0.333333f
+
     def addPNode(in: Input[S], n: PNode, isFree: Boolean): Unit = {
       requireEDT()
       if (isFree) {
@@ -129,6 +131,8 @@ object NuagesAttributeImpl {
         val ni  = g.addNode()
         val vii = main.visualization.getVisualItem(NuagesPanel.GROUP_GRAPH, ni)
         vii.set(NuagesPanel.COL_NUAGES, this)
+        val sz  = nodeSize
+        if (sz != 1.0f) vii.set(VisualItem.SIZE, sz)
         val ei  = g.addEdge(ni, parent.pNode)
         /* val ee = */ g.addEdge(n , ni)
         parent.aggr.addItem(vii)
@@ -201,9 +205,10 @@ object NuagesAttributeImpl {
     /** Adjusts the control with the given normalized value. */
     def setControl(v: Vec[Double], instant: Boolean): Unit = ???
 
-    protected def renderDetail(g: Graphics2D, vi: VisualItem): Unit = ???
+    protected def boundsResized(): Unit = ()
 
-    protected def boundsResized(): Unit = ???
+    protected def renderDetail(g: Graphics2D, vi: VisualItem): Unit =
+      drawName(g, vi, NuagesDataImpl.diam * vi.getSize.toFloat * 0.5f)
 
     def dispose()(implicit tx: S#Tx): Unit = ???
   }
