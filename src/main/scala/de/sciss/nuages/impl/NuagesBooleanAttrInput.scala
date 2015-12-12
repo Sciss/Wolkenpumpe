@@ -10,7 +10,7 @@ object NuagesBooleanAttrInput extends NuagesAttribute.Factory {
 
   type Repr[~ <: Sys[~]] = BooleanObj[~]
 
-  def apply[S <: SSys[S]](key: String, obj: BooleanObj[S], attr: NuagesAttribute[S])
+  def apply[S <: SSys[S]](attr: NuagesAttribute[S], obj: BooleanObj[S])
                         (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute.Input[S] = {
     // val spec  = NuagesAttributeImpl.getSpec(attr.parent, key)
     val value = obj.value

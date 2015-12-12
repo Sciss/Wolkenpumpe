@@ -27,18 +27,21 @@ object NuagesAttribute {
                         (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute[S] =
     Impl(key, value, parent)
 
-  def tryApply[S <: SSys[S]](key: String, value: Obj[S], parent: NuagesObj[S])
-                           (implicit tx: S#Tx, context: NuagesContext[S]): Option[NuagesAttribute[S]] =
-    Impl.tryApply(key, value, parent)
+//  def tryApply[S <: SSys[S]](key: String, value: Obj[S], parent: NuagesObj[S])
+//                           (implicit tx: S#Tx, context: NuagesContext[S]): Option[NuagesAttribute[S]] =
+//    Impl.tryApply(key, value, parent)
 
-    // ---- Factory ----
+  def mkInput[S <: SSys[S]](attr: NuagesAttribute[S], value: Obj[S])
+                           (implicit tx: S#Tx, context: NuagesContext[S]): Input[S] = Impl.mkInput(attr, value)
+
+  // ---- Factory ----
 
   trait Factory {
     def typeID: Int
 
     type Repr[~ <: Sys[~]] <: Obj[~]
 
-    def apply[S <: SSys[S]](key: String, value: Repr[S], attr: NuagesAttribute[S])
+    def apply[S <: SSys[S]](attr: NuagesAttribute[S], value: Repr[S])
                           (implicit tx: S#Tx, context: NuagesContext[S]): Input[S]
   }
 

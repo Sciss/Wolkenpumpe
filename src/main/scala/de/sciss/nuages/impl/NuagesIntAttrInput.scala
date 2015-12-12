@@ -10,7 +10,7 @@ object NuagesIntAttrInput extends NuagesAttribute.Factory {
 
   type Repr[~ <: Sys[~]] = IntObj[~]
 
-  def apply[S <: SSys[S]](key: String, obj: IntObj[S], attr: NuagesAttribute[S])
+  def apply[S <: SSys[S]](attr: NuagesAttribute[S], obj: IntObj[S])
                         (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute.Input[S] = {
 //    val spec  = NuagesAttributeImpl.getSpec(parent, key)
     val value = obj.value

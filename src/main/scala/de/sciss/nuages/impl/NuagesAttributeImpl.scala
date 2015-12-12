@@ -38,26 +38,32 @@ object NuagesAttributeImpl {
 
   def factories: Iterable[Factory] = map.values
 
-  def apply[S <: SSys[S]](key: String, value: Obj[S], parent: NuagesObj[S])
-                        (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute[S] =
-    tryApply(key, value, parent).getOrElse {
-      val tid = value.tpe.typeID
-      throw new IllegalArgumentException(s"No NuagesAttribute available for $key / $value / type 0x${tid.toHexString}")
-    }
+//  def apply[S <: SSys[S]](key: String, value: Obj[S], parent: NuagesObj[S])
+//                        (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute[S] =
+//    tryApply(key, value, parent).getOrElse {
+//      val tid = value.tpe.typeID
+//      throw new IllegalArgumentException(s"No NuagesAttribute available for $key / $value / type 0x${tid.toHexString}")
+//    }
 
-  def tryApply[S <: SSys[S]](key: String, _value: Obj[S], parent: NuagesObj[S])
-                           (implicit tx: S#Tx, context: NuagesContext[S]): Option[NuagesAttribute[S]] = {
+  def apply[S <: SSys[S]](key: String, _value: Obj[S], parent: NuagesObj[S])
+                         (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute[S] = {
     import TxnLike.peer
-    val tid = _value.tpe.typeID
-    val opt = map.get(tid)
-    opt.map { factory =>
-      val spec = getSpec(parent, key)
-      val res = new Impl[S](parent = parent, key = key, spec = spec) { self =>
-        protected val input = factory[S](key = key, value = _value.asInstanceOf[factory.Repr[S]], attr = self)
-      }
-      parent.params.put(key, res)
-      res
+    val spec = getSpec(parent, key)
+    val res = new Impl[S](parent = parent, key = key, spec = spec) { self =>
+      protected val input = mkInput(self, _value)
     }
+    parent.params.put(key, res)
+    res
+  }
+
+  def mkInput[S <: SSys[S]](attr: NuagesAttribute[S], value: Obj[S])
+                           (implicit tx: S#Tx, context: NuagesContext[S]): Input[S] = {
+    val tid = value.tpe.typeID
+    val opt = map.get(tid)
+    val factory = opt.getOrElse(
+      throw new IllegalArgumentException(s"No NuagesAttribute available for ${attr.key} / $value / type 0x${tid.toHexString}")
+    )
+    factory[S](value = value.asInstanceOf[factory.Repr[S]], attr = attr)
   }
 
   private[this] var map = Map[Int, Factory](

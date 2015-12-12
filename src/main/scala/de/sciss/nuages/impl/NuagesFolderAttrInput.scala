@@ -1,70 +1,69 @@
+/*
+ *  NuagesFolderAttrInput.scala
+ *  (Wolkenpumpe)
+ *
+ *  Copyright (c) 2008-2015 Hanns Holger Rutz. All rights reserved.
+ *
+ *  This software is published under the GNU General Public License v2+
+ *
+ *
+ *  For further information, please contact Hanns Holger Rutz at
+ *  contact@sciss.de
+ */
+
 package de.sciss.nuages
 package impl
 
-import java.awt.Graphics2D
-
-import de.sciss.lucre.stm.{Obj, Sys}
+import de.sciss.lucre.stm.{TxnLike, Disposable, Obj, Sys}
 import de.sciss.lucre.synth.{Sys => SSys}
+import de.sciss.nuages.NuagesAttribute.Input
 import de.sciss.synth.proc.Folder
-import prefuse.data.{Node => PNode}
-import prefuse.visual.VisualItem
 
 import scala.collection.immutable.{IndexedSeq => Vec}
+import scala.concurrent.stm.Ref
 
 object NuagesFolderAttrInput extends NuagesAttribute.Factory {
   def typeID: Int = Folder.typeID
 
   type Repr[S <: Sys[S]] = Folder[S]
 
-  def apply[S <: SSys[S]](key: String, value: Folder[S], attr: NuagesAttribute[S])
-                         (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute.Input[S] = {
-    new NuagesFolderAttrInput(attr)
+  def apply[S <: SSys[S]](attr: NuagesAttribute[S], value: Folder[S])
+                         (implicit tx: S#Tx, context: NuagesContext[S]): Input[S] = {
+    new NuagesFolderAttrInput(attr).init(value)
   }
 }
-final class NuagesFolderAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S])
-  extends /* NuagesAttributeImpl[S] */ NuagesDataImpl[S] with NuagesAttribute.Input[S] {
+final class NuagesFolderAttrInput[S <: SSys[S]] private(val attribute: NuagesAttribute[S])
+                                                       (implicit context: NuagesContext[S])
+  extends /* NuagesAttributeImpl[S] */ NuagesAttribute.Input[S] {
 
-  def main: NuagesPanel[S]  = attribute.parent.main
+  import TxnLike.peer
 
-  def name: String = attribute.name
+  private[this] var _observer: Disposable[S#Tx] = _
 
-  private[this] var _pNode: PNode = _
+  private[this] val map = Ref(Vector.empty[Input[S]])
 
-  def pNode: PNode = {
-    if (_pNode == null) throw new IllegalStateException(s"Component $this has no initialized GUI")
-    _pNode
+  private def init(folder: Folder[S])(implicit tx: S#Tx): this.type = {
+    folder.iterator.map(mkChild).to
+    _observer = folder.changed.react { implicit tx => upd => upd.changes.foreach {
+      case Folder.Added  (idx, elem) =>
+        val view = mkChild(elem)
+        map.transform(_.patch(idx, view :: Nil, 0))
+      case Folder.Removed(idx, elem) =>
+        val view = map.getAndTransform(_.patch(idx, Nil, 1)).apply(idx)
+        view.dispose()
+    }}
+    this
   }
 
-//  type A = Any
-//
-//  protected def init1(obj: Obj[S])(implicit tx: S#Tx): Unit = ???
-//
-//  protected def drawAdjust(g: Graphics2D, v: Vec[Double]): Unit = ???
-//
-//  protected def valueText(v: Vec[Double]): String = ???
-//
-//  protected def setControlTxn(v: Vec[Double])(implicit tx: S#Tx): Unit = ???
-//
-//  protected def renderValueUpdated(): Unit = ???
-//
-//  protected var valueA: A = _
-//
-//  def numChannels: Int = ???
-//
-  var value: Vec[Double] = _
+  private[this] def mkChild(elem: Obj[S])(implicit tx: S#Tx): NuagesAttribute.Input[S] =
+    NuagesAttribute.mkInput(attribute, elem)
 
-  def removeMapping()(implicit tx: S#Tx): Unit = ???
-
-  /** Adjusts the control with the given normalized value. */
-  def setControl(v: Vec[Double], instant: Boolean): Unit = ???
+  def value: Vec[Double] = ???
 
   def numChannels: Int = ???
 
-  protected def nodeSize: Float = ???
-
-  def dispose()(implicit tx: S#Tx): Unit = ???
-
-  protected def renderDetail(g: Graphics2D, vi: VisualItem): Unit = ???
-
-  protected def boundsResized(): Unit = ???
+  def dispose()(implicit tx: S#Tx): Unit = {
+    _observer.dispose()
+    map.swap(Vector.empty).foreach(_.dispose())
+  }
 }
