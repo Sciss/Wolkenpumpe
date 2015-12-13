@@ -96,12 +96,12 @@ trait NuagesAttrInputImpl[S <: SSys[S]] extends NuagesDataImpl[S] with NuagesAtt
     //    mapping.foreach { m =>
     //      m.synth.swap(None)(tx.peer).foreach(_.dispose())
     //    }
-    ??? // parent.params.remove(key)(tx.peer)
     main.deferVisTx(disposeGUI())
   }
 
   private[this] def disposeGUI(): Unit = {
-    ??? // nodeProvider.releasePNode(this)
+    attribute.removePNode(this, _pNode)
+    main.graph.removeNode(_pNode)
   }
 
   final def init(obj: Obj[S])(implicit tx: S#Tx): this.type = {

@@ -128,13 +128,15 @@ trait PanelImplTxnFuns[S <: Sys[S]] {
     finalizeProcAndCollector(gen, colSrcOpt, pt)
   }
 
-  // SCAN
-//  def insertFilter(pred: Scan[S], succ: Scan[S], fltSrc: Obj[S], fltPt: Point2D)(implicit tx: S#Tx): Unit = {
-//    val flt = Obj.copy(fltSrc)
-//
-//    flt match {
-//      case fltP: Proc[S] =>
-//        val procFlt  = fltP
+  def insertFilter(pred: Output[S], succ: (Obj[S], String), fltSrc: Obj[S], fltPt: Point2D)
+                  (implicit tx: S#Tx): Unit = {
+    val flt = Obj.copy(fltSrc)
+
+    flt match {
+      case fltP: Proc[S] =>
+        val procFlt  = fltP
+        ???
+        
 //        pred.add(procFlt.inputs.add(Proc.scanMainIn))
 //        // we may handle 'sinks' here by ignoring them when they don't have an `"out"` scan.
 //        for {
@@ -143,12 +145,12 @@ trait PanelImplTxnFuns[S <: Sys[S]] {
 //          pred  .remove(succ)
 //          fltOut.add   (succ)
 //        }
-//
-//      case _ =>
-//    }
-//
-//    finalizeProcAndCollector(flt, None, fltPt)
-//  }
+
+      case _ =>
+    }
+
+    finalizeProcAndCollector(flt, None, fltPt)
+  }
 
   def appendFilter(pred: Output[S], fltSrc: Obj[S], colSrcOpt: Option[Obj[S]], fltPt: Point2D)
                   (implicit tx: S#Tx): Unit = {

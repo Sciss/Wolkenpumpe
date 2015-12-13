@@ -99,6 +99,8 @@ object NuagesAttributeImpl {
   private abstract class Impl[S <: SSys[S]](val parent: NuagesObj[S], val key: String, val spec: ParamSpec)
     extends NuagesParamImpl[S] with NuagesAttribute[S] {
 
+    import TxnLike.peer
+
     // ---- abstract ----
 
     protected def input: NuagesAttribute.Input[S]
@@ -210,6 +212,9 @@ object NuagesAttributeImpl {
     protected def renderDetail(g: Graphics2D, vi: VisualItem): Unit =
       drawName(g, vi, NuagesDataImpl.diam * vi.getSize.toFloat * 0.5f)
 
-    def dispose()(implicit tx: S#Tx): Unit = ???
+    def dispose()(implicit tx: S#Tx): Unit = {
+      input.dispose()
+      parent.params.remove(key)
+    }
   }
 }

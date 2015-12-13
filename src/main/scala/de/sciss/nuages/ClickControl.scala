@@ -113,13 +113,12 @@ class ClickControl[S <: Sys[S]](main: NuagesPanel[S]) extends ControlAdapter {
           case (_: NuagesShapeRenderer[_], _: NuagesShapeRenderer[_]) =>
             val srcData = nSrc.get(COL_NUAGES).asInstanceOf[NuagesData[S]]
             val tgtData = nTgt.get(COL_NUAGES).asInstanceOf[NuagesData[S]]
-            ??? // SCAN
-//            if (srcData != null && tgtData != null)
-//              (srcData, tgtData) match {
-//                case (vOut: VisualScan[S], vIn: VisualScan[S]) =>
-//                  main.showInsertFilterDialog(vOut, vIn, e.getPoint)
-//                case _ =>
-//              }
+            if (srcData != null && tgtData != null)
+              (srcData, tgtData) match {
+                case (vOut: NuagesOutput[S], vIn: NuagesAttribute[S]) =>
+                  main.showInsertFilterDialog(vOut, vIn, e.getPoint)
+                case _ =>
+              }
 
           case _ =>
         }

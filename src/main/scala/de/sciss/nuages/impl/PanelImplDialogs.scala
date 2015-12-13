@@ -16,8 +16,8 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.swing.{Component, Swing}
 
 trait PanelImplDialogs[S <: Sys[S]] {
-  private var fltPred: NuagesOutput[S] = _
-  private var fltSucc: NuagesOutput[S] = _
+  private var fltPred: NuagesOutput   [S] = _
+  private var fltSucc: NuagesAttribute[S] = _
   private var overlay = Option.empty[Component]
 
   protected def listGen  : ListView[S, Obj[S], Unit]
@@ -33,8 +33,8 @@ trait PanelImplDialogs[S <: Sys[S]] {
 
   protected def component: Component
 
-  // SCAN
-//  protected def insertFilter(pred: Scan[S], succ: Scan[S], fltSrc: Obj[S], fltPt: Point2D)(implicit tx: S#Tx): Unit
+  protected def insertFilter(pred: Output[S], succ: (Obj[S], String), fltSrc: Obj[S], fltPt: Point2D)
+                            (implicit tx: S#Tx): Unit
 
   protected def createGenerator(genSrc: Obj[S], colSrcOpt: Option[Obj[S]], pt: Point2D)(implicit tx: S#Tx): Unit
 
@@ -59,13 +59,12 @@ trait PanelImplDialogs[S <: Sys[S]] {
                 case flt: Proc[S] =>
                   (fltPred.parent.obj, fltSucc.parent.obj) match {
                     case (pred: Proc[S], succ: Proc[S]) =>
-                      ??? // SCAN
-//                      for {
-//                        predScan <- pred.outputs.get(fltPred.key)
-//                        succScan <- succ.inputs .get(fltSucc.key)
-//                      } {
-//                        insertFilter(predScan, succScan, flt, displayPt)
-//                      }
+                      for {
+                        predScan <- pred.outputs.get(fltPred.key)
+                        // succScan <- succ.attr   .get(fltSucc.key)
+                      } {
+                        insertFilter(predScan, (succ, fltSucc.key), flt, displayPt)
+                      }
                     case _ =>
                   }
                 case _ =>
@@ -251,7 +250,7 @@ trait PanelImplDialogs[S <: Sys[S]] {
     showOverlayPanel(createGenDialog, Some(pt))
   }
 
-  def showInsertFilterDialog(pred: NuagesOutput[S], succ: NuagesOutput[S], pt: Point): Boolean = {
+  def showInsertFilterDialog(pred: NuagesOutput[S], succ: NuagesAttribute[S], pt: Point): Boolean = {
     requireEDT()
     fltPred = pred
     fltSucc = succ

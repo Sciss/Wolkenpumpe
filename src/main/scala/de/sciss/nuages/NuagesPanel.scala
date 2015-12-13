@@ -68,7 +68,7 @@ trait NuagesPanel[S <: Sys[S]] extends View[S] {
   // -- dialogs --
 
   def showCreateGenDialog(pt: Point): Boolean
-  def showInsertFilterDialog(vOut: NuagesOutput[S], vIn: NuagesOutput[S], pt: Point): Boolean
+  def showInsertFilterDialog(vOut: NuagesOutput[S], vIn: NuagesAttribute[S], pt: Point): Boolean
   def showAppendFilterDialog(vOut: NuagesOutput[S], pt: Point): Boolean
   def showInsertMacroDialog(): Boolean
 
