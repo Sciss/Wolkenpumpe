@@ -43,7 +43,7 @@ final class NuagesFolderAttrInput[S <: SSys[S]] private(val attribute: NuagesAtt
   private[this] val map = Ref(Vector.empty[Input[S]])
 
   private def init(folder: Folder[S])(implicit tx: S#Tx): this.type = {
-    folder.iterator.map(mkChild).to
+    map() = folder.iterator.map(mkChild).toVector
     _observer = folder.changed.react { implicit tx => upd => upd.changes.foreach {
       case Folder.Added  (idx, elem) =>
         val view = mkChild(elem)

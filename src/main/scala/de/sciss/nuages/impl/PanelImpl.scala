@@ -69,7 +69,7 @@ object PanelImpl {
     val missingScans  = tx.newInMemoryIDMap[List[NuagesAttribute[S]]]
     val transport     = Transport[S](aural)
     val surface       = nuages.surface
-    // transport.addObject(timelineObj)
+    // transport.addObject(surface.peer)
 
     surface match {
       case Surface.Timeline(tl) =>
@@ -129,7 +129,7 @@ final class PanelImplTimeline[S <: Sys[S]](protected val nuagesH: stm.Source[S#T
     (implicit val cursor: stm.Cursor[S],
      protected val workspace: WorkspaceHandle[S],
      val context: NuagesContext[S])
-  extends PanelImpl[S, Timeline[S]]
+  extends PanelImpl[S, Timeline[S], AuralObj.Timeline[S]]
   with PanelImplTimelineInit[S]
 
 final class PanelImplFolder[S <: Sys[S]](protected val nuagesH: stm.Source[S#Tx, Nuages[S]],
@@ -148,11 +148,12 @@ final class PanelImplFolder[S <: Sys[S]](protected val nuagesH: stm.Source[S#Tx,
     (implicit val cursor: stm.Cursor[S],
      protected val workspace: WorkspaceHandle[S],
      val context: NuagesContext[S])
-  extends PanelImpl[S, Folder[S]]
+  extends PanelImpl[S, Folder[S], AuralObj.Folder[S]]
   with PanelImplFolderInit[S]
 
 // nodeMap: uses timed-id as key
-trait PanelImpl[S <: Sys[S], Repr <: Obj[S]] extends NuagesPanel[S]
+trait PanelImpl[S <: Sys[S], Repr <: Obj[S], AuralRepr <: AuralObj[S]]
+  extends NuagesPanel[S]
   // here comes your cake!
   with PanelImplDialogs[S]
   with PanelImplTxnFuns[S]
@@ -169,6 +170,8 @@ trait PanelImpl[S <: Sys[S], Repr <: Obj[S]] extends NuagesPanel[S]
   // ---- abstract ----
 
   protected def nuagesH: stm.Source[S#Tx, Nuages[S]]
+
+  protected def auralReprRef: Ref[Option[AuralRepr]]
 
   // protected def scanMap: stm.IdentifierMap[S#ID, S#Tx, NuagesOutput[S]]
 
@@ -239,7 +242,7 @@ trait PanelImpl[S <: Sys[S], Repr <: Obj[S]] extends NuagesPanel[S]
 //    } (tx.peer)
 
   protected def disposeAuralObserver()(implicit tx: S#Tx): Unit = {
-    ??? // auralTimeline.set (None)(tx.peer)
+    auralReprRef.set(None)(tx.peer)
     auralObserver.swap(None)(tx.peer).foreach(_.dispose())
   }
 

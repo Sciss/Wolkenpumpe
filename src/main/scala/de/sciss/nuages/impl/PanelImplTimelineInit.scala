@@ -38,7 +38,7 @@ trait PanelImplTimelineInit[S <: Sys[S]] {
 
   // ---- impl ----
 
-  private val auralTimelineRef = Ref(Option.empty[AuralObj.Timeline[S]])
+  protected final val auralReprRef = Ref(Option.empty[AuralObj.Timeline[S]])
 
   final protected def initObservers(timeline: Timeline[S])(implicit tx: S#Tx): Unit = {
     observers ::= transport.react { implicit tx => {
@@ -52,8 +52,8 @@ trait PanelImplTimelineInit[S <: Sys[S]] {
             auralObjRemoved(view)
         }}
         disposeAuralObserver()
-        auralTimelineRef() = Some(auralTimeline)
-        auralObserver   () = Some(obs          )
+        auralReprRef () = Some(auralTimeline)
+        auralObserver() = Some(obs          )
 
       case Transport.ViewRemoved(_, auralTL: AuralObj.Timeline[S]) =>
         disposeAuralObserver()
@@ -105,7 +105,7 @@ trait PanelImplTimelineInit[S <: Sys[S]] {
     val vp      = NuagesObj[S](main, locO, timed.id, obj, hasMeter = config.meters,
       hasSolo = config.soloChannels.isDefined)
 
-    auralTimelineRef().foreach { auralTimeline =>
+    auralReprRef().foreach { auralTimeline =>
       auralTimeline.getView(timed).foreach { auralObj =>
         auralObjAdded(vp, auralObj)
       }

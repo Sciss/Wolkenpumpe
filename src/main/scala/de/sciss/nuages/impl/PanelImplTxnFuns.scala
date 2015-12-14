@@ -134,17 +134,22 @@ trait PanelImplTxnFuns[S <: Sys[S]] {
 
     flt match {
       case fltP: Proc[S] =>
-        val procFlt  = fltP
-        ???
-        
-//        pred.add(procFlt.inputs.add(Proc.scanMainIn))
-//        // we may handle 'sinks' here by ignoring them when they don't have an `"out"` scan.
-//        for {
-//          fltOut <- procFlt.outputs.get(Proc.scanMainOut)
-//        } {
-//          pred  .remove(succ)
-//          fltOut.add   (succ)
-//        }
+        val (succObj, succKey) = succ
+        val succAttr = succObj.attr
+        succAttr.get(Proc.scanMainIn).foreach {
+          case `pred` => succAttr.remove(succKey)
+          case f: Folder[S]     => f.remove(pred)
+          case tl: Timeline[S]  => ???
+        }
+
+        connect(pred, fltP)
+        // we may handle 'sinks' here by ignoring them when they don't have an `"out"` scan.
+        for {
+          fltOut <- fltP.outputs.get(Proc.scanMainOut)
+        } {
+          // pred  .remove(succ)
+          connect(fltOut, succObj, succKey) // fltOut.add   (succ)
+        }
 
       case _ =>
     }
@@ -152,23 +157,27 @@ trait PanelImplTxnFuns[S <: Sys[S]] {
     finalizeProcAndCollector(flt, None, fltPt)
   }
 
+  private[this] def connect(pred: Output[S], succ: Obj[S], succKey: String = Proc.scanMainIn)
+                           (implicit tx: S#Tx): Unit = {
+    val succAttr = succ.attr
+    succAttr.get(succKey) match {
+      case Some(f: Folder[S]) => f.addLast(pred)
+      case Some(tl: Timeline.Modifiable[S]) => ??? // tl.add(..., pred)
+      case Some(other) =>
+        val f = Folder[S]
+        f.addLast(other)
+        f.addLast(pred)
+        succAttr.put(succKey, f)
+      case None => succAttr.put(succKey, pred)
+    }
+  }
+
   def appendFilter(pred: Output[S], fltSrc: Obj[S], colSrcOpt: Option[Obj[S]], fltPt: Point2D)
                   (implicit tx: S#Tx): Unit = {
     val flt = Obj.copy(fltSrc)
 
     flt match {
-      case fltP: Proc[S] =>
-        val fltAttr = fltSrc.attr
-        fltAttr.get(Proc.scanMainIn) match {
-          case Some(f: Folder[S]) => f.addLast(pred)
-          // case Some(tl: Timeline.Modifiable[S]) => tl.add(..., pred)
-          case Some(other) =>
-            val f = Folder[S]
-            f.addLast(other)
-            f.addLast(pred)
-            fltAttr.put(Proc.scanMainIn, f)
-          case None => fltAttr.put(Proc.scanMainIn, pred)
-        }
+      case fltP: Proc[S] => connect(pred, fltP)
       case _ =>
     }
 

@@ -4,6 +4,7 @@ package impl
 import java.awt.geom.{Arc2D, Area}
 
 import de.sciss.lucre.expr.DoubleVector
+import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Sys, Obj}
 import de.sciss.lucre.synth.{Sys => SSys}
 
@@ -19,18 +20,20 @@ object NuagesDoubleVectorAttrInput extends NuagesAttribute.Factory {
                         (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute.Input[S] = {
 //    val spec  = NuagesAttributeImpl.getSpec(parent, key)
     val value     = obj.value
-    val editable  = DoubleVector.Var.unapply(obj).isDefined
-    new NuagesDoubleVectorAttrInput[S](attr, valueA = value, editable = editable).init(obj)
+    val sourceOpt = DoubleVector.Var.unapply(obj).map(tx.newHandle(_)) // .isDefined
+    new NuagesDoubleVectorAttrInput[S](attr, valueA = value, sourceOpt = sourceOpt).init(obj)
   }
 }
 final class NuagesDoubleVectorAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S],
                                                       @volatile var valueA: Vec[Double],
-                                                      protected val editable: Boolean)
+                                                      sourceOpt: Option[stm.Source[S#Tx, DoubleVector.Var[S]]])
   extends NuagesAttrInputImpl[S] {
 
   type A = Vec[Double]
 
   private[this] var allValuesEqual = false
+
+  protected def editable: Boolean = sourceOpt.isDefined
 
   def value: Vec[Double] = valueA
   def value_=(v: Vec[Double]): Unit = {
@@ -47,9 +50,11 @@ final class NuagesDoubleVectorAttrInput[S <: SSys[S]](val attribute: NuagesAttri
   def numChannels = valueA.size
 
   protected def setControlTxn(v: Vec[Double])(implicit tx: S#Tx): Unit = {
-    ???
 //    val attr = parent.obj.attr
-//    val vc   = DoubleVector.newConst[S](v)
+    sourceOpt.foreach { src =>
+      val vc = DoubleVector.newConst[S](v)
+      src().update(vc)
+    }
 //    attr.$[DoubleVector](key) match {
 //      case Some(DoubleVector.Var(vr)) => vr() = vc
 //      case _ => attr.put(key, DoubleVector.newVar(vc))

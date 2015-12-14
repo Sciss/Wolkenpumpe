@@ -37,7 +37,7 @@ trait PanelImplFolderInit[S <: Sys[S]] {
 
   // ---- impl ----
 
-  private val auralFolderRef = Ref(Option.empty[AuralObj.Folder[S]])
+  protected final val auralReprRef = Ref(Option.empty[AuralObj.Folder[S]])
 
   final protected def initObservers(folder: Folder[S])(implicit tx: S#Tx): Unit = {
     observers ::= transport.react { implicit tx => {
@@ -52,8 +52,8 @@ trait PanelImplFolderInit[S <: Sys[S]] {
             auralObjRemoved(view)
         }}
         disposeAuralObserver()
-        auralFolderRef() = Some(auralFolder)
-        auralObserver () = Some(obs        )
+        auralReprRef () = Some(auralFolder)
+        auralObserver() = Some(obs        )
 
       case Transport.ViewRemoved(_, auralTL: AuralObj.Timeline[S]) =>
         disposeAuralObserver()
@@ -79,7 +79,7 @@ trait PanelImplFolderInit[S <: Sys[S]] {
     val vp      = NuagesObj[S](main, locO, obj.id, obj, hasMeter = config.meters,
       hasSolo = config.soloChannels.isDefined)
 
-    auralFolderRef().foreach { auralFolder =>
+    auralReprRef().foreach { auralFolder =>
       auralFolder.getView(obj).foreach { auralObj =>
         auralObjAdded(vp, auralObj)
       }

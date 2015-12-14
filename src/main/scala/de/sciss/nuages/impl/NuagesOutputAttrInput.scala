@@ -50,8 +50,8 @@ final class NuagesOutputAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S
 
   private def init(obj: Output[S])(implicit tx: S#Tx): this.type = {
     context.getAux[NuagesOutput[S]](obj.id).fold[Unit] {
-      _observer = context.observeAux(obj.id) { implicit tx => {
-        case NuagesContext.AuxAdded(_, view: NuagesOutput[S]) => setView(view)
+      _observer = context.observeAux[NuagesOutput[S]](obj.id) { implicit tx => {
+        case NuagesContext.AuxAdded(_, view) => setView(view)
       }}
     } (setView)
     this
