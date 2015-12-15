@@ -20,7 +20,7 @@ import de.sciss.lucre.expr.{BooleanObj, DoubleObj, DoubleVector, IntObj}
 import de.sciss.lucre.stm.{TxnLike, Obj, Sys}
 import de.sciss.lucre.swing.requireEDT
 import de.sciss.lucre.synth.{Sys => SSys}
-import de.sciss.nuages.NuagesAttribute.{Factory, Input, Mapping}
+import de.sciss.nuages.NuagesAttribute.{Factory, Input}
 import de.sciss.synth.proc.{Output, Folder}
 import prefuse.data.{Node => PNode, Edge => PEdge}
 import prefuse.visual.VisualItem
@@ -60,9 +60,10 @@ object NuagesAttributeImpl {
                            (implicit tx: S#Tx, context: NuagesContext[S]): Input[S] = {
     val tid = value.tpe.typeID
     val opt = map.get(tid)
-    val factory = opt.getOrElse(
-      throw new IllegalArgumentException(s"No NuagesAttribute available for ${attr.key} / $value / type 0x${tid.toHexString}")
-    )
+    val factory = opt.getOrElse {
+      val msg = s"No NuagesAttribute available for ${attr.key} / $value / type 0x${tid.toHexString}"
+      throw new IllegalArgumentException(msg)
+    }
     factory[S](value = value.asInstanceOf[factory.Repr[S]], attr = attr)
   }
 

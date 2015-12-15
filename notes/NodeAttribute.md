@@ -83,3 +83,30 @@ the free and non-free nodes:
 
 # Updating controls
 
+Say the implementation type is `A` (e.g. `IntObj`, `DoubleObj`, `DoubleVector`).
+For `!isTimeline`:
+
+- if we have `A.Var`, we simply update the var. So it doesn't
+  matter whether the parent is `.attr` or a `Folder` or a `Timeline`.
+- if we do not have `A.Var` -- we currently ignore that case and `editable == false`
+   
+For `isTimeline`:
+
+- we should never ask for `A.Var`, but we do create `A.Var` instances, so the stuff
+  becomes editable for example in an offline timeline view or if we play a "slice"
+  in Nuages without transport (could we have a `timeline.viewAsFolderAt(time)` view?)
+- (well, not necessarily)
+- the parent could be `.attr` (was scalar until now), `Folder` (was scalar until now),
+  or `Timeline`.
+- the result must be a value on a `Timeline`.
+- clearly we need a parent object for the `Input` that is not necessarily the 
+  `NuagesAttribute` itself
+  
+Let's say we always have this new type of parent object, no matter `isTimeline`.
+Then we can simplify by assuming we have a `Type.Expr` so we know there are constants
+and variables. The `Input` then merely needs to provide a new constant, and the parent
+can handle all editing (as outlined in the list above).
+
+Time in the timeline should always be relative to the creation time of the parent object.
+If makes sense to first implement the removal of objects from the peer, because at that
+point we need to figure out how to preserve the `SpanLike` association.
