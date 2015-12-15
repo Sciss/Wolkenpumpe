@@ -29,18 +29,20 @@ lazy val scissDSPVersion            = "1.2.2"
 lazy val webLaFVersion              = "1.28"
 lazy val lucreVersion               = "3.2.2"
 lazy val scalaTestVersion           = "2.2.5"
+lazy val scoptVersion               = "3.3.0"
 
 libraryDependencies ++= Seq(
-  "de.sciss" %% "soundprocesses-views"    % soundProcessesVersion,
-  "de.sciss" %% "scalacolliderswing-core" % scalaColliderSwingVersion,
-  "de.sciss" %% "fileutil"                % fileUtilVersion,
-  "de.sciss" %% "lucreswing"              % lucreSwingVersion,
-  "de.sciss" %% "swingplus"               % swingPlusVersion,
-  "de.sciss" %% "scissdsp"                % scissDSPVersion,
-  "de.sciss" %  "intensitypalette"        % intensityVersion,
-  "de.sciss" %% "lucre-bdb"               % lucreVersion       % "test",
-  "de.sciss" %  "weblaf"                  % webLaFVersion      % "test",
-  "org.scalatest" %% "scalatest"          % scalaTestVersion   % "test"
+  "de.sciss"          %% "soundprocesses-views"    % soundProcessesVersion,
+  "de.sciss"          %% "scalacolliderswing-core" % scalaColliderSwingVersion,
+  "de.sciss"          %% "fileutil"                % fileUtilVersion,
+  "de.sciss"          %% "lucreswing"              % lucreSwingVersion,
+  "de.sciss"          %% "swingplus"               % swingPlusVersion,
+  "de.sciss"          %% "scissdsp"                % scissDSPVersion,
+  "de.sciss"          %  "intensitypalette"        % intensityVersion,
+  "de.sciss"          %% "lucre-bdb"               % lucreVersion       % "test",
+  "de.sciss"          %  "weblaf"                  % webLaFVersion      % "test",
+  "org.scalatest"     %% "scalatest"              % scalaTestVersion   % "test",
+  "com.github.scopt"  %% "scopt" % scoptVersion
 )
 
 scalacOptions ++= Seq("-deprecation", "-unchecked", "-feature", "-encoding", "utf8", "-Xfuture")

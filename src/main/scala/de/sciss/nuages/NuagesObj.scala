@@ -15,6 +15,7 @@ package de.sciss.nuages
 
 import java.awt.geom.Point2D
 
+import de.sciss.lucre.expr.SpanLikeObj
 import de.sciss.lucre.stm.{Obj, Sys}
 import de.sciss.lucre.synth.{Synth, Sys => SSys}
 import prefuse.visual.AggregateItem
@@ -23,10 +24,11 @@ import scala.concurrent.stm.TMap
 
 object NuagesObj {
   def apply[S <: SSys[S]](main: NuagesPanel[S], locOption: Option[Point2D],
-                         id: S#ID, obj: Obj[S],
-                         hasMeter: Boolean, hasSolo: Boolean)
-                        (implicit tx: S#Tx, context: NuagesContext[S]): NuagesObj[S] =
-    impl.NuagesObjImpl(main, locOption, id, obj, hasMeter = hasMeter, hasSolo = hasSolo)
+                          id: S#ID, obj: Obj[S], spanOption: Option[SpanLikeObj[S]],
+                          hasMeter: Boolean, hasSolo: Boolean)
+                         (implicit tx: S#Tx, context: NuagesContext[S]): NuagesObj[S] =
+    impl.NuagesObjImpl(main, locOption = locOption, id = id, obj = obj, spanOption = spanOption,
+      hasMeter = hasMeter, hasSolo = hasSolo)
 }
 
 /** The GUI representation of a `proc.Obj`.
@@ -40,6 +42,8 @@ trait NuagesObj[S <: Sys[S]]
 
 //  def spanH: stm.Source[S#Tx, SpanLikeObj[S]]
 //  def objH : stm.Source[S#Tx, Obj[S]]
+
+  // def spanOption(implicit tx: S#Tx): Option[SpanLikeObj[S]]
 
   def obj(implicit tx: S#Tx): Obj[S]
 

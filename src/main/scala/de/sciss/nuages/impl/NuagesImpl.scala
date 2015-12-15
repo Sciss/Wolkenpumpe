@@ -28,7 +28,7 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 
 object NuagesImpl {
   private[this] def mkCategFolder[S <: Sys[S]]()(implicit tx: S#Tx): proc.Folder[S] = {
-    val folder    = proc.Folder[S]
+    val folder = proc.Folder[S]
     folder.addLast(mkFolderObj(Nuages.NameGenerators))
     folder.addLast(mkFolderObj(Nuages.NameFilters   ))
     folder.addLast(mkFolderObj(Nuages.NameCollectors))

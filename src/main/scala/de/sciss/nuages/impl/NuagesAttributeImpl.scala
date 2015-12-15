@@ -21,7 +21,7 @@ import de.sciss.lucre.stm.{TxnLike, Obj, Sys}
 import de.sciss.lucre.swing.requireEDT
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.nuages.NuagesAttribute.{Factory, Input}
-import de.sciss.synth.proc.{Output, Folder}
+import de.sciss.synth.proc.{Timeline, Output, Folder}
 import prefuse.data.{Node => PNode, Edge => PEdge}
 import prefuse.visual.VisualItem
 
@@ -75,8 +75,8 @@ object NuagesAttributeImpl {
     DoubleVector        .typeID -> NuagesDoubleVectorAttrInput,
 //    Grapheme.Expr.Audio .typeID -> AudioGraphemeAttribute,
     Output              .typeID -> NuagesOutputAttrInput,
-    Folder              .typeID -> NuagesFolderAttrInput
-//    Timeline            .typeID -> NuagesTimelineAttribute
+    Folder              .typeID -> NuagesFolderAttrInput,
+    Timeline            .typeID -> NuagesTimelineAttrInput
   )
   
   // ----
@@ -184,10 +184,10 @@ object NuagesAttributeImpl {
             case 0 => mkEmpty()
             case 1 => // become internal
               val g   = main.graph
-              g.removeNode(ni)
               val vis = main.visualization
               val vi  = vis.getVisualItem(NuagesPanel.GROUP_GRAPH, ni)
               parent.aggr.removeItem(vi)
+              g.removeNode(ni)
               val n1  = _freeNodes.head
               val e   = g.addEdge(n1, parent.pNode)
               val vi1 = vis.getVisualItem(NuagesPanel.GROUP_GRAPH, n1)

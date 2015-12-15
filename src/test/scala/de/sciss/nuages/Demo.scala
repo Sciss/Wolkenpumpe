@@ -1,30 +1,40 @@
 package de.sciss.nuages
 
 import com.alee.laf.WebLookAndFeel
+import de.sciss.file.File
 import de.sciss.lucre.stm.store.BerkeleyDB
 import de.sciss.lucre.synth.InMemory
 import de.sciss.synth.Server
 import de.sciss.synth.proc.Durable
 
-import scala.swing.SwingApplication
+object Demo {
+  case class Config(durable: Option[File] = None, timeline: Boolean = false)
 
-object Demo extends SwingApplication {
   val DEBUG = true
 
-  def startup(args: Array[String]): Unit = {
+  def main(args: Array[String]): Unit = {
+    val p = new scopt.OptionParser[Config]("Demo") {
+      opt[File]('d', "durable") text "Durable database" action { case (f, c) => c.copy(durable = Some(f)) }
+      opt[Unit]('t', "timeline") text "Use performance timeline" action { case (_, c) => c.copy(timeline = true) }
+    }
+    p.parse(args, Config()).fold(sys.exit(1))(run)
+  }
+
+  def run(config: Config): Unit = {
     WebLookAndFeel.install()
 
-    if (args.headOption == Some("--durable")) {
-      type S = Durable
-      val factory = BerkeleyDB.tmp()
-      implicit val system = Durable(factory)
-      val w = new Wolkenpumpe[S]
-      val nuagesH = system.root { implicit tx =>
-        Nuages.timeline[S]
-      }
-      w.run(nuagesH)
+    config.durable match {
+      case Some(f) =>
+        type S = Durable
+        val factory = BerkeleyDB.tmp()
+        implicit val system = Durable(factory)
+        val w = new Wolkenpumpe[S]
+        val nuagesH = system.root { implicit tx =>
+          if (config.timeline) Nuages.timeline[S] else Nuages.folder[S]
+        }
+        w.run(nuagesH)
 
-    } else {
+    case None =>
       type S = InMemory
       implicit val system = InMemory()
       val w = new Wolkenpumpe[S] {
@@ -81,7 +91,10 @@ object Demo extends SwingApplication {
       }
 
       // val nuagesH = system.step { implicit tx => tx.newHandle(Nuages.timeline[S]) }
-      val nuagesH = system.step { implicit tx => tx.newHandle(Nuages.folder[S]) }
+      val nuagesH = system.step { implicit tx =>
+        val nuages = if (config.timeline) Nuages.timeline[S] else Nuages.folder[S]
+        tx.newHandle(nuages)
+      }
       w.run(nuagesH)
     }
   }

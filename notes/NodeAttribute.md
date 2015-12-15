@@ -110,3 +110,8 @@ can handle all editing (as outlined in the list above).
 Time in the timeline should always be relative to the creation time of the parent object.
 If makes sense to first implement the removal of objects from the peer, because at that
 point we need to figure out how to preserve the `SpanLike` association.
+
+## `NuagesTimelineAttrInput`
+
+We need to relative offset of the parent obj to the nuages transport. Perhaps `NuagesObj`
+could carry `Proc` or `Timeline.Entry` (which is an `Obj` as well)?

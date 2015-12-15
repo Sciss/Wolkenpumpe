@@ -20,6 +20,7 @@ import java.awt.{Color, Graphics2D}
 
 import de.sciss.dsp.FastLog
 import de.sciss.intensitypalette.IntensityPalette
+import de.sciss.lucre.expr.SpanLikeObj
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Disposable, Obj, TxnLike}
 import de.sciss.lucre.swing.requireEDT
@@ -38,11 +39,10 @@ object NuagesObjImpl {
   private val colrPeak = Array.tabulate(91)(ang => new Color(IntensityPalette.apply(ang / 90f)))
 
   def apply[S <: Sys[S]](main: NuagesPanel[S], locOption: Option[Point2D], id: S#ID, obj: Obj[S],
-                         hasMeter: Boolean, hasSolo: Boolean)
+                         spanOption: Option[SpanLikeObj[S]], hasMeter: Boolean, hasSolo: Boolean)
                         (implicit tx: S#Tx, context: NuagesContext[S]): NuagesObj[S] = {
-    val res = new NuagesObjImpl(main, tx.newHandle(id), tx.newHandle(obj),
-      obj.name, hasMeter = hasMeter, hasSolo = hasSolo)
-    res.init(id, obj, locOption)
+    val res = new NuagesObjImpl(main, obj.name, hasMeter = hasMeter, hasSolo = hasSolo)
+    res.init(id, obj, spanOption, locOption)
   }
 
   private val fastLog = FastLog(base = 10, q = 11)
@@ -56,8 +56,6 @@ object NuagesObjImpl {
       NuagesAttribute /* .tryApply */ (key = key, value = obj, parent = parent)
 }
 final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
-                                               idH: stm.Source[S#Tx, S#ID],
-                                               objH: stm.Source[S#Tx, Obj[S]],
                                                var name: String,
                                                hasMeter: Boolean, hasSolo: Boolean)(implicit context: NuagesContext[S])
   extends NuagesNodeRootImpl[S] with NuagesObj[S] {
@@ -85,7 +83,15 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
 
   def obj(implicit tx: S#Tx): Obj[S] = objH()
 
-  def init(id: S#ID, obj: Obj[S], locOption: Option[Point2D])(implicit tx: S#Tx): this.type = {
+  private[this] var idH         : stm.Source[S#Tx, S#ID]                    = _
+  private[this] var objH        : stm.Source[S#Tx, Obj[S]]                  = _
+  private[this] var spanOptionH : Option[stm.Source[S#Tx, SpanLikeObj[S]]]  = _
+
+  def init(id: S#ID, obj: Obj[S], spanOption: Option[SpanLikeObj[S]], locOption: Option[Point2D])
+          (implicit tx: S#Tx): this.type = {
+    idH         = tx.newHandle(id)
+    objH        = tx.newHandle(obj)
+    spanOptionH = spanOption.map(tx.newHandle(_))
     main.nodeMap.put(id, this)
     main.deferVisTx(initGUI(locOption))
     obj match {
