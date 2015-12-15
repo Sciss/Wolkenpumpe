@@ -14,7 +14,7 @@
 package de.sciss.nuages
 package impl
 
-import de.sciss.lucre.stm.{Disposable, Sys}
+import de.sciss.lucre.stm.{Obj, Disposable, Sys}
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.synth.proc.Output
 import prefuse.data.{Node => PNode}
@@ -38,6 +38,8 @@ final class NuagesOutputAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S
 
   private[this] var _observer: Disposable[S#Tx] = null
   private[this] var _pNode: PNode = null
+
+  def tryMigrate(to: Obj[S])(implicit tx: S#Tx): Boolean = ???!
 
   def dispose()(implicit tx: S#Tx): Unit = {
     if (_observer != null) _observer.dispose()

@@ -81,7 +81,8 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
 
   def aggr: AggregateItem = _aggr
 
-  def obj(implicit tx: S#Tx): Obj[S] = objH()
+  def obj       (implicit tx: S#Tx): Obj[S]                 = objH()
+  def spanOption(implicit tx: S#Tx): Option[SpanLikeObj[S]] = spanOptionH.map(_.apply())
 
   private[this] var idH         : stm.Source[S#Tx, S#ID]                    = _
   private[this] var objH        : stm.Source[S#Tx, Obj[S]]                  = _
@@ -100,23 +101,6 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
     }
     this
   }
-
-//  def acquirePNode(a: NuagesAttribute[S]): Node = {
-//    requireEDT()
-//    val n   = main.graph.addNode()
-//    val vi  = main.visualization.getVisualItem(NuagesPanel.GROUP_GRAPH, n)
-//    vi.set(NuagesPanel.COL_NUAGES, a)
-//    aggr.addItem(vi)
-//    n
-//  }
-
-//  def releasePNode(a: NuagesAttribute[S]): Unit = {
-//    requireEDT()
-//    val n   = a.pNode
-//    val vi  = main.visualization.getVisualItem(NuagesPanel.GROUP_GRAPH, n)
-//    aggr.removeItem(vi)
-//    main.graph.removeNode(n)
-//  }
 
   private[this] def initProc(proc: Proc[S])(implicit tx: S#Tx): Unit = {
 //    proc.inputs .iterator.foreach { case (key, scan) =>

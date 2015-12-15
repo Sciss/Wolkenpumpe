@@ -3,6 +3,7 @@ package impl
 
 import java.awt.Graphics2D
 
+import de.sciss.lucre.stm.Obj
 import de.sciss.lucre.synth.Sys
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -19,6 +20,8 @@ trait NuagesScalarAttrInput[S <: Sys[S]] extends NuagesAttrInputImpl[S] {
 //  }
 
 //  def value1_=(v: Double): Unit = valueA = fromDouble(v)
+
+  def tryMigrate(to: Obj[S])(implicit tx: S#Tx): Boolean = ???!
 
   def numChannels = 1
 

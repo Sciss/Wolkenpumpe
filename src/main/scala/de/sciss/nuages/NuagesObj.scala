@@ -43,9 +43,8 @@ trait NuagesObj[S <: Sys[S]]
 //  def spanH: stm.Source[S#Tx, SpanLikeObj[S]]
 //  def objH : stm.Source[S#Tx, Obj[S]]
 
-  // def spanOption(implicit tx: S#Tx): Option[SpanLikeObj[S]]
-
-  def obj(implicit tx: S#Tx): Obj[S]
+  def obj       (implicit tx: S#Tx): Obj[S]
+  def spanOption(implicit tx: S#Tx): Option[SpanLikeObj[S]]
 
   // ---- methods to be called on the EDT ----
 

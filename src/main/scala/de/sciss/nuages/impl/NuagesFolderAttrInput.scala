@@ -42,6 +42,8 @@ final class NuagesFolderAttrInput[S <: SSys[S]] private(val attribute: NuagesAtt
 
   private[this] val map = Ref(Vector.empty[Input[S]])
 
+  def tryMigrate(to: Obj[S])(implicit tx: S#Tx): Boolean = ???!
+
   private def init(folder: Folder[S])(implicit tx: S#Tx): this.type = {
     map() = folder.iterator.map(mkChild).toVector
     _observer = folder.changed.react { implicit tx => upd => upd.changes.foreach {

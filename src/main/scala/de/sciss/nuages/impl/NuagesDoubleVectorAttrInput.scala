@@ -37,6 +37,8 @@ final class NuagesDoubleVectorAttrInput[S <: SSys[S]](val attribute: NuagesAttri
 
   def value: Vec[Double] = valueA
 
+  def tryMigrate(to: Obj[S])(implicit tx: S#Tx): Boolean = ???!
+
   //  def value_=(v: Vec[Double]): Unit = {
 //    //    if (v.size != valueA.size)
 //    //      throw new IllegalArgumentException(s"Channel mismatch, expected $numChannels but given ${v.size}")

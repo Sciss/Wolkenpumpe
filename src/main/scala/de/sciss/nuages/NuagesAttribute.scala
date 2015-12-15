@@ -65,6 +65,14 @@ object NuagesAttribute {
 
     def numChannels: Int
 
+    /** Try to migrate the passed object to this input view.
+      * That is, if the view can exchange its model for this
+      * new object, it should do so and return `true`.
+      * Returning `false` means the object cannot be consumed,
+      * for example because it is of a different type.
+      */
+    def tryMigrate(to: Obj[S])(implicit tx: S#Tx): Boolean
+
     // def editable: Boolean
   }
 }
