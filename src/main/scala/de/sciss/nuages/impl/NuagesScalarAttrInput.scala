@@ -12,12 +12,13 @@ trait NuagesScalarAttrInput[S <: Sys[S]] extends NuagesAttrInputImpl[S] {
   protected def fromDouble(in: Double): A
 
   def value: Vec[Double] = Vector(toDouble(valueA))
-  def value_=(v: Vec[Double]): Unit = {
-    if (v.size != 1) throw new IllegalArgumentException("Trying to set multi-channel parameter on scalar control")
-    valueA = fromDouble(v.head)
-  }
 
-  def value1_=(v: Double): Unit = valueA = fromDouble(v)
+//  def value_=(v: Vec[Double]): Unit = {
+//    if (v.size != 1) throw new IllegalArgumentException("Trying to set multi-channel parameter on scalar control")
+//    valueA = fromDouble(v.head)
+//  }
+
+//  def value1_=(v: Double): Unit = valueA = fromDouble(v)
 
   def numChannels = 1
 

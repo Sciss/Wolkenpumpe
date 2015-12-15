@@ -78,3 +78,8 @@ the free and non-free nodes:
 - `case (0, 0) =>` nada
 - `case (1, 0) =>` internalise
 - `case _ =>` summary (aux) node
+
+-----------------
+
+# Updating controls
+

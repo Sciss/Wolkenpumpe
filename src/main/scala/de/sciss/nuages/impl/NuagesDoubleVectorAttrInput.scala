@@ -36,16 +36,17 @@ final class NuagesDoubleVectorAttrInput[S <: SSys[S]](val attribute: NuagesAttri
   protected def editable: Boolean = sourceOpt.isDefined
 
   def value: Vec[Double] = valueA
-  def value_=(v: Vec[Double]): Unit = {
-    //    if (v.size != valueA.size)
-    //      throw new IllegalArgumentException(s"Channel mismatch, expected $numChannels but given ${v.size}")
-    valueA = v
-  }
 
-  def value1_=(v: Double): Unit = {
-    if (valueA.size != 1) throw new IllegalArgumentException(s"Channel mismatch, expected $numChannels but given 1")
-    valueA = Vector.empty :+ v
-  }
+  //  def value_=(v: Vec[Double]): Unit = {
+//    //    if (v.size != valueA.size)
+//    //      throw new IllegalArgumentException(s"Channel mismatch, expected $numChannels but given ${v.size}")
+//    valueA = v
+//  }
+
+//  def value1_=(v: Double): Unit = {
+//    if (valueA.size != 1) throw new IllegalArgumentException(s"Channel mismatch, expected $numChannels but given 1")
+//    valueA = Vector.empty :+ v
+//  }
 
   def numChannels = valueA.size
 

@@ -361,6 +361,8 @@ object KeyControl {
               d.itemKeyReleased(vi, e1)
             case _ =>
           }
+
+        case _ =>
       }
 
     override def itemKeyTyped(vi: VisualItem, e: KeyEvent): Unit =
