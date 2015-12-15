@@ -14,16 +14,11 @@
 package de.sciss.nuages
 
 import de.sciss.lucre.stm.Sys
-import prefuse.data.Edge
 
-trait NuagesParam[S <: Sys[S]] extends NuagesData[S] /* NuagesNode[S] */ {
+trait NuagesParam[S <: Sys[S]] extends NuagesData[S] {
   // ---- methods to be called on the EDT ----
 
-// we currently refer to it:
-//  /** The corresponding Prefuse edge. */
-//  def pEdge: Edge
-
-  val parent: NuagesObj[S]
+  def parent: NuagesObj[S]
 
   /** The scan or attribute key in `parent` to point to this component. */
   def key: String

@@ -62,6 +62,15 @@ trait NuagesData[S <: Sys[S]] extends Disposable[S#Tx] {
   /** Called when the pointer device has dragged the item. */
   def itemDragged (vi: VisualItem, e: MouseEvent, pt: Point2D): Unit
 
+  /** Called when a key is pressed over the item. */
+  def itemKeyPressed(vi: VisualItem, e: KeyControl.Pressed): Unit
+
+  /** Called when a key is released over the item. */
+  def itemKeyReleased(vi: VisualItem, e: KeyControl.Pressed): Unit
+
+  /** Called when a key has been typed over the item. */
+  def itemKeyTyped(vi: VisualItem, e: KeyControl.Typed): Unit
+
   /** GUI property: name displayed. */
   def name: String
 }

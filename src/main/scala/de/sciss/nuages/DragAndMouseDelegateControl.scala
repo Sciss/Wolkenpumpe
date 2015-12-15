@@ -1,5 +1,5 @@
 /*
- *  DragControl.scala
+ *  DragAndMouseDelegateControl.scala
  *  (Wolkenpumpe)
  *
  *  Copyright (c) 2008-2015 Hanns Holger Rutz. All rights reserved.
@@ -13,16 +13,21 @@
 
 package de.sciss.nuages
 
-import de.sciss.lucre.synth.Sys
-import prefuse.controls.ControlAdapter
-import javax.swing.SwingUtilities
 import java.awt.Cursor
 import java.awt.event.MouseEvent
 import java.awt.geom.Point2D
-import prefuse.{Visualization, Display}
-import prefuse.visual.{EdgeItem, NodeItem, AggregateItem, VisualItem}
+import javax.swing.SwingUtilities
 
-object DragControl {
+import de.sciss.lucre.synth.Sys
+import prefuse.controls.ControlAdapter
+import prefuse.visual.{AggregateItem, EdgeItem, NodeItem, VisualItem}
+import prefuse.{Display, Visualization}
+
+/** This control allows the moving around of vertices,
+  * but also invokes the mouse control on `NuagesData` instances
+  * (`itemEntered`, `itemExited`, `itemPressed`, `itemReleased` and `itemDragged`).
+  */
+object DragAndMouseDelegateControl {
 
   import NuagesPanel._
 
@@ -41,7 +46,7 @@ object DragControl {
     vis.getRenderer(vi) match {
       case pr: NuagesShapeRenderer[_] =>
         val data = vi.get(COL_NUAGES).asInstanceOf[NuagesData[S]]
-        if (data != null) Some(data) else None
+        Option(data)
 
       case _ => None
     }
@@ -50,9 +55,9 @@ object DragControl {
     var started = false
   }
 }
-class DragControl[S <: Sys[S]](vis: Visualization) extends ControlAdapter {
+class DragAndMouseDelegateControl[S <: Sys[S]](vis: Visualization) extends ControlAdapter {
 
-  import DragControl._
+  import DragAndMouseDelegateControl._
   import NuagesPanel._
 
   private var hoverItem : Option[VisualItem] = None

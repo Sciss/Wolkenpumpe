@@ -35,7 +35,7 @@ final class NuagesDoubleAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S
 
   type A = Double
 
-  protected def editable: Boolean = ???
+  protected def editable: Boolean = ???!
 
   protected def toDouble  (in: Double): Double = in
   protected def fromDouble(in: Double): Double = in

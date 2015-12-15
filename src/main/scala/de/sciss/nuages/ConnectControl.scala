@@ -111,9 +111,9 @@ class ConnectControl[S <: Sys[S]](main: NuagesPanel[S])
       case _ => None
     }
     if (tgt != dr.target) {
-      dr.target.foreach(t => DragControl.setSmartFixed(vis, t.vi, state = false))
+      dr.target.foreach(t => DragAndMouseDelegateControl.setSmartFixed(vis, t.vi, state = false))
       dr.target = tgt
-      dr.target.foreach(t => DragControl.setSmartFixed(vis, t.vi, state = false))
+      dr.target.foreach(t => DragAndMouseDelegateControl.setSmartFixed(vis, t.vi, state = false))
     }
   }
 
@@ -125,7 +125,7 @@ class ConnectControl[S <: Sys[S]](main: NuagesPanel[S])
     drag = None
     dr.target.foreach { tgt =>
       val tgtV = tgt.visual
-      DragControl.setSmartFixed(vis, tgt.vi, state = false)
+      DragAndMouseDelegateControl.setSmartFixed(vis, tgt.vi, state = false)
       main.cursor.step { implicit tx =>
         val srcVScan = dr.source.visual
         val srcObj   = srcVScan.parent.obj
@@ -135,7 +135,7 @@ class ConnectControl[S <: Sys[S]](main: NuagesPanel[S])
           srcProc.outputs.get(srcVScan.key).foreach { srcScan =>
             tgtV match {
               case tgtVScan: NuagesOutput[S] =>
-                ??? // SCAN
+                ???! // SCAN
 //                for (tgtScan <- tgtProc.inputs.get(tgtVScan.key))
 //                  srcScan.add(Scan.Link.Scan(tgtScan))
               case vCtl: NuagesAttribute[S] =>

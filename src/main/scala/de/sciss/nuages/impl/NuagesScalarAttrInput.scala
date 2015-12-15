@@ -22,7 +22,7 @@ trait NuagesScalarAttrInput[S <: Sys[S]] extends NuagesAttrInputImpl[S] {
   def numChannels = 1
 
   protected def setControlTxn(v: Vec[Double])(implicit tx: S#Tx): Unit = {
-    ???
+    ???!
 //    if (v.size != 1) throw new IllegalArgumentException("Trying to set multi-channel parameter on scalar control")
 //    val attr = parent.obj.attr
 //    val vc   = DoubleObj.newConst[S](v.head)

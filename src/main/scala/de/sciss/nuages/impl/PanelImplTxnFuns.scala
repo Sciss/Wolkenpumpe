@@ -139,7 +139,7 @@ trait PanelImplTxnFuns[S <: Sys[S]] {
         succAttr.get(Proc.scanMainIn).foreach {
           case `pred` => succAttr.remove(succKey)
           case f: Folder[S]     => f.remove(pred)
-          case tl: Timeline[S]  => ???
+          case tl: Timeline[S]  => ???!
         }
 
         connect(pred, fltP)
@@ -162,7 +162,7 @@ trait PanelImplTxnFuns[S <: Sys[S]] {
     val succAttr = succ.attr
     succAttr.get(succKey) match {
       case Some(f: Folder[S]) => f.addLast(pred)
-      case Some(tl: Timeline.Modifiable[S]) => ??? // tl.add(..., pred)
+      case Some(tl: Timeline.Modifiable[S]) => ???! // tl.add(..., pred)
       case Some(other) =>
         val f = Folder[S]
         f.addLast(other)

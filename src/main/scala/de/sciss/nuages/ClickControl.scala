@@ -13,36 +13,15 @@
 
 package de.sciss.nuages
 
-import de.sciss.lucre.synth.Sys
-import prefuse.controls.ControlAdapter
 import java.awt.event.MouseEvent
-import prefuse.Display
-import de.sciss.synth.proc._
-import prefuse.visual.{VisualItem, EdgeItem}
-import prefuse.util.GraphicsLib
-import prefuse.util.display.DisplayLib
 import java.awt.geom.{Point2D, Rectangle2D}
 
-///** Simple interface to query currently selected
-//  * proc factory and to feedback on-display positions
-//  * for newly created procs.
-//  *
-//  * Methods are guaranteed to be called in the awt
-//  * event thread.
-//  *
-//  * XXX TODO: remove this
-//  */
-//@deprecated("this trait is not used any longer", "1.0.1")
-//trait ProcFactoryProvider[S <: Sys[S]] {
-//  type PrH = stm.Source[S#Tx, Obj[S]]
-//
-//  def genFactory:      Option[PrH]
-//  def filterFactory:   Option[PrH]
-//  def diffFactory:     Option[PrH]
-//  def collector:       Option[PrH]
-//
-//  def setLocationHint(p: Obj[S], loc: Point2D)(implicit tx: S#Tx): Unit
-//}
+import de.sciss.lucre.synth.Sys
+import prefuse.Display
+import prefuse.controls.ControlAdapter
+import prefuse.util.GraphicsLib
+import prefuse.util.display.DisplayLib
+import prefuse.visual.{EdgeItem, VisualItem}
 
 class ClickControl[S <: Sys[S]](main: NuagesPanel[S]) extends ControlAdapter {
 
@@ -134,7 +113,7 @@ class ClickControl[S <: Sys[S]](main: NuagesPanel[S]) extends ControlAdapter {
       case (_: NuagesShapeRenderer[_], _: NuagesShapeRenderer[_]) =>
         val srcData = nSrc.get(COL_NUAGES).asInstanceOf[NuagesData[S]]
         val tgtData = nTgt.get(COL_NUAGES).asInstanceOf[NuagesData[S]]
-        ??? // SCAN
+        ???! // SCAN
 //        if (srcData != null && tgtData != null)
 //          (srcData, tgtData) match {
 //            case (srcVScan: VisualScan[S], tgtVScan: VisualScan[S]) =>

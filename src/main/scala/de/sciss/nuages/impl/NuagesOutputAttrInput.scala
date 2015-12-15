@@ -33,7 +33,8 @@ object NuagesOutputAttrInput extends NuagesAttribute.Factory {
 final class NuagesOutputAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S])(implicit context: NuagesContext[S])
   extends NuagesAttribute.Input[S] {
 
-  import attribute.parent.main.deferVisTx
+  private[this] def deferVisTx(body: => Unit)(implicit tx: S#Tx): Unit =
+    attribute.parent.main.deferVisTx(body)
 
   private[this] var _observer: Disposable[S#Tx] = null
   private[this] var _pNode: PNode = null
@@ -64,7 +65,7 @@ final class NuagesOutputAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S
     log(s"NuagesOutput for AttrInput: $view / $attribute")
   }
 
-  def value: Vec[Double] = ???
+  def value: Vec[Double] = ???!
 
-  def numChannels: Int = ???
+  def numChannels: Int = ???!
 }

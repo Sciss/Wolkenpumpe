@@ -150,7 +150,7 @@ trait PanelImplGuiInit[S <: Sys[S]] extends ComponentHolder[Component] {
     _dsp.addControlListener(new ZoomControl     ())
     _dsp.addControlListener(new WheelZoomControl())
     _dsp.addControlListener(new PanControl        )
-    _dsp.addControlListener(new DragControl     (_vis))
+    _dsp.addControlListener(new DragAndMouseDelegateControl     (_vis))
     _dsp.addControlListener(new ClickControl    (main))
     _dsp.addControlListener(new ConnectControl  (main))
     _dsp.addControlListener(keyControl)

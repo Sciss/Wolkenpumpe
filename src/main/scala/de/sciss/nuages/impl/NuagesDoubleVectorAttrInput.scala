@@ -127,7 +127,7 @@ final class NuagesDoubleVectorAttrInput[S <: SSys[S]](val attribute: NuagesAttri
       setSpine(v.head)
       g.draw(gLine)
     } else {
-      ???
+      ???!
       //    setSpine(v.head)
       //    g.draw(gLine)
     }

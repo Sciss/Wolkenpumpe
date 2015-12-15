@@ -13,30 +13,27 @@
 
 package de.sciss.nuages
 
-import java.awt.datatransfer.{Clipboard, ClipboardOwner, DataFlavor, Transferable, UnsupportedFlavorException}
+import java.awt.datatransfer.{DataFlavor, Transferable, UnsupportedFlavorException}
 import java.awt.event.{KeyEvent, MouseEvent}
 import java.awt.geom.Point2D
-import java.awt.{Point, Color, Toolkit}
+import java.awt.{Color, Point}
 import javax.swing.KeyStroke
-import javax.swing.event.{DocumentEvent, DocumentListener, AncestorEvent, AncestorListener}
+import javax.swing.event.{AncestorEvent, AncestorListener, DocumentEvent, DocumentListener}
 
-import de.sciss.desktop.KeyStrokes
 import de.sciss.lucre.expr.StringObj
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{Obj, Disposable, IdentifierMap}
+import de.sciss.lucre.stm.{Disposable, IdentifierMap, Obj}
 import de.sciss.lucre.synth.Sys
 import de.sciss.nuages.NuagesPanel._
-import de.sciss.numbers
 import de.sciss.swingplus.ListView
-import de.sciss.synth.proc.{ObjKeys, Folder}
+import de.sciss.synth.proc.{Folder, ObjKeys}
 import prefuse.controls.{Control, ControlAdapter}
 import prefuse.visual.{EdgeItem, NodeItem, VisualItem}
 
-import scala.annotation.switch
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm.TMap
-import scala.swing.{ScrollPane, Label, Orientation, Swing, TextField}
-import scala.util.Try
+import scala.swing.event.Key
+import scala.swing.{Orientation, ScrollPane, TextField}
 
 object KeyControl {
   def apply[S <: Sys[S]](main: NuagesPanel[S])(implicit tx: S#Tx): Control with Disposable[S#Tx] = {
@@ -45,10 +42,19 @@ object KeyControl {
     res
   }
 
+  /** The keyboard event.
+    *
+    * @param char    the typed character
+    * @param count   the type repeat count
+    */
+  final case class Typed(char: Char, count: Int)
+
+  final case class Pressed(code: Key.Value, modifiers: Int)
+
   private def internalFlavor[A](implicit ct: reflect.ClassTag[A]): DataFlavor =
     new DataFlavor(DataFlavor.javaJVMLocalObjectMimeType + ";class=\"" + ct.runtimeClass.getName + "\"")
 
-  private final class ControlDrag(val values: Vec[Double], val spec: ParamSpec) extends Transferable {
+  final class ControlDrag(val values: Vec[Double], val spec: ParamSpec) extends Transferable {
     def getTransferDataFlavors: Array[DataFlavor] = Array(ControlFlavor)
     def isDataFlavorSupported(_flavor: DataFlavor): Boolean = _flavor == ControlFlavor
 
@@ -58,7 +64,7 @@ object KeyControl {
     }
   }
 
-  private val ControlFlavor = internalFlavor[ControlDrag]
+  val ControlFlavor: DataFlavor = internalFlavor[ControlDrag]
 
   private trait Category[S <: Sys[S]] extends Disposable[S#Tx] {
     def get(ks  : KeyStroke): Option[stm.Source[S#Tx, Obj[S]]]
@@ -66,8 +72,6 @@ object KeyControl {
 
     def names: Iterator[String]
   }
-
-  // private final val colrGreen = new Color(0x00, 0x80, 0x00)
 
   private abstract class CategoryImpl[S <: Sys[S]] extends Category[S] {
     protected def observer: Disposable[S#Tx]
@@ -110,7 +114,7 @@ object KeyControl {
   }
 
   private final class Impl[S <: Sys[S]](main: NuagesPanel[S])
-    extends ControlAdapter with Disposable[S#Tx] with ClipboardOwner {
+    extends ControlAdapter with Disposable[S#Tx] /* with ClipboardOwner */ {
 
     private[this] var filters   : Category[S] = _
     private[this] var generators: Category[S] = _
@@ -119,12 +123,13 @@ object KeyControl {
     private[this] val lastPt = new Point
     private[this] val p2d    = new Point2D.Float // throw-away
 
-    private[this] val meta = KeyStrokes.menu1.mask
+    private[this] var lastVi      : VisualItem  = _
+    private[this] var lastChar    : Char        = _
+    private[this] var lastTyped   : Long        = _
+    private[this] var typedCount  : Int         = 0
 
-    private[this] var lastVi    : VisualItem  = _
-    private[this] var lastChar  : Char        = _
-    private[this] var lastTyped : Long        = _
-
+    // we track the mouse cursor position
+    override def mousePressed(e: MouseEvent): Unit = main.display.requestFocus()
     override def mouseDragged(e: MouseEvent): Unit = lastPt.setLocation(e.getX, e.getY)
     override def mouseMoved  (e: MouseEvent): Unit = lastPt.setLocation(e.getX, e.getY)
 
@@ -157,11 +162,6 @@ object KeyControl {
       filters     = n.filters   .fold(mkEmptyCategory())(mkCategory)
       generators  = n.generators.fold(mkEmptyCategory())(mkCategory)
       collectors  = n.collectors.fold(mkEmptyCategory())(mkCategory)
-    }
-
-    override def mousePressed(e: MouseEvent): Unit = {
-      // println("requestFocus")
-      main.display.requestFocus()
     }
 
     def dispose()(implicit tx: S#Tx): Unit = {
@@ -216,7 +216,7 @@ object KeyControl {
           if (e.getKeyCode == KeyEvent.VK_ENTER) {
             perform { (vOut, vIn, pt) =>
               showCategoryInput(filters) { implicit tx => (obj, pt0) =>
-                ??? // SCAN
+                ???! // SCAN
 //                val pred = vOut.scan
 //                val succ = vIn .scan
 //                // main.display.getTransform.transform(pt0, p2d)
@@ -229,7 +229,7 @@ object KeyControl {
             filters.get(ks).foreach { objH =>
               perform { (vOut, vIn, pt) =>
                 main.cursor.step { implicit tx =>
-                  ??? // SCAN
+                  ???! // SCAN
 //                  val pred = vOut.scan
 //                  val succ = vIn .scan
 //                  main.insertFilter(pred = pred, succ = succ, flt = objH(), pt = pt)
@@ -240,53 +240,36 @@ object KeyControl {
 
         case ni: NodeItem =>
           ni.get(COL_NUAGES) match {
-            case vc: NuagesAttribute[S] =>
-              if ((e.getModifiers & meta) == meta) {
-                val clip = Toolkit.getDefaultToolkit.getSystemClipboard
-                if (e.getKeyCode == KeyEvent.VK_C) {        // copy
-                  val data = new ControlDrag(vc.value, vc.spec)
-                  clip.setContents(data, this)
+            case d: NuagesData[S] =>
+              val e1 = Pressed(code = Key(e.getKeyCode), modifiers = e.getModifiers)
+              d.itemKeyPressed(vi, e1)
 
-                } else if (e.getKeyCode == KeyEvent.VK_V) { // paste
-                  if (clip.isDataFlavorAvailable(ControlFlavor)) {
-                    val data = clip.getData(ControlFlavor).asInstanceOf[ControlDrag]
-                    vc.setControl(data.values, instant = true) // XXX TODO -- which want to rescale
-                  }
+              if (d.isInstanceOf[NuagesOutput[S]] && d.name == "out") {
+                def perform[A](fun: Point2D => A): A = {
+                  val vis   = main.visualization
+                  val _ve   = vis.getVisualItem(NuagesPanel.GROUP_GRAPH, ni)
+                  val r     = _ve.getBounds
+                  p2d.setLocation(r.getCenterX, r.getCenterY)
+                  fun(p2d)
                 }
-              } else {
 
                 if (e.getKeyCode == KeyEvent.VK_ENTER) {
-                  val vis   = main.visualization
-                  val vi    = vis.getVisualItem(NuagesPanel.GROUP_GRAPH, ni)
-                  showParamInput(vc, vi)
-                }
-              }
-
-            case vs: NuagesOutput[S] if vs.name == "out" =>
-              def perform[A](fun: Point2D => A): A = {
-                val vis   = main.visualization
-                val _ve   = vis.getVisualItem(NuagesPanel.GROUP_GRAPH, ni)
-                val r     = _ve.getBounds
-                p2d.setLocation(r.getCenterX, r.getCenterY)
-                fun(p2d)
-              }
-
-              if (e.getKeyCode == KeyEvent.VK_ENTER) {
-                perform { pt =>
-                  val category = if (e.isShiftDown) collectors else filters
-                  showCategoryInput(category) { implicit tx => (obj, pt0) =>
-                    ??? // SCAN
-//                    main.appendFilter(pred = vs.scan, flt = obj, colOpt = None, pt = pt0)
-                  }
-                }
-
-              } else {
-                val ks = KeyStroke.getKeyStroke(e.getKeyCode, e.getModifiers)
-                filters.get(ks).foreach { objH =>
                   perform { pt =>
-                    main.cursor.step { implicit tx =>
-                      ??? // SCAN
-//                      main.appendFilter(pred = vs.scan, flt = objH(), colOpt = None, pt = pt)
+                    val category = if (e.isShiftDown) collectors else filters
+                    showCategoryInput(category) { implicit tx => (obj, pt0) =>
+                      ???! // SCAN
+  //                    main.appendFilter(pred = vs.scan, flt = obj, colOpt = None, pt = pt0)
+                    }
+                  }
+
+                } else {
+                  val ks = KeyStroke.getKeyStroke(e.getKeyCode, e.getModifiers)
+                  filters.get(ks).foreach { objH =>
+                    perform { pt =>
+                      main.cursor.step { implicit tx =>
+                        ???! // SCAN
+  //                      main.appendFilter(pred = vs.scan, flt = objH(), colOpt = None, pt = pt)
+                      }
                     }
                   }
                 }
@@ -369,124 +352,39 @@ object KeyControl {
       main.showOverlayPanel(p, Some(pt))
     }
 
-    private def showParamInput(vc: NuagesAttribute[S], vi: VisualItem): Unit = {
-      val p = new OverlayPanel {
-        val ggValue = new TextField(f"${vc.spec.map(vc.value.head)}%1.3f", 12)
-        ggValue.background = Color.black
-        ggValue.foreground = Color.white
-        ggValue.peer.addAncestorListener(new AncestorListener {
-          def ancestorRemoved(e: AncestorEvent): Unit = ()
-          def ancestorMoved  (e: AncestorEvent): Unit = ()
-          def ancestorAdded  (e: AncestorEvent): Unit = ggValue.requestFocus()
-        })
-        contents += new BasicPanel(Orientation.Horizontal) {
-          contents += ggValue
-          if (vc.spec.unit.nonEmpty) {
-            contents += Swing.HStrut(4)
-            contents += new Label(vc.spec.unit) {
-              foreground = Color.white
-            }
-          }
-        }
-        onComplete {
-          close()
-          Try(ggValue.text.toDouble).toOption.foreach { newValue =>
-            val v   = vc.spec.inverseMap(vc.spec.clip(newValue))
-            val vs  = Vector.fill(vc.numChannels)(v)
-            vc.setControl(vs, instant = true)
-          }
-        }
-      }
-      main.showOverlayPanel(p, Some(calcPanelPoint(p, vi)))
-    }
-
-    private def calcPanelPoint(p: OverlayPanel, vi: VisualItem): Point = {
-      val vis   = main.visualization
-      val b     = vi.getBounds
-      val dim   = p.preferredSize
-      main.display.getTransform.transform(new Point2D.Double(b.getCenterX , b.getMaxY), p2d)
-      new Point(p2d.getX.toInt - dim.width/2, p2d.getY.toInt - 12)
-    }
-
-    override def itemKeyTyped(vi: VisualItem, e: KeyEvent): Unit = {
+    override def itemKeyReleased(vi: VisualItem, e: KeyEvent): Unit =
       vi match {
         case ni: NodeItem =>
           ni.get(COL_NUAGES) match {
-            case vc: NuagesAttribute[S] =>
-              val thisChar  = e.getKeyChar
-              val thisTyped = System.currentTimeMillis()
+            case  d: NuagesData[S] =>
+              val e1 = Pressed(code = Key(e.getKeyCode), modifiers = e.getModifiers)
+              d.itemKeyReleased(vi, e1)
+            case _ =>
+          }
+      }
 
-              // for 'amp' and 'gain', key must be repeated twice
-              def checkDouble(out: Vec[Double]): Vec[Double] = {
-                val ok = (vc.name != "amp" && vc.name != "gain") ||
-                  ((lastVi == vi && lastChar == thisChar) && thisTyped - lastTyped < 500)
-                if (ok) out else Vector.empty
-              }
+    override def itemKeyTyped(vi: VisualItem, e: KeyEvent): Unit =
+      vi match {
+        case ni: NodeItem =>
+          ni.get(COL_NUAGES) match {
+            case d: NuagesData[S] =>
+              // check
+              val thisChar    = e.getKeyChar
+              val thisTyped   = System.currentTimeMillis()
+              val isRepeat    = (lastVi == vi && lastChar == thisChar) && thisTyped - lastTyped < 500
+              typedCount      = if (isRepeat) typedCount + 1 else 0
+              lastVi          = vi
+              lastChar        = thisChar
+              lastTyped       = thisTyped
 
-              val v = (thisChar: @switch) match {
-                case 'r'  => val v = math.random; checkDouble(Vector.fill(vc.numChannels)(v))
-                case 'R'  => checkDouble(Vector.fill(vc.numChannels)(math.random))
-                case 'n'  => Vector.fill(vc.numChannels)(0.0)
-                case 'x'  => checkDouble(Vector.fill(vc.numChannels)(1.0))
-                case 'c'  => Vector.fill(vc.numChannels)(0.5)
-                case '['  =>
-                  val s  = vc.spec
-                  val vs = vc.value
-                  val vNew = if (s.warp == IntWarp) {
-                    vs.map(v => s.inverseMap(s.map(v) - 1))
-                  } else vs.map(_ - 0.005)
-                  vNew.map(math.max(0.0, _))
-
-                case ']'  =>
-                  val s  = vc.spec
-                  val vs = vc.value
-                  val vNew = if (s.warp == IntWarp) {
-                    vs.map(v => s.inverseMap(s.map(v) + 1))
-                  } else vs.map(_ + 0.005)
-                  vNew.map(math.min(1.0, _))
-
-                case '{'  =>  // decrease channel spacing
-                  val vs      = vc.value
-                  val max     = vs.max
-                  val min     = vs.min
-                  val mid     = (min + max) / 2
-                  val newMin  = math.min(mid, min + 0.0025)
-                  val newMax  = math.max(mid, max - 0.0025)
-                  if (newMin == min && newMax == max) Vector.empty else {
-                    import numbers.Implicits._
-                    vs.map(_.linlin(min, max, newMin, newMax))
-                  }
-
-                case '}'  =>  // increase channel spacing
-                  val vs      = vc.value
-                  val max     = vs.max
-                  val min     = vs.min
-                  val newMin  = math.max(0.0, min - 0.0025)
-                  val newMax  = math.min(1.0, max + 0.0025)
-                  if (newMin == min && newMax == max) Vector.empty else {
-                    import numbers.Implicits._
-                    if (min == max) { // all equal -- use a random spread
-                      vs.map(in => (in + math.random.linlin(0.0, 1.0, -0.0025, +0.0025)).clip(0.0, 1.0))
-                    } else {
-                      vs.map(_.linlin(min, max, newMin, newMax))
-                    }
-                  }
-
-                case _ => Vector.empty
-              }
-              if (v.nonEmpty) vc.setControl(v, instant = true)
-
-              lastVi    = vi
-              lastChar  = thisChar
-              lastTyped = thisTyped
+              val e1 = Typed(char = e.getKeyChar, count = typedCount)
+              d.itemKeyTyped(vi, e1)
 
             case _ =>
           }
-
         case _ =>
       }
-    }
 
-    def lostOwnership(clipboard: Clipboard, contents: Transferable): Unit = ()
+    // def lostOwnership(clipboard: Clipboard, contents: Transferable): Unit = ()
   }
 }

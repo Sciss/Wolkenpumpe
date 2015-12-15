@@ -109,7 +109,7 @@ object NuagesAttributeImpl {
 
     def numChannels: Int = input.numChannels
 
-    def value: Vec[Double] = ???
+    def value: Vec[Double] = ???!
 
     private[this] var _state: State = EmptyState
     private[this] var _freeNodes  = Set.empty[PNode]
@@ -202,10 +202,10 @@ object NuagesAttributeImpl {
 
     //    def mapping: Option[Mapping[S]] = ...
 
-    def removeMapping()(implicit tx: S#Tx): Unit = ???
+    def removeMapping()(implicit tx: S#Tx): Unit = ???!
 
     /** Adjusts the control with the given normalized value. */
-    def setControl(v: Vec[Double], instant: Boolean): Unit = ???
+    def setControl(v: Vec[Double], instant: Boolean): Unit = ???!
 
     protected def boundsResized(): Unit = ()
 

@@ -30,4 +30,10 @@ package object nuages {
 
   @elidable(CONFIG) private[nuages] def log(what: => String): Unit =
     if (showLog) println(logHeader.format(new Date()) + what)
+
+  /** Exception are sometimes swallowed without printing in a transaction. This ensures a print. */
+  def ???! : Nothing = {
+    new Exception("???").printStackTrace()
+    ???
+  }
 }

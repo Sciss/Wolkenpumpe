@@ -64,6 +64,8 @@ object NuagesAttribute {
     def value: Vec[Double]
 
     def numChannels: Int
+
+    // def editable: Boolean
   }
 }
 trait NuagesAttribute[S <: Sys[S]] extends /* NuagesData[S] */ NuagesParam[S] {

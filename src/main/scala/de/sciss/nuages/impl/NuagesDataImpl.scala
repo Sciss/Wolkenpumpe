@@ -119,6 +119,10 @@ trait NuagesDataImpl[S <: Sys[S]] extends NuagesData[S] {
   def itemReleased(vi: VisualItem, e: MouseEvent, pt: Point2D) = ()
   def itemDragged (vi: VisualItem, e: MouseEvent, pt: Point2D) = ()
 
+  def itemKeyPressed (vi: VisualItem, e: KeyControl.Pressed) = ()
+  def itemKeyReleased(vi: VisualItem, e: KeyControl.Pressed) = ()
+  def itemKeyTyped   (vi: VisualItem, e: KeyControl.Typed  ) = ()
+
   private[this] var lastFontT: AffineTransform = _
   private[this] var lastLabel: String = _
   private[this] var labelShape: Shape = _

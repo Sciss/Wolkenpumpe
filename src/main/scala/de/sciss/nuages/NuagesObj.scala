@@ -17,7 +17,6 @@ import java.awt.geom.Point2D
 
 import de.sciss.lucre.stm.{Obj, Sys}
 import de.sciss.lucre.synth.{Synth, Sys => SSys}
-import prefuse.data.{Node => PNode}
 import prefuse.visual.AggregateItem
 
 import scala.concurrent.stm.TMap
@@ -37,7 +36,7 @@ object NuagesObj {
 trait NuagesObj[S <: Sys[S]]
   extends NuagesNode[S] {
 
-  val main: NuagesPanel[S]
+  def main: NuagesPanel[S]
 
 //  def spanH: stm.Source[S#Tx, SpanLikeObj[S]]
 //  def objH : stm.Source[S#Tx, Obj[S]]

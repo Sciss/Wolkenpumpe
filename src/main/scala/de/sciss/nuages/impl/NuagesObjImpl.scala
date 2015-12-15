@@ -280,7 +280,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
         main.nuages.surface match {
           case Surface.Timeline(tlm: Timeline.Modifiable[S]) =>
             // XXX TODO --- ought to be an update to the span variable
-            tlm.remove(???, objH())
+            tlm.remove(???!, objH())
           case Surface.Folder  (f) =>
             f.remove(objH())
             // ...
