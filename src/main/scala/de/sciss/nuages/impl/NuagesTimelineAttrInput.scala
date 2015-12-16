@@ -71,8 +71,18 @@ final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesA
     this
   }
 
-  protected def addNode   (timed: Timed[S])(implicit tx: S#Tx): Unit = ???
-  protected def removeNode(timed: Timed[S])(implicit tx: S#Tx): Unit = ???
+  protected def addNode(timed: Timed[S])(implicit tx: S#Tx): Unit = {
+    val childView = NuagesAttribute.mkInput(attribute, timed.value)
+    viewSet += childView
+    map.put(timed.id, childView)
+  }
+
+  protected def removeNode(timed: Timed[S])(implicit tx: S#Tx): Unit = {
+    val childView = map.getOrElse(timed.id, throw new IllegalStateException(s"View for $timed not found"))
+    val found = viewSet.remove(childView)
+    assert(found)
+    childView.dispose()
+  }
 
   def value: Vec[Double] = ???!
 
