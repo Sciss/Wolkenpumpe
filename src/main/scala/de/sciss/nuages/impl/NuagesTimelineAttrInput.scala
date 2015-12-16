@@ -14,14 +14,13 @@
 package de.sciss.nuages
 package impl
 
-import de.sciss.lucre.bitemp.BiGroup
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{Obj, TxnLike, Disposable, IdentifierMap, Sys}
+import de.sciss.lucre.stm.{Disposable, IdentifierMap, Obj, Sys, TxnLike}
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.nuages.NuagesAttribute.Input
 import de.sciss.span.Span
 import de.sciss.synth.proc.Timeline.Timed
-import de.sciss.synth.proc.{Transport, Timeline}
+import de.sciss.synth.proc.{Timeline, Transport}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm.{Ref, TSet}
@@ -73,38 +72,53 @@ final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesA
   @inline
   private[this] def transport: Transport[S] = attribute.parent.main.transport
 
-  private def init(timeline: Timeline[S])(implicit tx: S#Tx): this.type = {
-    timelineH       = tx.newHandle(timeline)
-    val parentView  = attribute.parent
-    val spanOption  = parentView.spanOption
-    val time0       = parentTimeOffset()
+  private def init(timeline0: Timeline[S])(implicit tx: S#Tx): this.type = {
+    timelineH = tx.newHandle(timeline0)
 
-    if (time0 != Long.MaxValue) {
-      timeline.intersect(time0).foreach { case (childSpan, childSeq) =>
-        childSeq.foreach(addChild)
+    {
+      val time0 = parentTimeOffset()
+      if (time0 != Long.MaxValue) {
+        timeline0.intersect(time0).foreach { case (childSpan, childSeq) =>
+          childSeq.foreach(addChild)
+        }
       }
     }
 
-    _observers ::= timeline.changed.react { implicit tx => upd => upd.changes.foreach {
+    _observers ::= timeline0.changed.react { implicit tx => upd => upd.changes.foreach {
       case Timeline.Added(span, entry) =>
         val t    = transport
         val time = parentTimeOffset()
         if (span.contains(time)) addChild(entry)
-        if (t.isPlaying && span.overlaps(Span.from(time0))) {
+        if (t.isPlaying && span.overlaps(Span.from(time))) {
           // new child might start or stop before currently
           // scheduled next event. Simply reset scheduler
           val timeline = timelineH()
           clearSched()
           schedNext(timeline, time)
-        } else {
-          addChild(entry)
         }
 
       case Timeline.Removed(span, entry) =>
         removeChild(entry, assertExists = false)
 
       case Timeline.Moved(change, entry) =>
-        ???!
+        val t    = transport
+        val time = parentTimeOffset()
+        if (change.before.contains(time)) {
+          removeChild(entry, assertExists = true)
+        }
+        if (change.now.contains(time)) {
+          addChild(entry)
+        }
+        if (t.isPlaying && {
+          val from = Span.from(time)
+          change.before.overlaps(from) || change.now.overlaps(from)
+        }) {
+          // new child might start or stop before currently
+          // scheduled next event. Simply reset scheduler
+          val timeline = timelineH()
+          clearSched()
+          schedNext(timeline, time)
+        }
     }}
 
     val t = transport
@@ -118,11 +132,13 @@ final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesA
       case _ =>
     }}
 
-    spanOption.foreach { spanObj =>
-      _observers ::= spanObj.changed.react { implicit tx => upd =>
-        ???!
-      }
-    }
+    // NOTE: this is now also not needed as long
+    // as we don't have relative time offset!
+//    attribute.parent.spanOption.foreach { spanObj =>
+//      _observers ::= spanObj.changed.react { implicit tx => upd =>
+//        ...
+//      }
+//    }
 
     if (t.isPlaying) play(t.position)
 

@@ -100,6 +100,7 @@ object NuagesAttributeImpl {
   private abstract class Impl[S <: SSys[S]](val parent: NuagesObj[S], val key: String, val spec: ParamSpec)
     extends NuagesParamImpl[S] with NuagesAttribute[S] {
 
+
     import TxnLike.peer
 
     // ---- abstract ----
@@ -107,6 +108,8 @@ object NuagesAttributeImpl {
     protected def input: NuagesAttribute.Input[S]
 
     // ---- impl ----
+
+    override def toString = s"NuagesAttribute($parent, $key)"
 
     def numChannels: Int = input.numChannels
 

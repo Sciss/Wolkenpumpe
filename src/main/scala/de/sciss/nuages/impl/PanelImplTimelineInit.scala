@@ -73,6 +73,10 @@ trait PanelImplTimelineInit[S <: Sys[S]] {
       case Transport.ViewRemoved(_, auralTL: AuralObj.Timeline[S]) =>
         disposeAuralObserver()
 
+      case Transport.Play(_, pos) => ???!
+      case Transport.Stop(_, _) => ???!
+      case Transport.Seek(_, pos, isPlaying) => ???!
+
       case _ =>
     }}
     transport.addObject(timeline)
@@ -87,8 +91,8 @@ trait PanelImplTimelineInit[S <: Sys[S]] {
           if (span.contains(transport.position)) removeNode(span, timed)
         // XXX TODO - update scheduler
 
-
-        case other => if (PanelImpl.DEBUG) println(s"OBSERVED: $other")
+        case Timeline.Moved(change, timed) =>
+          ???!
       }
     }
 

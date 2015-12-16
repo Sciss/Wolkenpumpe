@@ -26,6 +26,7 @@ import de.sciss.lucre.stm.{Disposable, Obj, TxnLike}
 import de.sciss.lucre.swing.requireEDT
 import de.sciss.lucre.synth.{Synth, Sys}
 import de.sciss.nuages.Nuages.Surface
+import de.sciss.span.Span
 import de.sciss.synth.proc.Implicits._
 import de.sciss.synth.proc.{ObjKeys, Proc, Timeline}
 import prefuse.util.ColorLib
@@ -76,6 +77,8 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
   val params  = TMap.empty[String, NuagesAttribute[S]]
 
   private[this] val _meterSynth = Ref(Option.empty[Synth])
+
+  override def toString = s"NuagesObj($name)@${hashCode.toHexString}"
 
   def parent: NuagesObj[S] = this
 
@@ -268,9 +271,23 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
         }
 
         main.nuages.surface match {
-          case Surface.Timeline(tlm: Timeline.Modifiable[S]) =>
-            // XXX TODO --- ought to be an update to the span variable
-            tlm.remove(???!, objH())
+          case Surface.Timeline(tl: Timeline.Modifiable[S]) =>
+            val oldSpan     = spanOption.getOrElse(throw new IllegalStateException(s"Using a timeline nuages but no span!?"))
+            val frame       = main.transport.position
+            val newSpanVal  = oldSpan.value.intersect(Span.until(frame))
+            val _obj        = objH()
+            if (newSpanVal.nonEmpty) {
+              oldSpan match {
+                case SpanLikeObj.Var(vr) => vr() = newSpanVal
+                case _ =>
+                  val newSpan = SpanLikeObj.newVar[S](newSpanVal)
+                  tl.remove(oldSpan, _obj)
+                  tl.add   (newSpan, _obj)
+              }
+            } else {
+              tl.remove(oldSpan, _obj)
+            }
+
           case Surface.Folder  (f) =>
             f.remove(objH())
             // ...

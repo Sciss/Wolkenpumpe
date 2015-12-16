@@ -51,6 +51,8 @@ final class NuagesOutputImpl[S <: Sys[S]] private(val parent: NuagesObj[S],
   import NuagesDataImpl._
   import NuagesOutputImpl.addEdgeGUI
 
+  override def toString = s"NuagesOutput($parent, $key)"
+
   protected def nodeSize = 0.333333f
 
   var sources   = Set.empty[Edge]
