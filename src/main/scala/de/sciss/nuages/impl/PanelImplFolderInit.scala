@@ -50,6 +50,8 @@ trait PanelImplFolderInit[S <: Sys[S]] {
 
   // ---- impl ----
 
+  protected final def isTimeline = false
+
   protected final val auralReprRef = Ref(Option.empty[AuralObj.Folder[S]])
 
   final protected def initObservers(folder: Folder[S])(implicit tx: S#Tx): Unit = {

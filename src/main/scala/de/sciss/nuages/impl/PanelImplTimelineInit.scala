@@ -51,6 +51,8 @@ trait PanelImplTimelineInit[S <: Sys[S]] {
 
   // ---- impl ----
 
+  protected final def isTimeline = true
+
   protected final val auralReprRef = Ref(Option.empty[AuralObj.Timeline[S]])
 
   final protected def initObservers(timeline: Timeline[S])(implicit tx: S#Tx): Unit = {
