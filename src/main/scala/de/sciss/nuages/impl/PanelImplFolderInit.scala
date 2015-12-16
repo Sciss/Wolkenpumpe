@@ -54,6 +54,8 @@ trait PanelImplFolderInit[S <: Sys[S]] {
 
   protected final val auralReprRef = Ref(Option.empty[AuralObj.Folder[S]])
 
+  protected final def disposeTransport()(implicit tx: S#Tx): Unit = ()
+
   final protected def initObservers(folder: Folder[S])(implicit tx: S#Tx): Unit = {
     observers ::= transport.react { implicit tx => {
       case Transport.ViewAdded(_, auralFolder: AuralObj.Folder[S]) =>

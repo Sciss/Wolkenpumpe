@@ -166,6 +166,7 @@ trait PanelImpl[S <: Sys[S], Repr <: Obj[S], AuralRepr <: AuralObj[S]]
 
   import NuagesPanel.{GROUP_SELECTION, GROUP_GRAPH, COL_NUAGES}
   import PanelImpl._
+  import TxnLike.peer
 
   // ---- abstract ----
 
@@ -173,7 +174,7 @@ trait PanelImpl[S <: Sys[S], Repr <: Obj[S], AuralRepr <: AuralObj[S]]
 
   protected def auralReprRef: Ref[Option[AuralRepr]]
 
-  // protected def scanMap: stm.IdentifierMap[S#ID, S#Tx, NuagesOutput[S]]
+  protected def disposeTransport()(implicit tx: S#Tx): Unit
 
   // ---- impl ----
 
@@ -200,7 +201,7 @@ trait PanelImpl[S <: Sys[S], Repr <: Obj[S], AuralRepr <: AuralObj[S]]
   }
 
   def dispose()(implicit tx: S#Tx): Unit = {
-    implicit val itx = tx.peer
+    disposeTransport()
     deferTx(stopAnimation())
     clearSolo()
     observers.foreach(_.dispose())
@@ -242,8 +243,8 @@ trait PanelImpl[S <: Sys[S], Repr <: Obj[S], AuralRepr <: AuralObj[S]]
 //    } (tx.peer)
 
   protected def disposeAuralObserver()(implicit tx: S#Tx): Unit = {
-    auralReprRef.set(None)(tx.peer)
-    auralObserver.swap(None)(tx.peer).foreach(_.dispose())
+    auralReprRef() = None
+    auralObserver.swap(None).foreach(_.dispose())
   }
 
   def selection: Set[NuagesNode[S]] = {
@@ -260,11 +261,11 @@ trait PanelImpl[S <: Sys[S], Repr <: Obj[S], AuralRepr <: AuralObj[S]]
     } .toSet
   }
 
-  def dispose(): Unit = {
-    stopAnimation()
-
-    if (config.collector) println("WARNING! NuagesPanel.dispose -- doesn't handle the collector yet")
-  }
+//  def dispose(): Unit = {
+//    stopAnimation()
+//
+//    if (config.collector) println("WARNING! NuagesPanel.dispose -- doesn't handle the collector yet")
+//  }
 
   private[this] val guiCode = TxnLocal(init = Vector.empty[() => Unit], afterCommit = handleGUI)
 
@@ -285,7 +286,7 @@ trait PanelImpl[S <: Sys[S], Repr <: Obj[S], AuralRepr <: AuralObj[S]]
   }
 
   def deferVisTx(thunk: => Unit)(implicit tx: TxnLike): Unit =
-    guiCode.transform(_ :+ (() => thunk))(tx.peer)
+    guiCode.transform(_ :+ (() => thunk))
 
   @inline private def stopAnimation(): Unit = {
     visualization.cancel(ACTION_COLOR)

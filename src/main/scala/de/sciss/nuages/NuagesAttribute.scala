@@ -71,7 +71,7 @@ object NuagesAttribute {
       * Returning `false` means the object cannot be consumed,
       * for example because it is of a different type.
       */
-    def tryMigrate(to: Obj[S])(implicit tx: S#Tx): Boolean
+    final def tryMigrate(to: Obj[S])(implicit tx: S#Tx): Boolean = ???
 
     // def editable: Boolean
   }
