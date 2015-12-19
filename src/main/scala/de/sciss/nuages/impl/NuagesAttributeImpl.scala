@@ -91,7 +91,7 @@ object NuagesAttributeImpl {
   // updated on EDT
   private sealed trait State
   private case object EmptyState extends State
-  private case class InternalState(pNode: PNode, pEdge: PEdge) extends State
+  private case class InternalState(pNode: PNode) extends State
   private case class SummaryState (pNode: PNode, pEdge: PEdge) extends State {
     var freeNodes  = Set.empty[PNode]
     var boundNodes = Set.empty[PNode]
@@ -117,88 +117,103 @@ object NuagesAttributeImpl {
     def value: Vec[Double] = ???!
 
     private[this] var _state: State = EmptyState
-    private[this] var _freeNodes  = Set.empty[PNode]
-    private[this] var _boundNodes = Set.empty[PNode]
+    private[this] var _freeNodes  = Map.empty[PNode, PEdge]
+    private[this] var _boundNodes = Map.empty[PNode, PEdge]
 
     private[this] def nodeSize = 0.333333f
 
     def addPNode(in: Input[S], n: PNode, isFree: Boolean): Unit = {
       requireEDT()
-      if (isFree) {
-        require (!_freeNodes.contains(n))
-        _freeNodes += n
-      } else {
-        require (!_boundNodes.contains(n))
-        _boundNodes += n
-      }
-
       val g = main.graph
 
       def mkSummary() = {
-        val ni  = g.addNode()
-        val vii = main.visualization.getVisualItem(NuagesPanel.GROUP_GRAPH, ni)
-        vii.set(NuagesPanel.COL_NUAGES, this)
+        val ns  = g.addNode()
+        val vis = main.visualization.getVisualItem(NuagesPanel.GROUP_GRAPH, ns)
+        vis.set(NuagesPanel.COL_NUAGES, this)
         val sz  = nodeSize
-        if (sz != 1.0f) vii.set(VisualItem.SIZE, sz)
-        val ei  = g.addEdge(ni, parent.pNode)
-        /* val ee = */ g.addEdge(n , ni)
-        parent.aggr.addItem(vii)
-        SummaryState(ni, ei)
+        if (sz != 1.0f) vis.set(VisualItem.SIZE, sz)
+        val ei  = g.addEdge(ns, parent.pNode)
+        val ee  = g.addEdge(n , ns)
+        parent.aggr.addItem(vis)
+        SummaryState(ns, ei) -> ee
       }
 
-      _state = _state match {
+      val (newState, newEdge) = _state match {
         case EmptyState =>
           if (isFree) {
             val e   = g.addEdge(n, parent.pNode)
             val vi  = main.visualization.getVisualItem(NuagesPanel.GROUP_GRAPH, n)
             parent.aggr.addItem(vi)
-            InternalState(n, e)
+            InternalState(n) -> e
           } else {
             mkSummary()
           }
 
-        case InternalState(ni, ei0) =>
-          g.removeEdge(ei0)
-          mkSummary()
+        case InternalState(ni) =>
+          val ei0 = _freeNodes(ni)
+          g.removeEdge(ei0)   // dissolve edge of former internal node
+          val res = mkSummary()
+          val ei1 = g.addEdge(ni , res._1.pNode)
+          _freeNodes += ni -> ei1 // register new edge of former internal node
+          res
 
-        case other => other
+        case oldState @ SummaryState(ns, _) =>
+          val ee  = g.addEdge(n, ns)
+          oldState -> ee
+      }
+
+      _state = newState
+      if (isFree) {
+        require (!_freeNodes.contains(n))
+        _freeNodes  += n -> newEdge
+      } else {
+        require (!_boundNodes.contains(n))
+        _boundNodes += n -> newEdge
       }
     }
 
     def removePNode(in: Input[S], n: PNode): Unit = {
-      val isFree = _freeNodes.contains(n)
-      if (isFree) {
-        _freeNodes -= n
-      } else {
-        require (_boundNodes.contains(n))
-        _boundNodes -= n
-      }
+      requireEDT()
+      val g = main.graph
 
-      def mkEmpty() = {
-        val vi = main.visualization.getVisualItem(NuagesPanel.GROUP_GRAPH, n)
+      val isFree = _freeNodes.contains(n)
+      val oldEdge = if (isFree) {
+        val res = _freeNodes(n)
+        _freeNodes -= n
+        res
+      } else {
+        val res = _boundNodes(n)
+        _boundNodes -= n
+        res
+      }
+      g.removeEdge(oldEdge)
+
+      def removeAggr(ni: PNode): Unit = {
+        val vi = main.visualization.getVisualItem(NuagesPanel.GROUP_GRAPH, ni)
         parent.aggr.removeItem(vi)
-        EmptyState
       }
 
       _state = _state match {
-        case InternalState(`n`, _) => mkEmpty()
+        case InternalState(`n`) =>
+          removeAggr(n)
+          EmptyState
 
-        case prev @ SummaryState(ni, ei) if _boundNodes.isEmpty =>
-          _freeNodes.size match {
-            case 0 => mkEmpty()
-            case 1 => // become internal
-              val g   = main.graph
-              val vis = main.visualization
-              val vi  = vis.getVisualItem(NuagesPanel.GROUP_GRAPH, ni)
-              parent.aggr.removeItem(vi)
-              g.removeNode(ni)
-              val n1  = _freeNodes.head
-              val e   = g.addEdge(n1, parent.pNode)
-              val vi1 = vis.getVisualItem(NuagesPanel.GROUP_GRAPH, n1)
+        case prev @ SummaryState(ns, es) if _boundNodes.isEmpty =>
+          val numFree = _freeNodes.size
+          if (numFree > 1) prev else {
+            g.removeEdge(es)
+            removeAggr(ns)
+            g.removeNode(ns)
+
+            if (numFree == 0) EmptyState else { // become internal
+              val (n1, _ /* e1 */)  = _freeNodes.head // the former edge is already removed because we removed `ns`
+              val e2        = g.addEdge(n1, parent.pNode)
+              _freeNodes   += n1 -> e2  // update with new edge
+              val vis       = main.visualization
+              val vi1       = vis.getVisualItem(NuagesPanel.GROUP_GRAPH, n1)
               parent.aggr.addItem(vi1)
-              InternalState(n, e)
-
-            case _ => prev // no change
+              InternalState(n)
+            }
           }
 
         case other => other
