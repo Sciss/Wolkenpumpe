@@ -97,23 +97,8 @@ trait NuagesPanel[S <: Sys[S]] extends View[S] {
 
   def createGenerator(gen: Obj[S], colOpt: Option[Obj[S]], pt: Point2D)(implicit tx: S#Tx): Unit
 
-  // SCAN
-//  def insertFilter(pred: Scan[S], succ: Scan[S], flt: Obj[S], pt: Point2D)(implicit tx: S#Tx): Unit
-//  def appendFilter(pred: Scan[S], flt: Obj[S], colOpt: Option[Obj[S]], pt: Point2D)(implicit tx: S#Tx): Unit
-
   def nodeMap: stm.IdentifierMap[S#ID, S#Tx, NuagesObj [S]]
 
-  // def scanMap: stm.IdentifierMap[S#ID, S#Tx, VisualScan[S]]
-
-  //  def scanMapPut(id: S#ID, view: NuagesOutput[S])(implicit tx: S#Tx): Unit
-  //  def scanMapGet(id: S#ID)(implicit tx: S#Tx): Option[NuagesOutput[S]]
-  //  def scanMapRemove(id: S#ID)(implicit tx: S#Tx): Unit
-
-//  /** Transaction local hack */
-//  def waitForScanView(id: S#ID)(fun: VisualScan[S] => Unit)(implicit tx: S#Tx): Unit
-
-  // ---- these are left-overs from refactoring, they should not go in public API ----
-
-  // SCAN
-//   def assignMapping(source: Scan[S], vSink: VisualControl[S])(implicit tx: S#Tx): Unit
+  def addCollectionAttribute   (parent: Obj[S], key: String, child: Obj[S])(implicit tx: S#Tx): Unit
+  def removeCollectionAttribute(parent: Obj[S], key: String, child: Obj[S])(implicit tx: S#Tx): Boolean
 }

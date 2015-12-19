@@ -108,42 +108,16 @@ class ClickControl[S <: Sys[S]](main: NuagesPanel[S]) extends ControlAdapter {
   private def deleteEdge(ei: EdgeItem): Unit = {
     val nSrc = ei.getSourceItem
     val nTgt = ei.getTargetItem
-    val vis  = main.visualization
-    (vis.getRenderer(nSrc), vis.getRenderer(nTgt)) match {
-      case (_: NuagesShapeRenderer[_], _: NuagesShapeRenderer[_]) =>
-        val srcData = nSrc.get(COL_NUAGES).asInstanceOf[NuagesData[S]]
-        val tgtData = nTgt.get(COL_NUAGES).asInstanceOf[NuagesData[S]]
-        ???! // SCAN
-//        if (srcData != null && tgtData != null)
-//          (srcData, tgtData) match {
-//            case (srcVScan: VisualScan[S], tgtVScan: VisualScan[S]) =>
-//              main.cursor.step { implicit tx =>
-//                (srcVScan.parent.obj, tgtVScan.parent.obj) match {
-//                  case (srcProc: Proc[S], tgtProc: Proc[S]) =>
-//                    for {
-//                      srcScan <- srcProc.outputs.get(srcVScan.key)
-//                      tgtScan <- tgtProc.inputs .get(tgtVScan.key)
-//                    } {
-//                      srcScan.remove(Scan.Link.Scan(tgtScan))
-//                    }
-//                  case _ =>
-//                }
-//              }
-//
-//            case (srcVScan: VisualScan[S], tgtCtl: VisualControl[S]) =>
-//              main.cursor.step { implicit tx =>
-//                tgtCtl.mapping.foreach { m =>
-//                  // make sure there are no more /tr updates
-//                  m.synth.swap(None)(tx.peer).foreach(_.dispose())
-//                }
-//                // this causes AttrRemoved and AttrAdded succession
-//                tgtCtl.removeMapping()
-//              }
-//
-//            case _ =>
-//          }
+    (nSrc.get(COL_NUAGES), nTgt.get(COL_NUAGES)) match {
+      case (srcData: NuagesOutput[S], tgtData: NuagesAttribute.Input[S]) =>
+        val tgtAttr = tgtData.attribute
+        val res = main.cursor.step { implicit tx =>
+          main.removeCollectionAttribute(parent = tgtAttr.parent.obj, key = tgtAttr.key, child = srcData.output)
+        }
+        if (!res) println(s"Warning: could not remove edge")
 
-      case _ =>
+      case (a, b) =>
+        println(s"DEBUG AQUI $a $b")
     }
   }
 

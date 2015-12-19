@@ -65,18 +65,18 @@ object NuagesAttribute {
 
     def numChannels: Int
 
-    /** Try to migrate the passed object to this input view.
-      * That is, if the view can exchange its model for this
-      * new object, it should do so and return `true`.
-      * Returning `false` means the object cannot be consumed,
-      * for example because it is of a different type.
-      */
-    final def tryMigrate(to: Obj[S])(implicit tx: S#Tx): Boolean = ???
+    //    /** Try to migrate the passed object to this input view.
+    //      * That is, if the view can exchange its model for this
+    //      * new object, it should do so and return `true`.
+    //      * Returning `false` means the object cannot be consumed,
+    //      * for example because it is of a different type.
+    //      */
+    //    final def tryMigrate(to: Obj[S])(implicit tx: S#Tx): Boolean
 
     // def editable: Boolean
   }
 }
-trait NuagesAttribute[S <: Sys[S]] extends /* NuagesData[S] */ NuagesParam[S] {
+trait NuagesAttribute[S <: Sys[S]] extends /* NuagesData[S] */ NuagesAttribute.Input[S] with NuagesParam[S] {
   // def parent: NuagesObj[S]
 
   def addPNode   (in: NuagesAttribute.Input[S], n: PNode, isFree: Boolean): Unit

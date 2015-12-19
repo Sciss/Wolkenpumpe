@@ -28,6 +28,5 @@ trait NuagesOutput[S <: Sys[S]] extends NuagesParam[S] with NuagesNode[S] {
   var sinks   : Set[Edge]
   var mappings: Set[NuagesAttribute[S]]
 
-  // SCAN
-  // def scan(implicit tx: S#Tx): Scan[S]
+  def output(implicit tx: S#Tx): Output[S]
 }
