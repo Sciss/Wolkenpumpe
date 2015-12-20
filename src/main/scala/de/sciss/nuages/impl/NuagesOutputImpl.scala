@@ -19,7 +19,6 @@ import java.awt.event.MouseEvent
 import java.awt.geom.Point2D
 
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.Disposable
 import de.sciss.lucre.swing.requireEDT
 import de.sciss.lucre.synth.Sys
 import de.sciss.synth.proc.Output
@@ -33,15 +32,15 @@ object NuagesOutputImpl {
     res.init(output)
   }
 
-  private def addEdgeGUI[S <: Sys[S]](source: NuagesOutput[S], sink: NuagesOutput[S]): Unit = {
-    val graph = source.parent.main.graph
-    val isNew = !source.sinks.exists(_.getTargetNode == sink.pNode)
-    if (isNew) {
-      val pEdge = graph.addEdge(source.pNode, sink.pNode)
-      source.sinks += pEdge
-      sink.sources += pEdge
-    }
-  }
+//  private def addEdgeGUI[S <: Sys[S]](source: NuagesOutput[S], sink: NuagesOutput[S]): Unit = {
+//    val graph = source.parent.main.graph
+//    val isNew = !source.sinks.exists(_.getTargetNode == sink.pNode)
+//    if (isNew) {
+//      val pEdge = graph.addEdge(source.pNode, sink.pNode)
+//      source.sinks += pEdge
+//      sink.sources += pEdge
+//    }
+//  }
 }
 final class NuagesOutputImpl[S <: Sys[S]] private(val parent: NuagesObj[S],
                                                   val outputH: stm.Source[S#Tx, Output[S]],
@@ -49,7 +48,6 @@ final class NuagesOutputImpl[S <: Sys[S]] private(val parent: NuagesObj[S],
   extends NuagesParamRootImpl[S] with NuagesOutput[S] {
 
   import NuagesDataImpl._
-  import NuagesOutputImpl.addEdgeGUI
 
   override def toString = s"NuagesOutput($parent, $key)"
 
@@ -61,7 +59,7 @@ final class NuagesOutputImpl[S <: Sys[S]] private(val parent: NuagesObj[S],
 
   def output(implicit tx: S#Tx): Output[S] = outputH()
 
-  private[this] var observers = List.empty[Disposable[S#Tx]]
+//  private[this] var observers = List.empty[Disposable[S#Tx]]
 
   private def init(output: Output[S])(implicit tx: S#Tx): this.type = {
     val map = parent.outputs
@@ -83,29 +81,12 @@ final class NuagesOutputImpl[S <: Sys[S]] private(val parent: NuagesObj[S],
     this
   }
 
-  // SCAN
-//  private[this] def removeEdgeGUI(sink: NuagesParam[S]): Unit =
-//    sinks.find(_.getTargetNode == sink.pNode).foreach { pEdge =>
-//      this.sinks   -= pEdge
-//      sink.sources -= pEdge
-//      main.graph.removeEdge(pEdge)
-//    }
-
-  // SCAN
-//  private[this] def withScan(target: Scan.Link[S])(fun: VisualScan[S] => Unit)
-//                             (implicit tx: S#Tx): Unit =
-//    for {
-//      targetVis <- main.scanMapGet(target.peerID)
-//    } main.deferVisTx {
-//      fun(targetVis)
-//    }
-
   def dispose()(implicit tx: S#Tx): Unit = {
     val map = parent.outputs
     map.remove(key)(tx.peer)
     // main.scanMapRemove(output.id)
     context.removeAux(output.id)
-    observers.foreach(_.dispose())
+//    observers.foreach(_.dispose())
     main.deferVisTx(disposeGUI())
   }
 

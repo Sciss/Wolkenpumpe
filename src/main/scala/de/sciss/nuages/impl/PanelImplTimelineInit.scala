@@ -91,6 +91,7 @@ trait PanelImplTimelineInit[S <: Sys[S]] extends NuagesTimelineTransport[S] {
     transport.position
 
   final protected def addNode(timed: Timed[S])(implicit tx: S#Tx): Unit = {
+    log(s"nuages timeline addNode $timed")
     val obj     = timed.value
     val config  = main.config
     val locO    = removeLocationHint(obj)
@@ -106,6 +107,7 @@ trait PanelImplTimelineInit[S <: Sys[S]] extends NuagesTimelineTransport[S] {
   }
 
   final protected def removeNode(timed: Timed[S])(implicit tx: S#Tx): Unit = {
+    log(s"nuages timeline removeNode $timed")
     val id  = timed.id
     val obj = timed.value
     val vp  = nodeMap.getOrElse(id, throw new IllegalStateException(s"View for $timed not found"))

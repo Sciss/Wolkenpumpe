@@ -15,8 +15,8 @@ package de.sciss.nuages
 package impl
 
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{Disposable, IdentifierMap, Sys}
-import de.sciss.nuages.NuagesContext.{AuxAdded, AuxUpdate}
+import de.sciss.lucre.stm.{TxnLike, Disposable, IdentifierMap, Sys}
+import de.sciss.nuages.NuagesContext.{AuxRemoved, AuxAdded, AuxUpdate}
 
 // XXX TODO --- DRY with AuralContextImpl
 object NuagesContextImpl {
@@ -36,6 +36,8 @@ object NuagesContextImpl {
   private final class Impl[S <: Sys[S]](auxMap: IdentifierMap[S#ID, S#Tx, Any],
                                         auxObservers: IdentifierMap[S#ID, S#Tx, List[AuxObserver[S]]])
     extends NuagesContext[S] {
+
+    import TxnLike.peer
 
     private final class AuxObserverImpl(idH: stm.Source[S#Tx, S#ID],
                                         val fun: S#Tx => AuxUpdate[S, Any] => Unit)
@@ -59,7 +61,6 @@ object NuagesContextImpl {
 
     def putAux[A](id: S#ID, value: A)(implicit tx: S#Tx): Unit = {
       auxMap.put(id, value)
-      implicit val itx = tx.peer
       val list = auxObservers.getOrElse(id, Nil)
       if (list.nonEmpty) {
         val upd = AuxAdded(id, value)
@@ -73,6 +74,13 @@ object NuagesContextImpl {
 
     def removeAux(id: S#ID)(implicit tx: S#Tx): Unit = {
       auxMap.remove(id)
+      val list = auxObservers.getOrElse(id, Nil)
+      if (list.nonEmpty) {
+        val upd = AuxRemoved(id)
+        list.foreach { obs =>
+          obs.fun(tx)(upd)
+        }
+      }
     }
   }
 }

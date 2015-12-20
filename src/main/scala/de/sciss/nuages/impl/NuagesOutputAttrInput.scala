@@ -14,7 +14,7 @@
 package de.sciss.nuages
 package impl
 
-import de.sciss.lucre.stm.{Obj, Disposable, Sys}
+import de.sciss.lucre.stm.{Disposable, Sys}
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.synth.proc.Output
 import prefuse.data.{Node => PNode}
@@ -36,13 +36,11 @@ final class NuagesOutputAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S
   private[this] def deferVisTx(body: => Unit)(implicit tx: S#Tx): Unit =
     attribute.parent.main.deferVisTx(body)
 
-  private[this] var _observer: Disposable[S#Tx] = null
+  private[this] var _observer: Disposable[S#Tx] = _
   private[this] var _pNode: PNode = null
 
-  def tryMigrate(to: Obj[S])(implicit tx: S#Tx): Boolean = ???!
-
   def dispose()(implicit tx: S#Tx): Unit = {
-    if (_observer != null) _observer.dispose()
+    _observer.dispose()
     deferVisTx {
       if (_pNode != null) {
         attribute.removePNode(this, _pNode)
@@ -52,11 +50,11 @@ final class NuagesOutputAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S
   }
 
   private def init(obj: Output[S])(implicit tx: S#Tx): this.type = {
-    context.getAux[NuagesOutput[S]](obj.id).fold[Unit] {
-      _observer = context.observeAux[NuagesOutput[S]](obj.id) { implicit tx => {
-        case NuagesContext.AuxAdded(_, view) => setView(view)
-      }}
-    } (setView)
+    _observer = context.observeAux[NuagesOutput[S]](obj.id) { implicit tx => {
+      case NuagesContext.AuxAdded  (_, view) => setView(view)
+      case NuagesContext.AuxRemoved(_      ) => unsetView()
+    }}
+    context.getAux[NuagesOutput[S]](obj.id).foreach(setView)
     this
   }
 
@@ -64,7 +62,14 @@ final class NuagesOutputAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S
     require(_pNode == null)
     _pNode = view.pNode
     attribute.addPNode(this, view.pNode, isFree = false)
-    log(s"NuagesOutput for AttrInput: $view / $attribute")
+    log(s"NuagesOutput ADDED   for AttrInput: $view / $attribute")
+  }
+
+  private[this] def unsetView()(implicit tx: S#Tx): Unit = deferVisTx {
+    require(_pNode != null)
+    attribute.removePNode(this, _pNode)
+    _pNode = null
+    log(s"NuagesOutput REMOVED for AttrInput $attribute")
   }
 
   def value: Vec[Double] = ???!

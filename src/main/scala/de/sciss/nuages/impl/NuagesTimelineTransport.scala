@@ -39,7 +39,8 @@ trait NuagesTimelineTransport[S <: Sys[S]] {
 
   // ---- impl ----
 
-  private[this] val tokenRef = Ref(-1)
+  private[this] val tokenRef  = Ref(-1)
+  private[this] val frameRef  = Ref(0L) // last frame for which view-state has been updated
 
   protected def disposeTransport()(implicit tx: S#Tx): Unit = {
     clearSched()
@@ -54,7 +55,7 @@ trait NuagesTimelineTransport[S <: Sys[S]] {
       case Transport.Stop(_, _) => stop()
       case Transport.Seek(_, pos, isPlaying) =>
         if (isPlaying) stop()
-        ???!
+        seek(before = frameRef(), now = pos)
         if (isPlaying) play()
       case _ =>
     }}
@@ -85,7 +86,9 @@ trait NuagesTimelineTransport[S <: Sys[S]] {
       }
     }
 
-    tl.intersect(currentFrame()).foreach { case (span, elems) =>
+    val frame0 = currentFrame()
+    frameRef() = frame0
+    tl.intersect(frame0).foreach { case (span, elems) =>
       elems.foreach(addNode)
     }
 
@@ -115,6 +118,44 @@ trait NuagesTimelineTransport[S <: Sys[S]] {
     schedNext(timeline, playFrame)
   }
 
+  private[this] def seek(before: Long, now: Long)(implicit tx: S#Tx): Unit = {
+    val timeline = timelineH()
+    // there are two possibilities:
+    // - use timeline.rangeSearch to determine
+    //   the regions that disappeared and those that appeared
+    // - use one intersect, then diff against the view-set
+    // The former is a bit more elegant but also more complicated
+    // to get right -- see section 5.11.4 of my thesis:
+    //
+    // before < now
+    // - regions to remove are those whose
+    //   start is contained in Span.until(before + 1) (i.e. they have started)
+    //   and whose
+    //   stop is contained in Span(before + 1, now + 1) (i.e. they haven't been stopped but will have been)
+    //
+    // before > now
+    //
+    val beforeP = before + 1
+    val nowP    = now    + 1
+    val (toRemove, toAdd) = if (before < now) {
+      val iv1   = Span(beforeP, nowP)
+      val _rem  = timeline.rangeSearch(start = Span.until(beforeP), stop = iv1)
+      val _add  = timeline.rangeSearch(start = iv1, stop = Span.from(nowP))
+      (_rem, _add)
+    } else {
+      val iv1   = Span(nowP, beforeP)
+      val _rem  = timeline.rangeSearch(start = iv1, stop = Span.from(beforeP))
+      val _add  = timeline.rangeSearch(start = Span.until(nowP), stop = iv1)
+      (_rem, _add)
+    }
+    toRemove.foreach { case (span, elems) =>
+      elems.foreach(removeNode)
+    }
+    toAdd   .foreach { case (span, elems) =>
+      elems.foreach(addNode)
+    }
+  }
+
   private[this] def clearSched()(implicit tx: S#Tx): Unit = {
     val token = tokenRef.swap(-1)
     if (token >= 0) transport.scheduler.cancel(token)
@@ -134,7 +175,8 @@ trait NuagesTimelineTransport[S <: Sys[S]] {
   }
 
   private[this] def eventReached(frame: Long)(implicit tx: S#Tx): Unit = {
-    val timeline = timelineH()
+    val timeline          = timelineH()
+    frameRef()            = frame
     val (startIt, stopIt) = timeline.eventsAt(frame)
     // if (startIt.isEmpty || stopIt.isEmpty) {
 

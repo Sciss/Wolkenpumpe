@@ -19,8 +19,11 @@ import de.sciss.nuages.impl.{NuagesContextImpl => Impl}
 object NuagesContext {
   def apply[S <: Sys[S]](implicit tx: S#Tx): NuagesContext[S] = Impl[S]
 
-  sealed trait AuxUpdate[S <: Sys[S], +A]
-  final case class AuxAdded[S <: Sys[S], A](id: S#ID, value: A) extends AuxUpdate[S, A]
+  sealed trait AuxUpdate[S <: Sys[S], +A] {
+    def id: S#ID
+  }
+  final case class AuxAdded  [S <: Sys[S], A](id: S#ID, value: A) extends AuxUpdate[S, A]
+  final case class AuxRemoved[S <: Sys[S]   ](id: S#ID          ) extends AuxUpdate[S, Nothing]
 }
 trait NuagesContext[S <: Sys[S]] {
   import NuagesContext.AuxUpdate
