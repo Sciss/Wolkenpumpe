@@ -40,7 +40,10 @@ trait NuagesTimelineTransport[S <: Sys[S]] {
   // ---- impl ----
 
   private[this] val tokenRef  = Ref(-1)
-  private[this] val frameRef  = Ref(0L) // last frame for which view-state has been updated
+
+  // last frame for which view-state has been updated.
+  // will be initialised in `initTransport`
+  private[this] val frameRef  = Ref(0L)
 
   protected def disposeTransport()(implicit tx: S#Tx): Unit = {
     clearSched()
@@ -99,6 +102,7 @@ trait NuagesTimelineTransport[S <: Sys[S]] {
     val t    = transport
     val time = currentFrame()
     if (span.contains(time)) {
+      frameRef() = time
       if (add) addNode(timed) else removeNode(timed)
     }
     if (t.isPlaying && span.overlaps(Span.from(time))) {
