@@ -46,14 +46,25 @@ trait NuagesTimelineTransport[S <: Sys[S]] {
   private[this] val frameRef  = Ref(0L)
 
   protected def disposeTransport()(implicit tx: S#Tx): Unit = {
+    disposed() = true
     clearSched()
     observers.foreach(_.dispose())
   }
 
   private[this] var observers = List.empty[Disposable[S#Tx]]
 
+  // It may happen that the transport observer is still
+  // invoked after `dispose`, i.e. when `dispose` was
+  // called from another transport observer. Therefore,
+  // we have two strategies:
+  // - remove the assertions in `removeNode` in sub-classes
+  // - maintain a `disposed` state.
+  // We go for this second approach at least as we develop,
+  // so we keep as many checks in place as possible.
+  private[this] val disposed  = Ref(false)
+
   final protected def initTransport(t: Transport[S], tl: Timeline[S])(implicit tx: S#Tx): Unit = {
-    observers ::= t.react { implicit tx => {
+    observers ::= t.react { implicit tx => upd => if (!disposed()) upd match {
       case Transport.Play(_, _) => play()
       case Transport.Stop(_, _) => stop()
       case Transport.Seek(_, pos, isPlaying) =>
@@ -64,7 +75,7 @@ trait NuagesTimelineTransport[S <: Sys[S]] {
     }}
 
     observers ::= tl.changed.react { implicit tx => upd =>
-      upd.changes.foreach {
+      if (!disposed()) upd.changes.foreach {
         case Timeline.Added  (span, timed) => addRemoveNode(span, timed, add = true )
         case Timeline.Removed(span, timed) => addRemoveNode(span, timed, add = false)
         case Timeline.Moved(change, timed) =>

@@ -65,6 +65,7 @@ final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesA
   protected def transport: Transport[S] = attribute.parent.main.transport
 
   private def init(tl: Timeline[S])(implicit tx: S#Tx): this.type = {
+    log(s"$attribute timeline init")
     timelineH = tx.newHandle(tl)
     val t     = transport
     initTransport(t, tl)
@@ -91,6 +92,7 @@ final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesA
   def numChannels: Int = ???!
 
   def dispose()(implicit tx: S#Tx): Unit = {
+    log(s"$attribute timeline dispose")
     disposeTransport()
     map.dispose()
     viewSet.foreach(_.dispose())
