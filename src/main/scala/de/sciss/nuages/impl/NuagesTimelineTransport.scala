@@ -79,14 +79,19 @@ trait NuagesTimelineTransport[S <: Sys[S]] {
         case Timeline.Added  (span, timed) => addRemoveNode(span, timed, add = true )
         case Timeline.Removed(span, timed) => addRemoveNode(span, timed, add = false)
         case Timeline.Moved(change, timed) =>
-          val t    = transport
-          val time = currentFrame()
-          if (change.before.contains(time)) {
-            removeNode(timed)
+          val t     = transport
+          val time  = currentFrame()
+          val rem   = change.before.contains(time)
+          val add   = change.now.contains(time)
+
+          if (rem || add) {
+            frameRef() = time
+            // println(s"frameRef = $time")
           }
-          if (change.now.contains(time)) {
-            addNode(timed)
-          }
+
+          if (rem) removeNode(timed)
+          if (add) addNode   (timed)
+
           if (t.isPlaying && {
             val from = Span.from(time)
             change.before.overlaps(from) || change.now.overlaps(from)
@@ -114,6 +119,7 @@ trait NuagesTimelineTransport[S <: Sys[S]] {
     val time = currentFrame()
     if (span.contains(time)) {
       frameRef() = time
+      // println(s"frameRef = $time")
       if (add) addNode(timed) else removeNode(timed)
     }
     if (t.isPlaying && span.overlaps(Span.from(time))) {
@@ -192,6 +198,7 @@ trait NuagesTimelineTransport[S <: Sys[S]] {
   private[this] def eventReached(frame: Long)(implicit tx: S#Tx): Unit = {
     val timeline          = timelineH()
     frameRef()            = frame
+    // println(s"frameRef = $frame")
     val (startIt, stopIt) = timeline.eventsAt(frame)
     // if (startIt.isEmpty || stopIt.isEmpty) {
 
