@@ -25,7 +25,7 @@ import de.sciss.synth
 import de.sciss.synth.io.AudioFile
 import de.sciss.synth.{GE, proc}
 import de.sciss.synth.proc.graph.Attribute
-import de.sciss.synth.proc.{Action, AuralSystem, Folder, Grapheme, SoundProcesses}
+import de.sciss.synth.proc.{AudioCue, Action, AuralSystem, Folder, SoundProcesses}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.language.implicitConversions
@@ -171,7 +171,7 @@ object ScissProcs {
 
         val art   = Artifact(loc, f) // loc.add(f)
         val spec  = AudioFile.readSpec(f)
-        val gr    = Grapheme.Expr.Audio[S](art, spec, 0L, 1.0)
+        val gr    = AudioCue.Obj[S](art, spec, 0L, 1.0)
         procObj.attr.put("file", gr)
       })
     }
@@ -243,7 +243,7 @@ object ScissProcs {
         sig
       }
       // val art   = Artifact(locH(), f) // locH().add(f)
-      val gr    = Grapheme.Expr.Audio[T](art, spec, 0L, 1.0)
+      val gr    = AudioCue.Obj[T](art, spec, 0L, 1.0)
       procObj.attr.put("file", gr) // Obj(AudioGraphemeElem(gr)))
       // val artObj  = Obj(ArtifactElem(art))
       // procObj.attr.put("file", artObj)
