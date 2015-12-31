@@ -1,5 +1,5 @@
 /*
- *  NuagesTimelineTransport.scala
+ *  NuagesTimelineBase.scala
  *  (Wolkenpumpe)
  *
  *  Copyright (c) 2008-2015 Hanns Holger Rutz. All rights reserved.
@@ -15,14 +15,12 @@ package de.sciss.nuages
 package impl
 
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{TxnLike, Disposable, Sys}
-import de.sciss.span.{SpanLike, Span}
-import de.sciss.synth.proc.{Transport, Timeline}
+import de.sciss.lucre.stm.{Disposable, Sys, TxnLike}
+import de.sciss.span.{Span, SpanLike}
+import de.sciss.synth.proc.Timeline
 import de.sciss.synth.proc.Timeline.Timed
 
-import scala.concurrent.stm.Ref
-
-trait NuagesTimelineTransport[S <: Sys[S]] {
+trait NuagesTimelineBase[S <: Sys[S]] extends NuagesScheduledBase[S] {
 
   import TxnLike.peer
 
@@ -30,52 +28,16 @@ trait NuagesTimelineTransport[S <: Sys[S]] {
 
   protected def timelineH: stm.Source[S#Tx, Timeline[S]]
 
-  protected def transport: Transport[S]
-
-  protected def currentFrame()(implicit tx: S#Tx): Long
-
   protected def addNode   (timed: Timed[S])(implicit tx: S#Tx): Unit
   protected def removeNode(timed: Timed[S])(implicit tx: S#Tx): Unit
 
   // ---- impl ----
 
-  private[this] val tokenRef  = Ref(-1)
+  private[this] var observer: Disposable[S#Tx] = _
 
-  // last frame for which view-state has been updated.
-  // will be initialised in `initTransport`
-  private[this] val frameRef  = Ref(0L)
-
-  protected def disposeTransport()(implicit tx: S#Tx): Unit = {
-    disposed() = true
-    clearSched()
-    observers.foreach(_.dispose())
-  }
-
-  private[this] var observers = List.empty[Disposable[S#Tx]]
-
-  // It may happen that the transport observer is still
-  // invoked after `dispose`, i.e. when `dispose` was
-  // called from another transport observer. Therefore,
-  // we have two strategies:
-  // - remove the assertions in `removeNode` in sub-classes
-  // - maintain a `disposed` state.
-  // We go for this second approach at least as we develop,
-  // so we keep as many checks in place as possible.
-  private[this] val disposed  = Ref(false)
-
-  final protected def initTransport(t: Transport[S], tl: Timeline[S])(implicit tx: S#Tx): Unit = {
-    observers ::= t.react { implicit tx => upd => if (!disposed()) upd match {
-      case Transport.Play(_, _) => play()
-      case Transport.Stop(_, _) => stop()
-      case Transport.Seek(_, pos, isPlaying) =>
-        if (isPlaying) stop()
-        seek(before = frameRef(), now = pos)
-        if (isPlaying) play()
-      case _ =>
-    }}
-
-    observers ::= tl.changed.react { implicit tx => upd =>
-      if (!disposed()) upd.changes.foreach {
+  final protected def initTimeline(tl: Timeline[S])(implicit tx: S#Tx): Unit = {
+    observer = tl.changed.react { implicit tx => upd =>
+      if (!isDisposed) upd.changes.foreach {
         case Timeline.Added  (span, timed) => addRemoveNode(span, timed, add = true )
         case Timeline.Removed(span, timed) => addRemoveNode(span, timed, add = false)
         case Timeline.Moved(change, timed) =>
@@ -98,20 +60,17 @@ trait NuagesTimelineTransport[S <: Sys[S]] {
           }) {
             // new child might start or stop before currently
             // scheduled next event. Simply reset scheduler
-            val timeline = timelineH()
-            clearSched()
-            schedNext(timeline, time)
+            reschedule(time)
           }
       }
     }
 
     val frame0 = currentFrame()
-    frameRef() = frame0
     tl.intersect(frame0).foreach { case (span, elems) =>
       elems.foreach(addNode)
     }
 
-    if (t.isPlaying) play()
+    initTransport()
   }
 
   private[this] def addRemoveNode(span: SpanLike, timed: Timed[S], add: Boolean)(implicit tx: S#Tx): Unit = {
@@ -125,21 +84,11 @@ trait NuagesTimelineTransport[S <: Sys[S]] {
     if (t.isPlaying && span.overlaps(Span.from(time))) {
       // new child might start or stop before currently
       // scheduled next event. Simply reset scheduler
-      val timeline = timelineH()
-      clearSched()
-      schedNext(timeline, time)
+      reschedule(time)
     }
   }
 
-  private[this] def stop()(implicit tx: S#Tx): Unit = clearSched()
-
-  private[this] def play()(implicit tx: S#Tx): Unit = {
-    val timeline  = timelineH()
-    val playFrame = currentFrame()
-    schedNext(timeline, playFrame)
-  }
-
-  private[this] def seek(before: Long, now: Long)(implicit tx: S#Tx): Unit = {
+  protected final def seek(before: Long, now: Long)(implicit tx: S#Tx): Unit = {
     val timeline = timelineH()
     // there are two possibilities:
     // - use timeline.rangeSearch to determine
@@ -177,27 +126,12 @@ trait NuagesTimelineTransport[S <: Sys[S]] {
     }
   }
 
-  private[this] def clearSched()(implicit tx: S#Tx): Unit = {
-    val token = tokenRef.swap(-1)
-    if (token >= 0) transport.scheduler.cancel(token)
-  }
+  protected final def eventAfter(frame: Long)(implicit tx: S#Tx): Long =
+    timelineH().eventAfter(frame).getOrElse(Long.MaxValue)
 
-  private[this] def schedNext(timeline: Timeline[S], frame: Long)(implicit tx: S#Tx): Unit = {
-    timeline.eventAfter(frame).foreach { nextFrame =>
-      val s         = transport.scheduler
-      val schedTime = s.time
-      val nextTime  = schedTime + nextFrame - frame
-      val token     = s.schedule(nextTime) { implicit tx =>
-        eventReached(nextFrame)
-      }
-      val oldToken = tokenRef.swap(token)
-      s.cancel(oldToken)
-    }
-  }
-
-  private[this] def eventReached(frame: Long)(implicit tx: S#Tx): Unit = {
+  protected final def processEvent(frame: Long)(implicit tx: S#Tx): Unit = {
     val timeline          = timelineH()
-    frameRef()            = frame
+    // frameRef()            = frame
     // println(s"frameRef = $frame")
     val (startIt, stopIt) = timeline.eventsAt(frame)
     // if (startIt.isEmpty || stopIt.isEmpty) {
@@ -253,6 +187,6 @@ trait NuagesTimelineTransport[S <: Sys[S]] {
     //      stillToStart.foreach(addChild)
     //    }
 
-    schedNext(timeline, frame)
+    // schedNext(frame)
   }
 }

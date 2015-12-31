@@ -38,7 +38,7 @@ object NuagesTimelineAttrInput extends NuagesAttribute.Factory {
 final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesAttribute[S],
                                                           map: IdentifierMap[S#ID, S#Tx, Input[S]])
                                                          (implicit context: NuagesContext[S])
-  extends NuagesAttribute.Input[S] with NuagesTimelineTransport[S] with NuagesAttribute.Parent[S] {
+  extends NuagesAttribute.Input[S] with NuagesTimelineBase[S] with NuagesAttribute.Parent[S] {
 
   import TxnLike.peer
 
@@ -67,8 +67,7 @@ final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesA
   private def init(tl: Timeline[S])(implicit tx: S#Tx): this.type = {
     log(s"$attribute timeline init")
     timelineH = tx.newHandle(tl)
-    val t     = transport
-    initTransport(t, tl)
+    initTimeline(tl)
     this
   }
 

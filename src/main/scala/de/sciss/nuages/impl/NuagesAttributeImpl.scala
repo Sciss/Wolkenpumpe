@@ -68,15 +68,15 @@ object NuagesAttributeImpl {
   }
 
   private[this] var map = Map[Int, Factory](
-    IntObj              .typeID -> NuagesIntAttrInput,
-    DoubleObj           .typeID -> NuagesDoubleAttrInput,
-    BooleanObj          .typeID -> NuagesBooleanAttrInput,
-//    FadeSpec.Obj        .typeID -> FadeSpecAttribute,
-    DoubleVector        .typeID -> NuagesDoubleVectorAttrInput,
-//    Grapheme.Expr.Audio .typeID -> AudioGraphemeAttribute,
-    Output              .typeID -> NuagesOutputAttrInput,
-    Folder              .typeID -> NuagesFolderAttrInput,
-    Timeline            .typeID -> NuagesTimelineAttrInput
+    IntObj      .typeID -> NuagesIntAttrInput,
+    DoubleObj   .typeID -> NuagesDoubleAttrInput,
+    BooleanObj  .typeID -> NuagesBooleanAttrInput,
+//  FadeSpec.Obj.typeID -> FadeSpecAttribute,
+    DoubleVector.typeID -> NuagesDoubleVectorAttrInput,
+    Grapheme    .typeID -> NuagesGraphemeAttrInput,
+    Output      .typeID -> NuagesOutputAttrInput,
+    Folder      .typeID -> NuagesFolderAttrInput,
+    Timeline    .typeID -> NuagesTimelineAttrInput
   )
   
   // ----

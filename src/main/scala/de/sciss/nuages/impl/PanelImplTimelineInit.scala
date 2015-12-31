@@ -24,7 +24,7 @@ import de.sciss.synth.proc.{AuralObj, Timeline, Transport}
 
 import scala.concurrent.stm.Ref
 
-trait PanelImplTimelineInit[S <: Sys[S]] extends NuagesTimelineTransport[S] {
+trait PanelImplTimelineInit[S <: Sys[S]] extends NuagesTimelineBase[S] {
   import TxnLike.peer
 
   // ---- abstract ----
@@ -80,7 +80,7 @@ trait PanelImplTimelineInit[S <: Sys[S]] extends NuagesTimelineTransport[S] {
     }}
     t.addObject(timeline)
 
-    initTransport(t, timeline)
+    initTimeline(timeline)
   }
 
   // N.B.: Currently AuralTimelineAttribute does not pay
