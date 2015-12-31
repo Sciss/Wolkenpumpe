@@ -23,7 +23,7 @@ import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.nuages.NuagesAttribute.{Factory, Input}
 import de.sciss.synth.proc.{Grapheme, Timeline, Output, Folder}
 import prefuse.data.{Node => PNode, Edge => PEdge}
-import prefuse.visual.VisualItem
+import prefuse.visual.{AggregateItem, VisualItem}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
@@ -151,7 +151,9 @@ object NuagesAttributeImpl {
         if (sz != 1.0f) vis.set(VisualItem.SIZE, sz)
         val ei  = g.addEdge(ns, parent.pNode)
         val ee  = g.addEdge(n , ns)
+        logAggr(s"add $vis - $this")
         parent.aggr.addItem(vis)
+        VALIDATE_AGGR()
         SummaryState(ns, ei) -> ee
       }
 
@@ -160,7 +162,9 @@ object NuagesAttributeImpl {
           if (isFree) {
             val e   = g.addEdge(n, parent.pNode)
             val vi  = main.visualization.getVisualItem(NuagesPanel.GROUP_GRAPH, n)
+            logAggr(s"add $vi - $this")
             parent.aggr.addItem(vi)
+            VALIDATE_AGGR()
             InternalState(n) -> e
           } else {
             mkSummary()
@@ -207,6 +211,8 @@ object NuagesAttributeImpl {
 
       def removeAggr(ni: PNode): Unit = {
         val vi = main.visualization.getVisualItem(NuagesPanel.GROUP_GRAPH, ni)
+        logAggr(s"rem $vi - $this")
+        VALIDATE_AGGR()
         parent.aggr.removeItem(vi)
       }
 
@@ -228,6 +234,8 @@ object NuagesAttributeImpl {
               _freeNodes   += n1 -> e2  // update with new edge
               val vis       = main.visualization
               val vi1       = vis.getVisualItem(NuagesPanel.GROUP_GRAPH, n1)
+              logAggr(s"add $vi1 - $this")
+              VALIDATE_AGGR()
               parent.aggr.addItem(vi1)
               InternalState(n)
             }
@@ -252,6 +260,19 @@ object NuagesAttributeImpl {
     def dispose()(implicit tx: S#Tx): Unit = {
       input.dispose()
       parent.params.remove(key)
+    }
+
+    private[this] def VALIDATE_AGGR(): Unit = {
+      val m_vis = main.visualization
+      val aggr  = m_vis.getGroup(PanelImpl.AGGR_PROC) // .asInstanceOf[ AggregateTable ]
+      if (aggr.getTupleCount == 0) return // do we have any to process?
+
+      var maxSz = 0
+      val iter1 = aggr.tuples()
+      while (iter1.hasNext) {
+        val item = iter1.next().asInstanceOf[AggregateItem]
+        maxSz = math.max(maxSz, 4 * 2 * item.getAggregateSize)
+      }
     }
   }
 }

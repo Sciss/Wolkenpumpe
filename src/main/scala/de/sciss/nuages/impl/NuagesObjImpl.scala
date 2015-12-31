@@ -162,9 +162,10 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
     main.deferVisTx(disposeGUI())
   }
 
-  private[this] def disposeGUI(): Unit = {
+  override def disposeGUI(): Unit = {
+    super.disposeGUI()
     main.aggrTable.removeTuple(aggr)
-    main.graph    .removeNode (pNode)
+    //    main.graph    .removeNode (pNode)
   }
 
   private[this] val playArea = new Area()

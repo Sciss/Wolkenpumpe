@@ -48,6 +48,8 @@
 
 package de.sciss.nuages
 
+import java.util.ConcurrentModificationException
+
 import prefuse.action.layout.Layout
 import prefuse.visual.{AggregateItem, VisualItem}
 import prefuse.util.GraphicsLib
@@ -82,6 +84,8 @@ class PrefuseAggregateLayout(aggrGroup: String) extends Layout(aggrGroup) {
   private var points = new Array[Double](8 * 4) // buffer for computing convex hulls
 
   def run(frac: Double): Unit = {
+    // require(AGGR_LOCK)
+
     val aggr = m_vis.getGroup(aggrGroup) // .asInstanceOf[ AggregateTable ]
     if (aggr.getTupleCount == 0) return // do we have any to process?
 
@@ -90,8 +94,16 @@ class PrefuseAggregateLayout(aggrGroup: String) extends Layout(aggrGroup) {
     val iter1 = aggr.tuples()
     while (iter1.hasNext) {
       val item = iter1.next().asInstanceOf[AggregateItem]
-      maxSz = math.max(maxSz, 4 * 2 * item.getAggregateSize)
+      try {
+        maxSz = math.max(maxSz, item.getAggregateSize)
+      } catch {
+        case _: ConcurrentModificationException =>
+          Console.err.println("WTF? - PrefuseAggregateLayout.run")
+          val again = item.getAggregateSize
+          println(again)
+      }
     }
+    maxSz *= 8
     if (maxSz > points.length) {
       points = new Array[Double](maxSz + 8)
     }

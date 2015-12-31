@@ -201,5 +201,11 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
   protected def eventAfter(frame: Long)(implicit tx: S#Tx): Long =
     graphemeH().eventAfter(frame).getOrElse(Long.MaxValue)
 
-  protected def processEvent(frame: Long)(implicit tx: S#Tx): Unit = ???!
+  protected def processEvent(frame: Long)(implicit tx: S#Tx): Unit = {
+    val gr        = graphemeH()
+    val child     = gr.valueAt(frame).getOrElse(throw new IllegalStateException(s"Found no value at $frame"))
+    val newView   = NuagesAttribute.mkInput(attribute, parent = this, value = child)
+    currentView().dispose()
+    currentView() = new View(start = frame, input = newView)
+  }
 }

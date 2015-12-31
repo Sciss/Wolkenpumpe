@@ -26,10 +26,20 @@ package object nuages {
 
   private lazy val logHeader = new SimpleDateFormat("[d MMM yyyy, HH:mm''ss.SSS] 'Nuages' ", Locale.US)
 
-  var showLog = true
+  var showLog     = true
+  var showAggrLog = true
+
+  var AGGR_LOCK   = false
 
   @elidable(CONFIG) private[nuages] def log(what: => String): Unit =
-    if (showLog) println(logHeader.format(new Date()) + what)
+    if (showLog) println(s"${logHeader.format(new Date())}$what")
+
+
+  @elidable(CONFIG) private[nuages] def logAggr(what: => String): Unit =
+    if (showAggrLog) {
+      require(AGGR_LOCK)
+      Console.out.println(s"${logHeader.format(new Date())} aggr $what")
+    }
 
   /** Exception are sometimes swallowed without printing in a transaction. This ensures a print. */
   def ???! : Nothing = {

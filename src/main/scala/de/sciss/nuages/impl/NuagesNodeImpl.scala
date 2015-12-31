@@ -47,6 +47,7 @@ trait NuagesNodeRootImpl[S <: Sys[S]] extends NuagesNodeImpl[S] {
     vi.set(NuagesPanel.COL_NUAGES, this)
     val sz  = nodeSize
     if (sz != 1.0f) vi.set(VisualItem.SIZE, sz)
+    logAggr(s"add $vi - $this")
     parent.aggr.addItem(vi)
     vi
   }
@@ -54,6 +55,7 @@ trait NuagesNodeRootImpl[S <: Sys[S]] extends NuagesNodeImpl[S] {
   protected def disposeGUI(): Unit = {
     log(s"disposeGUI($name)")
     val _vi = main.visualization.getVisualItem(NuagesPanel.GROUP_GRAPH, pNode)
+    logAggr(s"rem ${_vi} - $this")
     parent.aggr.removeItem(_vi)
     main.graph.removeNode(pNode)
   }
