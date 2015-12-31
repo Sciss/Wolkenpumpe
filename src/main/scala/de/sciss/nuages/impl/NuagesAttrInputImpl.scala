@@ -34,7 +34,11 @@ object NuagesAttrInputImpl {
     var dragValue = valueStart
   }
 }
-trait NuagesAttrInputImpl[S <: SSys[S]] extends NuagesDataImpl[S] with NuagesAttribute.Input[S] {
+trait NuagesAttrInputImpl[S <: SSys[S]]
+  extends NuagesDataImpl[S]
+  with AttrInputKeyControl[S]
+  with NuagesAttribute.Input[S] {
+
   import NuagesAttrInputImpl.Drag
   import NuagesDataImpl._
 

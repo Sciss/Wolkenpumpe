@@ -86,23 +86,23 @@ class PrefuseAggregateLayout(aggrGroup: String) extends Layout(aggrGroup) {
     if (aggr.getTupleCount == 0) return // do we have any to process?
 
     // update buffers
-    var maxsz = 0
+    var maxSz = 0
     val iter1 = aggr.tuples()
     while (iter1.hasNext) {
       val item = iter1.next().asInstanceOf[AggregateItem]
-      maxsz = math.max(maxsz, 4 * 2 * item.getAggregateSize)
+      maxSz = math.max(maxSz, 4 * 2 * item.getAggregateSize)
     }
-    if (maxsz > points.length) {
-      points = new Array[Double](maxsz + 8)
+    if (maxSz > points.length) {
+      points = new Array[Double](maxSz + 8)
     }
 
     // compute and assign convex hull for each aggregate
     val iter2 = m_vis.visibleItems(aggrGroup)
     while (iter2.hasNext) {
-      val aitem = iter2.next().asInstanceOf[AggregateItem]
+      val aItem = iter2.next().asInstanceOf[AggregateItem]
       var idx = 0
-      if (aitem.getAggregateSize > 0) {
-        val iter3 = aitem.items()
+      if (aItem.getAggregateSize > 0) {
+        val iter3 = aItem.items()
         while (iter3.hasNext) {
           val item = iter3.next().asInstanceOf[VisualItem]
           if (item.isVisible) {
@@ -113,15 +113,15 @@ class PrefuseAggregateLayout(aggrGroup: String) extends Layout(aggrGroup) {
         // if no aggregates are visible, do nothing
         if (idx > 0) {
           // compute convex hull
-          val nhull = GraphicsLib.convexHull(points, idx)
+          val nHull = GraphicsLib.convexHull(points, idx)
 
           // prepare viz attribute array
-          val fhull = {
-            val prev = aitem.get(VisualItem.POLYGON).asInstanceOf[Array[Float]]
-            if (prev == null || prev.length < nhull.length) {
-              new Array[Float](nhull.length)
-            } else if (prev.length > nhull.length) {
-              prev(nhull.length) = Float.NaN
+          val fHull = {
+            val prev = aItem.get(VisualItem.POLYGON).asInstanceOf[Array[Float]]
+            if (prev == null || prev.length < nHull.length) {
+              new Array[Float](nHull.length)
+            } else if (prev.length > nHull.length) {
+              prev(nHull.length) = Float.NaN
               prev
             } else {
               prev
@@ -129,12 +129,12 @@ class PrefuseAggregateLayout(aggrGroup: String) extends Layout(aggrGroup) {
           }
           // copy hull values
           var j = 0
-          while (j < nhull.length) {
-            fhull(j) = nhull(j).toFloat
+          while (j < nHull.length) {
+            fHull(j) = nHull(j).toFloat
             j += 1
           }
-          aitem.set(VisualItem.POLYGON, fhull)
-          aitem.setValidated(false) // force invalidation
+          aItem.set(VisualItem.POLYGON, fHull)
+          aItem.setValidated(false) // force invalidation
         }
       }
     }

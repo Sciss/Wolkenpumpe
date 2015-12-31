@@ -31,9 +31,15 @@ import scala.swing.{Label, Orientation, Swing, TextField}
 import scala.util.Try
 
 trait AttrInputKeyControl[S <: Sys[S]] extends ClipboardOwner {
-  _: NuagesAttribute.Input[S] =>
+  _: NuagesAttribute.Input[S] with NuagesData[S] =>
 
-  def itemKeyPressed(vi: VisualItem, e: KeyControl.Pressed): Unit =
+  // ---- abstract ----
+
+  protected def setControl(v: Vec[Double], instant: Boolean): Unit
+
+  // ---- impl ----
+
+  override def itemKeyPressed(vi: VisualItem, e: KeyControl.Pressed): Unit =
     if ((e.modifiers & KeyStrokes.menu1.mask) == KeyStrokes.menu1.mask) {
       if (e.code == Key.C) {        // copy
         val clip = Toolkit.getDefaultToolkit.getSystemClipboard
@@ -51,7 +57,7 @@ trait AttrInputKeyControl[S <: Sys[S]] extends ClipboardOwner {
       if (e.code == Key.Enter) showParamInput(vi)
     }
 
-  def itemKeyTyped(vi: VisualItem, e: KeyControl.Typed): Unit = {
+  override def itemKeyTyped(vi: VisualItem, e: KeyControl.Typed): Unit = {
     def checkDouble(out: Vec[Double]): Vec[Double] = {
       val name = attribute.name
       val ok = (name != "amp" && name != "gain") || e.count > 1
@@ -109,7 +115,7 @@ trait AttrInputKeyControl[S <: Sys[S]] extends ClipboardOwner {
 
       case _ => Vector.empty
     }
-    if (v.nonEmpty) ???! // vc.setControl(v, instant = true)
+    if (v.nonEmpty) setControl(v, instant = true)
   }
 
   private[this] def showParamInput(vi: VisualItem): Unit = {
