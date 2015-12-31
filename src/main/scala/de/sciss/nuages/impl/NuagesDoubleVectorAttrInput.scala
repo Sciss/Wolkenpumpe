@@ -1,3 +1,16 @@
+/*
+ *  NuagesDoubleVectorAttrInput.scala
+ *  (Wolkenpumpe)
+ *
+ *  Copyright (c) 2008-2015 Hanns Holger Rutz. All rights reserved.
+ *
+ *  This software is published under the GNU General Public License v2+
+ *
+ *
+ *  For further information, please contact Hanns Holger Rutz at
+ *  contact@sciss.de
+ */
+
 package de.sciss.nuages
 package impl
 
@@ -59,25 +72,21 @@ final class NuagesDoubleVectorAttrInput[S <: SSys[S]](val attribute: NuagesAttri
 
   def numChannels = valueA.size
 
-  protected def setControlTxn(v: Vec[Double])(implicit tx: S#Tx): Unit = {
-//    val attr = parent.obj.attr
-    sourceOpt.foreach { src =>
-      val vc = DoubleVector.newConst[S](v)
-      src().update(vc)
-    }
-//    attr.$[DoubleVector](key) match {
-//      case Some(DoubleVector.Var(vr)) => vr() = vc
-//      case _ => attr.put(key, DoubleVector.newVar(vc))
+//  protected def setControlTxn(v: Vec[Double])(implicit tx: S#Tx): Unit = {
+////    val attr = parent.obj.attr
+//    sourceOpt.foreach { src =>
+//      val vc = DoubleVector.newConst[S](v)
+//      src().update(vc)
 //    }
-  }
+////    attr.$[DoubleVector](key) match {
+////      case Some(DoubleVector.Var(vr)) => vr() = vc
+////      case _ => attr.put(key, DoubleVector.newVar(vc))
+////    }
+//  }
 
-  protected def init1(obj: Obj[S])(implicit tx: S#Tx): Unit =
-    obj match {
-      case dObj: DoubleVector[S] =>
-        observers ::= dObj.changed.react { implicit tx => upd =>
-          updateValueAndRefresh(upd.now)
-        }
-      case _ =>
+  protected def init1(obj: DoubleVector[S])(implicit tx: S#Tx): Unit =
+    observers ::= obj.changed.react { implicit tx => upd =>
+      updateValueAndRefresh(upd.now)
     }
 
   import NuagesDataImpl.{gArc, gEllipse, gLine}

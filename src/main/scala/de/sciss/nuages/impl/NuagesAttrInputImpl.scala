@@ -1,3 +1,16 @@
+/*
+ *  NuagesAttrInputImpl.scala
+ *  (Wolkenpumpe)
+ *
+ *  Copyright (c) 2008-2015 Hanns Holger Rutz. All rights reserved.
+ *
+ *  This software is published under the GNU General Public License v2+
+ *
+ *
+ *  For further information, please contact Hanns Holger Rutz at
+ *  contact@sciss.de
+ */
+
 package de.sciss.nuages
 package impl
 
@@ -39,7 +52,7 @@ trait NuagesAttrInputImpl[S <: SSys[S]] extends NuagesDataImpl[S] with NuagesAtt
 
   // protected final def setControlTxn(v: Vec[Double])(implicit tx: S#Tx): Unit = ...
 
-  protected def init1(obj: Obj[S])(implicit tx: S#Tx): Unit
+  protected def init1(obj: Ex[S])(implicit tx: S#Tx): Unit
 
   protected def renderValueUpdated(): Unit
 
@@ -113,7 +126,7 @@ trait NuagesAttrInputImpl[S <: SSys[S]] extends NuagesDataImpl[S] with NuagesAtt
     main.graph.removeNode(_pNode)
   }
 
-  final def init(obj: Obj[S])(implicit tx: S#Tx): this.type = {
+  final def init(obj: Ex[S])(implicit tx: S#Tx): this.type = {
     main.deferVisTx(initGUI())
     // SCAN
     //    mapping.foreach { m =>

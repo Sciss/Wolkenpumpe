@@ -14,8 +14,8 @@
 package de.sciss.nuages
 package impl
 
-import de.sciss.lucre.expr.{Type, DoubleObj}
-import de.sciss.lucre.stm.{Sys, Obj}
+import de.sciss.lucre.expr.{DoubleObj, Type}
+import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.synth.{Sys => SSys}
 
 object NuagesDoubleAttrInput extends NuagesAttribute.Factory {
@@ -43,12 +43,8 @@ final class NuagesDoubleAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S
   protected def toDouble  (in: Double): Double = in
   protected def fromDouble(in: Double): Double = in
 
-  protected def init1(obj: Obj[S])(implicit tx: S#Tx): Unit =
-    obj match {
-      case dObj: DoubleObj[S] =>
-        observers ::= dObj.changed.react { implicit tx => upd =>
-          updateValueAndRefresh(upd.now)
-        }
-      case _ =>
+  protected def init1(obj: DoubleObj[S])(implicit tx: S#Tx): Unit =
+    observers ::= obj.changed.react { implicit tx => upd =>
+      updateValueAndRefresh(upd.now)
     }
 }

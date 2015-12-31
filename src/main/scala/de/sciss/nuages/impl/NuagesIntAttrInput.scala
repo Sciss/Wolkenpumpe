@@ -1,8 +1,8 @@
 package de.sciss.nuages
 package impl
 
-import de.sciss.lucre.expr.{Type, IntObj}
-import de.sciss.lucre.stm.{Obj, Sys}
+import de.sciss.lucre.expr.{IntObj, Type}
+import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.synth.{Sys => SSys}
 
 object NuagesIntAttrInput extends NuagesAttribute.Factory {
@@ -30,12 +30,8 @@ final class NuagesIntAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S], 
   protected def toDouble  (in: Int   ): Double = in.toDouble
   protected def fromDouble(in: Double): Int    = in.toInt
 
-  protected def init1(obj: Obj[S])(implicit tx: S#Tx): Unit =
-    obj match {
-      case dObj: IntObj[S] =>
-        observers ::= dObj.changed.react { implicit tx => upd =>
-          updateValueAndRefresh(upd.now)
-        }
-      case _ =>
+  protected def init1(obj: IntObj[S])(implicit tx: S#Tx): Unit =
+    observers ::= obj.changed.react { implicit tx => upd =>
+      updateValueAndRefresh(upd.now)
     }
 }

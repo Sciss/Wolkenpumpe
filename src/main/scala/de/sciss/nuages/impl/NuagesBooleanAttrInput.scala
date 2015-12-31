@@ -1,12 +1,22 @@
+/*
+ *  NuagesBooleanAttrInput.scala
+ *  (Wolkenpumpe)
+ *
+ *  Copyright (c) 2008-2015 Hanns Holger Rutz. All rights reserved.
+ *
+ *  This software is published under the GNU General Public License v2+
+ *
+ *
+ *  For further information, please contact Hanns Holger Rutz at
+ *  contact@sciss.de
+ */
+
 package de.sciss.nuages
 package impl
 
-import de.sciss.lucre.expr.Expr.Const
-import de.sciss.lucre.expr.{Type, BooleanObj}
-import de.sciss.lucre.stm.{Sys, Obj}
+import de.sciss.lucre.expr.{BooleanObj, Type}
+import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.synth.{Sys => SSys}
-
-import scala.collection.immutable.{IndexedSeq => Vec}
 
 object NuagesBooleanAttrInput extends NuagesAttribute.Factory {
   def typeID: Int = BooleanObj.typeID
@@ -34,12 +44,8 @@ final class NuagesBooleanAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[
   protected def toDouble  (in: Boolean): Double   = if (in) 1.0 else 0.0
   protected def fromDouble(in: Double ): Boolean  = in == 0.0
 
-  protected def init1(obj: Obj[S])(implicit tx: S#Tx): Unit =
-    obj match {
-      case dObj: BooleanObj[S] =>
-        observers ::= dObj.changed.react { implicit tx => upd =>
-          updateValueAndRefresh(upd.now)
-        }
-      case _ =>
+  protected def init1(obj: BooleanObj[S])(implicit tx: S#Tx): Unit =
+    observers ::= obj.changed.react { implicit tx => upd =>
+      updateValueAndRefresh(upd.now)
     }
 }
