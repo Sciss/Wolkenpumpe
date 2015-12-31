@@ -3,6 +3,7 @@ package impl
 
 import java.awt.Graphics2D
 
+import de.sciss.lucre.expr.Expr
 import de.sciss.lucre.stm.Obj
 import de.sciss.lucre.synth.Sys
 
@@ -14,7 +15,12 @@ trait NuagesScalarAttrInput[S <: Sys[S]] extends NuagesAttrInputImpl[S] {
 
   def value: Vec[Double] = Vector(toDouble(valueA))
 
-//  def value_=(v: Vec[Double]): Unit = {
+  protected def mkConst(v: Vec[Double])(implicit tx: S#Tx): Ex[S] with Expr.Const[S, A] = {
+    require(v.size == 1)
+    tpe.newConst(fromDouble(v(0)))
+  }
+
+  //  def value_=(v: Vec[Double]): Unit = {
 //    if (v.size != 1) throw new IllegalArgumentException("Trying to set multi-channel parameter on scalar control")
 //    valueA = fromDouble(v.head)
 //  }

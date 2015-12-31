@@ -15,7 +15,7 @@ package de.sciss.nuages
 package impl
 
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{IdentifierMap, Sys, TxnLike}
+import de.sciss.lucre.stm.{Obj, IdentifierMap, Sys, TxnLike}
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.nuages.NuagesAttribute.Input
 import de.sciss.synth.proc.Timeline.Timed
@@ -29,7 +29,7 @@ object NuagesTimelineAttrInput extends NuagesAttribute.Factory {
 
   type Repr[S <: Sys[S]] = Timeline[S]
 
-  def apply[S <: SSys[S]](attr: NuagesAttribute[S], value: Timeline[S])
+  def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: NuagesAttribute.Parent[S], value: Timeline[S])
                          (implicit tx: S#Tx, context: NuagesContext[S]): Input[S] = {
     val map = tx.newInMemoryIDMap[Input[S]]
     new NuagesTimelineAttrInput(attr, map).init(value)
@@ -38,7 +38,7 @@ object NuagesTimelineAttrInput extends NuagesAttribute.Factory {
 final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesAttribute[S],
                                                           map: IdentifierMap[S#ID, S#Tx, Input[S]])
                                                          (implicit context: NuagesContext[S])
-  extends NuagesAttribute.Input[S] with NuagesTimelineTransport[S] {
+  extends NuagesAttribute.Input[S] with NuagesTimelineTransport[S] with NuagesAttribute.Parent[S] {
 
   import TxnLike.peer
 
@@ -72,9 +72,11 @@ final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesA
     this
   }
 
+  def updateChild(value: Obj[S])(implicit tx: S#Tx): Unit = ???!
+
   protected def addNode(timed: Timed[S])(implicit tx: S#Tx): Unit = {
     log(s"$attribute timeline addNode $timed")
-    val childView = NuagesAttribute.mkInput(attribute, timed.value)
+    val childView = NuagesAttribute.mkInput(attribute, parent = this, value = timed.value)
     viewSet += childView
     map.put(timed.id, childView)
   }

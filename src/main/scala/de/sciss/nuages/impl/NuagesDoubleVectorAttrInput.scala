@@ -3,7 +3,8 @@ package impl
 
 import java.awt.geom.{Arc2D, Area}
 
-import de.sciss.lucre.expr.DoubleVector
+import de.sciss.lucre.expr.Expr.Const
+import de.sciss.lucre.expr.{Type, DoubleVector}
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Sys, Obj}
 import de.sciss.lucre.synth.{Sys => SSys}
@@ -16,7 +17,7 @@ object NuagesDoubleVectorAttrInput extends NuagesAttribute.Factory {
 
   type Repr[~ <: Sys[~]] = DoubleVector[~]
 
-  def apply[S <: SSys[S]](attr: NuagesAttribute[S], obj: DoubleVector[S])
+  def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: NuagesAttribute.Parent[S], obj: DoubleVector[S])
                         (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute.Input[S] = {
 //    val spec  = NuagesAttributeImpl.getSpec(parent, key)
     val value     = obj.value
@@ -29,9 +30,15 @@ final class NuagesDoubleVectorAttrInput[S <: SSys[S]](val attribute: NuagesAttri
                                                       sourceOpt: Option[stm.Source[S#Tx, DoubleVector.Var[S]]])
   extends NuagesAttrInputImpl[S] {
 
-  type A = Vec[Double]
+  type A                = Vec[Double]
+  type Ex[~ <: Sys[~]]  = DoubleVector[~]
+
+  def tpe: Type.Expr[A, Ex] = DoubleVector
 
   private[this] var allValuesEqual = false
+
+  protected def mkConst(v: Vec[Double])(implicit tx: S#Tx): DoubleVector[S] with Const[S, Vec[Double]] =
+    tpe.newConst(v)
 
   protected def editable: Boolean = sourceOpt.isDefined
 

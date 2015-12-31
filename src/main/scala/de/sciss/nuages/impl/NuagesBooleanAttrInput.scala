@@ -1,26 +1,33 @@
 package de.sciss.nuages
 package impl
 
-import de.sciss.lucre.expr.BooleanObj
+import de.sciss.lucre.expr.Expr.Const
+import de.sciss.lucre.expr.{Type, BooleanObj}
 import de.sciss.lucre.stm.{Sys, Obj}
 import de.sciss.lucre.synth.{Sys => SSys}
+
+import scala.collection.immutable.{IndexedSeq => Vec}
 
 object NuagesBooleanAttrInput extends NuagesAttribute.Factory {
   def typeID: Int = BooleanObj.typeID
 
   type Repr[~ <: Sys[~]] = BooleanObj[~]
 
-  def apply[S <: SSys[S]](attr: NuagesAttribute[S], obj: BooleanObj[S])
+  def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: NuagesAttribute.Parent[S], obj: BooleanObj[S])
                         (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute.Input[S] = {
     // val spec  = NuagesAttributeImpl.getSpec(attr.parent, key)
     val value = obj.value
     new NuagesBooleanAttrInput[S](attr, valueA = value).init(obj)
   }
 }
-final class NuagesBooleanAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S], @volatile var valueA: Boolean)
+final class NuagesBooleanAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S],
+                                                 @volatile var valueA: Boolean)
   extends NuagesScalarAttrInput[S] {
 
-  type A = Boolean
+  type A                = Boolean
+  type Ex[~ <: Sys[~]]  = BooleanObj[~]
+
+  def tpe: Type.Expr[A, Ex] = BooleanObj
 
   protected def editable: Boolean = ???!
 

@@ -26,7 +26,7 @@ object NuagesOutputAttrInput extends NuagesAttribute.Factory {
 
   type Repr[~ <: Sys[~]] = Output[~]
 
-  def apply[S <: SSys[S]](attr: NuagesAttribute[S], obj: Output[S])
+  def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: NuagesAttribute.Parent[S], obj: Output[S])
                          (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute.Input[S] =
     new NuagesOutputAttrInput[S](attr).init(obj)
 }

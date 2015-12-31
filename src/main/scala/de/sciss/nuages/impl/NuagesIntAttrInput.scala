@@ -1,7 +1,7 @@
 package de.sciss.nuages
 package impl
 
-import de.sciss.lucre.expr.IntObj
+import de.sciss.lucre.expr.{Type, IntObj}
 import de.sciss.lucre.stm.{Obj, Sys}
 import de.sciss.lucre.synth.{Sys => SSys}
 
@@ -10,7 +10,7 @@ object NuagesIntAttrInput extends NuagesAttribute.Factory {
 
   type Repr[~ <: Sys[~]] = IntObj[~]
 
-  def apply[S <: SSys[S]](attr: NuagesAttribute[S], obj: IntObj[S])
+  def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: NuagesAttribute.Parent[S], obj: IntObj[S])
                         (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute.Input[S] = {
 //    val spec  = NuagesAttributeImpl.getSpec(parent, key)
     val value = obj.value
@@ -20,7 +20,10 @@ object NuagesIntAttrInput extends NuagesAttribute.Factory {
 final class NuagesIntAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S], @volatile var valueA: Int)
   extends NuagesScalarAttrInput[S] {
 
-  type A = Int
+  type A                = Int
+  type Ex[~ <: Sys[~]]  = IntObj[~]
+
+  def tpe: Type.Expr[A, Ex] = IntObj
 
   protected def editable: Boolean = ???!
 

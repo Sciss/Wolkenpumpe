@@ -31,8 +31,9 @@ object NuagesAttribute {
 //                           (implicit tx: S#Tx, context: NuagesContext[S]): Option[NuagesAttribute[S]] =
 //    Impl.tryApply(key, value, parent)
 
-  def mkInput[S <: SSys[S]](attr: NuagesAttribute[S], value: Obj[S])
-                           (implicit tx: S#Tx, context: NuagesContext[S]): Input[S] = Impl.mkInput(attr, value)
+  def mkInput[S <: SSys[S]](attr: NuagesAttribute[S], parent: Parent[S], value: Obj[S])
+                           (implicit tx: S#Tx, context: NuagesContext[S]): Input[S] =
+    Impl.mkInput(attr, parent, value)
 
   // ---- Factory ----
 
@@ -41,8 +42,8 @@ object NuagesAttribute {
 
     type Repr[~ <: Sys[~]] <: Obj[~]
 
-    def apply[S <: SSys[S]](attr: NuagesAttribute[S], value: Repr[S])
-                          (implicit tx: S#Tx, context: NuagesContext[S]): Input[S]
+    def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: Parent[S], value: Repr[S])
+                           (implicit tx: S#Tx, context: NuagesContext[S]): Input[S]
   }
 
   def addFactory(f: Factory): Unit = Impl.addFactory(f)
@@ -74,6 +75,10 @@ object NuagesAttribute {
     //    final def tryMigrate(to: Obj[S])(implicit tx: S#Tx): Boolean
 
     // def editable: Boolean
+  }
+
+  trait Parent[S <: Sys[S]] {
+    def updateChild(value: Obj[S])(implicit tx: S#Tx): Unit
   }
 }
 trait NuagesAttribute[S <: Sys[S]] extends /* NuagesData[S] */ NuagesAttribute.Input[S] with NuagesParam[S] {

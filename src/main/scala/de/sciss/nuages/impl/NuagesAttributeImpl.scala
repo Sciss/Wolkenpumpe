@@ -50,13 +50,13 @@ object NuagesAttributeImpl {
     import TxnLike.peer
     val spec = getSpec(parent, key)
     val res = new Impl[S](parent = parent, key = key, spec = spec) { self =>
-      protected val input = mkInput(self, _value)
+      protected val input = mkInput(attr = self, parent = self, value = _value)
     }
     parent.params.put(key, res)
     res
   }
 
-  def mkInput[S <: SSys[S]](attr: NuagesAttribute[S], value: Obj[S])
+  def mkInput[S <: SSys[S]](attr: NuagesAttribute[S], parent: NuagesAttribute.Parent[S], value: Obj[S])
                            (implicit tx: S#Tx, context: NuagesContext[S]): Input[S] = {
     val tid = value.tpe.typeID
     val opt = map.get(tid)
@@ -64,7 +64,7 @@ object NuagesAttributeImpl {
       val msg = s"No NuagesAttribute available for ${attr.key} / $value / type 0x${tid.toHexString}"
       throw new IllegalArgumentException(msg)
     }
-    factory[S](value = value.asInstanceOf[factory.Repr[S]], attr = attr)
+    factory[S](parent = parent, value = value.asInstanceOf[factory.Repr[S]], attr = attr)
   }
 
   private[this] var map = Map[Int, Factory](
@@ -98,7 +98,7 @@ object NuagesAttributeImpl {
   }
 
   private abstract class Impl[S <: SSys[S]](val parent: NuagesObj[S], val key: String, val spec: ParamSpec)
-    extends NuagesParamImpl[S] with NuagesAttribute[S] {
+    extends NuagesParamImpl[S] with NuagesAttribute[S] with NuagesAttribute.Parent[S] {
 
     import TxnLike.peer
 
@@ -121,6 +121,8 @@ object NuagesAttributeImpl {
     private[this] var _boundNodes = Map.empty[PNode, PEdge]
 
     private[this] def nodeSize = 0.333333f
+
+    def updateChild(value: Obj[S])(implicit tx: S#Tx): Unit = ???!
 
     def addPNode(in: Input[S], n: PNode, isFree: Boolean): Unit = {
       requireEDT()

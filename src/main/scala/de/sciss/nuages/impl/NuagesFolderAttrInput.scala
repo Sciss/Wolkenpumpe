@@ -27,14 +27,14 @@ object NuagesFolderAttrInput extends NuagesAttribute.Factory {
 
   type Repr[S <: Sys[S]] = Folder[S]
 
-  def apply[S <: SSys[S]](attr: NuagesAttribute[S], value: Folder[S])
+  def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: NuagesAttribute.Parent[S], value: Folder[S])
                          (implicit tx: S#Tx, context: NuagesContext[S]): Input[S] = {
     new NuagesFolderAttrInput(attr).init(value)
   }
 }
 final class NuagesFolderAttrInput[S <: SSys[S]] private(val attribute: NuagesAttribute[S])
                                                        (implicit context: NuagesContext[S])
-  extends /* NuagesAttributeImpl[S] */ NuagesAttribute.Input[S] {
+  extends NuagesAttribute.Input[S] with NuagesAttribute.Parent[S] {
 
   import TxnLike.peer
 
@@ -57,8 +57,10 @@ final class NuagesFolderAttrInput[S <: SSys[S]] private(val attribute: NuagesAtt
     this
   }
 
+  def updateChild(value: Obj[S])(implicit tx: S#Tx): Unit = ???!
+
   private[this] def mkChild(elem: Obj[S])(implicit tx: S#Tx): NuagesAttribute.Input[S] =
-    NuagesAttribute.mkInput(attribute, elem)
+    NuagesAttribute.mkInput(attribute, parent = this, value = elem)
 
   def value: Vec[Double] = ???!
 

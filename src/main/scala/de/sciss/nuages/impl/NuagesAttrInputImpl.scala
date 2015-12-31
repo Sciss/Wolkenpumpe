@@ -5,13 +5,16 @@ import java.awt.event.MouseEvent
 import java.awt.{Shape, Graphics2D}
 import java.awt.geom.{Arc2D, Point2D, GeneralPath, Area}
 
-import de.sciss.lucre.stm.{Disposable, Obj}
+import de.sciss.lucre.expr
+import de.sciss.lucre.expr.{Expr, Type}
+import de.sciss.lucre.stm.{Sys, Disposable, Obj}
 import de.sciss.lucre.synth.{Sys => SSys}
 import prefuse.data.{Node => PNode}
 import prefuse.util.ColorLib
 import prefuse.visual.VisualItem
 
 import scala.collection.immutable.{IndexedSeq => Vec}
+import scala.language.higherKinds
 
 object NuagesAttrInputImpl {
   private final class Drag(val angStart: Double, val valueStart: Vec[Double], val instant: Boolean) {
@@ -26,9 +29,15 @@ trait NuagesAttrInputImpl[S <: SSys[S]] extends NuagesDataImpl[S] with NuagesAtt
 
   type A
 
+  type Ex[~ <: Sys[~]] <: expr.Expr[~, A]
+
+  protected def tpe: Type.Expr[A, Ex]
+
   protected var valueA: A
 
-  protected def setControlTxn(v: Vec[Double])(implicit tx: S#Tx): Unit
+  protected def mkConst(v: Vec[Double])(implicit tx: S#Tx): Ex[S] with Expr.Const[S, A]
+
+  // protected final def setControlTxn(v: Vec[Double])(implicit tx: S#Tx): Unit = ...
 
   protected def init1(obj: Obj[S])(implicit tx: S#Tx): Unit
 
@@ -153,15 +162,12 @@ trait NuagesAttrInputImpl[S <: SSys[S]] extends NuagesDataImpl[S] with NuagesAtt
     } else false
   }
 
-  final def removeMapping()(implicit tx: S#Tx): Unit = setControlTxn(value)
+//  final def removeMapping()(implicit tx: S#Tx): Unit = setControlTxn(value)
 
-  final def setControl(v: Vec[Double], instant: Boolean): Unit =
-    atomic { implicit t =>
-      // if (instant) {
-      setControlTxn(v)
-      // } else t.withTransition(main.transition(t.time)) {
-      //  c.v = v
-      // }
+  protected final def setControl(v: Vec[Double], instant: Boolean): Unit =
+    atomic { implicit tx =>
+      val newValueA = mkConst(v)
+      ???!
     }
 
   final override def itemDragged(vi: VisualItem, e: MouseEvent, pt: Point2D): Unit =
