@@ -18,7 +18,6 @@ import java.awt.geom.{Arc2D, Area}
 
 import de.sciss.lucre.expr.Expr.Const
 import de.sciss.lucre.expr.{Type, DoubleVector}
-import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Sys, Obj}
 import de.sciss.lucre.synth.{Sys => SSys}
 
@@ -33,14 +32,11 @@ object NuagesDoubleVectorAttrInput extends NuagesAttribute.Factory {
   def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: NuagesAttribute.Parent[S], obj: DoubleVector[S])
                         (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute.Input[S] = {
 //    val spec  = NuagesAttributeImpl.getSpec(parent, key)
-    val value     = obj.value
-    val sourceOpt = DoubleVector.Var.unapply(obj).map(tx.newHandle(_)) // .isDefined
-    new NuagesDoubleVectorAttrInput[S](attr, valueA = value, sourceOpt = sourceOpt).init(obj)
+    new NuagesDoubleVectorAttrInput[S](attr, parent = parent).init(obj)
   }
 }
 final class NuagesDoubleVectorAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S],
-                                                      @volatile var valueA: Vec[Double],
-                                                      sourceOpt: Option[stm.Source[S#Tx, DoubleVector.Var[S]]])
+                                                      protected val parent: NuagesAttribute.Parent[S])
   extends NuagesAttrInputImpl[S] {
 
   type A                = Vec[Double]
@@ -53,11 +49,9 @@ final class NuagesDoubleVectorAttrInput[S <: SSys[S]](val attribute: NuagesAttri
   protected def mkConst(v: Vec[Double])(implicit tx: S#Tx): DoubleVector[S] with Const[S, Vec[Double]] =
     tpe.newConst(v)
 
-  protected def editable: Boolean = sourceOpt.isDefined
-
   def value: Vec[Double] = valueA
 
-  def tryMigrate(to: Obj[S])(implicit tx: S#Tx): Boolean = ???!
+//  def tryMigrate(to: Obj[S])(implicit tx: S#Tx): Boolean = ...
 
   //  def value_=(v: Vec[Double]): Unit = {
 //    //    if (v.size != valueA.size)
@@ -83,11 +77,6 @@ final class NuagesDoubleVectorAttrInput[S <: SSys[S]](val attribute: NuagesAttri
 ////      case _ => attr.put(key, DoubleVector.newVar(vc))
 ////    }
 //  }
-
-  protected def init1(obj: DoubleVector[S])(implicit tx: S#Tx): Unit =
-    observers ::= obj.changed.react { implicit tx => upd =>
-      updateValueAndRefresh(upd.now)
-    }
 
   import NuagesDataImpl.{gArc, gEllipse, gLine}
 

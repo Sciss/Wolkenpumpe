@@ -26,12 +26,11 @@ object NuagesBooleanAttrInput extends NuagesAttribute.Factory {
   def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: NuagesAttribute.Parent[S], obj: BooleanObj[S])
                         (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute.Input[S] = {
     // val spec  = NuagesAttributeImpl.getSpec(attr.parent, key)
-    val value = obj.value
-    new NuagesBooleanAttrInput[S](attr, valueA = value).init(obj)
+    new NuagesBooleanAttrInput[S](attr, parent = parent).init(obj)
   }
 }
-final class NuagesBooleanAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S],
-                                                 @volatile var valueA: Boolean)
+final class NuagesBooleanAttrInput[S <: SSys[S]] private (val attribute: NuagesAttribute[S],
+                                                          protected val parent: NuagesAttribute.Parent[S])
   extends NuagesScalarAttrInput[S] {
 
   type A                = Boolean
@@ -39,13 +38,6 @@ final class NuagesBooleanAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[
 
   def tpe: Type.Expr[A, Ex] = BooleanObj
 
-  protected def editable: Boolean = ???!
-
   protected def toDouble  (in: Boolean): Double   = if (in) 1.0 else 0.0
   protected def fromDouble(in: Double ): Boolean  = in == 0.0
-
-  protected def init1(obj: BooleanObj[S])(implicit tx: S#Tx): Unit =
-    observers ::= obj.changed.react { implicit tx => upd =>
-      updateValueAndRefresh(upd.now)
-    }
 }

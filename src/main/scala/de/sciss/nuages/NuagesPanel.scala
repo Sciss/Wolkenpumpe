@@ -55,6 +55,8 @@ trait NuagesPanel[S <: Sys[S]] extends View[S] {
 
   implicit def context: NuagesContext[S]
 
+  def isTimeline: Boolean
+
   // ---- methods to be called on the EDT ----
 
   // -- prefuse --

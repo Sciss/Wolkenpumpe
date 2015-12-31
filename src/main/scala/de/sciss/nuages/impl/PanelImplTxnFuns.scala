@@ -34,7 +34,7 @@ trait PanelImplTxnFuns[S <: Sys[S]] {
 
   def transport: Transport[S]
 
-  protected def isTimeline: Boolean
+  def isTimeline: Boolean
 
   // ---- impl ----
 

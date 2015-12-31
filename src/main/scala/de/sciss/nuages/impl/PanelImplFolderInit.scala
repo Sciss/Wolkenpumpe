@@ -50,7 +50,7 @@ trait PanelImplFolderInit[S <: Sys[S]] {
 
   // ---- impl ----
 
-  protected final def isTimeline = false
+  final def isTimeline = false
 
   protected final val auralReprRef = Ref(Option.empty[AuralObj.Folder[S]])
 

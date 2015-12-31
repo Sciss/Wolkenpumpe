@@ -78,7 +78,7 @@ object NuagesAttribute {
   }
 
   trait Parent[S <: Sys[S]] {
-    def updateChild(value: Obj[S])(implicit tx: S#Tx): Unit
+    def updateChild(before: Obj[S], now: Obj[S])(implicit tx: S#Tx): Unit
   }
 }
 trait NuagesAttribute[S <: Sys[S]] extends /* NuagesData[S] */ NuagesAttribute.Input[S] with NuagesParam[S] {

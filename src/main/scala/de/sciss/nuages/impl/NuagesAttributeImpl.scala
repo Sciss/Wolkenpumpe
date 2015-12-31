@@ -16,12 +16,12 @@ package impl
 
 import java.awt.Graphics2D
 
-import de.sciss.lucre.expr.{BooleanObj, DoubleObj, DoubleVector, IntObj}
+import de.sciss.lucre.expr.{LongObj, BooleanObj, DoubleObj, DoubleVector, IntObj}
 import de.sciss.lucre.stm.{TxnLike, Obj, Sys}
 import de.sciss.lucre.swing.requireEDT
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.nuages.NuagesAttribute.{Factory, Input}
-import de.sciss.synth.proc.{Timeline, Output, Folder}
+import de.sciss.synth.proc.{Grapheme, Timeline, Output, Folder}
 import prefuse.data.{Node => PNode, Edge => PEdge}
 import prefuse.visual.VisualItem
 
@@ -122,7 +122,22 @@ object NuagesAttributeImpl {
 
     private[this] def nodeSize = 0.333333f
 
-    def updateChild(value: Obj[S])(implicit tx: S#Tx): Unit = ???!
+    private[this] def currentFrame()(implicit tx: S#Tx): Long =
+      main.transport.position
+
+    def updateChild(before: Obj[S], now: Obj[S])(implicit tx: S#Tx): Unit = {
+      val value = if (main.isTimeline) {
+        val gr          = Grapheme[S]
+        val timeBefore  = LongObj.newVar[S](0L) // XXX TODO ?
+        val timeNow     = LongObj.newVar[S](currentFrame())
+        gr.add(timeBefore, before)
+        gr.add(timeNow   , now)
+        gr
+      } else {
+        now
+      }
+      parent.obj.attr.put(key, value)
+    }
 
     def addPNode(in: Input[S], n: PNode, isFree: Boolean): Unit = {
       requireEDT()

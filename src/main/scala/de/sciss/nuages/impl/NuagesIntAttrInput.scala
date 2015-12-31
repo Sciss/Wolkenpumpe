@@ -13,11 +13,11 @@ object NuagesIntAttrInput extends NuagesAttribute.Factory {
   def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: NuagesAttribute.Parent[S], obj: IntObj[S])
                         (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute.Input[S] = {
 //    val spec  = NuagesAttributeImpl.getSpec(parent, key)
-    val value = obj.value
-    new NuagesIntAttrInput[S](attr, valueA = value).init(obj)
+    new NuagesIntAttrInput[S](attr, parent = parent).init(obj)
   }
 }
-final class NuagesIntAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S], @volatile var valueA: Int)
+final class NuagesIntAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S],
+                                             protected val parent: NuagesAttribute.Parent[S])
   extends NuagesScalarAttrInput[S] {
 
   type A                = Int
@@ -25,13 +25,6 @@ final class NuagesIntAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S], 
 
   def tpe: Type.Expr[A, Ex] = IntObj
 
-  protected def editable: Boolean = ???!
-
   protected def toDouble  (in: Int   ): Double = in.toDouble
   protected def fromDouble(in: Double): Int    = in.toInt
-
-  protected def init1(obj: IntObj[S])(implicit tx: S#Tx): Unit =
-    observers ::= obj.changed.react { implicit tx => upd =>
-      updateValueAndRefresh(upd.now)
-    }
 }

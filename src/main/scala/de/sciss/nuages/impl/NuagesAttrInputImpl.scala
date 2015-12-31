@@ -15,13 +15,13 @@ package de.sciss.nuages
 package impl
 
 import java.awt.event.MouseEvent
-import java.awt.{Shape, Graphics2D}
-import java.awt.geom.{Arc2D, Point2D, GeneralPath, Area}
+import java.awt.geom.{Arc2D, Area, GeneralPath, Point2D}
+import java.awt.{Graphics2D, Shape}
 
-import de.sciss.lucre.expr
 import de.sciss.lucre.expr.{Expr, Type}
-import de.sciss.lucre.stm.{Sys, Disposable, Obj}
+import de.sciss.lucre.stm.{Disposable, Sys}
 import de.sciss.lucre.synth.{Sys => SSys}
+import de.sciss.lucre.{expr, stm}
 import prefuse.data.{Node => PNode}
 import prefuse.util.ColorLib
 import prefuse.visual.VisualItem
@@ -46,13 +46,7 @@ trait NuagesAttrInputImpl[S <: SSys[S]] extends NuagesDataImpl[S] with NuagesAtt
 
   protected def tpe: Type.Expr[A, Ex]
 
-  protected var valueA: A
-
   protected def mkConst(v: Vec[Double])(implicit tx: S#Tx): Ex[S] with Expr.Const[S, A]
-
-  // protected final def setControlTxn(v: Vec[Double])(implicit tx: S#Tx): Unit = ...
-
-  protected def init1(obj: Ex[S])(implicit tx: S#Tx): Unit
 
   protected def renderValueUpdated(): Unit
 
@@ -60,15 +54,16 @@ trait NuagesAttrInputImpl[S <: SSys[S]] extends NuagesDataImpl[S] with NuagesAtt
 
   protected def drawAdjust(g: Graphics2D, v: Vec[Double]): Unit
 
-  //  protected def nodeProvider: NuagesAttribute.NodeProvider[S]
-
-  protected def editable: Boolean
+  protected def parent: NuagesAttribute.Parent[S]
 
   // ---- impl ----
 
   final protected var renderedValue: A = null.asInstanceOf[A] // invalidRenderedValue
 
   private[this] var renderedValid: Boolean = false
+
+  @volatile
+  protected final var valueA: A = _
 
   final protected def nodeSize = 1f
 
@@ -77,6 +72,8 @@ trait NuagesAttrInputImpl[S <: SSys[S]] extends NuagesDataImpl[S] with NuagesAtt
 
   private[this] var drag: Drag      = null
 
+  private[this] var objH: stm.Source[S#Tx, Ex[S]] = _
+
   private[this] def spec: ParamSpec = attribute.spec
 
   def main: NuagesPanel[S]  = attribute.parent.main
@@ -84,6 +81,26 @@ trait NuagesAttrInputImpl[S <: SSys[S]] extends NuagesDataImpl[S] with NuagesAtt
   private[this] def atomic[A](fun: S#Tx => A): A = main.transport.scheduler.cursor.step(fun)
 
   def name: String = attribute.name
+
+  private[this] def isTimeline: Boolean = attribute.parent.main.isTimeline
+
+  private[this] def setControlTxn(v: Vec[Double])(implicit tx: S#Tx): Unit = {
+    val nowConst: Ex[S] = mkConst(v) // IntelliJ highlight error
+    val before = objH()
+    if (!editable || isTimeline) {
+      parent.updateChild(before = before, now = tpe.newVar[S](nowConst))
+    } else {
+      val Var = tpe.Var
+      val Var(vr) = before
+      vr() = nowConst
+    }
+    //    val attr = parent.obj.attr
+    //    val vc   = DoubleObj.newConst[S](v.head)
+    //    attr.$[DoubleObj](key) match {
+    //      case Some(DoubleObj.Var(vr)) => vr() = vc
+    //      case _ => attr.put(key, DoubleObj.newVar(vc))
+    //    }
+  }
 
   private[this] val spikes: Shape = if (spec.warp == IntWarp) {
     val loInt = spec.map(0.0).toInt
@@ -103,7 +120,9 @@ trait NuagesAttrInputImpl[S <: SSys[S]] extends NuagesDataImpl[S] with NuagesAtt
     } else null
   } else null
 
-  final protected var observers = List.empty[Disposable[S#Tx]]
+  private[this] var observer: Disposable[S#Tx] = _
+
+  private[this] var editable: Boolean = _
 
   final protected def updateValueAndRefresh(v: A)(implicit tx: S#Tx): Unit =
     main.deferVisTx {
@@ -114,7 +133,7 @@ trait NuagesAttrInputImpl[S <: SSys[S]] extends NuagesDataImpl[S] with NuagesAtt
     }
 
   def dispose()(implicit tx: S#Tx): Unit = {
-    observers.foreach(_.dispose())
+    observer.dispose()
     //    mapping.foreach { m =>
     //      m.synth.swap(None)(tx.peer).foreach(_.dispose())
     //    }
@@ -127,12 +146,18 @@ trait NuagesAttrInputImpl[S <: SSys[S]] extends NuagesDataImpl[S] with NuagesAtt
   }
 
   final def init(obj: Ex[S])(implicit tx: S#Tx): this.type = {
-    main.deferVisTx(initGUI())
+    implicit val ser = tpe.serializer[S]
+    objH      = tx.newHandle(obj)
+    editable  = tpe.Var.unapply(obj).isDefined
+    valueA    = obj.value
     // SCAN
     //    mapping.foreach { m =>
     //      main.assignMapping(source = m.scan, vSink = this)
     //    }
-    init1(obj)
+    observer = obj.changed.react { implicit tx => upd =>
+      updateValueAndRefresh(upd.now)
+    }
+    main.deferVisTx(initGUI())
     this
   }
 
@@ -179,8 +204,7 @@ trait NuagesAttrInputImpl[S <: SSys[S]] extends NuagesDataImpl[S] with NuagesAtt
 
   protected final def setControl(v: Vec[Double], instant: Boolean): Unit =
     atomic { implicit tx =>
-      val newValueA = mkConst(v)
-      ???!
+      setControlTxn(v)
     }
 
   final override def itemDragged(vi: VisualItem, e: MouseEvent, pt: Point2D): Unit =
