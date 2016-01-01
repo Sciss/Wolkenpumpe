@@ -106,6 +106,7 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
   private[this] final class View(val start: Long, val input: NuagesAttribute.Input[S]) {
     def isEmpty = start == Long.MaxValue
     def dispose()(implicit tx: S#Tx): Unit = if (!isEmpty) input.dispose()
+    override def toString = if (isEmpty) "View(<empty>)" else s"View($start, $input)"
   }
 
   private[this] def emptyView   = new View(Long.MaxValue, null)
@@ -117,7 +118,7 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
     val curr  = currentView()
     val isNow = (curr.isEmpty || start > curr.start) && start <= time
     if (isNow) {
-      println(s"elemAdded($start, $child); time = $time")
+      // log(s"elemAdded($start, $child); time = $time")
       val newView   = NuagesAttribute.mkInput(attribute, parent = this, value = child)
       curr.dispose()
       currentView() = new View(start = start, input = newView)
@@ -204,8 +205,10 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
   protected def processEvent(frame: Long)(implicit tx: S#Tx): Unit = {
     val gr        = graphemeH()
     val child     = gr.valueAt(frame).getOrElse(throw new IllegalStateException(s"Found no value at $frame"))
-    val newView   = NuagesAttribute.mkInput(attribute, parent = this, value = child)
+    // if we `dispose` after `mkInput`, there is an issue with aggr invalidation
+    // that seems difficult to track down. if we `dispose` before, it seems fine.
     currentView().dispose()
+    val newView   = NuagesAttribute.mkInput(attribute, parent = this, value = child)
     currentView() = new View(start = frame, input = newView)
   }
 }

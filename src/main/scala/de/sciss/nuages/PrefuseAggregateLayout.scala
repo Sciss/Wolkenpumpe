@@ -94,13 +94,25 @@ class PrefuseAggregateLayout(aggrGroup: String) extends Layout(aggrGroup) {
     val iter1 = aggr.tuples()
     while (iter1.hasNext) {
       val item = iter1.next().asInstanceOf[AggregateItem]
+      // val before = Thread.getAllStackTraces
       try {
         maxSz = math.max(maxSz, item.getAggregateSize)
       } catch {
-        case _: ConcurrentModificationException =>
-          Console.err.println("WTF? - PrefuseAggregateLayout.run")
-          val again = item.getAggregateSize
-          println(again)
+        case e: ConcurrentModificationException =>
+          Console.err.println(s"PrefuseAggregateLayout.run - ${e.getMessage}")
+          e.printStackTrace()
+//          val allStackTraces = before // Thread.getAllStackTraces
+//          import scala.collection.JavaConverters._
+//          allStackTraces.asScala.foreach { case (thread, stack) =>
+//            println(s"----- THREAD: $thread -----")
+//            stack.take(5).foreach { elem =>
+//              println(elem)
+//            }
+//          }
+//          println("-----")
+
+//          val again = item.getAggregateSize
+//          println(again)
       }
     }
     maxSz *= 8

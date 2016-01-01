@@ -145,6 +145,7 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
   }
 
   private[this] def disposeGUI(): Unit = {
+    log(s"disposeGUI($name)")
     attribute.removePNode(this, _pNode)
     main.graph.removeNode(_pNode)
   }
