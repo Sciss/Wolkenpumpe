@@ -22,11 +22,12 @@ object Demo {
 
   def run(config: Config): Unit = {
     WebLookAndFeel.install()
+    Wolkenpumpe.init()
 
     config.durable match {
       case Some(f) =>
         type S = Durable
-        val factory = BerkeleyDB.tmp()
+        val factory = BerkeleyDB.factory(f) // .tmp()
         implicit val system = Durable(factory)
         val w = new Wolkenpumpe[S]
         val nuagesH = system.root { implicit tx =>

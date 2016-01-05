@@ -14,7 +14,7 @@
 package de.sciss.nuages
 package impl
 
-import de.sciss.lucre.stm.{Disposable, Sys}
+import de.sciss.lucre.stm.{Obj, Disposable, Sys}
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.synth.proc.Output
 import prefuse.data.{Node => PNode}
@@ -32,6 +32,8 @@ object NuagesOutputAttrInput extends NuagesAttribute.Factory {
 }
 final class NuagesOutputAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S])(implicit context: NuagesContext[S])
   extends NuagesAttribute.Input[S] {
+
+  def tryMigrate(to: Obj[S])(implicit tx: S#Tx): Boolean = false
 
   private[this] def deferVisTx(body: => Unit)(implicit tx: S#Tx): Unit =
     attribute.parent.main.deferVisTx(body)

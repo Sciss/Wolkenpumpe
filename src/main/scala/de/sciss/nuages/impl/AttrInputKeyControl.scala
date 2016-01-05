@@ -21,6 +21,7 @@ import javax.swing.event.{AncestorEvent, AncestorListener}
 
 import de.sciss.desktop.KeyStrokes
 import de.sciss.lucre.stm.Sys
+import de.sciss.nuages.KeyControl.ControlDrag
 import de.sciss.numbers
 import prefuse.visual.VisualItem
 
@@ -48,8 +49,8 @@ trait AttrInputKeyControl[S <: Sys[S]] extends ClipboardOwner {
       } else  if (e.code == Key.V) {  // paste clipboard
         val clip = Toolkit.getDefaultToolkit.getSystemClipboard
         if ( /* vc.editable && */ clip.isDataFlavorAvailable(KeyControl.ControlFlavor)) {
-          // val data = clip.getData(KeyControl.ControlFlavor).asInstanceOf[ControlDrag]
-          ???! // vc.setControl(data.values, instant = true) // XXX TODO -- which want to rescale
+          val data = clip.getData(KeyControl.ControlFlavor).asInstanceOf[ControlDrag]
+          setControl(data.values, instant = true) // XXX TODO -- which want to rescale
         }
       }
 
@@ -141,9 +142,9 @@ trait AttrInputKeyControl[S <: Sys[S]] extends ClipboardOwner {
       onComplete {
         close()
         Try(ggValue.text.toDouble).toOption.foreach { newValue =>
-          // val v   = spec.inverseMap(spec.clip(newValue))
-          // val vs  = Vector.fill(numChannels)(v)
-          ???! // vc.setControl(vs, instant = true)
+          val v   = spec.inverseMap(spec.clip(newValue))
+          val vs  = Vector.fill(numChannels)(v)
+          setControl(vs, instant = true)
         }
       }
     }

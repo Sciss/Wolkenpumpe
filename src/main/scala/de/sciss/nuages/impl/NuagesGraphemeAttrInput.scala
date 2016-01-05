@@ -44,6 +44,8 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
 
   protected var graphemeH: stm.Source[S#Tx, Grapheme[S]] = _
 
+  def tryMigrate(to: Obj[S])(implicit tx: S#Tx): Boolean = false
+
   // N.B.: Currently AuralGraphemeAttribute does not pay
   // attention to the parent object's time offset. Therefore,
   // to match with the current audio implementation, we also
@@ -102,8 +104,11 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
   }
 
   private[this] final class View(val start: Long, val input: NuagesAttribute.Input[S]) {
-    def isEmpty = start == Long.MaxValue
-    def dispose()(implicit tx: S#Tx): Unit = if (!isEmpty) input.dispose()
+    def isEmpty  : Boolean = start == Long.MaxValue
+    def isDefined: Boolean = !isEmpty
+
+    def dispose()(implicit tx: S#Tx): Unit = if (isDefined) input.dispose()
+
     override def toString = if (isEmpty) "View(<empty>)" else s"View($start, $input)"
   }
 
@@ -116,11 +121,8 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
     val curr  = currentView()
     val isNow = (curr.isEmpty || start > curr.start) && start <= time
     if (isNow) {
-      // log(s"elemAdded($start, $child); time = $time")
-      val newView   = NuagesAttribute.mkInput(attribute, parent = this, value = child)
-      curr.dispose()
-      currentView() = new View(start = start, input = newView)
-      frameRef()    = time
+      setChild(start = start, child = child)
+      frameRef() = time
       if (t.isPlaying) reschedule(time)
     }
   }
@@ -138,7 +140,7 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
 //  private[this] def elemRemoved1(start: Long, child: Obj[S], childView: Elem)
 //                                (implicit tx: S#Tx): Unit = {
 //    // remove view for the element from tree and map
-//    ???!
+//    ...
 //  }
 
   private[this] def isTimeline: Boolean = attribute.parent.main.isTimeline
@@ -147,7 +149,7 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
     val gr = graphemeH()
     gr.modifiableOption.fold(updateParent(before, now)) { grm =>
       val curr = currentView()
-      require(!curr.isEmpty)
+      require(curr.isDefined)
       val beforeStart = curr.start
       val nowStart    = currentFrame()
       println(s"updateChild($before - $beforeStart, $now - $nowStart)")
@@ -183,7 +185,7 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
     val oldView = currentView()
     val gr      = graphemeH()
     gr.floor(now).fold[Unit] {
-      if (!oldView.isEmpty) {
+      if (oldView.isDefined) {
         val time0 = oldView.start
         elemRemoved(time0, ???!)
       }
@@ -199,12 +201,18 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
     graphemeH().eventAfter(frame).getOrElse(Long.MaxValue)
 
   protected def processEvent(frame: Long)(implicit tx: S#Tx): Unit = {
-    val gr        = graphemeH()
-    val child     = gr.valueAt(frame).getOrElse(throw new IllegalStateException(s"Found no value at $frame"))
-    // if we `dispose` after `mkInput`, there is an issue with aggr invalidation
-    // that seems difficult to track down. if we `dispose` before, it seems fine.
-    currentView().dispose()
-    val newView   = NuagesAttribute.mkInput(attribute, parent = this, value = child)
-    currentView() = new View(start = frame, input = newView)
+    val gr    = graphemeH()
+    val child = gr.valueAt(frame).getOrElse(throw new IllegalStateException(s"Found no value at $frame"))
+    setChild(start = frame, child = child)
+  }
+
+  private[this] def setChild(start: Long, child: Obj[S])(implicit tx: S#Tx): Unit = {
+    val curr = currentView()
+    if (curr.isEmpty || !curr.input.tryMigrate(child)) {
+      // log(s"elemAdded($start, $child); time = $time")
+      curr.dispose()
+      val newView   = NuagesAttribute.mkInput(attribute, parent = this, value = child)
+      currentView() = new View(start = start, input = newView)
+    }
   }
 }

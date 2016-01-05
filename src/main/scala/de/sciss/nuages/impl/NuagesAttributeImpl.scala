@@ -114,6 +114,8 @@ object NuagesAttributeImpl {
 
     def numChannels: Int = input.numChannels
 
+    def tryMigrate(to: Obj[S])(implicit tx: S#Tx): Boolean = input.tryMigrate(to)
+
     def value: Vec[Double] = ???!
 
     private[this] var _state: State = EmptyState

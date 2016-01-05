@@ -64,6 +64,8 @@ final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesA
 
   protected def transport: Transport[S] = attribute.parent.main.transport
 
+  def tryMigrate(to: Obj[S])(implicit tx: S#Tx): Boolean = false
+
   private def init(tl: Timeline[S])(implicit tx: S#Tx): this.type = {
     log(s"$attribute timeline init")
     timelineH = tx.newHandle(tl)
