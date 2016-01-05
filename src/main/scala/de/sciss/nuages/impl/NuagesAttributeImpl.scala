@@ -23,7 +23,7 @@ import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.nuages.NuagesAttribute.{Factory, Input}
 import de.sciss.synth.proc.{Grapheme, Timeline, Output, Folder}
 import prefuse.data.{Node => PNode, Edge => PEdge}
-import prefuse.visual.{AggregateItem, VisualItem}
+import prefuse.visual.VisualItem
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
@@ -151,20 +151,15 @@ object NuagesAttributeImpl {
         if (sz != 1.0f) vis.set(VisualItem.SIZE, sz)
         val ei  = g.addEdge(ns, parent.pNode)
         val ee  = g.addEdge(n , ns)
-        logAggr(s"add $vis - $this")
-        parent.aggr.addItem(vis)
-        VALIDATE_AGGR()
+        addAggr(ns)
         SummaryState(ns, ei) -> ee
       }
 
       val (newState, newEdge) = _state match {
         case EmptyState =>
           if (isFree) {
-            val e   = g.addEdge(n, parent.pNode)
-            val vi  = main.visualization.getVisualItem(NuagesPanel.GROUP_GRAPH, n)
-            logAggr(s"add $vi - $this")
-            parent.aggr.addItem(vi)
-            VALIDATE_AGGR()
+            val e = g.addEdge(n, parent.pNode)
+            addAggr(n)
             InternalState(n) -> e
           } else {
             mkSummary()
@@ -173,6 +168,7 @@ object NuagesAttributeImpl {
         case InternalState(ni) =>
           val ei0 = _freeNodes(ni)
           g.removeEdge(ei0)   // dissolve edge of former internal node
+          removeAggr(ni)      // remove former internal node from aggregate
           val res = mkSummary()
           val ei1 = g.addEdge(ni , res._1.pNode)
           _freeNodes += ni -> ei1 // register new edge of former internal node
@@ -193,6 +189,23 @@ object NuagesAttributeImpl {
       }
     }
 
+    private[this] def removeAggr(n: PNode): Unit = {
+      val vi = main.visualization.getVisualItem(NuagesPanel.GROUP_GRAPH, n)
+      logAggr(s"rem $vi@${vi.hashCode.toHexString} - $this")
+      // VALIDATE_AGGR("before removeAggr")
+      assert(parent.aggr.containsItem(vi))
+      parent.aggr.removeItem(vi)
+      // VALIDATE_AGGR("after  removeAggr")
+    }
+
+    private[this] def addAggr(n: PNode): Unit = {
+      val vi = main.visualization.getVisualItem(NuagesPanel.GROUP_GRAPH, n)
+      logAggr(s"add $vi${vi.hashCode.toHexString} - $this")
+      // VALIDATE_AGGR("before empty>free")
+      assert(!parent.aggr.containsItem(vi))
+      parent.aggr.addItem(vi)
+    }
+
     def removePNode(in: Input[S], n: PNode): Unit = {
       requireEDT()
       val g = main.graph
@@ -209,13 +222,6 @@ object NuagesAttributeImpl {
       }
       g.removeEdge(oldEdge)
 
-      def removeAggr(ni: PNode): Unit = {
-        val vi = main.visualization.getVisualItem(NuagesPanel.GROUP_GRAPH, ni)
-        logAggr(s"rem $vi - $this")
-        VALIDATE_AGGR()
-        parent.aggr.removeItem(vi)
-      }
-
       _state = _state match {
         case InternalState(`n`) =>
           removeAggr(n)
@@ -226,18 +232,17 @@ object NuagesAttributeImpl {
           if (numFree > 1) prev else {
             g.removeEdge(es)
             removeAggr(ns)
+            val vi = main.visualization.getVisualItem(NuagesPanel.GROUP_GRAPH, ns)
             g.removeNode(ns)
+            assert(!vi.isValid)
+            assert(!attribute.parent.aggr.containsItem(vi))
 
             if (numFree == 0) EmptyState else { // become internal
               val (n1, _ /* e1 */)  = _freeNodes.head // the former edge is already removed because we removed `ns`
               val e2        = g.addEdge(n1, parent.pNode)
               _freeNodes   += n1 -> e2  // update with new edge
-              val vis       = main.visualization
-              val vi1       = vis.getVisualItem(NuagesPanel.GROUP_GRAPH, n1)
-              logAggr(s"add $vi1 - $this")
-              VALIDATE_AGGR()
-              parent.aggr.addItem(vi1)
-              InternalState(n)
+              addAggr(n1)
+              InternalState(n1)
             }
           }
 
@@ -262,17 +267,22 @@ object NuagesAttributeImpl {
       parent.params.remove(key)
     }
 
-    private[this] def VALIDATE_AGGR(): Unit = {
-      val m_vis = main.visualization
-      val aggr  = m_vis.getGroup(PanelImpl.AGGR_PROC) // .asInstanceOf[ AggregateTable ]
-      if (aggr.getTupleCount == 0) return // do we have any to process?
-
-      var maxSz = 0
-      val iter1 = aggr.tuples()
-      while (iter1.hasNext) {
-        val item = iter1.next().asInstanceOf[AggregateItem]
-        maxSz = math.max(maxSz, 4 * 2 * item.getAggregateSize)
-      }
-    }
+//    private[this] def VALIDATE_AGGR(name: String): Unit = {
+//      require (AGGR_LOCK)
+//      val m_vis = main.visualization
+//      val aggr  = m_vis.getGroup(PanelImpl.AGGR_PROC) // .asInstanceOf[ AggregateTable ]
+//      if (aggr.getTupleCount == 0) return // do we have any to process?
+//
+////      println(s"VALIDATE_AGGR begin $name - $aggr@${aggr.hashCode.toHexString}")
+//      var maxSz = 0
+//      val iter1 = aggr.tuples()
+//      while (iter1.hasNext) {
+//        val item = iter1.next().asInstanceOf[AggregateItem]
+////        println(s"...$item@${item.hashCode.toHexString}")
+//        maxSz = math.max(maxSz, 4 * 2 * item.getAggregateSize)
+//      }
+////      println(s"maxSz = $maxSz")
+////      println(s"VALIDATE_AGGR end   $name")
+//    }
   }
 }

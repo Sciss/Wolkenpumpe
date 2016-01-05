@@ -89,7 +89,7 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
   private[this] def isTimeline: Boolean = attribute.parent.main.isTimeline
 
   private[this] def setControlTxn(v: Vec[Double])(implicit tx: S#Tx): Unit = {
-    val nowConst: Ex[S] = mkConst(v) // IntelliJ highlight error
+    val nowConst: Ex[S] = mkConst(v) // IntelliJ highlight error SCL-9713
     val before = objH()
     if (!editable || isTimeline) {
       parent.updateChild(before = before, now = tpe.newVar[S](nowConst))
@@ -148,6 +148,9 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
     log(s"disposeGUI($name)")
     attribute.removePNode(this, _pNode)
     main.graph.removeNode(_pNode)
+    // val vi = main.visualization.getVisualItem(NuagesPanel.GROUP_GRAPH, _pNode)
+    // val aggr = attribute.parent.aggr
+    // assert(!aggr.containsItem(vi), s"still in aggr $aggr@${aggr.hashCode.toHexString}: $vi@${vi.hashCode.toHexString}")
   }
 
   final def init(obj: Ex[S])(implicit tx: S#Tx): this.type = {

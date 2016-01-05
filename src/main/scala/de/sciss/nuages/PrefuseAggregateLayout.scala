@@ -83,7 +83,7 @@ class PrefuseAggregateLayout(aggrGroup: String) extends Layout(aggrGroup) {
 
   private var points = new Array[Double](8 * 4) // buffer for computing convex hulls
 
-  def run(frac: Double): Unit = {
+  def run(frac: Double): Unit = /* getVisualization.synchronized */ {
     // require(AGGR_LOCK)
 
     val aggr = m_vis.getGroup(aggrGroup) // .asInstanceOf[ AggregateTable ]
@@ -99,7 +99,9 @@ class PrefuseAggregateLayout(aggrGroup: String) extends Layout(aggrGroup) {
         maxSz = math.max(maxSz, item.getAggregateSize)
       } catch {
         case e: ConcurrentModificationException =>
-          Console.err.println(s"PrefuseAggregateLayout.run - ${e.getMessage}")
+          val aggrS = s"$aggr@${aggr.hashCode.toHexString}"
+          val itemS = s"$item@${item.hashCode.toHexString}"
+          Console.err.println(s"PrefuseAggregateLayout.run - ${e.getMessage} - $aggrS - $itemS")
           e.printStackTrace()
 //          val allStackTraces = before // Thread.getAllStackTraces
 //          import scala.collection.JavaConverters._

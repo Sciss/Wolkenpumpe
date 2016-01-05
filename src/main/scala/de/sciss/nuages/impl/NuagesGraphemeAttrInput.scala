@@ -16,7 +16,7 @@ package impl
 
 import de.sciss.lucre.expr.LongObj
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{Disposable, IdentifierMap, Obj, Sys, TxnLike}
+import de.sciss.lucre.stm.{Disposable, Obj, Sys, TxnLike}
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.nuages.NuagesAttribute.Input
 import de.sciss.span.Span
@@ -32,13 +32,11 @@ object NuagesGraphemeAttrInput extends NuagesAttribute.Factory {
 
   def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: NuagesAttribute.Parent[S], value: Grapheme[S])
                          (implicit tx: S#Tx, context: NuagesContext[S]): Input[S] = {
-    val map = tx.newInMemoryIDMap[Input[S]]
-    new NuagesGraphemeAttrInput(attr, parent = parent, map = map).init(value)
+    new NuagesGraphemeAttrInput(attr, parent = parent).init(value)
   }
 }
 final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesAttribute[S],
-                                                          parent: NuagesAttribute.Parent[S],
-                                                          map: IdentifierMap[S#ID, S#Tx, Input[S]])
+                                                          parent: NuagesAttribute.Parent[S])
                                                          (implicit context: NuagesContext[S])
   extends NuagesAttribute.Input[S] with NuagesScheduledBase[S] with NuagesAttribute.Parent[S] {
 
@@ -170,21 +168,6 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
     parent.updateChild(before = ???!, now = ???!)
   }
 
-//  protected def addNode(timed: Timed[S])(implicit tx: S#Tx): Unit = {
-//    log(s"$attribute grapheme addNode $timed")
-//    val childView = NuagesAttribute.mkInput(attribute, parent = this, value = timed.value)
-//    viewSet += childView
-//    map.put(timed.id, childView)
-//  }
-
-//  protected def removeNode(timed: Timed[S])(implicit tx: S#Tx): Unit = {
-//    log(s"$attribute grapheme removeNode $timed")
-//    val childView = map.getOrElse(timed.id, throw new IllegalStateException(s"View for $timed not found"))
-//    val found = viewSet.remove(childView)
-//    assert(found)
-//    childView.dispose()
-//  }
-
   def value: Vec[Double] = ???!
 
   def numChannels: Int = ???!
@@ -194,10 +177,23 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
     currentView.swap(emptyView).dispose()
     observer.dispose()
     disposeTransport()
-    map.dispose()
   }
 
-  protected def seek(before: Long, now: Long)(implicit tx: S#Tx): Unit = ???!
+  protected def seek(before: Long, now: Long)(implicit tx: S#Tx): Unit = {
+    val oldView = currentView()
+    val gr      = graphemeH()
+    gr.floor(now).fold[Unit] {
+      if (!oldView.isEmpty) {
+        val time0 = oldView.start
+        elemRemoved(time0, ???!)
+      }
+    } { entry =>
+      val time0 = entry.key.value
+      if (oldView.isEmpty || oldView.start != time0) {
+        elemAdded(time0, entry.value)
+      }
+    }
+  }
 
   protected def eventAfter(frame: Long)(implicit tx: S#Tx): Long =
     graphemeH().eventAfter(frame).getOrElse(Long.MaxValue)
