@@ -19,7 +19,7 @@ resolvers          += "Oracle Repository" at "http://download.oracle.com/maven" 
 lazy val soundProcessesVersion      = "3.4.0-SNAPSHOT"
 lazy val scalaColliderSwingVersion  = "1.27.0"
 lazy val prefuseVersion             = "1.0.1-SNAPSHOT"
-lazy val lucreSwingVersion          = "1.2.2"
+lazy val lucreSwingVersion          = "1.3.0-SNAPSHOT"
 lazy val swingPlusVersion           = "0.2.1"
 lazy val intensityVersion           = "1.0.0"
 lazy val fileUtilVersion            = "1.1.1"
@@ -29,7 +29,7 @@ lazy val scissDSPVersion            = "1.2.2"
 
 lazy val webLaFVersion              = "1.28"
 lazy val lucreVersion               = "3.2.2"
-lazy val scalaTestVersion           = "2.2.5"
+lazy val scalaTestVersion           = "2.2.6"
 lazy val scoptVersion               = "3.3.0"
 
 libraryDependencies ++= Seq(

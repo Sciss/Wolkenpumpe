@@ -2,7 +2,7 @@
  *  NuagesObjImpl.scala
  *  (Wolkenpumpe)
  *
- *  Copyright (c) 2008-2015 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2008-2016 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v2+
  *
@@ -131,6 +131,8 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
       upd.changes.foreach {
         case Obj.AttrAdded  (key, obj) => mkParam(this, key, obj)
         case Obj.AttrRemoved(key, obj) => params.get(key).foreach(_.dispose())
+        case Obj.AttrReplaced(key, before, now) =>
+          ???!
       }
     }
   }
