@@ -20,6 +20,7 @@ import de.sciss.lucre.expr.Expr.Const
 import de.sciss.lucre.expr.{Type, DoubleVector}
 import de.sciss.lucre.stm.{Sys, Obj}
 import de.sciss.lucre.synth.{Sys => SSys}
+import de.sciss.nuages.NuagesAttribute.{Input, Parent}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.swing.Graphics2D
@@ -29,14 +30,11 @@ object NuagesDoubleVectorAttrInput extends NuagesAttributeSingleFactory {
 
   type Repr[~ <: Sys[~]] = DoubleVector[~]
 
-  def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: NuagesAttribute.Parent[S], obj: DoubleVector[S])
-                        (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute.Input[S] = {
-//    val spec  = NuagesAttributeImpl.getSpec(parent, key)
-    new NuagesDoubleVectorAttrInput[S](attr, inputParent = parent).init(obj)
-  }
+  def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: Parent[S], obj: DoubleVector[S])
+                        (implicit tx: S#Tx, context: NuagesContext[S]): Input[S] =
+    new NuagesDoubleVectorAttrInput[S](attr).init(obj, parent)
 }
-final class NuagesDoubleVectorAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S],
-                                                      val inputParent: NuagesAttribute.Parent[S])
+final class NuagesDoubleVectorAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S])
   extends NuagesAttrInputImpl[S] {
 
   type A                = Vec[Double]

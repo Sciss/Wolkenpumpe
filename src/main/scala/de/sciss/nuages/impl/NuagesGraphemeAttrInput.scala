@@ -18,7 +18,7 @@ import de.sciss.lucre.expr.LongObj
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Disposable, Obj, Sys, TxnLike}
 import de.sciss.lucre.synth.{Sys => SSys}
-import de.sciss.nuages.NuagesAttribute.Input
+import de.sciss.nuages.NuagesAttribute.{Parent, Input}
 import de.sciss.span.Span
 import de.sciss.synth.proc.{Grapheme, Transport}
 
@@ -32,7 +32,7 @@ object NuagesGraphemeAttrInput extends NuagesAttribute.Factory {
 
   def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: NuagesAttribute.Parent[S], value: Grapheme[S])
                          (implicit tx: S#Tx, context: NuagesContext[S]): Input[S] = {
-    new NuagesGraphemeAttrInput(attr, inputParent = parent).init(value)
+    new NuagesGraphemeAttrInput(attr).init(value, parent)
   }
 
   def tryConsume[S <: SSys[S]](oldInput: Input[S], newValue: Grapheme[S])
@@ -46,7 +46,7 @@ object NuagesGraphemeAttrInput extends NuagesAttribute.Factory {
         val time  = entry.key.value
         val head  = entry.value
         if (oldInput.tryConsume(head)) {
-          val res = new NuagesGraphemeAttrInput(attr, parent).consume(time, head, oldInput, newValue)
+          val res = new NuagesGraphemeAttrInput(attr).consume(time, head, oldInput, newValue, parent)
           Some(res)
         } else None
 
@@ -54,10 +54,9 @@ object NuagesGraphemeAttrInput extends NuagesAttribute.Factory {
     }
   }
 }
-final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesAttribute[S],
-                                                          val inputParent: NuagesAttribute.Parent[S])
+final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesAttribute[S])
                                                          (implicit context: NuagesContext[S])
-  extends NuagesAttribute.Input[S] with NuagesScheduledBase[S] with NuagesAttribute.Parent[S] {
+  extends NuagesAttrInputBase[S] with NuagesScheduledBase[S] with Parent[S] {
 
   import TxnLike.peer
 
@@ -85,20 +84,24 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
 
   private[this] var observer: Disposable[S#Tx] = _
 
-  private def init(gr: Grapheme[S])(implicit tx: S#Tx): this.type = {
+  private def init(gr: Grapheme[S], parent: Parent[S])(implicit tx: S#Tx): this.type = {
     log(s"$attribute grapheme init")
-    graphemeH = tx.newHandle(gr)
+    graphemeH   = tx.newHandle(gr)
+    inputParent = parent
     initObserver(gr)
     initGrapheme(gr)
     initTransport()
     this
   }
 
-  private def consume(start: Long, child: Obj[S], childView: Input[S], gr: Grapheme[S])(implicit tx: S#Tx): this.type = {
+  private def consume(start: Long, child: Obj[S], childView: Input[S], gr: Grapheme[S], parent: Parent[S])
+                     (implicit tx: S#Tx): this.type = {
     log(s"$attribute grapheme consume")
-    graphemeH = tx.newHandle(gr)
+    graphemeH             = tx.newHandle(gr)
+    inputParent           = parent
+    childView.inputParent = this
     initObserver(gr)
-    currentView() = new View(start = start, input = childView)
+    currentView()         = new View(start = start, input = childView)
     initTransport()
     this
   }
@@ -184,7 +187,7 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
       require(curr.isDefined)
       val beforeStart = curr.start
       val nowStart    = currentFrame()
-      println(s"updateChild($before - $beforeStart, $now - $nowStart)")
+      // println(s"updateChild($before - $beforeStart, $now - $nowStart)")
       if (beforeStart != nowStart && isTimeline) {
         val nowStartObj = LongObj.newVar[S](nowStart)
         grm.add(nowStartObj, now)

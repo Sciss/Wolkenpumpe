@@ -20,7 +20,7 @@ import de.sciss.lucre.expr.{LongObj, BooleanObj, DoubleObj, DoubleVector, IntObj
 import de.sciss.lucre.stm.{TxnLike, Obj, Sys}
 import de.sciss.lucre.swing.requireEDT
 import de.sciss.lucre.synth.{Sys => SSys}
-import de.sciss.nuages.NuagesAttribute.{Factory, Input}
+import de.sciss.nuages.NuagesAttribute.{Parent, Factory, Input}
 import de.sciss.synth.proc.{Grapheme, Timeline, Output, Folder}
 import prefuse.data.{Node => PNode, Edge => PEdge}
 import prefuse.visual.VisualItem
@@ -54,7 +54,7 @@ object NuagesAttributeImpl {
     res
   }
 
-  def mkInput[S <: SSys[S]](attr: NuagesAttribute[S], parent: NuagesAttribute.Parent[S], value: Obj[S])
+  def mkInput[S <: SSys[S]](attr: NuagesAttribute[S], parent: Parent[S], value: Obj[S])
                            (implicit tx: S#Tx, context: NuagesContext[S]): Input[S] = {
     val factory = getFactory(attr.key, value)
     factory[S](parent = parent, value = value.asInstanceOf[factory.Repr[S]], attr = attr)
@@ -101,7 +101,7 @@ object NuagesAttributeImpl {
   }
 
   private abstract class Impl[S <: SSys[S]](val parent: NuagesObj[S], val key: String, val spec: ParamSpec)
-    extends NuagesParamImpl[S] with NuagesAttribute[S] with NuagesAttribute.Parent[S] { self =>
+    extends NuagesParamImpl[S] with NuagesAttribute[S] with Parent[S] { self =>
 
     // ---- abstract ----
 
@@ -117,8 +117,12 @@ object NuagesAttributeImpl {
 
     // methods
 
-    final def attribute  : NuagesAttribute       [S] = this
-    final def inputParent: NuagesAttribute.Parent[S] = this
+    final def attribute: NuagesAttribute[S] = this
+
+    final def inputParent(implicit tx: S#Tx): Parent[S] = this
+
+    final def inputParent_=(p: Parent[S])(implicit tx: S#Tx): Unit =
+      throw new UnsupportedOperationException
 
     override def toString = s"NuagesAttribute($parent, $key)"
 

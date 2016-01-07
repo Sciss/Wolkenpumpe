@@ -64,11 +64,14 @@ object NuagesAttribute {
 
   trait Input[S <: Sys[S]] extends Disposable[S#Tx] {
     def attribute   : NuagesAttribute[S]
-    def inputParent : Parent[S]
+
+    // ---- edt ----
 
     def value: Vec[Double]
 
     def numChannels: Int
+
+    // ---- transactional ----
 
     /** Tries to migrate the passed object to this input view.
       * That is, if the view can exchange its model for this
@@ -77,6 +80,9 @@ object NuagesAttribute {
       * for example because it is of a different type.
       */
     def tryConsume(newValue: Obj[S])(implicit tx: S#Tx): Boolean
+
+    def inputParent(implicit tx: S#Tx): Parent[S]
+    def inputParent_=(p: Parent[S])(implicit tx: S#Tx): Unit
   }
 
   trait Parent[S <: Sys[S]] {

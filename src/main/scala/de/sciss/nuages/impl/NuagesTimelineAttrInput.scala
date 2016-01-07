@@ -17,7 +17,7 @@ package impl
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Obj, IdentifierMap, Sys, TxnLike}
 import de.sciss.lucre.synth.{Sys => SSys}
-import de.sciss.nuages.NuagesAttribute.Input
+import de.sciss.nuages.NuagesAttribute.{Parent, Input}
 import de.sciss.synth.proc.Timeline.Timed
 import de.sciss.synth.proc.{Timeline, Transport}
 
@@ -29,10 +29,10 @@ object NuagesTimelineAttrInput extends NuagesAttribute.Factory {
 
   type Repr[S <: Sys[S]] = Timeline[S]
 
-  def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: NuagesAttribute.Parent[S], value: Timeline[S])
+  def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: Parent[S], value: Timeline[S])
                          (implicit tx: S#Tx, context: NuagesContext[S]): Input[S] = {
     val map = tx.newInMemoryIDMap[Input[S]]
-    new NuagesTimelineAttrInput(attr, inputParent = parent, map = map).init(value)
+    new NuagesTimelineAttrInput(attr, map = map).init(value, parent)
   }
 
   def tryConsume[S <: SSys[S]](oldInput: Input[S], newValue: Timeline[S])
@@ -46,8 +46,8 @@ object NuagesTimelineAttrInput extends NuagesAttribute.Factory {
         val head = entry.value
         if (oldInput.tryConsume(head)) {
           val map = tx.newInMemoryIDMap[Input[S]]
-          val res = new NuagesTimelineAttrInput(attr, inputParent = parent, map = map)
-            .consume(entry, oldInput, newValue)
+          val res = new NuagesTimelineAttrInput(attr, map = map)
+            .consume(entry, oldInput, newValue, parent)
           Some(res)
         } else None
 
@@ -56,10 +56,9 @@ object NuagesTimelineAttrInput extends NuagesAttribute.Factory {
   }
 }
 final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesAttribute[S],
-                                                          val inputParent: NuagesAttribute.Parent[S],
                                                           map: IdentifierMap[S#ID, S#Tx, Input[S]])
                                                          (implicit context: NuagesContext[S])
-  extends NuagesAttribute.Input[S] with NuagesTimelineBase[S] with NuagesAttribute.Parent[S] {
+  extends NuagesAttrInputBase[S] with NuagesTimelineBase[S] with Parent[S] {
 
   import TxnLike.peer
 
@@ -87,19 +86,23 @@ final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesA
 
   def tryConsume(to: Obj[S])(implicit tx: S#Tx): Boolean = false
 
-  private def init(tl: Timeline[S])(implicit tx: S#Tx): this.type = {
+  private def init(tl: Timeline[S], parent: Parent[S])(implicit tx: S#Tx): this.type = {
     log(s"$attribute timeline init")
-    timelineH = tx.newHandle(tl)
+    timelineH   = tx.newHandle(tl)
+    inputParent = parent
     initTimeline(tl)
     initTransport()
     this
   }
 
-  private def consume(timed: Timed[S], childView: Input[S], tl: Timeline[S])(implicit tx: S#Tx): this.type = {
+  private def consume(timed: Timed[S], childView: Input[S], tl: Timeline[S], parent: Parent[S])
+                     (implicit tx: S#Tx): this.type = {
     log(s"$attribute timeline consume")
-    timelineH = tx.newHandle(tl)
+    timelineH             = tx.newHandle(tl)
+    inputParent           = parent
+    childView.inputParent = this
     initTimelineObserver(tl)
-    viewSet += childView
+    viewSet              += childView
     map.put(timed.id, childView)
     initTransport()
     this

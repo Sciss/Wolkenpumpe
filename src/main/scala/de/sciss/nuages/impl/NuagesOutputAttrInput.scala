@@ -16,6 +16,7 @@ package impl
 
 import de.sciss.lucre.stm.{Obj, Disposable, Sys}
 import de.sciss.lucre.synth.{Sys => SSys}
+import de.sciss.nuages.NuagesAttribute.{Parent, Input}
 import de.sciss.synth.proc.Output
 import prefuse.data.{Node => PNode}
 
@@ -26,14 +27,13 @@ object NuagesOutputAttrInput extends NuagesAttributeSingleFactory {
 
   type Repr[~ <: Sys[~]] = Output[~]
 
-  def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: NuagesAttribute.Parent[S], obj: Output[S])
-                         (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute.Input[S] =
-    new NuagesOutputAttrInput[S](attr, inputParent = parent).init(obj)
+  def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: Parent[S], obj: Output[S])
+                         (implicit tx: S#Tx, context: NuagesContext[S]): Input[S] =
+    new NuagesOutputAttrInput[S](attr).init(obj, parent)
 }
-final class NuagesOutputAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S],
-                                                val inputParent: NuagesAttribute.Parent[S])
+final class NuagesOutputAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S])
                                                (implicit context: NuagesContext[S])
-  extends NuagesAttribute.Input[S] {
+  extends NuagesAttrInputBase[S] {
 
   def tryConsume(to: Obj[S])(implicit tx: S#Tx): Boolean = false
 
@@ -53,8 +53,9 @@ final class NuagesOutputAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S
     }
   }
 
-  private def init(obj: Output[S])(implicit tx: S#Tx): this.type = {
-    _observer = context.observeAux[NuagesOutput[S]](obj.id) { implicit tx => {
+  private def init(obj: Output[S], parent: Parent[S])(implicit tx: S#Tx): this.type = {
+    inputParent = parent
+    _observer   = context.observeAux[NuagesOutput[S]](obj.id) { implicit tx => {
       case NuagesContext.AuxAdded  (_, view) => setView(view)
       case NuagesContext.AuxRemoved(_      ) => unsetView()
     }}

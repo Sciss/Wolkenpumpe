@@ -16,7 +16,7 @@ package impl
 
 import de.sciss.lucre.stm.{TxnLike, Disposable, Obj, Sys}
 import de.sciss.lucre.synth.{Sys => SSys}
-import de.sciss.nuages.NuagesAttribute.Input
+import de.sciss.nuages.NuagesAttribute.{Parent, Input}
 import de.sciss.synth.proc.Folder
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -27,9 +27,9 @@ object NuagesFolderAttrInput extends NuagesAttribute.Factory {
 
   type Repr[S <: Sys[S]] = Folder[S]
 
-  def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: NuagesAttribute.Parent[S], value: Folder[S])
+  def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: Parent[S], value: Folder[S])
                          (implicit tx: S#Tx, context: NuagesContext[S]): Input[S] = {
-    new NuagesFolderAttrInput(attr, inputParent = parent).init(value)
+    new NuagesFolderAttrInput(attr).init(value, parent)
   }
 
   def tryConsume[S <: SSys[S]](oldInput: Input[S], newValue: Folder[S])
@@ -39,15 +39,14 @@ object NuagesFolderAttrInput extends NuagesAttribute.Factory {
       if (oldInput.tryConsume(head)) {
         val attr    = oldInput.attribute
         val parent  = attr.inputParent
-        val res     = new NuagesFolderAttrInput(attr, parent).consume(oldInput, newValue)
+        val res     = new NuagesFolderAttrInput(attr).consume(oldInput, newValue, parent)
         Some(res)
       } else None
     } else None
 }
-final class NuagesFolderAttrInput[S <: SSys[S]] private(val attribute: NuagesAttribute[S],
-                                                        val inputParent: NuagesAttribute.Parent[S])
+final class NuagesFolderAttrInput[S <: SSys[S]] private(val attribute: NuagesAttribute[S])
                                                        (implicit context: NuagesContext[S])
-  extends NuagesAttribute.Input[S] with NuagesAttribute.Parent[S] {
+  extends NuagesAttrInputBase[S] with NuagesAttribute.Parent[S] {
 
   import TxnLike.peer
 
@@ -57,14 +56,16 @@ final class NuagesFolderAttrInput[S <: SSys[S]] private(val attribute: NuagesAtt
 
   def tryConsume(to: Obj[S])(implicit tx: S#Tx): Boolean = false
 
-  private def consume(in0: Input[S], folder: Folder[S])(implicit tx: S#Tx): this.type = {
-    map() = Vector(in0)
+  private def consume(childView: Input[S], folder: Folder[S], parent: Parent[S])(implicit tx: S#Tx): this.type = {
+    map()                 = Vector(childView)
+    childView.inputParent = this
     initObserver(folder)
     this
   }
 
-  private def init(folder: Folder[S])(implicit tx: S#Tx): this.type = {
-    map() = folder.iterator.map(mkChild).toVector
+  private def init(folder: Folder[S], parent: Parent[S])(implicit tx: S#Tx): this.type = {
+    inputParent = parent
+    map()       = folder.iterator.map(mkChild).toVector
     initObserver(folder)
     this
   }

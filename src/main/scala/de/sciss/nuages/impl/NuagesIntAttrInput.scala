@@ -17,20 +17,18 @@ package impl
 import de.sciss.lucre.expr.{IntObj, Type}
 import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.synth.{Sys => SSys}
+import de.sciss.nuages.NuagesAttribute.{Input, Parent}
 
 object NuagesIntAttrInput extends NuagesAttributeSingleFactory {
   def typeID: Int = IntObj.typeID
 
   type Repr[~ <: Sys[~]] = IntObj[~]
 
-  def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: NuagesAttribute.Parent[S], obj: IntObj[S])
-                        (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute.Input[S] = {
-//    val spec  = NuagesAttributeImpl.getSpec(parent, key)
-    new NuagesIntAttrInput[S](attr, inputParent = parent).init(obj)
-  }
+  def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: Parent[S], obj: IntObj[S])
+                        (implicit tx: S#Tx, context: NuagesContext[S]): Input[S] =
+    new NuagesIntAttrInput[S](attr).init(obj, parent)
 }
-final class NuagesIntAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S],
-                                             val inputParent: NuagesAttribute.Parent[S])
+final class NuagesIntAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S])
   extends NuagesScalarAttrInput[S] {
 
   type A                = Int

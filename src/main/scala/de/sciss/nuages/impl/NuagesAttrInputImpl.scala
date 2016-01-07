@@ -22,6 +22,7 @@ import de.sciss.lucre.expr.{Expr, Type}
 import de.sciss.lucre.stm.{TxnLike, Obj, Disposable, Sys}
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.lucre.{expr, stm}
+import de.sciss.nuages.NuagesAttribute.Parent
 import prefuse.data.{Node => PNode}
 import prefuse.util.ColorLib
 import prefuse.visual.VisualItem
@@ -38,7 +39,7 @@ object NuagesAttrInputImpl {
 trait NuagesAttrInputImpl[S <: SSys[S]]
   extends NuagesDataImpl[S]
   with AttrInputKeyControl[S]
-  with NuagesAttribute.Input[S] {
+  with NuagesAttrInputBase[S] {
 
   import NuagesAttrInputImpl.Drag
   import NuagesDataImpl._
@@ -80,7 +81,7 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
 
   private[this] def spec: ParamSpec = attribute.spec
 
-  def main: NuagesPanel[S]  = attribute.parent.main
+  final def main: NuagesPanel[S]  = attribute.parent.main
 
   private[this] def atomic[A](fun: S#Tx => A): A = main.transport.scheduler.cursor.step(fun)
 
@@ -164,14 +165,11 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
     true
   }
 
-  final def init(obj: Ex[S])(implicit tx: S#Tx): this.type = {
-    editable  = tpe.Var.unapply(obj).isDefined
-    valueA    = obj.value
-    // SCAN
-    //    mapping.foreach { m =>
-    //      main.assignMapping(source = m.scan, vSink = this)
-    //    }
-    objH() = setObject(obj)
+  final def init(obj: Ex[S], parent: Parent[S])(implicit tx: S#Tx): this.type = {
+    editable          = tpe.Var.unapply(obj).isDefined
+    valueA            = obj.value
+    objH()            = setObject(obj)
+    inputParent       = parent
     main.deferVisTx(initGUI())
     this
   }
