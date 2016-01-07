@@ -28,7 +28,7 @@ import de.sciss.lucre.synth.{Synth, Sys}
 import de.sciss.nuages.Nuages.Surface
 import de.sciss.span.Span
 import de.sciss.synth.proc.Implicits._
-import de.sciss.synth.proc.{ObjKeys, Proc, Timeline}
+import de.sciss.synth.proc.{Output, ObjKeys, Proc, Timeline}
 import prefuse.util.ColorLib
 import prefuse.visual.{AggregateItem, VisualItem}
 
@@ -51,10 +51,12 @@ object NuagesObjImpl {
   private[this] val specSuffix  = s"-${ParamSpec.Key}"
   private[this] val ignoredKeys = Set(ObjKeys.attrName, Nuages.attrShortcut)
 
-  private def mkParam[S <: Sys[S]](parent: NuagesObj[S], key: String, obj: Obj[S])
-                                  (implicit tx: S#Tx, context: NuagesContext[S]): Unit =
-    if (!(key.endsWith(specSuffix) || ignoredKeys.contains(key)))
-      NuagesAttribute /* .tryApply */ (key = key, value = obj, parent = parent)
+//  private def mkParam[S <: Sys[S]](parent: NuagesObj[S], key: String, obj: Obj[S])
+//                                  (implicit tx: S#Tx, context: NuagesContext[S]): Unit =
+//    if (!(key.endsWith(specSuffix) || ignoredKeys.contains(key)))
+//      NuagesAttribute /* .tryApply */ (key = key, value = obj, parent = parent)
+
+  private def isAttrShown(key: String): Boolean = !(key.endsWith(specSuffix) || ignoredKeys.contains(key))
 }
 final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
                                                var name: String,
@@ -72,9 +74,8 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
 
   private[this] var _aggr: AggregateItem = _
 
-  // val inputs  = TMap.empty[String, NuagesOutput   [S]]
-  val outputs = TMap.empty[String, NuagesOutput   [S]]
-  val params  = TMap.empty[String, NuagesAttribute[S]]
+  private[this] val outputs = TMap.empty[String, NuagesOutput   [S]]
+  private[this] val attrs   = TMap.empty[String, NuagesAttribute[S]]
 
   private[this] val _meterSynth = Ref(Option.empty[Synth])
 
@@ -105,36 +106,68 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
     this
   }
 
+  def isCollector(implicit tx: TxnLike): Boolean =
+    outputs.isEmpty && attrs.contains("in") && attrs.size == 1
+
+  def hasOutput(key: String)(implicit tx: TxnLike): Boolean = outputs.contains(key)
+
   private[this] def initProc(proc: Proc[S])(implicit tx: S#Tx): Unit = {
-//    proc.inputs .iterator.foreach { case (key, scan) =>
-//      VisualScan(this, scan, key, isInput = true )
-//    }
-    proc.outputs.iterator.foreach { case (key, output) =>
-      NuagesOutput(this, output)
-    }
+    proc.outputs.iterator.foreach { case (_, output) => outputAdded(output) }
 
     observers ::= proc.changed.react { implicit tx => upd =>
       upd.changes.foreach {
-//        case Proc.InputAdded   (key, scan) => VisualScan(this, scan, key, isInput = true )
-//        case Proc.InputRemoved (key, scan) => inputs.get(key).foreach(_.dispose())
-        case Proc.OutputAdded  (output) => NuagesOutput(this, output)
-        case Proc.OutputRemoved(output) => outputs.get(output.key).foreach(_.dispose())
+        case Proc.OutputAdded  (output) => outputAdded  (output)
+        case Proc.OutputRemoved(output) => outputRemoved(output)
         case _ =>
       }
     }
 
     val attr = proc.attr
-    attr.iterator.foreach { case (key, obj) =>
-      mkParam(this, key, obj)
-    }
+    attr.iterator.foreach { case (key, obj) => attrAdded(key, obj) }
     observers ::= attr.changed.react { implicit tx => upd =>
       upd.changes.foreach {
-        case Obj.AttrAdded  (key, obj) => mkParam(this, key, obj)
-        case Obj.AttrRemoved(key, obj) => params.get(key).foreach(_.dispose())
-        case Obj.AttrReplaced(key, before, now) =>
-          ???!
+        case Obj.AttrAdded  (key, obj) => attrAdded(key, obj)
+        case Obj.AttrRemoved(key, obj) => attrRemoved(key)
+        case Obj.AttrReplaced(key, before, now) => attrReplaced(key, before = before, now = now)
       }
     }
+  }
+
+  private[this] def attrAdded(key: String, value: Obj[S])(implicit tx: S#Tx): Unit =
+    if (isAttrShown(key)) {
+      val view = NuagesAttribute(key = key, value = value, parent = parent)
+      val res  = attrs.put(key, view)
+      assert(res.isEmpty)
+    }
+
+  private[this] def attrRemoved(key: String)(implicit tx: S#Tx): Unit =
+    if (isAttrShown(key)) {
+      val view = attrs.remove(key).getOrElse(throw new IllegalStateException(s"No view for attribute $key"))
+      view.dispose()
+    }
+
+  private[this] def attrReplaced(key: String, before: Obj[S], now: Obj[S])(implicit tx: S#Tx): Unit =
+    if (isAttrShown(key)) {
+      val oldView = attrs.get(key).getOrElse(throw new IllegalStateException(s"No view for attribute $key"))
+      if (oldView.tryConsume(now)) return
+
+      oldView.tryReplace(now).fold[Unit] {
+        attrRemoved(key)
+        attrAdded(key, value = now)
+      } { newView =>
+        attrs.put(key, newView)
+      }
+    }
+
+  private[this] def outputAdded(output: Output[S])(implicit tx: S#Tx): Unit = {
+    val view = NuagesOutput(this, output)
+    outputs.put(output.key, view)
+  }
+
+  private[this] def outputRemoved(output: Output[S])(implicit tx: S#Tx): Unit = {
+    val view = outputs.remove(output.key)
+      .getOrElse(throw new IllegalStateException(s"View for output ${output.key} not found"))
+    view.dispose()
   }
 
   private[this] def initGUI(locOption: Option[Point2D]): Unit = {
@@ -157,7 +190,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
   def dispose()(implicit tx: S#Tx): Unit = {
     observers.foreach(_.dispose())
     meterSynth = None
-    params .foreach(_._2.dispose())
+    attrs .foreach(_._2.dispose())
     // inputs .foreach(_._2.dispose())
     outputs.foreach(_._2.dispose())
     main.nodeMap.remove(idH())
@@ -275,7 +308,8 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
 
         main.nuages.surface match {
           case Surface.Timeline(tl: Timeline.Modifiable[S]) =>
-            val oldSpan     = spanOption.getOrElse(throw new IllegalStateException(s"Using a timeline nuages but no span!?"))
+            val oldSpan     = spanOption
+              .getOrElse(throw new IllegalStateException(s"Using a timeline nuages but no span!?"))
             val frame       = main.transport.position
             val newSpanVal  = oldSpan.value.intersect(Span.until(frame))
             val _obj        = objH()

@@ -35,7 +35,16 @@ trait NuagesTimelineBase[S <: Sys[S]] extends NuagesScheduledBase[S] {
 
   private[this] var observer: Disposable[S#Tx] = _
 
+  /** Calls `initTimelineObserver` followed by creating live views. */
   final protected def initTimeline(tl: Timeline[S])(implicit tx: S#Tx): Unit = {
+    initTimelineObserver(tl)
+    val frame0 = currentFrame()
+    tl.intersect(frame0).foreach { case (span, elems) =>
+      elems.foreach(addNode)
+    }
+  }
+
+  final protected def initTimelineObserver(tl: Timeline[S])(implicit tx: S#Tx): Unit = {
     observer = tl.changed.react { implicit tx => upd =>
       if (!isDisposed) upd.changes.foreach {
         case Timeline.Added  (span, timed) => addRemoveNode(span, timed, add = true )
@@ -64,13 +73,6 @@ trait NuagesTimelineBase[S <: Sys[S]] extends NuagesScheduledBase[S] {
           }
       }
     }
-
-    val frame0 = currentFrame()
-    tl.intersect(frame0).foreach { case (span, elems) =>
-      elems.foreach(addNode)
-    }
-
-    initTransport()
   }
 
   private[this] def addRemoveNode(span: SpanLike, timed: Timed[S], add: Boolean)(implicit tx: S#Tx): Unit = {

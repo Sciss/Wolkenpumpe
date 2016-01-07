@@ -62,8 +62,8 @@ final class NuagesOutputImpl[S <: Sys[S]] private(val parent: NuagesObj[S],
 //  private[this] var observers = List.empty[Disposable[S#Tx]]
 
   private def init(output: Output[S])(implicit tx: S#Tx): this.type = {
-    val map = parent.outputs
-    map.put(key, this)(tx.peer)
+    // val map = parent.outputs
+    // map.put(key, this)(tx.peer)
     main.deferVisTx(initGUI())      // IMPORTANT: first
 //    main.scanMapPut(output.id, this)  // IMPORTANT: second
     context.putAux[NuagesOutput[S]](output.id, this)
@@ -82,8 +82,8 @@ final class NuagesOutputImpl[S <: Sys[S]] private(val parent: NuagesObj[S],
   }
 
   def dispose()(implicit tx: S#Tx): Unit = {
-    val map = parent.outputs
-    map.remove(key)(tx.peer)
+    // val map = parent.outputs
+    // map.remove(key)(tx.peer)
     // main.scanMapRemove(output.id)
     context.removeAux(output.id)
 //    observers.foreach(_.dispose())

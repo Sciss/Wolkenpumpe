@@ -60,8 +60,6 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
 
   protected def drawAdjust(g: Graphics2D, v: Vec[Double]): Unit
 
-  protected def parent: NuagesAttribute.Parent[S]
-
   // ---- impl ----
 
   final protected var renderedValue: A = null.asInstanceOf[A] // invalidRenderedValue
@@ -96,7 +94,7 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
 
     // XXX TODO --- if we overwrite a time value, we should nevertheless update the tpe.Var instead
     if (!editable || isTimeline) {
-      parent.updateChild(before = before, now = tpe.newVar[S](nowConst))
+      inputParent.updateChild(before = before, now = tpe.newVar[S](nowConst))
     } else {
       val Var = tpe.Var
       val Var(vr) = before
@@ -156,7 +154,7 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
     // assert(!aggr.containsItem(vi), s"still in aggr $aggr@${aggr.hashCode.toHexString}: $vi@${vi.hashCode.toHexString}")
   }
 
-  def tryMigrate(to: Obj[S])(implicit tx: S#Tx): Boolean = to.tpe == this.tpe && {
+  def tryConsume(to: Obj[S])(implicit tx: S#Tx): Boolean = to.tpe == this.tpe && {
     val newObj = to.asInstanceOf[Ex[S]]
     objH.swap(setObject(newObj))._2.dispose()
     val newEditable = tpe.Var.unapply(newObj).isDefined

@@ -16,7 +16,7 @@ package de.sciss.nuages
 import java.awt.geom.Point2D
 
 import de.sciss.lucre.expr.SpanLikeObj
-import de.sciss.lucre.stm.{Obj, Sys}
+import de.sciss.lucre.stm.{TxnLike, Obj, Sys}
 import de.sciss.lucre.synth.{Synth, Sys => SSys}
 import prefuse.visual.AggregateItem
 
@@ -40,9 +40,6 @@ trait NuagesObj[S <: Sys[S]]
 
   def main: NuagesPanel[S]
 
-//  def spanH: stm.Source[S#Tx, SpanLikeObj[S]]
-//  def objH : stm.Source[S#Tx, Obj[S]]
-
   def obj       (implicit tx: S#Tx): Obj[S]
   def spanOption(implicit tx: S#Tx): Option[SpanLikeObj[S]]
 
@@ -60,9 +57,12 @@ trait NuagesObj[S <: Sys[S]]
 
   // ---- transactional methods ----
 
-  // def inputs : TMap[String, NuagesOutput   [S]]
-  def outputs: TMap[String, NuagesOutput   [S]]
-  def params : TMap[String, NuagesAttribute[S]]
+  // def outputs: TMap[String, NuagesOutput   [S]]
+  // def params : TMap[String, NuagesAttribute[S]]
+
+  def isCollector(implicit tx: TxnLike): Boolean
+
+  def hasOutput(key: String)(implicit tx: TxnLike): Boolean
 
   def meterSynth(implicit tx: S#Tx): Option[Synth]
   def meterSynth_=(value: Option[Synth])(implicit tx: S#Tx): Unit

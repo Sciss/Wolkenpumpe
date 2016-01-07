@@ -91,7 +91,7 @@ trait PanelImplReact[S <: Sys[S]] {
   protected def auralObjAdded(vp: NuagesObj[S], aural: AuralObj[S])(implicit tx: S#Tx): Unit = {
     val config = main.config
     if (config.meters) {
-      val key = if (vp.outputs.contains(Proc.scanMainOut)(tx.peer)) Proc.scanMainOut else Proc.scanMainIn
+      val key = if (vp.hasOutput(Proc.scanMainOut)) Proc.scanMainOut else Proc.scanMainIn
       getAuralScanData(aural, key = key).foreach { case (bus, node) =>
         val meterSynth = mkMeter(bus, node)(vp.meterUpdate)
         vp.meterSynth = Some(meterSynth)

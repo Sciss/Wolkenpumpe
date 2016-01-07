@@ -32,11 +32,30 @@ object NuagesGraphemeAttrInput extends NuagesAttribute.Factory {
 
   def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: NuagesAttribute.Parent[S], value: Grapheme[S])
                          (implicit tx: S#Tx, context: NuagesContext[S]): Input[S] = {
-    new NuagesGraphemeAttrInput(attr, parent = parent).init(value)
+    new NuagesGraphemeAttrInput(attr, inputParent = parent).init(value)
+  }
+
+  def tryConsume[S <: SSys[S]](oldInput: Input[S], newValue: Grapheme[S])
+                              (implicit tx: S#Tx, context: NuagesContext[S]): Option[Input[S]] = {
+    val attr    = oldInput.attribute
+    val parent  = attr.inputParent
+    val main    = attr.parent.main
+    val time    = main.transport.position // XXX TODO -- should find a currentFrame somewhere
+    newValue.intersect(time) match {
+      case Vec(entry) =>
+        val time  = entry.key.value
+        val head  = entry.value
+        if (oldInput.tryConsume(head)) {
+          val res = new NuagesGraphemeAttrInput(attr, parent).consume(time, head, oldInput, newValue)
+          Some(res)
+        } else None
+
+      case _ => None
+    }
   }
 }
 final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesAttribute[S],
-                                                          parent: NuagesAttribute.Parent[S])
+                                                          val inputParent: NuagesAttribute.Parent[S])
                                                          (implicit context: NuagesContext[S])
   extends NuagesAttribute.Input[S] with NuagesScheduledBase[S] with NuagesAttribute.Parent[S] {
 
@@ -44,7 +63,7 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
 
   protected var graphemeH: stm.Source[S#Tx, Grapheme[S]] = _
 
-  def tryMigrate(to: Obj[S])(implicit tx: S#Tx): Boolean = false
+  def tryConsume(to: Obj[S])(implicit tx: S#Tx): Boolean = false
 
   // N.B.: Currently AuralGraphemeAttribute does not pay
   // attention to the parent object's time offset. Therefore,
@@ -69,7 +88,29 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
   private def init(gr: Grapheme[S])(implicit tx: S#Tx): this.type = {
     log(s"$attribute grapheme init")
     graphemeH = tx.newHandle(gr)
+    initObserver(gr)
+    initGrapheme(gr)
+    initTransport()
+    this
+  }
 
+  private def consume(start: Long, child: Obj[S], childView: Input[S], gr: Grapheme[S])(implicit tx: S#Tx): this.type = {
+    log(s"$attribute grapheme consume")
+    graphemeH = tx.newHandle(gr)
+    initObserver(gr)
+    currentView() = new View(start = start, input = childView)
+    initTransport()
+    this
+  }
+
+  private[this] def initGrapheme(gr: Grapheme[S])(implicit tx: S#Tx): Unit = {
+    val frame0 = currentFrame()
+    gr.floor(frame0).foreach { entry =>
+      elemAdded(entry.key.value, entry.value)
+    }
+  }
+
+  private[this] def initObserver(gr: Grapheme[S])(implicit tx: S#Tx): Unit =
     observer = gr.changed.react { implicit tx => upd =>
       if (!isDisposed) upd.changes.foreach {
         case Grapheme.Added  (time, entry) => elemAdded  (time, entry.value)
@@ -93,15 +134,6 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
           }
       }
     }
-
-    val frame0 = currentFrame()
-    gr.floor(frame0).foreach { entry =>
-      elemAdded(entry.key.value, entry.value)
-    }
-
-    initTransport()
-    this
-  }
 
   private[this] final class View(val start: Long, val input: NuagesAttribute.Input[S]) {
     def isEmpty  : Boolean = start == Long.MaxValue
@@ -167,7 +199,7 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
 
   // bubble up if grapheme is not modifiable
   private[this] def updateParent(childBefore: Obj[S], childNow: Obj[S])(implicit tx: S#Tx): Unit = {
-    parent.updateChild(before = ???!, now = ???!)
+    inputParent.updateChild(before = ???!, now = ???!)
   }
 
   def value: Vec[Double] = ???!
@@ -208,7 +240,7 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
 
   private[this] def setChild(start: Long, child: Obj[S])(implicit tx: S#Tx): Unit = {
     val curr = currentView()
-    if (curr.isEmpty || !curr.input.tryMigrate(child)) {
+    if (curr.isEmpty || !curr.input.tryConsume(child)) {
       // log(s"elemAdded($start, $child); time = $time")
       curr.dispose()
       val newView   = NuagesAttribute.mkInput(attribute, parent = this, value = child)

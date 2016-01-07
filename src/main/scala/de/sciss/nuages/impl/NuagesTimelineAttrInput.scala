@@ -32,10 +32,31 @@ object NuagesTimelineAttrInput extends NuagesAttribute.Factory {
   def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: NuagesAttribute.Parent[S], value: Timeline[S])
                          (implicit tx: S#Tx, context: NuagesContext[S]): Input[S] = {
     val map = tx.newInMemoryIDMap[Input[S]]
-    new NuagesTimelineAttrInput(attr, map).init(value)
+    new NuagesTimelineAttrInput(attr, inputParent = parent, map = map).init(value)
+  }
+
+  def tryConsume[S <: SSys[S]](oldInput: Input[S], newValue: Timeline[S])
+                              (implicit tx: S#Tx, context: NuagesContext[S]): Option[Input[S]] = {
+    val attr    = oldInput.attribute
+    val parent  = attr.inputParent
+    val main    = attr.parent.main
+    val time    = main.transport.position // XXX TODO -- should find a currentFrame somewhere
+    newValue.intersect(time).toList match {
+      case (span, Vec(entry)) :: Nil =>
+        val head = entry.value
+        if (oldInput.tryConsume(head)) {
+          val map = tx.newInMemoryIDMap[Input[S]]
+          val res = new NuagesTimelineAttrInput(attr, inputParent = parent, map = map)
+            .consume(entry, oldInput, newValue)
+          Some(res)
+        } else None
+
+      case _ => None
+    }
   }
 }
 final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesAttribute[S],
+                                                          val inputParent: NuagesAttribute.Parent[S],
                                                           map: IdentifierMap[S#ID, S#Tx, Input[S]])
                                                          (implicit context: NuagesContext[S])
   extends NuagesAttribute.Input[S] with NuagesTimelineBase[S] with NuagesAttribute.Parent[S] {
@@ -64,12 +85,23 @@ final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesA
 
   protected def transport: Transport[S] = attribute.parent.main.transport
 
-  def tryMigrate(to: Obj[S])(implicit tx: S#Tx): Boolean = false
+  def tryConsume(to: Obj[S])(implicit tx: S#Tx): Boolean = false
 
   private def init(tl: Timeline[S])(implicit tx: S#Tx): this.type = {
     log(s"$attribute timeline init")
     timelineH = tx.newHandle(tl)
     initTimeline(tl)
+    initTransport()
+    this
+  }
+
+  private def consume(timed: Timed[S], childView: Input[S], tl: Timeline[S])(implicit tx: S#Tx): this.type = {
+    log(s"$attribute timeline consume")
+    timelineH = tx.newHandle(tl)
+    initTimelineObserver(tl)
+    viewSet += childView
+    map.put(timed.id, childView)
+    initTransport()
     this
   }
 

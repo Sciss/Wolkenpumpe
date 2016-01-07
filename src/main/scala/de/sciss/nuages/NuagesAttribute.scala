@@ -44,6 +44,9 @@ object NuagesAttribute {
 
     def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: Parent[S], value: Repr[S])
                            (implicit tx: S#Tx, context: NuagesContext[S]): Input[S]
+
+    def tryConsume[S <: SSys[S]](oldInput: Input[S], newValue: Repr[S])
+                                (implicit tx: S#Tx, context: NuagesContext[S]): Option[Input[S]]
   }
 
   def addFactory(f: Factory): Unit = Impl.addFactory(f)
@@ -59,48 +62,45 @@ object NuagesAttribute {
     var source: Option[NuagesOutput[S]]
   }
 
-  trait Input[S <: Sys[S]] extends /* NuagesData[S] */ Disposable[S#Tx] {
-    def attribute: NuagesAttribute[S]
+  trait Input[S <: Sys[S]] extends Disposable[S#Tx] {
+    def attribute   : NuagesAttribute[S]
+    def inputParent : Parent[S]
 
     def value: Vec[Double]
 
     def numChannels: Int
 
-    /** Try to migrate the passed object to this input view.
+    /** Tries to migrate the passed object to this input view.
       * That is, if the view can exchange its model for this
       * new object, it should do so and return `true`.
       * Returning `false` means the object cannot be consumed,
       * for example because it is of a different type.
       */
-    def tryMigrate(to: Obj[S])(implicit tx: S#Tx): Boolean
-
-    // def editable: Boolean
+    def tryConsume(newValue: Obj[S])(implicit tx: S#Tx): Boolean
   }
 
   trait Parent[S <: Sys[S]] {
     def updateChild(before: Obj[S], now: Obj[S])(implicit tx: S#Tx): Unit
   }
 }
-trait NuagesAttribute[S <: Sys[S]] extends /* NuagesData[S] */ NuagesAttribute.Input[S] with NuagesParam[S] {
-  // def parent: NuagesObj[S]
-
+trait NuagesAttribute[S <: Sys[S]] extends NuagesAttribute.Input[S] with NuagesParam[S] {
   def addPNode   (in: NuagesAttribute.Input[S], n: PNode, isFree: Boolean): Unit
   def removePNode(in: NuagesAttribute.Input[S], n: PNode                 ): Unit
 
   def spec: ParamSpec
 
-  /** The value is normalized in the range 0 to 1 */
-  def value: Vec[Double]
-
-  def numChannels: Int
-
-//  /** The value is normalized in the range 0 to 1 */
-//  def value1_=(v: Double): Unit
-
-  // def mapping: Option[NuagesAttribute.Mapping[S]]
-
   def removeMapping()(implicit tx: S#Tx): Unit
 
-  /** Adjusts the control with the given normalized value. */
-  def setControl(v: Vec[Double], instant: Boolean): Unit
+  /** Attempts to replace the contents of the view.
+    *
+    * @param newValue   the new value to attempt to associate with the view
+    *
+    * @return `Some` if the either the old view accepted the new value or if
+    *         a new view was created that could "consume" the old view. This may
+    *         happen for example if the new value is a container with a single
+    *         element and the old view can replace its own single element.
+    *         `None` if this was not possible and the caller should act
+    *         accordingly (dispose the old view, create a fresh new view).
+    */
+  def tryReplace(newValue: Obj[S])(implicit tx: S#Tx, context: NuagesContext[S]): Option[NuagesAttribute[S]]
 }

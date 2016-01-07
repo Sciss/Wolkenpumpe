@@ -18,7 +18,7 @@ import de.sciss.lucre.expr.{BooleanObj, Type}
 import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.synth.{Sys => SSys}
 
-object NuagesBooleanAttrInput extends NuagesAttribute.Factory {
+object NuagesBooleanAttrInput extends NuagesAttributeSingleFactory {
   def typeID: Int = BooleanObj.typeID
 
   type Repr[~ <: Sys[~]] = BooleanObj[~]
@@ -26,11 +26,11 @@ object NuagesBooleanAttrInput extends NuagesAttribute.Factory {
   def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: NuagesAttribute.Parent[S], obj: BooleanObj[S])
                         (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute.Input[S] = {
     // val spec  = NuagesAttributeImpl.getSpec(attr.parent, key)
-    new NuagesBooleanAttrInput[S](attr, parent = parent).init(obj)
+    new NuagesBooleanAttrInput[S](attr, inputParent = parent).init(obj)
   }
 }
 final class NuagesBooleanAttrInput[S <: SSys[S]] private (val attribute: NuagesAttribute[S],
-                                                          protected val parent: NuagesAttribute.Parent[S])
+                                                          val inputParent: NuagesAttribute.Parent[S])
   extends NuagesScalarAttrInput[S] {
 
   type A                = Boolean

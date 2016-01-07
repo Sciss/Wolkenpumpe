@@ -47,24 +47,27 @@ object NuagesAttributeImpl {
 
   def apply[S <: SSys[S]](key: String, _value: Obj[S], parent: NuagesObj[S])
                          (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute[S] = {
-    import TxnLike.peer
     val spec = getSpec(parent, key)
     val res = new Impl[S](parent = parent, key = key, spec = spec) { self =>
       protected val input = mkInput(attr = self, parent = self, value = _value)
     }
-    parent.params.put(key, res)
     res
   }
 
   def mkInput[S <: SSys[S]](attr: NuagesAttribute[S], parent: NuagesAttribute.Parent[S], value: Obj[S])
                            (implicit tx: S#Tx, context: NuagesContext[S]): Input[S] = {
+    val factory = getFactory(attr.key, value)
+    factory[S](parent = parent, value = value.asInstanceOf[factory.Repr[S]], attr = attr)
+  }
+
+  private[this] def getFactory[S <: Sys[S]](key: String, value: Obj[S]): Factory = {
     val tid = value.tpe.typeID
     val opt = map.get(tid)
     val factory = opt.getOrElse {
-      val msg = s"No NuagesAttribute available for ${attr.key} / $value / type 0x${tid.toHexString}"
+      val msg = s"No NuagesAttribute available for $key / $value / type 0x${tid.toHexString}"
       throw new IllegalArgumentException(msg)
     }
-    factory[S](parent = parent, value = value.asInstanceOf[factory.Repr[S]], attr = attr)
+    factory
   }
 
   private[this] var map = Map[Int, Factory](
@@ -98,9 +101,7 @@ object NuagesAttributeImpl {
   }
 
   private abstract class Impl[S <: SSys[S]](val parent: NuagesObj[S], val key: String, val spec: ParamSpec)
-    extends NuagesParamImpl[S] with NuagesAttribute[S] with NuagesAttribute.Parent[S] {
-
-    import TxnLike.peer
+    extends NuagesParamImpl[S] with NuagesAttribute[S] with NuagesAttribute.Parent[S] { self =>
 
     // ---- abstract ----
 
@@ -108,26 +109,54 @@ object NuagesAttributeImpl {
 
     // ---- impl ----
 
-    final def attribute: NuagesAttribute[S] = this
+    // state
+
+    private[this] var _state      = EmptyState: State
+    private[this] var _freeNodes  = Map.empty[PNode, PEdge]
+    private[this] var _boundNodes = Map.empty[PNode, PEdge]
+
+    // methods
+
+    final def attribute  : NuagesAttribute       [S] = this
+    final def inputParent: NuagesAttribute.Parent[S] = this
 
     override def toString = s"NuagesAttribute($parent, $key)"
 
-    def numChannels: Int = input.numChannels
+    final def numChannels: Int = input.numChannels
 
-    def tryMigrate(to: Obj[S])(implicit tx: S#Tx): Boolean = input.tryMigrate(to)
+    final def tryConsume(to: Obj[S])(implicit tx: S#Tx): Boolean = input.tryConsume(to)
 
-    def value: Vec[Double] = ???!
-
-    private[this] var _state: State = EmptyState
-    private[this] var _freeNodes  = Map.empty[PNode, PEdge]
-    private[this] var _boundNodes = Map.empty[PNode, PEdge]
+    final def value: Vec[Double] = input.value
 
     private[this] def nodeSize = 0.333333f
 
     private[this] def currentFrame()(implicit tx: S#Tx): Long =
       main.transport.position
 
-    def updateChild(before: Obj[S], now: Obj[S])(implicit tx: S#Tx): Unit = {
+    private def initReplace(state: State, freeNodes: Map[PNode, PEdge], boundNodes: Map[PNode, PEdge])
+                           (implicit tx: S#Tx): Unit = {
+      requireEDT()
+      this._state       = state
+      this._freeNodes   = freeNodes
+      this._boundNodes  = boundNodes
+    }
+
+    final def tryReplace(newValue: Obj[S])
+                        (implicit tx: S#Tx, context: NuagesContext[S]): Option[NuagesAttribute[S]] = {
+      val factory = getFactory(key, newValue)
+      factory.tryConsume(oldInput = input, newValue = newValue.asInstanceOf[factory.Repr[S]])
+        .map { newInput =>
+          val res = new Impl[S](parent = parent, key = key, spec = spec) {
+            protected val input = newInput
+          }
+          main.deferVisTx {
+            res.initReplace(self._state, freeNodes = self._freeNodes, boundNodes = self._boundNodes)
+          }
+          res
+        }
+    }
+
+    final def updateChild(before: Obj[S], now: Obj[S])(implicit tx: S#Tx): Unit = {
       val value = if (main.isTimeline) {
         val gr          = Grapheme[S]
         val timeBefore  = LongObj.newVar[S](0L) // XXX TODO ?
@@ -141,7 +170,7 @@ object NuagesAttributeImpl {
       parent.obj.attr.put(key, value)
     }
 
-    def addPNode(in: Input[S], n: PNode, isFree: Boolean): Unit = {
+    final def addPNode(in: Input[S], n: PNode, isFree: Boolean): Unit = {
       requireEDT()
       val g = main.graph
 
@@ -208,7 +237,7 @@ object NuagesAttributeImpl {
       parent.aggr.addItem(vi)
     }
 
-    def removePNode(in: Input[S], n: PNode): Unit = {
+    final def removePNode(in: Input[S], n: PNode): Unit = {
       requireEDT()
       val g = main.graph
 
@@ -254,10 +283,7 @@ object NuagesAttributeImpl {
 
     //    def mapping: Option[Mapping[S]] = ...
 
-    def removeMapping()(implicit tx: S#Tx): Unit = ???!
-
-    /** Adjusts the control with the given normalized value. */
-    def setControl(v: Vec[Double], instant: Boolean): Unit = ???!
+    final def removeMapping()(implicit tx: S#Tx): Unit = ???!
 
     protected def boundsResized(): Unit = ()
 
@@ -266,7 +292,7 @@ object NuagesAttributeImpl {
 
     def dispose()(implicit tx: S#Tx): Unit = {
       input.dispose()
-      parent.params.remove(key)
+      // parent.params.remove(key)
     }
 
 //    private[this] def VALIDATE_AGGR(name: String): Unit = {

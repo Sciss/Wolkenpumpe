@@ -29,10 +29,23 @@ object NuagesFolderAttrInput extends NuagesAttribute.Factory {
 
   def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: NuagesAttribute.Parent[S], value: Folder[S])
                          (implicit tx: S#Tx, context: NuagesContext[S]): Input[S] = {
-    new NuagesFolderAttrInput(attr).init(value)
+    new NuagesFolderAttrInput(attr, inputParent = parent).init(value)
   }
+
+  def tryConsume[S <: SSys[S]](oldInput: Input[S], newValue: Folder[S])
+                              (implicit tx: S#Tx, context: NuagesContext[S]): Option[Input[S]] =
+    if (newValue.size == 1) {
+      val head = newValue.head
+      if (oldInput.tryConsume(head)) {
+        val attr    = oldInput.attribute
+        val parent  = attr.inputParent
+        val res     = new NuagesFolderAttrInput(attr, parent).consume(oldInput, newValue)
+        Some(res)
+      } else None
+    } else None
 }
-final class NuagesFolderAttrInput[S <: SSys[S]] private(val attribute: NuagesAttribute[S])
+final class NuagesFolderAttrInput[S <: SSys[S]] private(val attribute: NuagesAttribute[S],
+                                                        val inputParent: NuagesAttribute.Parent[S])
                                                        (implicit context: NuagesContext[S])
   extends NuagesAttribute.Input[S] with NuagesAttribute.Parent[S] {
 
@@ -42,10 +55,21 @@ final class NuagesFolderAttrInput[S <: SSys[S]] private(val attribute: NuagesAtt
 
   private[this] val map = Ref(Vector.empty[Input[S]])
 
-  def tryMigrate(to: Obj[S])(implicit tx: S#Tx): Boolean = false
+  def tryConsume(to: Obj[S])(implicit tx: S#Tx): Boolean = false
+
+  private def consume(in0: Input[S], folder: Folder[S])(implicit tx: S#Tx): this.type = {
+    map() = Vector(in0)
+    initObserver(folder)
+    this
+  }
 
   private def init(folder: Folder[S])(implicit tx: S#Tx): this.type = {
     map() = folder.iterator.map(mkChild).toVector
+    initObserver(folder)
+    this
+  }
+
+  private[this] def initObserver(folder: Folder[S])(implicit tx: S#Tx): Unit =
     _observer = folder.changed.react { implicit tx => upd => upd.changes.foreach {
       case Folder.Added  (idx, elem) =>
         val view = mkChild(elem)
@@ -54,8 +78,6 @@ final class NuagesFolderAttrInput[S <: SSys[S]] private(val attribute: NuagesAtt
         val view = map.getAndTransform(_.patch(idx, Nil, 1)).apply(idx)
         view.dispose()
     }}
-    this
-  }
 
   def updateChild(before: Obj[S], now: Obj[S])(implicit tx: S#Tx): Unit = ???!
 

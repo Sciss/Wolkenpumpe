@@ -17,10 +17,12 @@ import java.awt.Point
 import java.awt.event.{KeyEvent, KeyListener, MouseEvent, MouseMotionListener}
 import java.awt.geom.Point2D
 
+import de.sciss.lucre.stm.TxnLike
 import de.sciss.lucre.synth.Sys
 import prefuse.visual.NodeItem
 
 import scala.annotation.switch
+import scala.concurrent.stm.TxnExecutor
 
 final class GlobalControl[S <: Sys[S]](main: NuagesPanel[S]) extends MouseMotionListener with KeyListener {
   private val lastPt        = new Point
@@ -47,25 +49,28 @@ final class GlobalControl[S <: Sys[S]](main: NuagesPanel[S]) extends MouseMotion
 
     // yes, this code is ugly, but so is
     // chasing a successor on a non-cyclic iterator...
-    val it = main.visualGraph.nodes()
-    var first = null : NodeItem
-    var last  = null : NodeItem
-    var pred  = null : NodeItem
-    var stop  = false
-    while (it.hasNext && !stop) {
-      val ni = it.next().asInstanceOf[NodeItem]
-      val ok = ni.get(NuagesPanel.COL_NUAGES) match {
-        case vo: NuagesObj[_] => vo.outputs.single.isEmpty && vo.params /* inputs */.single.keySet == Set("in")
-        case _ => false
+    lastCollector = TxnExecutor.defaultAtomic { implicit tx =>
+      val it = main.visualGraph.nodes()
+      var first = null : NodeItem
+      var last  = null : NodeItem
+      var pred  = null : NodeItem
+      var stop  = false
+      while (it.hasNext && !stop) {
+        val ni = it.next().asInstanceOf[NodeItem]
+        import TxnLike.wrap
+        val ok = ni.get(NuagesPanel.COL_NUAGES) match {
+          case vo: NuagesObj[_] => vo.isCollector
+          case _ => false
+        }
+        if (ok) {
+          if (first == null) first = ni
+          pred = last
+          last = ni
+          if (pred == lastCollector) stop = true
+        }
       }
-      if (ok) {
-        if (first == null) first = ni
-        pred = last
-        last = ni
-        if (pred == lastCollector) stop = true
-      }
+      if (stop) last else first
     }
-    lastCollector = if (stop) last else first
     if (lastCollector != null) {
       val vi = main.visualization.getVisualItem(NuagesPanel.GROUP_GRAPH, lastCollector)
       if (vi != null) {

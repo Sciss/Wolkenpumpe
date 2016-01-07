@@ -18,7 +18,7 @@ import de.sciss.lucre.expr.{DoubleObj, Type}
 import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.synth.{Sys => SSys}
 
-object NuagesDoubleAttrInput extends NuagesAttribute.Factory {
+object NuagesDoubleAttrInput extends NuagesAttributeSingleFactory {
   def typeID: Int = DoubleObj.typeID
 
   type Repr[~ <: Sys[~]] = DoubleObj[~]
@@ -26,11 +26,11 @@ object NuagesDoubleAttrInput extends NuagesAttribute.Factory {
   def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: NuagesAttribute.Parent[S], obj: DoubleObj[S])
                         (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute.Input[S] = {
 //    val spec  = NuagesAttributeImpl.getSpec(parent, key)
-    new NuagesDoubleAttrInput[S](attr, parent = parent).init(obj)
+    new NuagesDoubleAttrInput[S](attr, inputParent = parent).init(obj)
   }
 }
 final class NuagesDoubleAttrInput[S <: SSys[S]] private (val attribute: NuagesAttribute[S],
-                                                         protected val parent: NuagesAttribute.Parent[S])
+                                                         val inputParent: NuagesAttribute.Parent[S])
   extends NuagesScalarAttrInput[S] {
 
   type A                = Double

@@ -21,19 +21,21 @@ import prefuse.data.{Node => PNode}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-object NuagesOutputAttrInput extends NuagesAttribute.Factory {
+object NuagesOutputAttrInput extends NuagesAttributeSingleFactory {
   def typeID: Int = Output.typeID
 
   type Repr[~ <: Sys[~]] = Output[~]
 
   def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: NuagesAttribute.Parent[S], obj: Output[S])
                          (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute.Input[S] =
-    new NuagesOutputAttrInput[S](attr).init(obj)
+    new NuagesOutputAttrInput[S](attr, inputParent = parent).init(obj)
 }
-final class NuagesOutputAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S])(implicit context: NuagesContext[S])
+final class NuagesOutputAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S],
+                                                val inputParent: NuagesAttribute.Parent[S])
+                                               (implicit context: NuagesContext[S])
   extends NuagesAttribute.Input[S] {
 
-  def tryMigrate(to: Obj[S])(implicit tx: S#Tx): Boolean = false
+  def tryConsume(to: Obj[S])(implicit tx: S#Tx): Boolean = false
 
   private[this] def deferVisTx(body: => Unit)(implicit tx: S#Tx): Unit =
     attribute.parent.main.deferVisTx(body)
