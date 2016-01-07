@@ -81,6 +81,7 @@ trait PanelImplTimelineInit[S <: Sys[S]] extends NuagesTimelineBase[S] {
     t.addObject(timeline)
 
     initTimeline(timeline)
+    initTransport()
   }
 
   // N.B.: Currently AuralTimelineAttribute does not pay

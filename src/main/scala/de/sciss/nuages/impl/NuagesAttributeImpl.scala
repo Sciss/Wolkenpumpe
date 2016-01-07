@@ -56,18 +56,16 @@ object NuagesAttributeImpl {
 
   def mkInput[S <: SSys[S]](attr: NuagesAttribute[S], parent: Parent[S], value: Obj[S])
                            (implicit tx: S#Tx, context: NuagesContext[S]): Input[S] = {
-    val factory = getFactory(attr.key, value)
-    factory[S](parent = parent, value = value.asInstanceOf[factory.Repr[S]], attr = attr)
+    val opt = getFactory(value)
+    opt.fold[Input[S]](new DummyAttrInput(attr)) { factory =>
+      factory[S](parent = parent, value = value.asInstanceOf[factory.Repr[S]], attr = attr)
+    }
   }
 
-  private[this] def getFactory[S <: Sys[S]](key: String, value: Obj[S]): Factory = {
+  private[this] def getFactory[S <: Sys[S]](value: Obj[S]): Option[Factory] = {
     val tid = value.tpe.typeID
     val opt = map.get(tid)
-    val factory = opt.getOrElse {
-      val msg = s"No NuagesAttribute available for $key / $value / type 0x${tid.toHexString}"
-      throw new IllegalArgumentException(msg)
-    }
-    factory
+    opt
   }
 
   private[this] var map = Map[Int, Factory](
@@ -147,17 +145,19 @@ object NuagesAttributeImpl {
 
     final def tryReplace(newValue: Obj[S])
                         (implicit tx: S#Tx, context: NuagesContext[S]): Option[NuagesAttribute[S]] = {
-      val factory = getFactory(key, newValue)
-      factory.tryConsume(oldInput = input, newValue = newValue.asInstanceOf[factory.Repr[S]])
-        .map { newInput =>
-          val res = new Impl[S](parent = parent, key = key, spec = spec) {
-            protected val input = newInput
+      val opt = getFactory(newValue)
+      opt.flatMap { factory =>
+        factory.tryConsume(oldInput = input, newValue = newValue.asInstanceOf[factory.Repr[S]])
+          .map { newInput =>
+            val res = new Impl[S](parent = parent, key = key, spec = spec) {
+              protected val input = newInput
+            }
+            main.deferVisTx {
+              res.initReplace(self._state, freeNodes = self._freeNodes, boundNodes = self._boundNodes)
+            }
+            res
           }
-          main.deferVisTx {
-            res.initReplace(self._state, freeNodes = self._freeNodes, boundNodes = self._boundNodes)
-          }
-          res
-        }
+      }
     }
 
     final def updateChild(before: Obj[S], now: Obj[S])(implicit tx: S#Tx): Unit = {
