@@ -110,6 +110,8 @@ final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesA
 
   def updateChild(before: Obj[S], now: Obj[S])(implicit tx: S#Tx): Unit = ???!
 
+  def removeChild(child: Obj[S])(implicit tx: S#Tx): Unit = ???!
+
   protected def addNode(timed: Timed[S])(implicit tx: S#Tx): Unit = {
     log(s"$attribute timeline addNode $timed")
     val childView = NuagesAttribute.mkInput(attribute, parent = this, value = timed.value)

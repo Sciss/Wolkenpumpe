@@ -273,11 +273,14 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
         val mappings  = visScans.valuesIterator.flatMap(_.mappings)
 
         mappings.foreach { vc =>
-          vc.removeMapping()
+          println(s"Warning: mapping $vc disconnect not yet implemented")
+          // vc.removeMapping()
         }
 
-        val obj = objH()
-        obj match {
+        // -
+
+        val _obj = objH()
+        _obj match {
           case objT: Proc[S] =>
             val proc  = objT
             // SCAN
@@ -312,7 +315,6 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
               .getOrElse(throw new IllegalStateException(s"Using a timeline nuages but no span!?"))
             val frame       = main.transport.position
             val newSpanVal  = oldSpan.value.intersect(Span.until(frame))
-            val _obj        = objH()
             if (newSpanVal.nonEmpty) {
               oldSpan match {
                 case SpanLikeObj.Var(vr) => vr() = newSpanVal
@@ -325,8 +327,8 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
               tl.remove(oldSpan, _obj)
             }
 
-          case Surface.Folder  (f) =>
-            f.remove(objH())
+          case Surface.Folder(f) =>
+            f.remove(_obj)
             // ...
 
           case _ =>

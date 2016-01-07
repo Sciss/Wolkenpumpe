@@ -14,6 +14,7 @@
 package de.sciss.nuages
 package impl
 
+import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Obj, Disposable, Sys}
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.nuages.NuagesAttribute.{Parent, Input}
@@ -29,9 +30,10 @@ object NuagesOutputAttrInput extends NuagesAttributeSingleFactory {
 
   def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: Parent[S], obj: Output[S])
                          (implicit tx: S#Tx, context: NuagesContext[S]): Input[S] =
-    new NuagesOutputAttrInput[S](attr).init(obj, parent)
+    new NuagesOutputAttrInput[S](attr, tx.newHandle(obj)).init(obj, parent)
 }
-final class NuagesOutputAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S])
+final class NuagesOutputAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S],
+                                               objH: stm.Source[S#Tx, Output[S]])
                                                (implicit context: NuagesContext[S])
   extends NuagesAttrInputBase[S] {
 

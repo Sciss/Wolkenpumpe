@@ -17,7 +17,7 @@ package impl
 import java.awt.Graphics2D
 
 import de.sciss.lucre.expr.{LongObj, BooleanObj, DoubleObj, DoubleVector, IntObj}
-import de.sciss.lucre.stm.{TxnLike, Obj, Sys}
+import de.sciss.lucre.stm.{Obj, Sys}
 import de.sciss.lucre.swing.requireEDT
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.nuages.NuagesAttribute.{Parent, Factory, Input}
@@ -67,6 +67,12 @@ object NuagesAttributeImpl {
     val opt = map.get(tid)
     opt
   }
+
+  //  private[this] def withFactory[S <: Sys[S], A](value: Obj[S])(fun: FactoryR[_] => A): Option[A] = {
+  //    val tid = value.tpe.typeID
+  //    val opt = map.get(tid)
+  //    opt.map(f => fun(f.asInstanceOf[FactoryR[_]]))
+  //  }
 
   private[this] var map = Map[Int, Factory](
     IntObj      .typeID -> NuagesIntAttrInput,
@@ -172,6 +178,11 @@ object NuagesAttributeImpl {
         now
       }
       parent.obj.attr.put(key, value)
+    }
+
+    def removeChild(child: Obj[S])(implicit tx: S#Tx): Unit = {
+      val objAttr = parent.obj.attr
+      objAttr.remove(key)
     }
 
     final def addPNode(in: Input[S], n: PNode, isFree: Boolean): Unit = {
@@ -284,10 +295,6 @@ object NuagesAttributeImpl {
         case other => other
       }
     }
-
-    //    def mapping: Option[Mapping[S]] = ...
-
-    final def removeMapping()(implicit tx: S#Tx): Unit = ???!
 
     protected def boundsResized(): Unit = ()
 

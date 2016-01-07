@@ -117,7 +117,6 @@ class ClickControl[S <: Sys[S]](main: NuagesPanel[S]) extends ControlAdapter {
         if (!res) println(s"Warning: could not remove edge")
 
       case (a, b) =>
-        println(s"DEBUG AQUI $a $b")
     }
   }
 

@@ -130,7 +130,7 @@ trait PanelImplTxnFuns[S <: Sys[S]] {
     finalizeProcAndCollector(gen, colSrcOpt, pt)
   }
 
-  // Removes a child from the `.attr` of a parent. If the value currently stored with
+    // Removes a child from the `.attr` of a parent. If the value currently stored with
   // the attribute map is a collection, tries to smartly remove the child from that collection.
   // Returns `true` if the child was found and removed.
   final def removeCollectionAttribute(parent: Obj[S], key: String, child: Obj[S])

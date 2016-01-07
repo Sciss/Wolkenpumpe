@@ -200,6 +200,8 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
     }
   }
 
+  def removeChild(child: Obj[S])(implicit tx: S#Tx): Unit = ???!
+
   // bubble up if grapheme is not modifiable
   private[this] def updateParent(childBefore: Obj[S], childNow: Obj[S])(implicit tx: S#Tx): Unit = {
     inputParent.updateChild(before = ???!, now = ???!)

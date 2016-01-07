@@ -82,6 +82,8 @@ final class NuagesFolderAttrInput[S <: SSys[S]] private(val attribute: NuagesAtt
 
   def updateChild(before: Obj[S], now: Obj[S])(implicit tx: S#Tx): Unit = ???!
 
+  def removeChild(child: Obj[S])(implicit tx: S#Tx): Unit = ???!
+
   private[this] def mkChild(elem: Obj[S])(implicit tx: S#Tx): NuagesAttribute.Input[S] =
     NuagesAttribute.mkInput(attribute, parent = this, value = elem)
 
