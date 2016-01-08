@@ -14,10 +14,12 @@
 package de.sciss.nuages
 package impl
 
+import de.sciss.lucre.expr.SpanLikeObj
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Obj, IdentifierMap, Sys, TxnLike}
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.nuages.NuagesAttribute.{Parent, Input}
+import de.sciss.span.Span
 import de.sciss.synth.proc.Timeline.Timed
 import de.sciss.synth.proc.{Timeline, Transport}
 
@@ -108,9 +110,37 @@ final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesA
     this
   }
 
+  def collect[A](pf: PartialFunction[Input[S], A])(implicit tx: S#Tx): Iterator[A] =
+    viewSet.iterator.flatMap(_.collect(pf))
+
   def updateChild(before: Obj[S], now: Obj[S])(implicit tx: S#Tx): Unit = ???!
 
-  def removeChild(child: Obj[S])(implicit tx: S#Tx): Unit = ???!
+  // XXX DRY --- with PanelImplTxnFuns#removeCollectionAttribute
+  def removeChild(child: Obj[S])(implicit tx: S#Tx): Unit = {
+    val tl = timelineH()
+    if (attribute.parent.main.isTimeline) {
+      val frame   = currentFrame()
+      val entries = tl.intersect(frame).flatMap { case (span, xs) =>
+        xs.filter(_.value == child)
+      }
+      entries.foreach { timed =>
+        val oldSpan     = timed.span
+        val newSpanVal  = oldSpan.value.intersect(Span.until(frame))
+        oldSpan match {
+          case SpanLikeObj.Var(vr) => vr() = newSpanVal
+          case _ =>
+            tl.modifiableOption.foreach { tlM =>
+              val newSpan = SpanLikeObj.newVar[S](newSpanVal)
+              tlM.remove(oldSpan, timed.value)
+              tlM.add   (newSpan, timed.value)
+            }
+        }
+      }
+
+    } else {
+      ???!
+    }
+  }
 
   protected def addNode(timed: Timed[S])(implicit tx: S#Tx): Unit = {
     log(s"$attribute timeline addNode $timed")

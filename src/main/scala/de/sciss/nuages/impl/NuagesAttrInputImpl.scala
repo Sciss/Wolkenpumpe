@@ -22,7 +22,7 @@ import de.sciss.lucre.expr.{Expr, Type}
 import de.sciss.lucre.stm.{TxnLike, Obj, Disposable, Sys}
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.lucre.{expr, stm}
-import de.sciss.nuages.NuagesAttribute.Parent
+import de.sciss.nuages.NuagesAttribute.{Input, Parent}
 import prefuse.data.{Node => PNode}
 import prefuse.util.ColorLib
 import prefuse.visual.VisualItem
@@ -88,6 +88,9 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
   def name: String = attribute.name
 
   private[this] def isTimeline: Boolean = attribute.parent.main.isTimeline
+
+  final def collect[A](pf: PartialFunction[Input[S], A])(implicit tx: S#Tx): Iterator[A] =
+    if (pf.isDefinedAt(this)) Iterator.single(pf(this)) else Iterator.empty
 
   private[this] def setControlTxn(v: Vec[Double])(implicit tx: S#Tx): Unit = {
     val nowConst: Ex[S] = mkConst(v) // IntelliJ highlight error SCL-9713

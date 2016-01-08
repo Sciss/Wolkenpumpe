@@ -150,6 +150,11 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
   private[this] def emptyView   = new View(Long.MaxValue, null)
   private[this] val currentView = Ref(emptyView)
 
+  def collect[A](pf: PartialFunction[Input[S], A])(implicit tx: S#Tx): Iterator[A] = {
+    val curr = currentView()
+    if (curr.isDefined) curr.input.collect(pf) else Iterator.empty
+  }
+
   private[this] def elemAdded(start: Long, child: Obj[S])(implicit tx: S#Tx): Unit = {
     val t     = transport
     val time  = currentFrame()

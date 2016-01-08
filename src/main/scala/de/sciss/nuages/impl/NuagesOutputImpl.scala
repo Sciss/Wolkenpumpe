@@ -19,11 +19,14 @@ import java.awt.event.MouseEvent
 import java.awt.geom.Point2D
 
 import de.sciss.lucre.stm
+import de.sciss.lucre.stm.TxnLike
 import de.sciss.lucre.swing.requireEDT
 import de.sciss.lucre.synth.Sys
+import de.sciss.nuages.NuagesAttribute.Input
 import de.sciss.synth.proc.Output
-import prefuse.data.Edge
 import prefuse.visual.VisualItem
+
+import scala.concurrent.stm.TSet
 
 object NuagesOutputImpl {
   def apply[S <: Sys[S]](parent: NuagesObj[S], output: Output[S])
@@ -31,16 +34,6 @@ object NuagesOutputImpl {
     val res = new NuagesOutputImpl(parent, tx.newHandle(output), key = output.key)
     res.init(output)
   }
-
-//  private def addEdgeGUI[S <: Sys[S]](source: NuagesOutput[S], sink: NuagesOutput[S]): Unit = {
-//    val graph = source.parent.main.graph
-//    val isNew = !source.sinks.exists(_.getTargetNode == sink.pNode)
-//    if (isNew) {
-//      val pEdge = graph.addEdge(source.pNode, sink.pNode)
-//      source.sinks += pEdge
-//      sink.sources += pEdge
-//    }
-//  }
 }
 final class NuagesOutputImpl[S <: Sys[S]] private(val parent: NuagesObj[S],
                                                   val outputH: stm.Source[S#Tx, Output[S]],
@@ -48,18 +41,27 @@ final class NuagesOutputImpl[S <: Sys[S]] private(val parent: NuagesObj[S],
   extends NuagesParamRootImpl[S] with NuagesOutput[S] {
 
   import NuagesDataImpl._
+  import TxnLike.peer
 
   override def toString = s"NuagesOutput($parent, $key)"
 
   protected def nodeSize = 0.333333f
 
-  var sources   = Set.empty[Edge]
-  var sinks     = Set.empty[Edge]
-  var mappings  = Set.empty[NuagesAttribute[S]]
+  private val mappingsSet = TSet.empty[Input[S]]
 
   def output(implicit tx: S#Tx): Output[S] = outputH()
 
-//  private[this] var observers = List.empty[Disposable[S#Tx]]
+  def mappings(implicit tx: S#Tx): Set[Input[S]] = mappingsSet.snapshot
+
+  def addMapping   (view: Input[S])(implicit tx: S#Tx): Unit = {
+    val res = mappingsSet.add   (view)
+    if (!res) throw new IllegalArgumentException(s"View $view was already registered")
+  }
+
+  def removeMapping(view: Input[S])(implicit tx: S#Tx): Unit = {
+    val res = mappingsSet.remove(view)
+    if (!res) throw new IllegalArgumentException(s"View $view was not registered")
+  }
 
   private def init(output: Output[S])(implicit tx: S#Tx): this.type = {
     // val map = parent.outputs
@@ -85,6 +87,7 @@ final class NuagesOutputImpl[S <: Sys[S]] private(val parent: NuagesObj[S],
     // val map = parent.outputs
     // map.remove(key)(tx.peer)
     // main.scanMapRemove(output.id)
+    mappingsSet.clear()
     context.removeAux(output.id)
 //    observers.foreach(_.dispose())
     main.deferVisTx(disposeGUI())

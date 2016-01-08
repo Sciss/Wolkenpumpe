@@ -28,7 +28,7 @@ import de.sciss.lucre.synth.{Synth, Sys}
 import de.sciss.nuages.Nuages.Surface
 import de.sciss.span.Span
 import de.sciss.synth.proc.Implicits._
-import de.sciss.synth.proc.{Output, ObjKeys, Proc, Timeline}
+import de.sciss.synth.proc.{Output, ObjKeys, Proc}
 import prefuse.util.ColorLib
 import prefuse.visual.{AggregateItem, VisualItem}
 
@@ -206,7 +206,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
   private[this] val playArea = new Area()
   private[this] val soloArea = new Area()
 
-  private[this] var peak = 0f
+  private[this] var peak        = 0f
   private[this] var peakToPaint = -160f
   private[this] var peakNorm    = 0f
 
@@ -251,6 +251,66 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
     lastUpdate  = time
   }
 
+  private[this] def removeSelf()(implicit tx: S#Tx): Unit = {
+    // ---- connect former input sources to former output sinks ----
+    // - in the previous version we limit ourselves to
+    //  `Proc.scanMainIn` and `Proc.scanMainOut`.
+
+    for {
+      outputView <- outputs.get(Proc.scanMainOut)
+      inputAttr  <- attrs  .get(Proc.scanMainIn )
+    } {
+      val it = inputAttr.collect {
+        case out: NuagesOutput.Input[S] => out
+      }
+      println(s"For re-connection we found: ${it.mkString(", ")}")
+    }
+
+    // ---- disconnect outputs ----
+    // - we leave the inputs untouched because
+    //   they are seen from self and thus will
+    //   disappear visually and aurally. if
+    //   an offline edit extends the self span,
+    //   those connections will automatically extend
+    //   likewise.
+    outputs.foreach { case (key, outputView) =>
+      val output = outputView.output
+      outputView.mappings.foreach { outAttrIn =>
+        outAttrIn.inputParent.removeChild(output)
+      }
+    }
+
+    // ---- remove proc ----
+    val _obj = objH()
+    main.nuages.surface match {
+      // XXX TODO --- DRY - NuagesTimelineAttrInput#removeChild
+      case Surface.Timeline(tl) =>
+        val oldSpan     = spanOption
+          .getOrElse(throw new IllegalStateException(s"Using a timeline nuages but no span!?"))
+        val frame       = main.transport.position
+        val newSpanVal  = oldSpan.value.intersect(Span.until(frame))
+        if (newSpanVal.nonEmpty) {
+          oldSpan match {
+            case SpanLikeObj.Var(vr) => vr() = newSpanVal
+            case _ =>
+              val newSpan = SpanLikeObj.newVar[S](newSpanVal)
+              tl.remove(oldSpan, _obj)
+              tl.add   (newSpan, _obj)
+          }
+        } else {
+          tl.remove(oldSpan, _obj)
+        }
+
+      case Surface.Folder(f) =>
+        f.remove(_obj)
+        // ...
+
+      case _ =>
+    }
+
+    // XXX TODO --- remove orphaned input or output procs
+  }
+
   override def itemPressed(vi: VisualItem, e: MouseEvent, pt: Point2D): Boolean = {
     // if (!isAlive) return false
     if (super.itemPressed(vi, e, pt)) return true
@@ -267,73 +327,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
     } else if (outerE.contains(xt, yt) & e.isAltDown) {
       // val instant = !stateVar.playing || stateVar.bypassed || (main.transition(0) == Instant)
       atomic { implicit tx =>
-        val visScans  = /* inputs ++ */ outputs
-        // val inKeys    = inputs .keySet
-        val outKeys   = outputs.keySet
-        val mappings  = visScans.valuesIterator.flatMap(_.mappings)
-
-        mappings.foreach { vc =>
-          println(s"Warning: mapping $vc disconnect not yet implemented")
-          // vc.removeMapping()
-        }
-
-        // -
-
-        val _obj = objH()
-        _obj match {
-          case objT: Proc[S] =>
-            val proc  = objT
-            // SCAN
-//            val ins   = proc.inputs .get(Proc.scanMainIn ).fold(List.empty[Scan[S]])(_.iterator.collect {
-//              case Scan.Link.Scan(source) => source
-//            } .toList)
-//            val outs  = proc.outputs.get(Proc.scanMainOut).fold(List.empty[Scan[S]])(_.iterator.collect {
-//              case Scan.Link.Scan(sink  ) => sink
-//            } .toList)
-//            inKeys.foreach { key =>
-//              proc.inputs.get(key).foreach { scan =>
-//                scan.iterator.foreach(scan.remove)
-//              }
-//            }
-//            outKeys.foreach { key =>
-//              proc.outputs.get(key).foreach { scan =>
-//                scan.iterator.foreach(scan.remove)
-//              }
-//            }
-//            ins.foreach { in =>
-//              outs.foreach { out =>
-//                in.add(out)
-//              }
-//            }
-
-          case _ =>
-        }
-
-        main.nuages.surface match {
-          case Surface.Timeline(tl: Timeline.Modifiable[S]) =>
-            val oldSpan     = spanOption
-              .getOrElse(throw new IllegalStateException(s"Using a timeline nuages but no span!?"))
-            val frame       = main.transport.position
-            val newSpanVal  = oldSpan.value.intersect(Span.until(frame))
-            if (newSpanVal.nonEmpty) {
-              oldSpan match {
-                case SpanLikeObj.Var(vr) => vr() = newSpanVal
-                case _ =>
-                  val newSpan = SpanLikeObj.newVar[S](newSpanVal)
-                  tl.remove(oldSpan, _obj)
-                  tl.add   (newSpan, _obj)
-              }
-            } else {
-              tl.remove(oldSpan, _obj)
-            }
-
-          case Surface.Folder(f) =>
-            f.remove(_obj)
-            // ...
-
-          case _ =>
-        }
-        // XXX TODO --- remove orphaned input or output procs
+        removeSelf()
       }
       true
 

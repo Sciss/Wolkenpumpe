@@ -84,6 +84,9 @@ final class NuagesFolderAttrInput[S <: SSys[S]] private(val attribute: NuagesAtt
 
   def removeChild(child: Obj[S])(implicit tx: S#Tx): Unit = ???!
 
+  def collect[A](pf: PartialFunction[Input[S], A])(implicit tx: S#Tx): Iterator[A] =
+    map().iterator.flatMap(_.collect(pf))
+
   private[this] def mkChild(elem: Obj[S])(implicit tx: S#Tx): NuagesAttribute.Input[S] =
     NuagesAttribute.mkInput(attribute, parent = this, value = elem)
 

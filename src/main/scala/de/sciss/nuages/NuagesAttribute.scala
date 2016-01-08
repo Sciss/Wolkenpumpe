@@ -80,7 +80,14 @@ object NuagesAttribute {
     def inputParent(implicit tx: S#Tx): Parent[S]
     def inputParent_=(p: Parent[S])(implicit tx: S#Tx): Unit
 
-    final def detachSources()(implicit tx: S#Tx): Unit = ???!
+    /** Runs a deep collection for particular input. This
+      * will perform a nested search for collection views
+      * such as grapheme or timeline.
+      *
+      * @param  pf  the matcher function to apply to the leaves of the traversal
+      * @return an iterator over all elements that were successfully matched
+      */
+    def collect[A](pf: PartialFunction[Input[S], A])(implicit tx: S#Tx): Iterator[A]
   }
 
   trait Parent[S <: Sys[S]] {

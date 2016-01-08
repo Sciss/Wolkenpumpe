@@ -113,28 +113,34 @@ object NuagesAttributeImpl {
 
     // ---- impl ----
 
-    // state
+    // ... state ...
 
     private[this] var _state      = EmptyState: State
     private[this] var _freeNodes  = Map.empty[PNode, PEdge]
     private[this] var _boundNodes = Map.empty[PNode, PEdge]
 
-    // methods
+    // ... methods ...
+
+    // loop
 
     final def attribute: NuagesAttribute[S] = this
 
-    final def inputParent(implicit tx: S#Tx): Parent[S] = this
+    final def inputParent                (implicit tx: S#Tx): Parent[S] = this
+    final def inputParent_=(p: Parent[S])(implicit tx: S#Tx): Unit      = throw new UnsupportedOperationException
 
-    final def inputParent_=(p: Parent[S])(implicit tx: S#Tx): Unit =
-      throw new UnsupportedOperationException
-
-    override def toString = s"NuagesAttribute($parent, $key)"
+    // proxy
 
     final def numChannels: Int = input.numChannels
 
     final def tryConsume(to: Obj[S])(implicit tx: S#Tx): Boolean = input.tryConsume(to)
 
     final def value: Vec[Double] = input.value
+
+    final def collect[A](pf: PartialFunction[Input[S], A])(implicit tx: S#Tx): Iterator[A] = input.collect(pf)
+
+    // other
+
+    override def toString = s"NuagesAttribute($parent, $key)"
 
     private[this] def nodeSize = 0.333333f
 

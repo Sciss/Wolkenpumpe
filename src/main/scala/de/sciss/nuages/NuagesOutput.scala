@@ -15,18 +15,21 @@ package de.sciss.nuages
 
 import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.synth.{Sys => SSys}
+import de.sciss.nuages.NuagesAttribute.Input
 import de.sciss.synth.proc.Output
-import prefuse.data.Edge
 
 object NuagesOutput {
   def apply[S <: SSys[S]](parent: NuagesObj[S], output: Output[S])
                         (implicit tx: S#Tx, context: NuagesContext[S]): NuagesOutput[S] =
     impl.NuagesOutputImpl(parent, output = output)
+
+  trait Input[S <: Sys[S]] extends NuagesAttribute.Input[S]
 }
 trait NuagesOutput[S <: Sys[S]] extends NuagesParam[S] with NuagesNode[S] {
-  var sources : Set[Edge]
-  var sinks   : Set[Edge]
-  var mappings: Set[NuagesAttribute[S]]
+  def mappings(implicit tx: S#Tx): Set[Input[S]]
+
+  def addMapping   (view: Input[S])(implicit tx: S#Tx): Unit
+  def removeMapping(view: Input[S])(implicit tx: S#Tx): Unit
 
   def output(implicit tx: S#Tx): Output[S]
 }
