@@ -100,6 +100,11 @@ object NuagesAttribute {
       * the underlying nuages surface is a timeline.
       */
     def removeChild(child: Obj[S])(implicit tx: S#Tx): Unit
+
+    /** Adds a child, possibly moving it into a timeline if
+      * the underlying nuages surface is a timeline.
+      */
+    def addChild(child: Obj[S])(implicit tx: S#Tx): Unit
   }
 }
 trait NuagesAttribute[S <: Sys[S]] extends NuagesAttribute.Input[S] with NuagesParam[S] {

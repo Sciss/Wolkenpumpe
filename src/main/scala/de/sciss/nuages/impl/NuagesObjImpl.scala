@@ -259,11 +259,16 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
     for {
       outputView <- outputs.get(Proc.scanMainOut)
       inputAttr  <- attrs  .get(Proc.scanMainIn )
-    } {
-      val it = inputAttr.collect {
+      sourceView <- inputAttr.collect {
         case out: NuagesOutput.Input[S] => out
       }
-      println(s"For re-connection we found: ${it.mkString(", ")}")
+      sinkView   <- outputView.mappings
+    } {
+      // println(s"For re-connection we found: ${it.mkString(", ")}")
+      val parent = sinkView.inputParent
+      val child  = sourceView.output
+      parent.addChild(child)
+      // main.addCollectionAttribute(parent = ..., key = ..., child = ...)
     }
 
     // ---- disconnect outputs ----

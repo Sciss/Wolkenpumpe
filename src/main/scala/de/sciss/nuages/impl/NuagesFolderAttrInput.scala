@@ -14,6 +14,7 @@
 package de.sciss.nuages
 package impl
 
+import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{TxnLike, Disposable, Obj, Sys}
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.nuages.NuagesAttribute.{Parent, Input}
@@ -54,6 +55,8 @@ final class NuagesFolderAttrInput[S <: SSys[S]] private(val attribute: NuagesAtt
 
   private[this] val map = Ref(Vector.empty[Input[S]])
 
+  private[this] var objH: stm.Source[S#Tx, Folder[S]] = _
+
   def tryConsume(to: Obj[S])(implicit tx: S#Tx): Boolean = false
 
   private def consume(childView: Input[S], folder: Folder[S], parent: Parent[S])(implicit tx: S#Tx): this.type = {
@@ -70,19 +73,38 @@ final class NuagesFolderAttrInput[S <: SSys[S]] private(val attribute: NuagesAtt
     this
   }
 
-  private[this] def initObserver(folder: Folder[S])(implicit tx: S#Tx): Unit =
+  private[this] def initObserver(folder: Folder[S])(implicit tx: S#Tx): Unit = {
+    objH = tx.newHandle(folder)
     _observer = folder.changed.react { implicit tx => upd => upd.changes.foreach {
-      case Folder.Added  (idx, elem) =>
+      case Folder.Added(idx, elem) =>
         val view = mkChild(elem)
         map.transform(_.patch(idx, view :: Nil, 0))
       case Folder.Removed(idx, elem) =>
         val view = map.getAndTransform(_.patch(idx, Nil, 1)).apply(idx)
         view.dispose()
     }}
+  }
 
   def updateChild(before: Obj[S], now: Obj[S])(implicit tx: S#Tx): Unit = ???!
 
-  def removeChild(child: Obj[S])(implicit tx: S#Tx): Unit = ???!
+  def addChild(child: Obj[S])(implicit tx: S#Tx): Unit = {
+    val folder = objH()
+    if (isTimeline) {
+      ???!
+    } else {
+      folder.addLast(child)
+    }
+  }
+
+  def removeChild(child: Obj[S])(implicit tx: S#Tx): Unit = {
+    val folder = objH()
+    if (isTimeline) {
+      ???!
+    } else {
+      val res = folder.remove(child)
+      require(res)
+    }
+  }
 
   def collect[A](pf: PartialFunction[Input[S], A])(implicit tx: S#Tx): Iterator[A] =
     map().iterator.flatMap(_.collect(pf))

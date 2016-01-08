@@ -115,10 +115,31 @@ final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesA
 
   def updateChild(before: Obj[S], now: Obj[S])(implicit tx: S#Tx): Unit = ???!
 
+  def addChild(child: Obj[S])(implicit tx: S#Tx): Unit = {
+    val tl = timelineH()
+
+    def mkSpan(): SpanLikeObj.Var[S] = {
+      val frame = currentFrame()
+      SpanLikeObj.newVar[S](Span.from(frame))
+    }
+
+    if (isTimeline) {
+      // XXX TODO --- DRY with NuagesAttributeImpl#addChild
+      val span = mkSpan()
+      tl.modifiableOption.fold[Unit] {
+        ???!
+      } { tlm =>
+        tlm.add(span, child)
+      }
+    } else {
+      ???!
+    }
+  }
+
   // XXX DRY --- with PanelImplTxnFuns#removeCollectionAttribute
   def removeChild(child: Obj[S])(implicit tx: S#Tx): Unit = {
     val tl = timelineH()
-    if (attribute.parent.main.isTimeline) {
+    if (isTimeline) {
       val frame   = currentFrame()
       val entries = tl.intersect(frame).flatMap { case (span, xs) =>
         xs.filter(_.value == child)

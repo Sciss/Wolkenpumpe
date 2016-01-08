@@ -49,6 +49,8 @@ final class NuagesOutputAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S
 
   override def toString = s"NuagesOutput.Input($attribute)@${hashCode.toHexString}"
 
+  def output(implicit tx: S#Tx): Output[S] = objH()
+
   def tryConsume(to: Obj[S])(implicit tx: S#Tx): Boolean = false
 
   def dispose()(implicit tx: S#Tx): Unit = {

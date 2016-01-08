@@ -26,4 +26,6 @@ trait NuagesAttrInputBase[S <: Sys[S]] extends NuagesAttribute.Input[S] {
 
   final def inputParent                     (implicit tx: S#Tx): Parent[S]  = parentRef()
   final def inputParent_=(parent: Parent[S])(implicit tx: S#Tx): Unit       = parentRef() = parent
+
+  protected final def isTimeline: Boolean = attribute.parent.main.isTimeline
 }

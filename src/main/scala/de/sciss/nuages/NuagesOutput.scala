@@ -23,7 +23,9 @@ object NuagesOutput {
                         (implicit tx: S#Tx, context: NuagesContext[S]): NuagesOutput[S] =
     impl.NuagesOutputImpl(parent, output = output)
 
-  trait Input[S <: Sys[S]] extends NuagesAttribute.Input[S]
+  trait Input[S <: Sys[S]] extends NuagesAttribute.Input[S] {
+    def output(implicit tx: S#Tx): Output[S]
+  }
 }
 trait NuagesOutput[S <: Sys[S]] extends NuagesParam[S] with NuagesNode[S] {
   def mappings(implicit tx: S#Tx): Set[Input[S]]

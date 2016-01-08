@@ -183,8 +183,6 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
 //    ...
 //  }
 
-  private[this] def isTimeline: Boolean = attribute.parent.main.isTimeline
-
   def updateChild(before: Obj[S], now: Obj[S])(implicit tx: S#Tx): Unit = {
     val gr = graphemeH()
     gr.modifiableOption.fold(updateParent(before, now)) { grm =>
@@ -204,6 +202,8 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
       }
     }
   }
+
+  def addChild(child: Obj[S])(implicit tx: S#Tx): Unit = ???!
 
   def removeChild(child: Obj[S])(implicit tx: S#Tx): Unit = ???!
 

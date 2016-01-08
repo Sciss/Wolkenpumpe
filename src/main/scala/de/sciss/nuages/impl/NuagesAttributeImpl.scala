@@ -16,11 +16,12 @@ package impl
 
 import java.awt.Graphics2D
 
-import de.sciss.lucre.expr.{LongObj, BooleanObj, DoubleObj, DoubleVector, IntObj}
+import de.sciss.lucre.expr.{SpanLikeObj, LongObj, BooleanObj, DoubleObj, DoubleVector, IntObj}
 import de.sciss.lucre.stm.{Obj, Sys}
 import de.sciss.lucre.swing.requireEDT
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.nuages.NuagesAttribute.{Parent, Factory, Input}
+import de.sciss.span.Span
 import de.sciss.synth.proc.{Grapheme, Timeline, Output, Folder}
 import prefuse.data.{Node => PNode, Edge => PEdge}
 import prefuse.visual.VisualItem
@@ -173,6 +174,7 @@ object NuagesAttributeImpl {
     }
 
     final def updateChild(before: Obj[S], now: Obj[S])(implicit tx: S#Tx): Unit = {
+      val objAttr = parent.obj.attr
       val value = if (main.isTimeline) {
         val gr          = Grapheme[S]
         val timeBefore  = LongObj.newVar[S](0L) // XXX TODO ?
@@ -183,12 +185,86 @@ object NuagesAttributeImpl {
       } else {
         now
       }
-      parent.obj.attr.put(key, value)
+      require(objAttr.get(key).contains(before))
+      objAttr.put(key, value)
+    }
+
+    def addChild(child: Obj[S])(implicit tx: S#Tx): Unit = {
+      val objAttr = parent.obj.attr
+
+      def mkSpan(): SpanLikeObj.Var[S] = {
+        val frame = currentFrame()
+        SpanLikeObj.newVar[S](Span.from(frame))
+      }
+
+      def mkTimeline(): (Timeline.Modifiable[S], SpanLikeObj.Var[S]) = {
+        val tl    = Timeline[S]
+        val span  = mkSpan()
+        (tl, span)
+      }
+
+      objAttr.get(key).fold[Unit] {
+        if (main.isTimeline) {
+          val (tl, span) = mkTimeline()
+          tl.add(span, child)
+          objAttr.put(key, tl)
+        } else {
+          objAttr.put(key, child)
+        }
+
+      } {
+        case f: Folder[S] =>
+          if (main.isTimeline) {
+            val (tl, span) = mkTimeline()
+            f.iterator.foreach { elem =>
+              val span2 = SpanLikeObj.newVar(span())
+              tl.add(span2, elem)
+            }
+            tl.add(span, child)
+            objAttr.put(key, tl)
+
+          } else {
+            f.addLast(child)
+          }
+
+        case tl: Timeline.Modifiable[S] if main.isTimeline =>
+          val span = mkSpan()
+          tl.add(span, child)
+
+        case other =>
+          if (main.isTimeline) {
+            val (tl, span) = mkTimeline()
+            val span2 = SpanLikeObj.newVar(span())  // we want the two spans to be independent
+            tl.add(span2, other)
+            tl.add(span , child)
+            objAttr.put(key, tl)
+
+          } else {
+            // what are we going to do here...?
+            // we'll pack the other into a new folder,
+            // although we currently have no symmetric action
+            // if other is a timeline!
+            // (finding a timeline in a folder when we dissolve
+            // a folder, so we might end up with nested timeline objects)
+
+            val f = Folder[S]
+            f.addLast(other)
+            f.addLast(child)
+            objAttr.put(key, f)
+          }
+      }
     }
 
     def removeChild(child: Obj[S])(implicit tx: S#Tx): Unit = {
       val objAttr = parent.obj.attr
-      objAttr.remove(key)
+      if (main.isTimeline) {
+        val tl          = Timeline[S]
+        val span        = SpanLikeObj.newVar[S](Span.until(currentFrame()))
+        tl.add(span, child)
+        objAttr.put(key, tl)
+      } else {
+        objAttr.remove(key)
+      }
     }
 
     final def addPNode(in: Input[S], n: PNode, isFree: Boolean): Unit = {
