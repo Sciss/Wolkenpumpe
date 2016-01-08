@@ -59,8 +59,12 @@ final class NuagesOutputImpl[S <: Sys[S]] private(val parent: NuagesObj[S],
   }
 
   def removeMapping(view: Input[S])(implicit tx: S#Tx): Unit = {
-    val res = mappingsSet.remove(view)
-    if (!res) throw new IllegalArgumentException(s"View $view was not registered")
+    // Note: we call `removeAux` from `dispose`, that is after `mappingsSet.clear()`,
+    // so we must expect calls to `removeMapping` that do not find that view any longer.
+    // Therefore we don't require that the `view` be found here.
+    
+    /* val res = */ mappingsSet.remove(view)
+    // if (!res) throw new IllegalArgumentException(s"View $view was not registered")
   }
 
   private def init(output: Output[S])(implicit tx: S#Tx): this.type = {
