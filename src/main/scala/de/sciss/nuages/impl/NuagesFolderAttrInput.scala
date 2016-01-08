@@ -59,6 +59,8 @@ final class NuagesFolderAttrInput[S <: SSys[S]] private(val attribute: NuagesAtt
 
   def tryConsume(to: Obj[S])(implicit tx: S#Tx): Boolean = false
 
+  def input(implicit tx: S#Tx): Obj[S] = objH()
+
   private def consume(childView: Input[S], folder: Folder[S], parent: Parent[S])(implicit tx: S#Tx): this.type = {
     map()                 = Vector(childView)
     childView.inputParent = this

@@ -89,6 +89,8 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
 
   private[this] def isTimeline: Boolean = attribute.parent.main.isTimeline
 
+  final def input(implicit tx: S#Tx): Obj[S] = objH()._1()
+
   final def collect[A](pf: PartialFunction[Input[S], A])(implicit tx: S#Tx): Iterator[A] =
     if (pf.isDefinedAt(this)) Iterator.single(pf(this)) else Iterator.empty
 

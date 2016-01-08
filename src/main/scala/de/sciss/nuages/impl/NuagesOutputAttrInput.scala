@@ -44,14 +44,16 @@ final class NuagesOutputAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S
     attribute.parent.main.deferVisTx(body)
 
   private[this] var _observer: Disposable[S#Tx] = _
-  private[this] var _pNode  = Option.empty[PNode]
-  private[this] val outRef  = Ref(Option.empty[NuagesOutput[S]])
+  private[this] var _pNode          = Option.empty[PNode]
+  private[this] val outputViewRef   = Ref(Option.empty[NuagesOutput[S]])
 
   override def toString = s"NuagesOutput.Input($attribute)@${hashCode.toHexString}"
 
   def output(implicit tx: S#Tx): Output[S] = objH()
 
   def tryConsume(to: Obj[S])(implicit tx: S#Tx): Boolean = false
+
+  def input(implicit tx: S#Tx): Obj[S] = output   // yeah, it sounds odd...
 
   def dispose()(implicit tx: S#Tx): Unit = {
     _observer.dispose()
@@ -72,7 +74,7 @@ final class NuagesOutputAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S
   }
 
   private[this] def setView(view: NuagesOutput[S])(implicit tx: S#Tx): Unit = {
-    val old = outRef.swap(Some(view))
+    val old = outputViewRef.swap(Some(view))
     require(old.isEmpty)
     view.addMapping(this)
     deferVisTx {
@@ -84,7 +86,7 @@ final class NuagesOutputAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S
   }
 
   private[this] def unsetView()(implicit tx: S#Tx): Unit = {
-    outRef.swap(None).foreach(_.removeMapping(this))
+    outputViewRef.swap(None).foreach(_.removeMapping(this))
     deferVisTx {
       _pNode.foreach { n =>
         attribute.removePNode(this, n)

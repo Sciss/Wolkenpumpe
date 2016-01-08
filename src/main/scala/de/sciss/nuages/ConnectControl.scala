@@ -18,15 +18,14 @@ import java.awt.geom.{Line2D, Point2D}
 import java.awt.{Color, Graphics2D}
 
 import de.sciss.lucre.synth.Sys
-import de.sciss.synth.proc.Proc
 import prefuse.Display
 import prefuse.controls.ControlAdapter
 import prefuse.util.display.PaintListener
 import prefuse.visual.{NodeItem, VisualItem}
 
 object ConnectControl {
-  private final case class DragSource[S <: Sys[S]](vi: VisualItem, visual: NuagesOutput [S])
-  private final case class DragTarget[S <: Sys[S]](vi: VisualItem, visual: NuagesParam[S])
+  private final case class DragSource[S <: Sys[S]](vi: VisualItem, outputView: NuagesOutput        [S])
+  private final case class DragTarget[S <: Sys[S]](vi: VisualItem, inputView: NuagesAttribute.Input[S])
 
   private final class Drag[S <: Sys[S]](val source: DragSource[S], val targetLoc: Point2D,
                                         var target: Option[DragTarget[S]])
@@ -98,12 +97,8 @@ class ConnectControl[S <: Sys[S]](main: NuagesPanel[S])
     val vi        = d.findItem(screenPt)
     val tgt       = vi match {
       case ni: NodeItem =>
-        val data = vi.get(COL_NUAGES).asInstanceOf[NuagesData[S]]
-        if (data == null) None
-        else data match {
-          case vBus: NuagesOutput   [S] if vBus.parent != dr.source.visual.parent =>
-            Some(DragTarget(vi, vBus))
-          case vCtl: NuagesAttribute[S] if vCtl.parent != dr.source.visual.parent =>
+        vi.get(COL_NUAGES) match {
+          case vCtl: NuagesAttribute.Input[S] if vCtl.attribute.parent != dr.source.outputView.parent =>
             Some(DragTarget(vi, vCtl))
           case _ => None
         }
@@ -124,25 +119,15 @@ class ConnectControl[S <: Sys[S]](main: NuagesPanel[S])
     d.removePaintListener(control)
     drag = None
     dr.target.foreach { tgt =>
-      val tgtV = tgt.visual
       DragAndMouseDelegateControl.setSmartFixed(vis, tgt.vi, state = false)
       main.cursor.step { implicit tx =>
-        val srcVScan = dr.source.visual
-        val srcObj   = srcVScan.parent.obj
-        val tgtObj   = tgtV    .parent.obj
-        (srcObj, tgtObj) match {
-          case (srcProc: Proc[S], tgtProc: Proc[S]) =>
-          srcProc.outputs.get(srcVScan.key).foreach { srcScan =>
-            tgtV match {
-              case tgtVScan: NuagesOutput[S] =>
-                ???! // SCAN
-//                for (tgtScan <- tgtProc.inputs.get(tgtVScan.key))
-//                  srcScan.add(Scan.Link.Scan(tgtScan))
-              case vCtl: NuagesAttribute[S] =>
-                // println(s"Mapping from $srcScan")
-                tgtObj.attr.put(vCtl.key, srcScan)
-            }
-          }
+        val inputView   = tgt.inputView
+        val outputView  = dr.source.outputView
+        if (!outputView.mappings.contains(inputView)) {
+          val inputParent = inputView.inputParent
+          val output      = outputView.output
+          // inputParent.addChild(output)
+          inputParent.updateChild(inputView.input, output)
         }
       }
     }

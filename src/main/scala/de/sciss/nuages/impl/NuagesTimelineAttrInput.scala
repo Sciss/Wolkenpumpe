@@ -88,6 +88,8 @@ final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesA
 
   def tryConsume(to: Obj[S])(implicit tx: S#Tx): Boolean = false
 
+  def input(implicit tx: S#Tx): Obj[S] = timelineH()
+
   private def init(tl: Timeline[S], parent: Parent[S])(implicit tx: S#Tx): this.type = {
     log(s"$attribute timeline init")
     timelineH   = tx.newHandle(tl)

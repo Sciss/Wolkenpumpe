@@ -50,7 +50,7 @@ object NuagesAttributeImpl {
                          (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute[S] = {
     val spec = getSpec(parent, key)
     val res = new Impl[S](parent = parent, key = key, spec = spec) { self =>
-      protected val input = mkInput(attr = self, parent = self, value = _value)
+      protected val inputView = mkInput(attr = self, parent = self, value = _value)
     }
     res
   }
@@ -58,7 +58,7 @@ object NuagesAttributeImpl {
   def mkInput[S <: SSys[S]](attr: NuagesAttribute[S], parent: Parent[S], value: Obj[S])
                            (implicit tx: S#Tx, context: NuagesContext[S]): Input[S] = {
     val opt = getFactory(value)
-    opt.fold[Input[S]](new DummyAttrInput(attr)) { factory =>
+    opt.fold[Input[S]](new DummyAttrInput(attr, tx.newHandle(value))) { factory =>
       factory[S](parent = parent, value = value.asInstanceOf[factory.Repr[S]], attr = attr)
     }
   }
@@ -110,7 +110,7 @@ object NuagesAttributeImpl {
 
     // ---- abstract ----
 
-    protected def input: NuagesAttribute.Input[S]
+    protected def inputView: NuagesAttribute.Input[S]
 
     // ---- impl ----
 
@@ -131,13 +131,15 @@ object NuagesAttributeImpl {
 
     // proxy
 
-    final def numChannels: Int = input.numChannels
+    final def numChannels: Int = inputView.numChannels
 
-    final def tryConsume(to: Obj[S])(implicit tx: S#Tx): Boolean = input.tryConsume(to)
+    final def tryConsume(to: Obj[S])(implicit tx: S#Tx): Boolean = inputView.tryConsume(to)
 
-    final def value: Vec[Double] = input.value
+    final def value: Vec[Double] = inputView.value
 
-    final def collect[A](pf: PartialFunction[Input[S], A])(implicit tx: S#Tx): Iterator[A] = input.collect(pf)
+    final def collect[A](pf: PartialFunction[Input[S], A])(implicit tx: S#Tx): Iterator[A] = inputView.collect(pf)
+
+    def input(implicit tx: S#Tx): Obj[S] = inputView.input
 
     // other
 
@@ -160,10 +162,10 @@ object NuagesAttributeImpl {
                         (implicit tx: S#Tx, context: NuagesContext[S]): Option[NuagesAttribute[S]] = {
       val opt = getFactory(newValue)
       opt.flatMap { factory =>
-        factory.tryConsume(oldInput = input, newValue = newValue.asInstanceOf[factory.Repr[S]])
+        factory.tryConsume(oldInput = inputView, newValue = newValue.asInstanceOf[factory.Repr[S]])
           .map { newInput =>
             val res = new Impl[S](parent = parent, key = key, spec = spec) {
-              protected val input = newInput
+              protected val inputView = newInput
             }
             main.deferVisTx {
               res.initReplace(self._state, freeNodes = self._freeNodes, boundNodes = self._boundNodes)
@@ -384,7 +386,7 @@ object NuagesAttributeImpl {
       drawName(g, vi, NuagesDataImpl.diam * vi.getSize.toFloat * 0.5f)
 
     def dispose()(implicit tx: S#Tx): Unit = {
-      input.dispose()
+      inputView.dispose()
       // parent.params.remove(key)
     }
 

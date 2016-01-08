@@ -62,7 +62,7 @@ final class NuagesOutputImpl[S <: Sys[S]] private(val parent: NuagesObj[S],
     // Note: we call `removeAux` from `dispose`, that is after `mappingsSet.clear()`,
     // so we must expect calls to `removeMapping` that do not find that view any longer.
     // Therefore we don't require that the `view` be found here.
-    
+
     /* val res = */ mappingsSet.remove(view)
     // if (!res) throw new IllegalArgumentException(s"View $view was not registered")
   }

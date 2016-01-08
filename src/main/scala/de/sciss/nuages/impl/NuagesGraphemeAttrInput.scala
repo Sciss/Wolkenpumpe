@@ -64,6 +64,8 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
 
   def tryConsume(to: Obj[S])(implicit tx: S#Tx): Boolean = false
 
+  def input(implicit tx: S#Tx): Obj[S] = graphemeH()
+
   // N.B.: Currently AuralGraphemeAttribute does not pay
   // attention to the parent object's time offset. Therefore,
   // to match with the current audio implementation, we also
