@@ -20,7 +20,7 @@ import de.sciss.lucre.stm.{Sys, Obj, TxnLike}
 import de.sciss.lucre.swing.View
 import de.sciss.lucre.synth.{Synth, Sys => SSys, Txn}
 import de.sciss.nuages.impl.{PanelImpl => Impl}
-import de.sciss.synth.proc.{AuralSystem, Transport, WorkspaceHandle}
+import de.sciss.synth.proc.{Output, AuralSystem, Transport, WorkspaceHandle}
 import prefuse.data.Graph
 import prefuse.visual.{AggregateTable, VisualGraph}
 import prefuse.{Display, Visualization}
@@ -103,4 +103,10 @@ trait NuagesPanel[S <: Sys[S]] extends View[S] {
 
   def addCollectionAttribute   (parent: Obj[S], key: String, child: Obj[S])(implicit tx: S#Tx): Unit
   def removeCollectionAttribute(parent: Obj[S], key: String, child: Obj[S])(implicit tx: S#Tx): Boolean
+
+  def appendFilter(pred: Output[S], fltSrc: Obj[S], colSrcOpt: Option[Obj[S]], fltPt: Point2D)
+                  (implicit tx: S#Tx): Unit
+
+  def insertFilter(pred: Output[S], succ: (Obj[S], String), fltSrc: Obj[S], fltPt: Point2D)
+                  (implicit tx: S#Tx): Unit
 }

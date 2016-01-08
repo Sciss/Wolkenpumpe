@@ -26,7 +26,7 @@ import de.sciss.lucre.stm.{Disposable, IdentifierMap, Obj}
 import de.sciss.lucre.synth.Sys
 import de.sciss.nuages.NuagesPanel._
 import de.sciss.swingplus.ListView
-import de.sciss.synth.proc.{Folder, ObjKeys}
+import de.sciss.synth.proc.{Proc, Folder, ObjKeys}
 import prefuse.controls.{Control, ControlAdapter}
 import prefuse.visual.{EdgeItem, NodeItem, VisualItem}
 
@@ -190,7 +190,7 @@ object KeyControl {
       // println(s"itemKeyPressed '${e.getKeyChar}'")
       vi match {
         case ei: EdgeItem =>
-          def perform[A](fun: (NuagesOutput[S], NuagesOutput[S], Point2D) => A): Option[A] = {
+          def perform[A](fun: (NuagesOutput[S], NuagesAttribute.Input[S], Point2D) => A): Option[A] = {
             val nSrc  = ei.getSourceItem
             val nTgt  = ei.getTargetItem
             val vis   = main.visualization
@@ -201,7 +201,7 @@ object KeyControl {
                 val tgtData = nTgt.get(COL_NUAGES).asInstanceOf[NuagesData[S]]
                 if (srcData == null || tgtData == null) None else
                   (srcData, tgtData) match {
-                    case (vOut: NuagesOutput[S], vIn: NuagesOutput[S]) =>
+                    case (vOut: NuagesOutput[S], vIn: NuagesAttribute.Input[S]) =>
                       val r = _ve.getBounds
                       p2d.setLocation(r.getCenterX, r.getCenterY)
                       // main.display.getTransform.transform(p2d, p2d)
@@ -216,11 +216,11 @@ object KeyControl {
           if (e.getKeyCode == KeyEvent.VK_ENTER) {
             perform { (vOut, vIn, pt) =>
               showCategoryInput(filters) { implicit tx => (obj, pt0) =>
-                ???! // SCAN
-//                val pred = vOut.scan
-//                val succ = vIn .scan
-//                // main.display.getTransform.transform(pt0, p2d)
-//                main.insertFilter(pred = pred, succ = succ, flt = obj, pt = pt0)
+                val pred    = vOut.output
+                val inAttr  = vIn.attribute
+                val succ    = inAttr.parent.obj -> inAttr.key
+                // main.display.getTransform.transform(pt0, p2d)
+                main.insertFilter(pred = pred, succ = succ, fltSrc = obj, fltPt = pt0)
               }
             }
 
@@ -229,10 +229,11 @@ object KeyControl {
             filters.get(ks).foreach { objH =>
               perform { (vOut, vIn, pt) =>
                 main.cursor.step { implicit tx =>
-                  ???! // SCAN
-//                  val pred = vOut.scan
-//                  val succ = vIn .scan
-//                  main.insertFilter(pred = pred, succ = succ, flt = objH(), pt = pt)
+                  val pred    = vOut.output
+                  val inAttr  = vIn.attribute
+                  val succ    = inAttr.parent.obj -> inAttr.key
+                  println(s"insertFilter(pred = $pred, succ = $succ)")
+                  main.insertFilter(pred = pred, succ = succ, fltSrc = objH(), fltPt = pt)
                 }
               }
             }
@@ -243,36 +244,37 @@ object KeyControl {
             case d: NuagesData[S] =>
               val e1 = Pressed(code = Key(e.getKeyCode), modifiers = e.getModifiers)
               d.itemKeyPressed(vi, e1)
-
-              if (d.isInstanceOf[NuagesOutput[S]] && d.name == "out") {
-                def perform[A](fun: Point2D => A): A = {
-                  val vis   = main.visualization
-                  val _ve   = vis.getVisualItem(NuagesPanel.GROUP_GRAPH, ni)
-                  val r     = _ve.getBounds
-                  p2d.setLocation(r.getCenterX, r.getCenterY)
-                  fun(p2d)
-                }
-
-                if (e.getKeyCode == KeyEvent.VK_ENTER) {
-                  perform { pt =>
-                    val category = if (e.isShiftDown) collectors else filters
-                    showCategoryInput(category) { implicit tx => (obj, pt0) =>
-                      ???! // SCAN
-  //                    main.appendFilter(pred = vs.scan, flt = obj, colOpt = None, pt = pt0)
-                    }
+              d match {
+                case vOut: NuagesOutput[S] if vOut.name == Proc.scanMainOut =>
+                  def perform[A](fun: Point2D => A): A = {
+                    val vis   = main.visualization
+                    val _ve   = vis.getVisualItem(NuagesPanel.GROUP_GRAPH, ni)
+                    val r     = _ve.getBounds
+                    p2d.setLocation(r.getCenterX, r.getCenterY)
+                    fun(p2d)
                   }
 
-                } else {
-                  val ks = KeyStroke.getKeyStroke(e.getKeyCode, e.getModifiers)
-                  filters.get(ks).foreach { objH =>
+                  if (e.getKeyCode == KeyEvent.VK_ENTER) {
                     perform { pt =>
-                      main.cursor.step { implicit tx =>
-                        ???! // SCAN
-  //                      main.appendFilter(pred = vs.scan, flt = objH(), colOpt = None, pt = pt)
+                      val category = if (e.isShiftDown) collectors else filters
+                      showCategoryInput(category) { implicit tx => (obj, pt0) =>
+                        val pred = vOut.output
+                        main.appendFilter(pred = pred, fltSrc = obj, colSrcOpt = None, fltPt = pt0)
+                      }
+                    }
+
+                  } else {
+                    val ks = KeyStroke.getKeyStroke(e.getKeyCode, e.getModifiers)
+                    filters.get(ks).foreach { objH =>
+                      perform { pt =>
+                        main.cursor.step { implicit tx =>
+                          val pred = vOut.output
+                          main.appendFilter(pred = pred, fltSrc = objH(), colSrcOpt = None, fltPt = pt)
+                        }
                       }
                     }
                   }
-                }
+                case _ =>
               }
 
             case _ =>
