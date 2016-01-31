@@ -36,7 +36,7 @@ object NuagesGraphemeAttrInput extends NuagesAttribute.Factory {
     new NuagesGraphemeAttrInput(attr, frameOffset = frameOffset).init(value, parent)
   }
 
-  def tryConsume[S <: SSys[S]](oldInput: Input[S], _newOffset: Long, newValue: Grapheme[S])
+  def tryConsume[S <: SSys[S]](oldInput: Input[S], /* _newOffset: Long, */ newValue: Grapheme[S])
                               (implicit tx: S#Tx, context: NuagesContext[S]): Option[Input[S]] = {
     val attr    = oldInput.attribute
     val parent  = attr.inputParent
@@ -46,8 +46,8 @@ object NuagesGraphemeAttrInput extends NuagesAttribute.Factory {
       case Vec(entry) =>
         val time  = entry.key.value
         val head  = entry.value
-        if (oldInput.tryConsume(newOffset = _newOffset, newValue = head)) {
-          val res = new NuagesGraphemeAttrInput(attr, frameOffset = _newOffset)
+        if (oldInput.tryConsume(newOffset = ??? /* _newOffset */, newValue = head)) {
+          val res = new NuagesGraphemeAttrInput(attr, frameOffset = ??? /* _newOffset */)
             .consume(time, head, oldInput, newValue, parent)
           Some(res)
         } else None

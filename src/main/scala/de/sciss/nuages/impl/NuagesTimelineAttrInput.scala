@@ -37,18 +37,18 @@ object NuagesTimelineAttrInput extends NuagesAttribute.Factory {
     new NuagesTimelineAttrInput(attr, frameOffset = frameOffset, map = map).init(value, parent)
   }
 
-  def tryConsume[S <: SSys[S]](oldInput: Input[S], newOffset: Long, newValue: Timeline[S])
+  def tryConsume[S <: SSys[S]](oldInput: Input[S], /* newOffset: Long, */ newValue: Timeline[S])
                               (implicit tx: S#Tx, context: NuagesContext[S]): Option[Input[S]] = {
     val attr    = oldInput.attribute
     val parent  = attr.inputParent
     val main    = attr.parent.main
-    val time    = main.transport.position // XXX TODO -- should find a currentFrame somewhere
+    val time    = ???! : Long // main.transport.position // XXX TODO -- should find a currentFrame somewhere
     newValue.intersect(time).toList match {
       case (span, Vec(entry)) :: Nil =>
         val head = entry.value
-        if (oldInput.tryConsume(newOffset = newOffset, newValue = head)) {
+        if (oldInput.tryConsume(newOffset = ???!, newValue = head)) {
           val map = tx.newInMemoryIDMap[Input[S]]
-          val res = new NuagesTimelineAttrInput(attr, frameOffset = newOffset, map = map)
+          val res = new NuagesTimelineAttrInput(attr, frameOffset = ???!, map = map)
             .consume(entry, oldInput, newValue, parent)
           Some(res)
         } else None
@@ -123,8 +123,8 @@ final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesA
     val tl = timelineH()
 
     def mkSpan(): SpanLikeObj.Var[S] = {
-      val frame = currentOffset()
-      SpanLikeObj.newVar[S](Span.from(frame))
+      val start = currentOffset()
+      SpanLikeObj.newVar[S](Span.from(start))
     }
 
     if (isTimeline) {
@@ -144,13 +144,13 @@ final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesA
   def removeChild(child: Obj[S])(implicit tx: S#Tx): Unit = {
     val tl = timelineH()
     if (isTimeline) {
-      val frame   = currentOffset()
-      val entries = tl.intersect(frame).flatMap { case (span, xs) =>
+      val stop = currentOffset()
+      val entries = tl.intersect(stop).flatMap { case (span, xs) =>
         xs.filter(_.value == child)
       }
       entries.foreach { timed =>
         val oldSpan     = timed.span
-        val newSpanVal  = oldSpan.value.intersect(Span.until(frame))
+        val newSpanVal  = oldSpan.value.intersect(Span.until(stop))
         oldSpan match {
           case SpanLikeObj.Var(vr) => vr() = newSpanVal
           case _ =>
@@ -170,8 +170,8 @@ final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesA
   protected def addNode(span: SpanLike, timed: Timed[S])(implicit tx: S#Tx): Unit = {
     log(s"$attribute timeline addNode $timed")
     val childOffset = if (frameOffset == Long.MaxValue) Long.MaxValue else span match {
-      case hs: Span.HasStart => frameOffset + hs.start
-      case _ => Long.MaxValue
+      case hs: Span.HasStart  => frameOffset + hs.start
+      case _                  => Long.MaxValue
     }
     val childView = NuagesAttribute.mkInput(attribute, parent = this, frameOffset = childOffset, value = timed.value)
     viewSet += childView

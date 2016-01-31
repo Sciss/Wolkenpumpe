@@ -44,8 +44,8 @@ object NuagesObjImpl {
                          spanOption: Option[SpanLikeObj[S]], hasMeter: Boolean, hasSolo: Boolean)
                         (implicit tx: S#Tx, context: NuagesContext[S]): NuagesObj[S] = {
     val frameOffset = spanValue match {
-      case hs: Span.HasStart => hs.start
-      case _ => Long.MaxValue
+      case hs: Span.HasStart  => hs.start
+      case _                  => Long.MaxValue
     }
     val res = new NuagesObjImpl(main, obj.name, frameOffset = frameOffset, hasMeter = hasMeter, hasSolo = hasSolo)
     res.init(id, obj, spanOption, locOption)
@@ -298,7 +298,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
       case Surface.Timeline(tl) =>
         val oldSpan     = spanOption
           .getOrElse(throw new IllegalStateException(s"Using a timeline nuages but no span!?"))
-        val frame       = main.transport.position
+        val frame       = ???! : Long // main.transport.position
         val newSpanVal  = oldSpan.value.intersect(Span.until(frame))
         if (newSpanVal.nonEmpty) {
           oldSpan match {

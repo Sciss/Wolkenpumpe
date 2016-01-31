@@ -38,8 +38,8 @@ trait NuagesTimelineBase[S <: Sys[S]] extends NuagesScheduledBase[S] {
   /** Calls `initTimelineObserver` followed by creating live views. */
   final protected def initTimeline(tl: Timeline[S])(implicit tx: S#Tx): Unit = {
     initTimelineObserver(tl)
-    val frame0 = currentOffset()
-    tl.intersect(frame0).foreach { case (span, elems) =>
+    val offset0 = currentOffset()
+    tl.intersect(offset0).foreach { case (span, elems) =>
       elems.foreach(addNode(span, _))
     }
   }
@@ -57,7 +57,6 @@ trait NuagesTimelineBase[S <: Sys[S]] extends NuagesScheduledBase[S] {
 
           if (rem || add) {
             offsetRef() = time
-            // println(s"frameRef = $time")
           }
 
           if (rem) removeNode(change.before, timed)
@@ -80,7 +79,6 @@ trait NuagesTimelineBase[S <: Sys[S]] extends NuagesScheduledBase[S] {
     val time = currentOffset()
     if (span.contains(time)) {
       offsetRef() = time
-      // println(s"frameRef = $time")
       if (add) addNode(span, timed) else removeNode(span, timed)
     }
     if (t.isPlaying && span.overlaps(Span.from(time))) {
@@ -128,12 +126,12 @@ trait NuagesTimelineBase[S <: Sys[S]] extends NuagesScheduledBase[S] {
     }
   }
 
-  protected final def eventAfter(frame: Long)(implicit tx: S#Tx): Long =
-    timelineH().eventAfter(frame).getOrElse(Long.MaxValue)
+  protected final def eventAfter(offset: Long)(implicit tx: S#Tx): Long =
+    timelineH().eventAfter(offset).getOrElse(Long.MaxValue)
 
-  protected final def processEvent(frame: Long)(implicit tx: S#Tx): Unit = {
+  protected final def processEvent(offset: Long)(implicit tx: S#Tx): Unit = {
     val timeline          = timelineH()
-    val (startIt, stopIt) = timeline.eventsAt(frame)
+    val (startIt, stopIt) = timeline.eventsAt(offset)
 
     stopIt .foreach { case (span, xs) => xs.foreach(removeNode(span, _)) }
     startIt.foreach { case (span, xs) => xs.foreach(addNode   (span, _)) }

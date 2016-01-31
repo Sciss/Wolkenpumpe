@@ -43,7 +43,7 @@ object NuagesAttribute {
     def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: Parent[S], frameOffset: Long, value: Repr[S])
                            (implicit tx: S#Tx, context: NuagesContext[S]): Input[S]
 
-    def tryConsume[S <: SSys[S]](oldInput: Input[S], newOffset: Long, newValue: Repr[S])
+    def tryConsume[S <: SSys[S]](oldInput: Input[S], /* newOffset: Long, */ newValue: Repr[S])
                                 (implicit tx: S#Tx, context: NuagesContext[S]): Option[Input[S]]
   }
 

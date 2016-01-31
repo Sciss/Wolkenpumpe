@@ -18,6 +18,6 @@ import de.sciss.lucre.synth.Sys
 import de.sciss.nuages.NuagesAttribute.Input
 
 trait NuagesAttributeSingleFactory extends NuagesAttribute.Factory {
-  final def tryConsume[S <: Sys[S]](oldInput: Input[S], newOffset: Long, newValue: Repr[S])
+  final def tryConsume[S <: Sys[S]](oldInput: Input[S], /* newOffset: Long, */ newValue: Repr[S])
                                    (implicit tx: S#Tx, context: NuagesContext[S]): Option[Input[S]] = None
 }
