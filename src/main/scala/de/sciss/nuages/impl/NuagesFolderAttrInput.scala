@@ -37,10 +37,10 @@ object NuagesFolderAttrInput extends NuagesAttribute.Factory {
                               (implicit tx: S#Tx, context: NuagesContext[S]): Option[Input[S]] =
     if (newValue.size == 1) {
       val head = newValue.head
-      if (oldInput.tryConsume(newOffset = ??? /* newOffset */, newValue = head)) {
+      if (oldInput.tryConsume(newOffset = ???! /* newOffset */, newValue = head)) {
         val attr    = oldInput.attribute
         val parent  = attr.inputParent
-        val res     = new NuagesFolderAttrInput(attr, frameOffset = ??? /* newOffset */).consume(oldInput, newValue, parent)
+        val res     = new NuagesFolderAttrInput(attr, frameOffset = ???! /* newOffset */).consume(oldInput, newValue, parent)
         Some(res)
       } else None
     } else None

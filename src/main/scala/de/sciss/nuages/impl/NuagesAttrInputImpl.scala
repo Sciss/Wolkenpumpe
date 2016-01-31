@@ -30,6 +30,7 @@ import prefuse.visual.VisualItem
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm.Ref
 import scala.language.higherKinds
+import scala.util.control.NonFatal
 
 object NuagesAttrInputImpl {
   private final class Drag(val angStart: Double, val valueStart: Vec[Double], val instant: Boolean) {
@@ -231,7 +232,14 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
 
   protected final def setControl(v: Vec[Double], instant: Boolean): Unit =
     atomic { implicit tx =>
+      // try {
       setControlTxn(v)
+      //      } catch {
+      //        case NonFatal(ex) =>
+      //          println(s"WTF? $this.setControl($v)")
+      //          ex.printStackTrace()
+      //          throw ex
+      //      }
     }
 
   final override def itemDragged(vi: VisualItem, e: MouseEvent, pt: Point2D): Unit =

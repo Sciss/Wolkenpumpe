@@ -16,14 +16,14 @@ package impl
 
 import java.awt.Graphics2D
 
-import de.sciss.lucre.expr.{SpanLikeObj, LongObj, BooleanObj, DoubleObj, DoubleVector, IntObj}
+import de.sciss.lucre.expr.{BooleanObj, DoubleObj, DoubleVector, IntObj, LongObj, SpanLikeObj}
 import de.sciss.lucre.stm.{Obj, Sys}
 import de.sciss.lucre.swing.requireEDT
 import de.sciss.lucre.synth.{Sys => SSys}
-import de.sciss.nuages.NuagesAttribute.{Parent, Factory, Input}
+import de.sciss.nuages.NuagesAttribute.{Factory, Input, Parent}
 import de.sciss.span.Span
-import de.sciss.synth.proc.{TimeRef, Grapheme, Timeline, Output, Folder}
-import prefuse.data.{Node => PNode, Edge => PEdge}
+import de.sciss.synth.proc.{TimeRef, Folder, Grapheme, Output, Timeline}
+import prefuse.data.{Edge => PEdge, Node => PNode}
 import prefuse.visual.VisualItem
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -187,7 +187,7 @@ object NuagesAttributeImpl {
         val gr          = Grapheme[S]
         val start       = currentOffset()
 
-        // println(s"updateChild(frameOffset = ${TimeRef.framesToSecs(parent.frameOffset)}, start = ${TimeRef.framesToSecs(start)}")
+        println(s"updateChild(frameOffset = ${TimeRef.framesToSecs(parent.frameOffset)}, start = ${TimeRef.framesToSecs(start)}")
 
         if (start != 0L) {
           val timeBefore  = LongObj.newVar[S](0L) // XXX TODO ?

@@ -26,9 +26,9 @@ import de.sciss.lucre.stm.{Disposable, Obj, TxnLike}
 import de.sciss.lucre.swing.requireEDT
 import de.sciss.lucre.synth.{Synth, Sys}
 import de.sciss.nuages.Nuages.Surface
-import de.sciss.span.{SpanLike, Span}
+import de.sciss.span.{Span, SpanLike}
 import de.sciss.synth.proc.Implicits._
-import de.sciss.synth.proc.{Output, ObjKeys, Proc}
+import de.sciss.synth.proc.{ObjKeys, Output, Proc}
 import prefuse.util.ColorLib
 import prefuse.visual.{AggregateItem, VisualItem}
 
@@ -151,6 +151,15 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
       val view = attrs.remove(key).getOrElse(throw new IllegalStateException(s"No view for attribute $key"))
       view.dispose()
     }
+
+  //  private[this] def attrReplaced(key: String, before: Obj[S], now: Obj[S])(implicit tx: S#Tx): Unit = try {
+  //    attrReplaced_X(key, before, now)
+  //  } catch {
+  //    case NonFatal(ex) =>
+  //      println(s"WTF? $this.attrReplaced($key, $before, $now)")
+  //      ex.printStackTrace()
+  //      throw ex
+  //  }
 
   private[this] def attrReplaced(key: String, before: Obj[S], now: Obj[S])(implicit tx: S#Tx): Unit =
     if (isAttrShown(key)) {
