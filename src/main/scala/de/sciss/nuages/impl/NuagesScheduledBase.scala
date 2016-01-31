@@ -15,7 +15,7 @@ package de.sciss.nuages
 package impl
 
 import de.sciss.lucre.stm.{Disposable, Sys, TxnLike}
-import de.sciss.synth.proc.Transport
+import de.sciss.synth.proc.{TimeRef, Transport}
 
 import scala.concurrent.stm.Ref
 
@@ -106,6 +106,7 @@ trait NuagesScheduledBase[S <: Sys[S]] {
 
   private[this] def play()(implicit tx: S#Tx): Unit = {
     val offset = currentOffset()
+    log(s"$this play $offset / ${TimeRef.framesToSecs(offset)}s")
     schedNext(offset)
   }
 

@@ -20,7 +20,7 @@ import de.sciss.lucre.stm.{Disposable, Obj, Sys, TxnLike}
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.nuages.NuagesAttribute.{Parent, Input}
 import de.sciss.span.Span
-import de.sciss.synth.proc.{Grapheme, Transport}
+import de.sciss.synth.proc.{TimeRef, Grapheme, Transport}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm.Ref
@@ -68,6 +68,8 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
 
   import TxnLike.peer
 
+  override def toString = s"$attribute gr[$frameOffset / ${TimeRef.framesToSecs(frameOffset)}s]"
+
   protected var graphemeH: stm.Source[S#Tx, Grapheme[S]] = _
 
   def tryConsume(newOffset: Long, to: Obj[S])(implicit tx: S#Tx): Boolean = false
@@ -79,7 +81,7 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
   private[this] var observer: Disposable[S#Tx] = _
 
   private def init(gr: Grapheme[S], parent: Parent[S])(implicit tx: S#Tx): this.type = {
-    log(s"$attribute grapheme init")
+    log(s"$this init")
     graphemeH   = tx.newHandle(gr)
     inputParent = parent
     initObserver(gr)
@@ -90,7 +92,7 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
 
   private def consume(start: Long, child: Obj[S], childView: Input[S], gr: Grapheme[S], parent: Parent[S])
                      (implicit tx: S#Tx): this.type = {
-    log(s"$attribute grapheme consume")
+    log(s"$this consume ($start - ${TimeRef.framesToSecs(start)}s)")
     graphemeH             = tx.newHandle(gr)
     inputParent           = parent
     childView.inputParent = this
@@ -184,7 +186,7 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
       require(curr.isDefined)
       val beforeStart = curr.start
       val nowStart    = currentOffset()
-      // println(s"updateChild($before - $beforeStart, $now - $nowStart)")
+      log(s"$this updateChild($before - $beforeStart / ${TimeRef.framesToSecs(beforeStart)}s, $now - $nowStart / ${TimeRef.framesToSecs(nowStart)}s)")
       if (beforeStart != nowStart && isTimeline) {
         val nowStartObj = LongObj.newVar[S](nowStart)
         grm.add(nowStartObj, now)
@@ -211,7 +213,7 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
   def numChannels: Int = ???!
 
   def dispose()(implicit tx: S#Tx): Unit = {
-    log(s"$attribute grapheme dispose")
+    log(s"$this dispose")
     currentView.swap(emptyView).dispose()
     observer.dispose()
     disposeTransport()
@@ -237,6 +239,7 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
     graphemeH().eventAfter(frame).getOrElse(Long.MaxValue)
 
   protected def processEvent(frame: Long)(implicit tx: S#Tx): Unit = {
+    log(s"$this processEvent($frame / ${TimeRef.framesToSecs(frame)}s)")
     val gr    = graphemeH()
     val child = gr.valueAt(frame).getOrElse(throw new IllegalStateException(s"Found no value at $frame"))
     setChild(start = frame, child = child)

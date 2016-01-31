@@ -187,7 +187,7 @@ object NuagesAttributeImpl {
         val gr          = Grapheme[S]
         val start       = currentOffset()
 
-        println(s"updateChild(frameOffset = ${TimeRef.framesToSecs(parent.frameOffset)}, start = ${TimeRef.framesToSecs(start)}")
+        log(s"$this updateChild($before, $now - $start / ${TimeRef.framesToSecs(start)}s)")
 
         if (start != 0L) {
           val timeBefore  = LongObj.newVar[S](0L) // XXX TODO ?
