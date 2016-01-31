@@ -38,17 +38,22 @@ object NuagesGraphemeAttrInput extends NuagesAttribute.Factory {
 
   def tryConsume[S <: SSys[S]](oldInput: Input[S], /* _newOffset: Long, */ newValue: Grapheme[S])
                               (implicit tx: S#Tx, context: NuagesContext[S]): Option[Input[S]] = {
-    val attr    = oldInput.attribute
-    val parent  = attr.inputParent
-    val main    = attr.parent.main
-    val time    = main.transport.position // XXX TODO -- should find a currentFrame somewhere
-    newValue.intersect(time) match {
+    val attr          = oldInput.attribute
+    val parent        = attr.parent
+    val main          = parent.main
+    val _frameOffset  = parent.frameOffset
+    if (_frameOffset == Long.MaxValue) return None  // what should we do?
+    val transportPos  = main.transport.position
+    val currentOffset = transportPos - _frameOffset
+
+    newValue.intersect(currentOffset) match {
       case Vec(entry) =>
-        val time  = entry.key.value
-        val head  = entry.value
-        if (oldInput.tryConsume(newOffset = ??? /* _newOffset */, newValue = head)) {
-          val res = new NuagesGraphemeAttrInput(attr, frameOffset = ??? /* _newOffset */)
-            .consume(time, head, oldInput, newValue, parent)
+        val time        = entry.key.value
+        val head        = entry.value
+        val _newOffset  = time + _frameOffset
+        if (oldInput.tryConsume(newOffset = _newOffset, newValue = head)) {
+          val res = new NuagesGraphemeAttrInput(attr, frameOffset = _frameOffset)
+            .consume(time, head, oldInput, newValue, attr.inputParent)
           Some(res)
         } else None
 
@@ -68,22 +73,6 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
   def tryConsume(newOffset: Long, to: Obj[S])(implicit tx: S#Tx): Boolean = false
 
   def input(implicit tx: S#Tx): Obj[S] = graphemeH()
-
-  //  // N.B.: Currently AuralGraphemeAttribute does not pay
-  //  // attention to the parent object's time offset. Therefore,
-  //  // to match with the current audio implementation, we also
-  //  // do not take that into consideration, but might so in the future...
-  //  protected def currentFrame()(implicit tx: S#Tx): Long = {
-  //    transport.position
-  //    //    val parentView  = attribute.parent
-  //    //    val spanOption  = parentView.spanOption
-  //    //    spanOption.fold(0L) { spanObj =>
-  //    //      spanObj.value match {
-  //    //        case span: Span.HasStart => transport.position - span.start
-  //    //        case _ => BiGroup.MaxCoordinate // no offset can be given - we may still have Span.All children
-  //    //      }
-  //    //    }
-  //  }
 
   protected def transport: Transport[S] = attribute.parent.main.transport
 

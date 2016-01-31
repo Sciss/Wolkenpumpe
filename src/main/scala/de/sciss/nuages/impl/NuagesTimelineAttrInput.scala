@@ -69,23 +69,6 @@ final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesA
 
   protected var timelineH: stm.Source[S#Tx, Timeline[S]] = _
 
-  //  // N.B.: Currently AuralTimelineAttribute does not pay
-  //  // attention to the parent object's time offset. Therefore,
-  //  // to match with the current audio implementation, we also
-  //  // do not take that into consideration, but might so in the future...
-  //  protected def currentFrame()(implicit tx: S#Tx): Long = {
-  //    // attribute.parent.spanValue
-  //    transport.position
-  ////    val parentView  = attribute.parent
-  ////    val spanOption  = parentView.spanOption
-  ////    spanOption.fold(0L) { spanObj =>
-  ////      spanObj.value match {
-  ////        case span: Span.HasStart => transport.position - span.start
-  ////        case _ => BiGroup.MaxCoordinate // no offset can be given - we may still have Span.All children
-  ////      }
-  ////    }
-  //  }
-
   protected def transport: Transport[S] = attribute.parent.main.transport
 
   def tryConsume(newOffset: Long, to: Obj[S])(implicit tx: S#Tx): Boolean = false

@@ -85,13 +85,6 @@ trait PanelImplTimelineInit[S <: Sys[S]] extends NuagesTimelineBase[S] {
     initTransport()
   }
 
-  //  // N.B.: Currently AuralTimelineAttribute does not pay
-  //  // attention to the parent object's time offset. Therefore,
-  //  // to match with the current audio implementation, we also
-  //  // do not take that into consideration, but might so in the future...
-  //  protected final def currentFrame()(implicit tx: S#Tx): Long =
-  //    transport.position
-
   protected final def frameOffset: Long = 0L
 
   protected final def addNode(span: SpanLike, timed: Timed[S])(implicit tx: S#Tx): Unit = {

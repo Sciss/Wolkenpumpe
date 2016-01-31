@@ -22,7 +22,7 @@ import de.sciss.lucre.swing.requireEDT
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.nuages.NuagesAttribute.{Parent, Factory, Input}
 import de.sciss.span.Span
-import de.sciss.synth.proc.{Grapheme, Timeline, Output, Folder}
+import de.sciss.synth.proc.{TimeRef, Grapheme, Timeline, Output, Folder}
 import prefuse.data.{Node => PNode, Edge => PEdge}
 import prefuse.visual.VisualItem
 
@@ -149,8 +149,11 @@ object NuagesAttributeImpl {
 
     private[this] def nodeSize = 0.333333f
 
-    private[this] def currentFrame()(implicit tx: S#Tx): Long =
-      main.transport.position
+    private[this] def currentOffset()(implicit tx: S#Tx): Long = {
+      val fr = parent.frameOffset
+      if (fr == Long.MaxValue) throw new UnsupportedOperationException(s"$this.currentOffset()")
+      main.transport.position - fr
+    }
 
     private def initReplace(state: State, freeNodes: Map[PNode, PEdge], boundNodes: Map[PNode, PEdge])
                            (implicit tx: S#Tx): Unit = {
@@ -182,10 +185,16 @@ object NuagesAttributeImpl {
       val objAttr = parent.obj.attr
       val value = if (main.isTimeline) {
         val gr          = Grapheme[S]
-        val timeBefore  = LongObj.newVar[S](0L) // XXX TODO ?
-        val timeNow     = LongObj.newVar[S](currentFrame())
-        gr.add(timeBefore, before)
-        gr.add(timeNow   , now)
+        val start       = currentOffset()
+
+        // println(s"updateChild(frameOffset = ${TimeRef.framesToSecs(parent.frameOffset)}, start = ${TimeRef.framesToSecs(start)}")
+
+        if (start != 0L) {
+          val timeBefore  = LongObj.newVar[S](0L) // XXX TODO ?
+          gr.add(timeBefore, before)
+        }
+        val timeNow     = LongObj.newVar[S](start)
+        gr.add(timeNow, now)
         gr
       } else {
         now
@@ -198,8 +207,8 @@ object NuagesAttributeImpl {
       val objAttr = parent.obj.attr
 
       def mkSpan(): SpanLikeObj.Var[S] = {
-        val frame = currentFrame()
-        SpanLikeObj.newVar[S](Span.from(frame))
+        val start = currentOffset()
+        SpanLikeObj.newVar[S](Span.from(start))
       }
 
       def mkTimeline(): (Timeline.Modifiable[S], SpanLikeObj.Var[S]) = {
@@ -264,7 +273,7 @@ object NuagesAttributeImpl {
       val objAttr = parent.obj.attr
       if (main.isTimeline) {
         val tl          = Timeline[S]
-        val span        = SpanLikeObj.newVar[S](Span.until(currentFrame()))
+        val span        = SpanLikeObj.newVar[S](Span.until(currentOffset()))
         tl.add(span, child)
         objAttr.put(key, tl)
       } else {
