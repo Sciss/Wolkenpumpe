@@ -24,7 +24,7 @@ object NuagesIntAttrInput extends NuagesAttributeSingleFactory {
 
   type Repr[~ <: Sys[~]] = IntObj[~]
 
-  def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: Parent[S], obj: IntObj[S])
+  def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: Parent[S], frameOffset: Long, obj: IntObj[S])
                         (implicit tx: S#Tx, context: NuagesContext[S]): Input[S] =
     new NuagesIntAttrInput[S](attr).init(obj, parent)
 }

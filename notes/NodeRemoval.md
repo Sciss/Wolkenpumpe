@@ -68,4 +68,7 @@ from those sinks:
 
     update span
 
+-----------------------------
 
+Single mapping or connection is shown visibly from the beginning of the source node,
+even before it was actually connected.

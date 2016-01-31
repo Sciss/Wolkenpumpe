@@ -29,22 +29,24 @@ trait NuagesScheduledBase[S <: Sys[S]] {
 
   protected def currentFrame()(implicit tx: S#Tx): Long
 
-//  protected def addNode   (timed: Timed[S])(implicit tx: S#Tx): Unit
-//  protected def removeNode(timed: Timed[S])(implicit tx: S#Tx): Unit
+  // protected def spanStartOption: Option[Long]
 
   protected def seek(before: Long, now: Long)(implicit tx: S#Tx): Unit
 
-  protected def eventAfter(frame: Long)(implicit tx: S#Tx): Long
+  protected def eventAfter(offset: Long)(implicit tx: S#Tx): Long
 
-  protected def processEvent(frame: Long)(implicit tx: S#Tx): Unit
+  protected def processEvent(offset: Long)(implicit tx: S#Tx): Unit
 
   // ---- impl ----
 
   private[this] val tokenRef  = Ref(-1)
 
-  // last frame for which view-state has been updated.
-  // will be initialised in `initTransport`
-  protected final val frameRef = Ref(0L)
+  /** Last frame offset for which view-state has been updated.
+    * will be initialised in `initTransport`.
+    */
+  protected final val offsetRef = Ref(0L)
+
+  // private[this] val frameOffsetRef = Ref(0L)
 
   protected final def disposeTransport()(implicit tx: S#Tx): Unit = {
     disposed() = true
@@ -69,28 +71,26 @@ trait NuagesScheduledBase[S <: Sys[S]] {
   final protected def initTransport()(implicit tx: S#Tx): Unit = {
     val t = transport
     observer = t.react { implicit tx => upd => if (!disposed()) upd match {
-      case Transport.Play(_, _) => play()
-      case Transport.Stop(_, _) => stop()
+      case Transport.Play(_, pos) => play(pos)
+      case Transport.Stop(_, _  ) => stop()
       case Transport.Seek(_, pos, isPlaying) =>
         if (isPlaying) stop()
-        seek(before = frameRef(), now = pos)
-        frameRef() = pos
-        if (isPlaying) play()
+        seek(before = offsetRef(), now = pos)
+        offsetRef() = pos
+        if (isPlaying) play(pos)
       case _ =>
     }}
 
     val frame0 = currentFrame()
-    frameRef() = frame0
-//    tl.intersect(frame0).foreach { case (span, elems) =>
-//      elems.foreach(addNode)
-//    }
+    offsetRef() = frame0
 
-    if (t.isPlaying) play()
+    if (t.isPlaying) play(t.position)
   }
 
   private[this] def stop()(implicit tx: S#Tx): Unit = clearSched()
 
-  private[this] def play()(implicit tx: S#Tx): Unit = {
+  private[this] def play(pos: Long)(implicit tx: S#Tx): Unit = {
+    // spanStartOption.fold(0L)(pos - _)
     val playFrame = currentFrame()
     schedNext(playFrame)
   }
@@ -120,7 +120,7 @@ trait NuagesScheduledBase[S <: Sys[S]] {
   }
 
   private[this] def eventReached(frame: Long)(implicit tx: S#Tx): Unit = {
-    frameRef() = frame
+    offsetRef() = frame
     processEvent(frame)
     schedNext(frame)
   }

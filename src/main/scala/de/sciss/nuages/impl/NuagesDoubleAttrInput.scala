@@ -24,7 +24,7 @@ object NuagesDoubleAttrInput extends NuagesAttributeSingleFactory {
 
   type Repr[~ <: Sys[~]] = DoubleObj[~]
 
-  def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: Parent[S], obj: DoubleObj[S])
+  def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: Parent[S], frameOffset: Long, obj: DoubleObj[S])
                         (implicit tx: S#Tx, context: NuagesContext[S]): Input[S] = {
 //    val spec  = NuagesAttributeImpl.getSpec(parent, key)
     new NuagesDoubleAttrInput[S](attr).init(obj, parent)

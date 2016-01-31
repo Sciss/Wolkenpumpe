@@ -19,7 +19,7 @@ import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Obj, IdentifierMap, Sys, TxnLike}
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.nuages.NuagesAttribute.{Parent, Input}
-import de.sciss.span.Span
+import de.sciss.span.{SpanLike, Span}
 import de.sciss.synth.proc.Timeline.Timed
 import de.sciss.synth.proc.{Timeline, Transport}
 
@@ -31,10 +31,10 @@ object NuagesTimelineAttrInput extends NuagesAttribute.Factory {
 
   type Repr[S <: Sys[S]] = Timeline[S]
 
-  def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: Parent[S], value: Timeline[S])
+  def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: Parent[S], frameOffset: Long, value: Timeline[S])
                          (implicit tx: S#Tx, context: NuagesContext[S]): Input[S] = {
     val map = tx.newInMemoryIDMap[Input[S]]
-    new NuagesTimelineAttrInput(attr, map = map).init(value, parent)
+    new NuagesTimelineAttrInput(attr, frameOffset = frameOffset, map = map).init(value, parent)
   }
 
   def tryConsume[S <: SSys[S]](oldInput: Input[S], newValue: Timeline[S])
@@ -48,7 +48,7 @@ object NuagesTimelineAttrInput extends NuagesAttribute.Factory {
         val head = entry.value
         if (oldInput.tryConsume(head)) {
           val map = tx.newInMemoryIDMap[Input[S]]
-          val res = new NuagesTimelineAttrInput(attr, map = map)
+          val res = new NuagesTimelineAttrInput(attr, frameOffset = ???, map = map)
             .consume(entry, oldInput, newValue, parent)
           Some(res)
         } else None
@@ -58,6 +58,7 @@ object NuagesTimelineAttrInput extends NuagesAttribute.Factory {
   }
 }
 final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesAttribute[S],
+                                                          frameOffset: Long,
                                                           map: IdentifierMap[S#ID, S#Tx, Input[S]])
                                                          (implicit context: NuagesContext[S])
   extends NuagesAttrInputBase[S] with NuagesTimelineBase[S] with Parent[S] {
@@ -73,6 +74,7 @@ final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesA
   // to match with the current audio implementation, we also
   // do not take that into consideration, but might so in the future...
   protected def currentFrame()(implicit tx: S#Tx): Long = {
+    // attribute.parent.spanValue
     transport.position
 //    val parentView  = attribute.parent
 //    val spanOption  = parentView.spanOption
@@ -165,14 +167,14 @@ final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesA
     }
   }
 
-  protected def addNode(timed: Timed[S])(implicit tx: S#Tx): Unit = {
+  protected def addNode(span: SpanLike, timed: Timed[S])(implicit tx: S#Tx): Unit = {
     log(s"$attribute timeline addNode $timed")
-    val childView = NuagesAttribute.mkInput(attribute, parent = this, value = timed.value)
+    val childView = NuagesAttribute.mkInput(attribute, parent = this, frameOffset = ???, value = timed.value)
     viewSet += childView
     map.put(timed.id, childView)
   }
 
-  protected def removeNode(timed: Timed[S])(implicit tx: S#Tx): Unit = {
+  protected def removeNode(span: SpanLike, timed: Timed[S])(implicit tx: S#Tx): Unit = {
     log(s"$attribute timeline removeNode $timed")
     val childView = map.getOrElse(timed.id, throw new IllegalStateException(s"View for $timed not found"))
     val found = viewSet.remove(childView)

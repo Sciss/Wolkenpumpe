@@ -28,8 +28,8 @@ trait NuagesTimelineBase[S <: Sys[S]] extends NuagesScheduledBase[S] {
 
   protected def timelineH: stm.Source[S#Tx, Timeline[S]]
 
-  protected def addNode   (timed: Timed[S])(implicit tx: S#Tx): Unit
-  protected def removeNode(timed: Timed[S])(implicit tx: S#Tx): Unit
+  protected def addNode   (span: SpanLike, timed: Timed[S])(implicit tx: S#Tx): Unit
+  protected def removeNode(span: SpanLike, timed: Timed[S])(implicit tx: S#Tx): Unit
 
   // ---- impl ----
 
@@ -40,7 +40,7 @@ trait NuagesTimelineBase[S <: Sys[S]] extends NuagesScheduledBase[S] {
     initTimelineObserver(tl)
     val frame0 = currentFrame()
     tl.intersect(frame0).foreach { case (span, elems) =>
-      elems.foreach(addNode)
+      elems.foreach(addNode(span, _))
     }
   }
 
@@ -53,15 +53,15 @@ trait NuagesTimelineBase[S <: Sys[S]] extends NuagesScheduledBase[S] {
           val t     = transport
           val time  = currentFrame()
           val rem   = change.before.contains(time)
-          val add   = change.now.contains(time)
+          val add   = change.now   .contains(time)
 
           if (rem || add) {
-            frameRef() = time
+            offsetRef() = time
             // println(s"frameRef = $time")
           }
 
-          if (rem) removeNode(timed)
-          if (add) addNode   (timed)
+          if (rem) removeNode(change.before, timed)
+          if (add) addNode   (change.now   , timed)
 
           if (t.isPlaying && {
             val from = Span.from(time)
@@ -79,9 +79,9 @@ trait NuagesTimelineBase[S <: Sys[S]] extends NuagesScheduledBase[S] {
     val t    = transport
     val time = currentFrame()
     if (span.contains(time)) {
-      frameRef() = time
+      offsetRef() = time
       // println(s"frameRef = $time")
-      if (add) addNode(timed) else removeNode(timed)
+      if (add) addNode(span, timed) else removeNode(span, timed)
     }
     if (t.isPlaying && span.overlaps(Span.from(time))) {
       // new child might start or stop before currently
@@ -121,10 +121,10 @@ trait NuagesTimelineBase[S <: Sys[S]] extends NuagesScheduledBase[S] {
       (_rem, _add)
     }
     toRemove.foreach { case (span, elems) =>
-      elems.foreach(removeNode)
+      elems.foreach(removeNode(span, _))
     }
     toAdd   .foreach { case (span, elems) =>
-      elems.foreach(addNode)
+      elems.foreach(addNode(span, _))
     }
   }
 
@@ -133,62 +133,9 @@ trait NuagesTimelineBase[S <: Sys[S]] extends NuagesScheduledBase[S] {
 
   protected final def processEvent(frame: Long)(implicit tx: S#Tx): Unit = {
     val timeline          = timelineH()
-    // frameRef()            = frame
-    // println(s"frameRef = $frame")
     val (startIt, stopIt) = timeline.eventsAt(frame)
-    // if (startIt.isEmpty || stopIt.isEmpty) {
 
-    stopIt .foreach { case (_, xs) => xs.foreach(removeNode) }
-    startIt.foreach { case (_, xs) => xs.foreach(addNode   ) }
-
-    //    } else {
-    //      // Here is the point where we
-    //      // heuristically establish coherence.
-    //      // We ask the views for `stopIt` if they can "migrate"
-    //      // to any element in `startIt`.
-    //      val startList = startIt.flatMap(_._2).toList
-    //      val stopList  = stopIt .flatMap(_._2).toList
-    //
-    //      @tailrec
-    //      def migrateLoop(stopRem: List[Timed[S]], startRem: List[Timed[S]]): List[Timed[S]] = stopRem match {
-    //        case headStop :: tailStop =>
-    //          val stopView = map.getOrElse(headStop.id, throw new NoSuchElementException(s"No view for $headStop"))
-    //
-    //          @tailrec
-    //          def inner(startUnconsumed: List[Timed[S]], startToTry: List[Timed[S]]): List[Timed[S]] = startToTry match {
-    //            case headStart :: tailStart =>
-    //              if (stopView.tryMigrate(headStart.value)) {
-    //                val startView = stopView
-    //                // we may consume the start by migrating the stop view.
-    //                // remove the stop view from the map, and associate it instead
-    //                // with the start element's id
-    //                map.remove(headStop.id)
-    //                map.put(headStart.id, startView)
-    //                // viewSet -= stopView
-    //                // viewSet += startView
-    //                startUnconsumed ::: tailStart
-    //              } else {
-    //                // can't migrate. put start element to remaining stack and loop
-    //                inner(headStart :: startUnconsumed, tailStart)
-    //              }
-    //
-    //            case Nil =>
-    //              // no more start elements to check. that proceed with
-    //              // removal of stop element and return not consumed start elements
-    //              removeChild(headStop)
-    //              startUnconsumed
-    //          }
-    //
-    //          val startRemNext = inner(Nil, startRem)
-    //          migrateLoop(tailStop, startRemNext)
-    //
-    //        case Nil => startRem
-    //      }
-    //
-    //      val stillToStart = migrateLoop(stopList, startList)
-    //      stillToStart.foreach(addChild)
-    //    }
-
-    // schedNext(frame)
+    stopIt .foreach { case (span, xs) => xs.foreach(removeNode(span, _)) }
+    startIt.foreach { case (span, xs) => xs.foreach(addNode   (span, _)) }
   }
 }

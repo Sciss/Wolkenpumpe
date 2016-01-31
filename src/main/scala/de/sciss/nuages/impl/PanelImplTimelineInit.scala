@@ -19,6 +19,7 @@ import java.awt.geom.Point2D
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Disposable, Obj, TxnLike}
 import de.sciss.lucre.synth.Sys
+import de.sciss.span.SpanLike
 import de.sciss.synth.proc.Timeline.Timed
 import de.sciss.synth.proc.{AuralObj, Timeline, Transport}
 
@@ -91,23 +92,25 @@ trait PanelImplTimelineInit[S <: Sys[S]] extends NuagesTimelineBase[S] {
   final protected def currentFrame()(implicit tx: S#Tx): Long =
     transport.position
 
-  final protected def addNode(timed: Timed[S])(implicit tx: S#Tx): Unit = {
+  final protected def addNode(span: SpanLike, timed: Timed[S])(implicit tx: S#Tx): Unit = {
     log(s"nuages timeline addNode $timed")
     val obj     = timed.value
     val config  = main.config
     val locO    = removeLocationHint(obj)
     implicit val context = main.context
-    val vp      = NuagesObj[S](main, locOption = locO, id = timed.id, obj = obj, spanOption = Some(timed.span),
+    val vp      = NuagesObj[S](main, locOption = locO, id = timed.id, obj = obj,
+      spanValue = span, spanOption = Some(timed.span),
       hasMeter = config.meters, hasSolo = config.soloChannels.isDefined)
 
-    auralReprRef().foreach { auralTimeline =>
-      auralTimeline.getView(timed).foreach { auralObj =>
-        auralObjAdded(vp, auralObj)
-      }
+    for {
+      auralTimeline <- auralReprRef()
+      auralObj      <- auralTimeline.getView(timed)
+    } {
+      auralObjAdded(vp, auralObj)
     }
   }
 
-  final protected def removeNode(timed: Timed[S])(implicit tx: S#Tx): Unit = {
+  final protected def removeNode(span: SpanLike, timed: Timed[S])(implicit tx: S#Tx): Unit = {
     log(s"nuages timeline removeNode $timed")
     val id  = timed.id
     val obj = timed.value

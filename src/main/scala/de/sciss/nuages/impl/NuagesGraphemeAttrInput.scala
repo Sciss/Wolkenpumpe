@@ -30,9 +30,10 @@ object NuagesGraphemeAttrInput extends NuagesAttribute.Factory {
 
   type Repr[S <: Sys[S]] = Grapheme[S]
 
-  def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: NuagesAttribute.Parent[S], value: Grapheme[S])
+  def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: NuagesAttribute.Parent[S],
+                          frameOffset: Long, value: Grapheme[S])
                          (implicit tx: S#Tx, context: NuagesContext[S]): Input[S] = {
-    new NuagesGraphemeAttrInput(attr).init(value, parent)
+    new NuagesGraphemeAttrInput(attr, frameOffset = frameOffset).init(value, parent)
   }
 
   def tryConsume[S <: SSys[S]](oldInput: Input[S], newValue: Grapheme[S])
@@ -46,7 +47,7 @@ object NuagesGraphemeAttrInput extends NuagesAttribute.Factory {
         val time  = entry.key.value
         val head  = entry.value
         if (oldInput.tryConsume(head)) {
-          val res = new NuagesGraphemeAttrInput(attr).consume(time, head, oldInput, newValue, parent)
+          val res = new NuagesGraphemeAttrInput(attr, frameOffset = ???).consume(time, head, oldInput, newValue, parent)
           Some(res)
         } else None
 
@@ -54,7 +55,8 @@ object NuagesGraphemeAttrInput extends NuagesAttribute.Factory {
     }
   }
 }
-final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesAttribute[S])
+final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesAttribute[S],
+                                                          frameOffset: Long)
                                                          (implicit context: NuagesContext[S])
   extends NuagesAttrInputBase[S] with NuagesScheduledBase[S] with Parent[S] {
 
@@ -124,7 +126,7 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
           val t     = transport
           val time  = currentFrame()
 
-          frameRef() = time
+          offsetRef() = time
 
           elemRemoved(change.before, entry.value)
           elemAdded  (change.now   , entry.value)
@@ -164,7 +166,7 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
     val isNow = (curr.isEmpty || start > curr.start) && start <= time
     if (isNow) {
       setChild(start = start, child = child)
-      frameRef() = time
+      offsetRef() = time
       if (t.isPlaying) reschedule(time)
     }
   }
@@ -255,7 +257,7 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
     if (curr.isEmpty || !curr.input.tryConsume(child)) {
       // log(s"elemAdded($start, $child); time = $time")
       curr.dispose()
-      val newView   = NuagesAttribute.mkInput(attribute, parent = this, value = child)
+      val newView   = NuagesAttribute.mkInput(attribute, parent = this, frameOffset = ???, value = child)
       currentView() = new View(start = start, input = newView)
     }
   }

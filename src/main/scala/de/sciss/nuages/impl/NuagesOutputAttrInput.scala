@@ -29,7 +29,7 @@ object NuagesOutputAttrInput extends NuagesAttributeSingleFactory {
 
   type Repr[~ <: Sys[~]] = Output[~]
 
-  def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: Parent[S], obj: Output[S])
+  def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: Parent[S], frameOffset: Long, obj: Output[S])
                          (implicit tx: S#Tx, context: NuagesContext[S]): Input[S] =
     new NuagesOutputAttrInput[S](attr, tx.newHandle(obj)).init(obj, parent)
 }

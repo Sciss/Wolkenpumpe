@@ -46,20 +46,20 @@ object NuagesAttributeImpl {
 //      throw new IllegalArgumentException(s"No NuagesAttribute available for $key / $value / type 0x${tid.toHexString}")
 //    }
 
-  def apply[S <: SSys[S]](key: String, _value: Obj[S], parent: NuagesObj[S])
+  def apply[S <: SSys[S]](key: String, _value: Obj[S], _frameOffset: Long, parent: NuagesObj[S])
                          (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute[S] = {
     val spec = getSpec(parent, key)
     val res = new Impl[S](parent = parent, key = key, spec = spec) { self =>
-      protected val inputView = mkInput(attr = self, parent = self, value = _value)
+      protected val inputView = mkInput(attr = self, parent = self, frameOffset = _frameOffset, value = _value)
     }
     res
   }
 
-  def mkInput[S <: SSys[S]](attr: NuagesAttribute[S], parent: Parent[S], value: Obj[S])
+  def mkInput[S <: SSys[S]](attr: NuagesAttribute[S], parent: Parent[S], frameOffset: Long, value: Obj[S])
                            (implicit tx: S#Tx, context: NuagesContext[S]): Input[S] = {
     val opt = getFactory(value)
     opt.fold[Input[S]](new DummyAttrInput(attr, tx.newHandle(value))) { factory =>
-      factory[S](parent = parent, value = value.asInstanceOf[factory.Repr[S]], attr = attr)
+      factory[S](parent = parent, frameOffset = frameOffset, value = value.asInstanceOf[factory.Repr[S]], attr = attr)
     }
   }
 

@@ -26,7 +26,7 @@ object NuagesBooleanAttrInput extends NuagesAttributeSingleFactory {
 
   type Repr[~ <: Sys[~]] = BooleanObj[~]
 
-  def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: Parent[S], obj: BooleanObj[S])
+  def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: Parent[S], frameOffset: Long, obj: BooleanObj[S])
                         (implicit tx: S#Tx, context: NuagesContext[S]): Input[S] = {
     // val spec  = NuagesAttributeImpl.getSpec(attr.parent, key)
     new NuagesBooleanAttrInput[S](attr).init(obj, parent)

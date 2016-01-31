@@ -19,6 +19,7 @@ import java.awt.geom.Point2D
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{TxnLike, Obj, Disposable}
 import de.sciss.lucre.synth.Sys
+import de.sciss.span.Span
 import de.sciss.synth.proc.{AuralObj, Transport, Folder}
 
 import scala.concurrent.stm.Ref
@@ -93,7 +94,8 @@ trait PanelImplFolderInit[S <: Sys[S]] {
     val config  = main.config
     val locO    = removeLocationHint(obj)
     implicit val context = main.context
-    val vp      = NuagesObj[S](main, locOption = locO, id = obj.id, obj = obj, spanOption = None,
+    val vp      = NuagesObj[S](main, locOption = locO, id = obj.id, obj = obj,
+      spanValue = Span.All, spanOption = None,
       hasMeter = config.meters, hasSolo = config.soloChannels.isDefined)
 
     auralReprRef().foreach { auralFolder =>

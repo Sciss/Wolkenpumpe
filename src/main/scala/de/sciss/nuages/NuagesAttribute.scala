@@ -13,7 +13,7 @@
 
 package de.sciss.nuages
 
-import de.sciss.lucre.stm.{Disposable, Sys, Obj}
+import de.sciss.lucre.stm.{Disposable, Obj, Sys}
 import de.sciss.lucre.synth.{Synth, Sys => SSys}
 import de.sciss.nuages.impl.{NuagesAttributeImpl => Impl}
 import prefuse.data.{Node => PNode}
@@ -23,13 +23,13 @@ import scala.concurrent.stm.Ref
 import scala.language.higherKinds
 
 object NuagesAttribute {
-  def apply[S <: SSys[S]](key: String, value: Obj[S], parent: NuagesObj[S])
+  def apply[S <: SSys[S]](key: String, value: Obj[S], frameOffset: Long, parent: NuagesObj[S])
                         (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute[S] =
-    Impl(key, value, parent)
+    Impl(key = key, _value = value, _frameOffset = frameOffset, parent = parent)
 
-  def mkInput[S <: SSys[S]](attr: NuagesAttribute[S], parent: Parent[S], value: Obj[S])
+  def mkInput[S <: SSys[S]](attr: NuagesAttribute[S], parent: Parent[S], frameOffset: Long, value: Obj[S])
                            (implicit tx: S#Tx, context: NuagesContext[S]): Input[S] =
-    Impl.mkInput(attr, parent, value)
+    Impl.mkInput(attr, parent, frameOffset = frameOffset, value = value)
 
   // ---- Factory ----
 
@@ -38,7 +38,9 @@ object NuagesAttribute {
 
     type Repr[~ <: Sys[~]] <: Obj[~]
 
-    def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: Parent[S], value: Repr[S])
+    /** @param  frameOffset accumulated absolute offset or `Long.MaxValue` if undefined.
+      */
+    def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: Parent[S], frameOffset: Long, value: Repr[S])
                            (implicit tx: S#Tx, context: NuagesContext[S]): Input[S]
 
     def tryConsume[S <: SSys[S]](oldInput: Input[S], newValue: Repr[S])
@@ -118,7 +120,6 @@ trait NuagesAttribute[S <: Sys[S]] extends NuagesAttribute.Input[S] with NuagesP
   /** Attempts to replace the contents of the view.
     *
     * @param newValue   the new value to attempt to associate with the view
-    *
     * @return `Some` if the either the old view accepted the new value or if
     *         a new view was created that could "consume" the old view. This may
     *         happen for example if the new value is a container with a single

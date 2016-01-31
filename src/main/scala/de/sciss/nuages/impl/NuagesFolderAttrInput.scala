@@ -28,9 +28,9 @@ object NuagesFolderAttrInput extends NuagesAttribute.Factory {
 
   type Repr[S <: Sys[S]] = Folder[S]
 
-  def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: Parent[S], value: Folder[S])
+  def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: Parent[S], frameOffset: Long, value: Folder[S])
                          (implicit tx: S#Tx, context: NuagesContext[S]): Input[S] = {
-    new NuagesFolderAttrInput(attr).init(value, parent)
+    new NuagesFolderAttrInput(attr, frameOffset = frameOffset).init(value, parent)
   }
 
   def tryConsume[S <: SSys[S]](oldInput: Input[S], newValue: Folder[S])
@@ -40,12 +40,13 @@ object NuagesFolderAttrInput extends NuagesAttribute.Factory {
       if (oldInput.tryConsume(head)) {
         val attr    = oldInput.attribute
         val parent  = attr.inputParent
-        val res     = new NuagesFolderAttrInput(attr).consume(oldInput, newValue, parent)
+        val res     = new NuagesFolderAttrInput(attr, frameOffset = ???).consume(oldInput, newValue, parent)
         Some(res)
       } else None
     } else None
 }
-final class NuagesFolderAttrInput[S <: SSys[S]] private(val attribute: NuagesAttribute[S])
+final class NuagesFolderAttrInput[S <: SSys[S]] private(val attribute: NuagesAttribute[S],
+                                                        frameOffset: Long)
                                                        (implicit context: NuagesContext[S])
   extends NuagesAttrInputBase[S] with NuagesAttribute.Parent[S] {
 
@@ -112,7 +113,7 @@ final class NuagesFolderAttrInput[S <: SSys[S]] private(val attribute: NuagesAtt
     map().iterator.flatMap(_.collect(pf))
 
   private[this] def mkChild(elem: Obj[S])(implicit tx: S#Tx): NuagesAttribute.Input[S] =
-    NuagesAttribute.mkInput(attribute, parent = this, value = elem)
+    NuagesAttribute.mkInput(attribute, value = elem, frameOffset = Long.MaxValue, parent = this)
 
   def value: Vec[Double] = ???!
 

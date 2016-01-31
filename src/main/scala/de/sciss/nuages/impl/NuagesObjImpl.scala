@@ -26,7 +26,7 @@ import de.sciss.lucre.stm.{Disposable, Obj, TxnLike}
 import de.sciss.lucre.swing.requireEDT
 import de.sciss.lucre.synth.{Synth, Sys}
 import de.sciss.nuages.Nuages.Surface
-import de.sciss.span.Span
+import de.sciss.span.{SpanLike, Span}
 import de.sciss.synth.proc.Implicits._
 import de.sciss.synth.proc.{Output, ObjKeys, Proc}
 import prefuse.util.ColorLib
@@ -40,9 +40,14 @@ object NuagesObjImpl {
   private val colrPeak = Array.tabulate(91)(ang => new Color(IntensityPalette.apply(ang / 90f)))
 
   def apply[S <: Sys[S]](main: NuagesPanel[S], locOption: Option[Point2D], id: S#ID, obj: Obj[S],
+                         spanValue: SpanLike,
                          spanOption: Option[SpanLikeObj[S]], hasMeter: Boolean, hasSolo: Boolean)
                         (implicit tx: S#Tx, context: NuagesContext[S]): NuagesObj[S] = {
-    val res = new NuagesObjImpl(main, obj.name, hasMeter = hasMeter, hasSolo = hasSolo)
+    val frameOffset = spanValue match {
+      case hs: Span.HasStart => hs.start
+      case _ => Long.MaxValue
+    }
+    val res = new NuagesObjImpl(main, obj.name, frameOffset = frameOffset, hasMeter = hasMeter, hasSolo = hasSolo)
     res.init(id, obj, spanOption, locOption)
   }
 
@@ -60,6 +65,7 @@ object NuagesObjImpl {
 }
 final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
                                                var name: String,
+                                               frameOffset: Long,
                                                hasMeter: Boolean, hasSolo: Boolean)(implicit context: NuagesContext[S])
   extends NuagesNodeRootImpl[S] with NuagesObj[S] {
   vProc =>
@@ -135,7 +141,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
 
   private[this] def attrAdded(key: String, value: Obj[S])(implicit tx: S#Tx): Unit =
     if (isAttrShown(key)) {
-      val view = NuagesAttribute(key = key, value = value, parent = parent)
+      val view = NuagesAttribute(key = key, value = value, frameOffset = frameOffset, parent = parent)
       val res  = attrs.put(key, view)
       assert(res.isEmpty)
     }
