@@ -56,7 +56,7 @@ object NuagesGraphemeAttrInput extends NuagesAttribute.Factory {
   }
 }
 final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesAttribute[S],
-                                                          frameOffset: Long)
+                                                          protected val frameOffset: Long)
                                                          (implicit context: NuagesContext[S])
   extends NuagesAttrInputBase[S] with NuagesScheduledBase[S] with Parent[S] {
 
@@ -68,21 +68,21 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
 
   def input(implicit tx: S#Tx): Obj[S] = graphemeH()
 
-  // N.B.: Currently AuralGraphemeAttribute does not pay
-  // attention to the parent object's time offset. Therefore,
-  // to match with the current audio implementation, we also
-  // do not take that into consideration, but might so in the future...
-  protected def currentFrame()(implicit tx: S#Tx): Long = {
-    transport.position
-    //    val parentView  = attribute.parent
-    //    val spanOption  = parentView.spanOption
-    //    spanOption.fold(0L) { spanObj =>
-    //      spanObj.value match {
-    //        case span: Span.HasStart => transport.position - span.start
-    //        case _ => BiGroup.MaxCoordinate // no offset can be given - we may still have Span.All children
-    //      }
-    //    }
-  }
+  //  // N.B.: Currently AuralGraphemeAttribute does not pay
+  //  // attention to the parent object's time offset. Therefore,
+  //  // to match with the current audio implementation, we also
+  //  // do not take that into consideration, but might so in the future...
+  //  protected def currentFrame()(implicit tx: S#Tx): Long = {
+  //    transport.position
+  //    //    val parentView  = attribute.parent
+  //    //    val spanOption  = parentView.spanOption
+  //    //    spanOption.fold(0L) { spanObj =>
+  //    //      spanObj.value match {
+  //    //        case span: Span.HasStart => transport.position - span.start
+  //    //        case _ => BiGroup.MaxCoordinate // no offset can be given - we may still have Span.All children
+  //    //      }
+  //    //    }
+  //  }
 
   protected def transport: Transport[S] = attribute.parent.main.transport
 
@@ -111,7 +111,7 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
   }
 
   private[this] def initGrapheme(gr: Grapheme[S])(implicit tx: S#Tx): Unit = {
-    val frame0 = currentFrame()
+    val frame0 = currentOffset()
     gr.floor(frame0).foreach { entry =>
       elemAdded(entry.key.value, entry.value)
     }
@@ -124,7 +124,7 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
         case Grapheme.Removed(time, entry) => elemRemoved(time, entry.value)
         case Grapheme.Moved(change, entry) =>
           val t     = transport
-          val time  = currentFrame()
+          val time  = currentOffset()
 
           offsetRef() = time
 
@@ -161,7 +161,7 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
 
   private[this] def elemAdded(start: Long, child: Obj[S])(implicit tx: S#Tx): Unit = {
     val t     = transport
-    val time  = currentFrame()
+    val time  = currentOffset()
     val curr  = currentView()
     val isNow = (curr.isEmpty || start > curr.start) && start <= time
     if (isNow) {
@@ -193,7 +193,7 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
       val curr = currentView()
       require(curr.isDefined)
       val beforeStart = curr.start
-      val nowStart    = currentFrame()
+      val nowStart    = currentOffset()
       // println(s"updateChild($before - $beforeStart, $now - $nowStart)")
       if (beforeStart != nowStart && isTimeline) {
         val nowStartObj = LongObj.newVar[S](nowStart)

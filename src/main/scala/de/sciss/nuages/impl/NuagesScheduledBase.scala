@@ -27,9 +27,10 @@ trait NuagesScheduledBase[S <: Sys[S]] {
 
   protected def transport: Transport[S]
 
-  protected def currentFrame()(implicit tx: S#Tx): Long
-
-  // protected def spanStartOption: Option[Long]
+  /** Absolute accumulative offset of object "begin" with respect to transport,
+    * or `Long.MaxValue` if undefined.
+    */
+  protected def frameOffset: Long
 
   protected def seek(before: Long, now: Long)(implicit tx: S#Tx): Unit
 
@@ -39,14 +40,17 @@ trait NuagesScheduledBase[S <: Sys[S]] {
 
   // ---- impl ----
 
-  private[this] val tokenRef  = Ref(-1)
+  private[this] val tokenRef      = Ref(-1)
 
   /** Last frame offset for which view-state has been updated.
     * will be initialised in `initTransport`.
     */
-  protected final val offsetRef = Ref(0L)
+  protected final val offsetRef   = Ref(0L)
 
-  // private[this] val frameOffsetRef = Ref(0L)
+  private[this] val playShiftRef  = Ref(0L)
+
+  protected final def currentOffset()(implicit tx: S#Tx): Long =
+    playShiftRef() + transport.position
 
   protected final def disposeTransport()(implicit tx: S#Tx): Unit = {
     disposed() = true
@@ -71,28 +75,38 @@ trait NuagesScheduledBase[S <: Sys[S]] {
   final protected def initTransport()(implicit tx: S#Tx): Unit = {
     val t = transport
     observer = t.react { implicit tx => upd => if (!disposed()) upd match {
-      case Transport.Play(_, pos) => play(pos)
-      case Transport.Stop(_, _  ) => stop()
+      case Transport.Play(_, _) => play()
+      case Transport.Stop(_, _) => stop()
       case Transport.Seek(_, pos, isPlaying) =>
         if (isPlaying) stop()
-        seek(before = offsetRef(), now = pos)
-        offsetRef() = pos
-        if (isPlaying) play(pos)
+        setTransportPosition(pos)
+        val nowOffset = currentOffset()
+        seek(before = offsetRef(), now = nowOffset)
+        offsetRef() = nowOffset
+        if (isPlaying) play()
       case _ =>
     }}
 
-    val frame0 = currentFrame()
-    offsetRef() = frame0
+    setTransportPosition(t.position)
+    offsetRef() = currentOffset()
 
-    if (t.isPlaying) play(t.position)
+    if (t.isPlaying) play()
+  }
+
+  private[this] def setTransportPosition(pos: Long)(implicit tx: S#Tx): Unit = {
+    val frame0      = frameOffset
+    // i.e. if object has absolute position, offsets will always
+    // be transport-pos - frameOffset. If it hasn't, offsets will
+    // always be transport-pos - transport-start-pos.
+    val shift       = if (frame0 == Long.MaxValue) -pos else -frame0
+    playShiftRef()  = shift
   }
 
   private[this] def stop()(implicit tx: S#Tx): Unit = clearSched()
 
-  private[this] def play(pos: Long)(implicit tx: S#Tx): Unit = {
-    // spanStartOption.fold(0L)(pos - _)
-    val playFrame = currentFrame()
-    schedNext(playFrame)
+  private[this] def play()(implicit tx: S#Tx): Unit = {
+    val offset = currentOffset()
+    schedNext(offset)
   }
 
   protected final def reschedule(frame: Long)(implicit tx: S#Tx): Unit = {
@@ -105,23 +119,23 @@ trait NuagesScheduledBase[S <: Sys[S]] {
     if (token >= 0) transport.scheduler.cancel(token)
   }
 
-  private[this] def schedNext(frame: Long)(implicit tx: S#Tx): Unit = {
-    val nextFrame = eventAfter(frame)
-    if (nextFrame == Long.MaxValue) return
+  private[this] def schedNext(currentOffset: Long)(implicit tx: S#Tx): Unit = {
+    val nextOffset = eventAfter(currentOffset)
+    if (nextOffset == Long.MaxValue) return
 
     val s         = transport.scheduler
     val schedTime = s.time
-    val nextTime  = schedTime + nextFrame - frame
+    val nextTime  = schedTime + nextOffset - currentOffset
     val token     = s.schedule(nextTime) { implicit tx =>
-      eventReached(nextFrame)
+      eventReached(nextOffset)
     }
     val oldToken = tokenRef.swap(token)
     s.cancel(oldToken)
   }
 
-  private[this] def eventReached(frame: Long)(implicit tx: S#Tx): Unit = {
-    offsetRef() = frame
-    processEvent(frame)
-    schedNext(frame)
+  private[this] def eventReached(offset: Long)(implicit tx: S#Tx): Unit = {
+    offsetRef() = offset
+    processEvent(offset)
+    schedNext(offset)
   }
 }

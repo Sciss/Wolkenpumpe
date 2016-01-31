@@ -54,9 +54,9 @@ trait PanelImplTimelineInit[S <: Sys[S]] extends NuagesTimelineBase[S] {
 
   protected final val auralReprRef = Ref(Option.empty[AuralObj.Timeline[S]])
 
-  final protected var timelineH: stm.Source[S#Tx, Timeline[S]] = _
+  protected final var timelineH: stm.Source[S#Tx, Timeline[S]] = _
 
-  final protected def initObservers(timeline: Timeline[S])(implicit tx: S#Tx): Unit = {
+  protected final def initObservers(timeline: Timeline[S])(implicit tx: S#Tx): Unit = {
     timelineH = tx.newHandle(timeline)
 
     val t = transport
@@ -85,14 +85,16 @@ trait PanelImplTimelineInit[S <: Sys[S]] extends NuagesTimelineBase[S] {
     initTransport()
   }
 
-  // N.B.: Currently AuralTimelineAttribute does not pay
-  // attention to the parent object's time offset. Therefore,
-  // to match with the current audio implementation, we also
-  // do not take that into consideration, but might so in the future...
-  final protected def currentFrame()(implicit tx: S#Tx): Long =
-    transport.position
+  //  // N.B.: Currently AuralTimelineAttribute does not pay
+  //  // attention to the parent object's time offset. Therefore,
+  //  // to match with the current audio implementation, we also
+  //  // do not take that into consideration, but might so in the future...
+  //  protected final def currentFrame()(implicit tx: S#Tx): Long =
+  //    transport.position
 
-  final protected def addNode(span: SpanLike, timed: Timed[S])(implicit tx: S#Tx): Unit = {
+  protected final def frameOffset: Long = 0L
+
+  protected final def addNode(span: SpanLike, timed: Timed[S])(implicit tx: S#Tx): Unit = {
     log(s"nuages timeline addNode $timed")
     val obj     = timed.value
     val config  = main.config
@@ -110,7 +112,7 @@ trait PanelImplTimelineInit[S <: Sys[S]] extends NuagesTimelineBase[S] {
     }
   }
 
-  final protected def removeNode(span: SpanLike, timed: Timed[S])(implicit tx: S#Tx): Unit = {
+  protected final def removeNode(span: SpanLike, timed: Timed[S])(implicit tx: S#Tx): Unit = {
     log(s"nuages timeline removeNode $timed")
     val id  = timed.id
     val obj = timed.value

@@ -38,7 +38,7 @@ trait NuagesTimelineBase[S <: Sys[S]] extends NuagesScheduledBase[S] {
   /** Calls `initTimelineObserver` followed by creating live views. */
   final protected def initTimeline(tl: Timeline[S])(implicit tx: S#Tx): Unit = {
     initTimelineObserver(tl)
-    val frame0 = currentFrame()
+    val frame0 = currentOffset()
     tl.intersect(frame0).foreach { case (span, elems) =>
       elems.foreach(addNode(span, _))
     }
@@ -51,7 +51,7 @@ trait NuagesTimelineBase[S <: Sys[S]] extends NuagesScheduledBase[S] {
         case Timeline.Removed(span, timed) => addRemoveNode(span, timed, add = false)
         case Timeline.Moved(change, timed) =>
           val t     = transport
-          val time  = currentFrame()
+          val time  = currentOffset()
           val rem   = change.before.contains(time)
           val add   = change.now   .contains(time)
 
@@ -77,7 +77,7 @@ trait NuagesTimelineBase[S <: Sys[S]] extends NuagesScheduledBase[S] {
 
   private[this] def addRemoveNode(span: SpanLike, timed: Timed[S], add: Boolean)(implicit tx: S#Tx): Unit = {
     val t    = transport
-    val time = currentFrame()
+    val time = currentOffset()
     if (span.contains(time)) {
       offsetRef() = time
       // println(s"frameRef = $time")

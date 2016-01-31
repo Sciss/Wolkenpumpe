@@ -58,7 +58,7 @@ object NuagesTimelineAttrInput extends NuagesAttribute.Factory {
   }
 }
 final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesAttribute[S],
-                                                          frameOffset: Long,
+                                                          protected val frameOffset: Long,
                                                           map: IdentifierMap[S#ID, S#Tx, Input[S]])
                                                          (implicit context: NuagesContext[S])
   extends NuagesAttrInputBase[S] with NuagesTimelineBase[S] with Parent[S] {
@@ -69,22 +69,22 @@ final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesA
 
   protected var timelineH: stm.Source[S#Tx, Timeline[S]] = _
 
-  // N.B.: Currently AuralTimelineAttribute does not pay
-  // attention to the parent object's time offset. Therefore,
-  // to match with the current audio implementation, we also
-  // do not take that into consideration, but might so in the future...
-  protected def currentFrame()(implicit tx: S#Tx): Long = {
-    // attribute.parent.spanValue
-    transport.position
-//    val parentView  = attribute.parent
-//    val spanOption  = parentView.spanOption
-//    spanOption.fold(0L) { spanObj =>
-//      spanObj.value match {
-//        case span: Span.HasStart => transport.position - span.start
-//        case _ => BiGroup.MaxCoordinate // no offset can be given - we may still have Span.All children
-//      }
-//    }
-  }
+  //  // N.B.: Currently AuralTimelineAttribute does not pay
+  //  // attention to the parent object's time offset. Therefore,
+  //  // to match with the current audio implementation, we also
+  //  // do not take that into consideration, but might so in the future...
+  //  protected def currentFrame()(implicit tx: S#Tx): Long = {
+  //    // attribute.parent.spanValue
+  //    transport.position
+  ////    val parentView  = attribute.parent
+  ////    val spanOption  = parentView.spanOption
+  ////    spanOption.fold(0L) { spanObj =>
+  ////      spanObj.value match {
+  ////        case span: Span.HasStart => transport.position - span.start
+  ////        case _ => BiGroup.MaxCoordinate // no offset can be given - we may still have Span.All children
+  ////      }
+  ////    }
+  //  }
 
   protected def transport: Transport[S] = attribute.parent.main.transport
 
@@ -123,7 +123,7 @@ final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesA
     val tl = timelineH()
 
     def mkSpan(): SpanLikeObj.Var[S] = {
-      val frame = currentFrame()
+      val frame = currentOffset()
       SpanLikeObj.newVar[S](Span.from(frame))
     }
 
@@ -144,7 +144,7 @@ final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesA
   def removeChild(child: Obj[S])(implicit tx: S#Tx): Unit = {
     val tl = timelineH()
     if (isTimeline) {
-      val frame   = currentFrame()
+      val frame   = currentOffset()
       val entries = tl.intersect(frame).flatMap { case (span, xs) =>
         xs.filter(_.value == child)
       }
@@ -169,7 +169,11 @@ final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesA
 
   protected def addNode(span: SpanLike, timed: Timed[S])(implicit tx: S#Tx): Unit = {
     log(s"$attribute timeline addNode $timed")
-    val childView = NuagesAttribute.mkInput(attribute, parent = this, frameOffset = ???, value = timed.value)
+    val childOffset = if (frameOffset == Long.MaxValue) Long.MaxValue else span match {
+      case hs: Span.HasStart => frameOffset + hs.start
+      case _ => Long.MaxValue
+    }
+    val childView = NuagesAttribute.mkInput(attribute, parent = this, frameOffset = childOffset, value = timed.value)
     viewSet += childView
     map.put(timed.id, childView)
   }
