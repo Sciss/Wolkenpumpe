@@ -23,9 +23,9 @@ import scala.concurrent.stm.Ref
 import scala.language.higherKinds
 
 object NuagesAttribute {
-  def apply[S <: SSys[S]](key: String, value: Obj[S], frameOffset: Long, parent: NuagesObj[S])
+  def apply[S <: SSys[S]](key: String, value: Obj[S], parent: NuagesObj[S])
                         (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute[S] =
-    Impl(key = key, _value = value, _frameOffset = frameOffset, parent = parent)
+    Impl(key = key, _value = value, parent = parent)
 
   def mkInput[S <: SSys[S]](attr: NuagesAttribute[S], parent: Parent[S], frameOffset: Long, value: Obj[S])
                            (implicit tx: S#Tx, context: NuagesContext[S]): Input[S] =
@@ -43,7 +43,7 @@ object NuagesAttribute {
     def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: Parent[S], frameOffset: Long, value: Repr[S])
                            (implicit tx: S#Tx, context: NuagesContext[S]): Input[S]
 
-    def tryConsume[S <: SSys[S]](oldInput: Input[S], newValue: Repr[S])
+    def tryConsume[S <: SSys[S]](oldInput: Input[S], newOffset: Long, newValue: Repr[S])
                                 (implicit tx: S#Tx, context: NuagesContext[S]): Option[Input[S]]
   }
 
@@ -77,7 +77,7 @@ object NuagesAttribute {
       * Returning `false` means the object cannot be consumed,
       * for example because it is of a different type.
       */
-    def tryConsume(newValue: Obj[S])(implicit tx: S#Tx): Boolean
+    def tryConsume(newOffset: Long, newValue: Obj[S])(implicit tx: S#Tx): Boolean
 
     def inputParent(implicit tx: S#Tx): Parent[S]
     def inputParent_=(p: Parent[S])(implicit tx: S#Tx): Unit

@@ -160,7 +160,7 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
     // assert(!aggr.containsItem(vi), s"still in aggr $aggr@${aggr.hashCode.toHexString}: $vi@${vi.hashCode.toHexString}")
   }
 
-  def tryConsume(to: Obj[S])(implicit tx: S#Tx): Boolean = to.tpe == this.tpe && {
+  def tryConsume(newOffset: Long, to: Obj[S])(implicit tx: S#Tx): Boolean = to.tpe == this.tpe && {
     val newObj = to.asInstanceOf[Ex[S]]
     objH.swap(setObject(newObj))._2.dispose()
     val newEditable = tpe.Var.unapply(newObj).isDefined

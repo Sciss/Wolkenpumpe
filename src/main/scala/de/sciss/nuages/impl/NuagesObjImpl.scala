@@ -65,7 +65,7 @@ object NuagesObjImpl {
 }
 final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
                                                var name: String,
-                                               frameOffset: Long,
+                                               val frameOffset: Long,
                                                hasMeter: Boolean, hasSolo: Boolean)(implicit context: NuagesContext[S])
   extends NuagesNodeRootImpl[S] with NuagesObj[S] {
   vProc =>
@@ -141,7 +141,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
 
   private[this] def attrAdded(key: String, value: Obj[S])(implicit tx: S#Tx): Unit =
     if (isAttrShown(key)) {
-      val view = NuagesAttribute(key = key, value = value, frameOffset = frameOffset, parent = parent)
+      val view = NuagesAttribute(key = key, value = value, parent = parent)
       val res  = attrs.put(key, view)
       assert(res.isEmpty)
     }
@@ -155,7 +155,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
   private[this] def attrReplaced(key: String, before: Obj[S], now: Obj[S])(implicit tx: S#Tx): Unit =
     if (isAttrShown(key)) {
       val oldView = attrs.get(key).getOrElse(throw new IllegalStateException(s"No view for attribute $key"))
-      if (oldView.tryConsume(now)) return
+      if (oldView.tryConsume(newOffset = frameOffset, newValue = now)) return
 
       oldView.tryReplace(now).fold[Unit] {
         attrRemoved(key)

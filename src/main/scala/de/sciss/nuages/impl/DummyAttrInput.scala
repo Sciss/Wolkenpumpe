@@ -27,7 +27,7 @@ class DummyAttrInput[S <: Sys[S]](val attribute: NuagesAttribute[S], objH: stm.S
 
   def value: Vec[Double] = Vector(0.0)
 
-  def tryConsume(newValue: Obj[S])(implicit tx: S#Tx): Boolean = false
+  def tryConsume(newOffset: Long, newValue: Obj[S])(implicit tx: S#Tx): Boolean = false
 
   def dispose()(implicit tx: S#Tx): Unit = ()
 

@@ -33,14 +33,14 @@ object NuagesFolderAttrInput extends NuagesAttribute.Factory {
     new NuagesFolderAttrInput(attr, frameOffset = frameOffset).init(value, parent)
   }
 
-  def tryConsume[S <: SSys[S]](oldInput: Input[S], newValue: Folder[S])
+  def tryConsume[S <: SSys[S]](oldInput: Input[S], newOffset: Long, newValue: Folder[S])
                               (implicit tx: S#Tx, context: NuagesContext[S]): Option[Input[S]] =
     if (newValue.size == 1) {
       val head = newValue.head
-      if (oldInput.tryConsume(head)) {
+      if (oldInput.tryConsume(newOffset = newOffset, newValue = head)) {
         val attr    = oldInput.attribute
         val parent  = attr.inputParent
-        val res     = new NuagesFolderAttrInput(attr, frameOffset = ???).consume(oldInput, newValue, parent)
+        val res     = new NuagesFolderAttrInput(attr, frameOffset = newOffset).consume(oldInput, newValue, parent)
         Some(res)
       } else None
     } else None
@@ -58,7 +58,7 @@ final class NuagesFolderAttrInput[S <: SSys[S]] private(val attribute: NuagesAtt
 
   private[this] var objH: stm.Source[S#Tx, Folder[S]] = _
 
-  def tryConsume(to: Obj[S])(implicit tx: S#Tx): Boolean = false
+  def tryConsume(newOffset: Long, to: Obj[S])(implicit tx: S#Tx): Boolean = false
 
   def input(implicit tx: S#Tx): Obj[S] = objH()
 

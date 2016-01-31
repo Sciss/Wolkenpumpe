@@ -37,7 +37,7 @@ object NuagesTimelineAttrInput extends NuagesAttribute.Factory {
     new NuagesTimelineAttrInput(attr, frameOffset = frameOffset, map = map).init(value, parent)
   }
 
-  def tryConsume[S <: SSys[S]](oldInput: Input[S], newValue: Timeline[S])
+  def tryConsume[S <: SSys[S]](oldInput: Input[S], newOffset: Long, newValue: Timeline[S])
                               (implicit tx: S#Tx, context: NuagesContext[S]): Option[Input[S]] = {
     val attr    = oldInput.attribute
     val parent  = attr.inputParent
@@ -46,9 +46,9 @@ object NuagesTimelineAttrInput extends NuagesAttribute.Factory {
     newValue.intersect(time).toList match {
       case (span, Vec(entry)) :: Nil =>
         val head = entry.value
-        if (oldInput.tryConsume(head)) {
+        if (oldInput.tryConsume(newOffset = newOffset, newValue = head)) {
           val map = tx.newInMemoryIDMap[Input[S]]
-          val res = new NuagesTimelineAttrInput(attr, frameOffset = ???, map = map)
+          val res = new NuagesTimelineAttrInput(attr, frameOffset = newOffset, map = map)
             .consume(entry, oldInput, newValue, parent)
           Some(res)
         } else None
@@ -88,7 +88,7 @@ final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesA
 
   protected def transport: Transport[S] = attribute.parent.main.transport
 
-  def tryConsume(to: Obj[S])(implicit tx: S#Tx): Boolean = false
+  def tryConsume(newOffset: Long, to: Obj[S])(implicit tx: S#Tx): Boolean = false
 
   def input(implicit tx: S#Tx): Obj[S] = timelineH()
 

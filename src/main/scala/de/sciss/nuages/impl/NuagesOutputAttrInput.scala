@@ -51,7 +51,7 @@ final class NuagesOutputAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S
 
   def output(implicit tx: S#Tx): Output[S] = objH()
 
-  def tryConsume(to: Obj[S])(implicit tx: S#Tx): Boolean = false
+  def tryConsume(newOffset: Long, to: Obj[S])(implicit tx: S#Tx): Boolean = false
 
   def input(implicit tx: S#Tx): Obj[S] = output   // yeah, it sounds odd...
 

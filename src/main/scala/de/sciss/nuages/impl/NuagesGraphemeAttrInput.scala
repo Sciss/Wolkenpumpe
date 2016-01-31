@@ -36,7 +36,7 @@ object NuagesGraphemeAttrInput extends NuagesAttribute.Factory {
     new NuagesGraphemeAttrInput(attr, frameOffset = frameOffset).init(value, parent)
   }
 
-  def tryConsume[S <: SSys[S]](oldInput: Input[S], newValue: Grapheme[S])
+  def tryConsume[S <: SSys[S]](oldInput: Input[S], _newOffset: Long, newValue: Grapheme[S])
                               (implicit tx: S#Tx, context: NuagesContext[S]): Option[Input[S]] = {
     val attr    = oldInput.attribute
     val parent  = attr.inputParent
@@ -46,8 +46,9 @@ object NuagesGraphemeAttrInput extends NuagesAttribute.Factory {
       case Vec(entry) =>
         val time  = entry.key.value
         val head  = entry.value
-        if (oldInput.tryConsume(head)) {
-          val res = new NuagesGraphemeAttrInput(attr, frameOffset = ???).consume(time, head, oldInput, newValue, parent)
+        if (oldInput.tryConsume(newOffset = _newOffset, newValue = head)) {
+          val res = new NuagesGraphemeAttrInput(attr, frameOffset = _newOffset)
+            .consume(time, head, oldInput, newValue, parent)
           Some(res)
         } else None
 
@@ -64,7 +65,7 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
 
   protected var graphemeH: stm.Source[S#Tx, Grapheme[S]] = _
 
-  def tryConsume(to: Obj[S])(implicit tx: S#Tx): Boolean = false
+  def tryConsume(newOffset: Long, to: Obj[S])(implicit tx: S#Tx): Boolean = false
 
   def input(implicit tx: S#Tx): Obj[S] = graphemeH()
 
@@ -253,12 +254,13 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
   }
 
   private[this] def setChild(start: Long, child: Obj[S])(implicit tx: S#Tx): Unit = {
-    val curr = currentView()
-    if (curr.isEmpty || !curr.input.tryConsume(child)) {
+    val curr        = currentView()
+    val childOffset = if (frameOffset == Long.MaxValue) Long.MaxValue else frameOffset + start
+    if (curr.isEmpty || !curr.input.tryConsume(newOffset = childOffset, newValue = child)) {
       // log(s"elemAdded($start, $child); time = $time")
       curr.dispose()
-      val newView   = NuagesAttribute.mkInput(attribute, parent = this, frameOffset = ???, value = child)
-      currentView() = new View(start = start, input = newView)
+      val newView     = NuagesAttribute.mkInput(attribute, parent = this, frameOffset = childOffset, value = child)
+      currentView()   = new View(start = start, input = newView)
     }
   }
 }

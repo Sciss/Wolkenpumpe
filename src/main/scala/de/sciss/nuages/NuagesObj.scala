@@ -45,8 +45,8 @@ trait NuagesObj[S <: Sys[S]]
   def obj       (implicit tx: S#Tx): Obj[S]
   def spanOption(implicit tx: S#Tx): Option[SpanLikeObj[S]]
 
-  //  /** Frame with respect to the object's parent at which the object begins to exist. */
-  //  def spanValue: SpanLike
+  /** Frame with respect to the object's parent at which the object begins to exist. */
+  def frameOffset: Long // spanValue: SpanLike
 
   // ---- methods to be called on the EDT ----
 

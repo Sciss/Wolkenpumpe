@@ -46,9 +46,10 @@ object NuagesAttributeImpl {
 //      throw new IllegalArgumentException(s"No NuagesAttribute available for $key / $value / type 0x${tid.toHexString}")
 //    }
 
-  def apply[S <: SSys[S]](key: String, _value: Obj[S], _frameOffset: Long, parent: NuagesObj[S])
+  def apply[S <: SSys[S]](key: String, _value: Obj[S], parent: NuagesObj[S])
                          (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute[S] = {
-    val spec = getSpec(parent, key)
+    val spec          = getSpec(parent, key)
+    val _frameOffset  = parent.frameOffset
     val res = new Impl[S](parent = parent, key = key, spec = spec) { self =>
       protected val inputView = mkInput(attr = self, parent = self, frameOffset = _frameOffset, value = _value)
     }
@@ -133,7 +134,8 @@ object NuagesAttributeImpl {
 
     final def numChannels: Int = inputView.numChannels
 
-    final def tryConsume(to: Obj[S])(implicit tx: S#Tx): Boolean = inputView.tryConsume(to)
+    final def tryConsume(newOffset: Long, to: Obj[S])(implicit tx: S#Tx): Boolean =
+      inputView.tryConsume(newOffset = newOffset, newValue = to)
 
     final def value: Vec[Double] = inputView.value
 
@@ -162,7 +164,8 @@ object NuagesAttributeImpl {
                         (implicit tx: S#Tx, context: NuagesContext[S]): Option[NuagesAttribute[S]] = {
       val opt = getFactory(newValue)
       opt.flatMap { factory =>
-        factory.tryConsume(oldInput = inputView, newValue = newValue.asInstanceOf[factory.Repr[S]])
+        factory.tryConsume(oldInput = inputView, newOffset = parent.frameOffset,
+                           newValue = newValue.asInstanceOf[factory.Repr[S]])
           .map { newInput =>
             val res = new Impl[S](parent = parent, key = key, spec = spec) {
               protected val inputView = newInput
