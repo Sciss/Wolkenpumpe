@@ -21,7 +21,7 @@ import de.sciss.lucre.stm.Obj
 import de.sciss.lucre.synth.Sys
 import de.sciss.nuages.Nuages.Surface
 import de.sciss.span.Span
-import de.sciss.synth.proc._
+import de.sciss.synth.proc.{Action, Output, Folder, Timeline, Transport, WorkspaceHandle, Proc}
 
 import scala.concurrent.stm.TxnLocal
 
@@ -38,31 +38,34 @@ trait PanelImplTxnFuns[S <: Sys[S]] {
 
   // ---- impl ----
 
-  def setLocationHint(obj: Obj[S], loc: Point2D)(implicit tx: S#Tx): Unit =
+  final def setLocationHint(obj: Obj[S], loc: Point2D)(implicit tx: S#Tx): Unit =
     locHintMap.transform(_ + (obj -> loc))(tx.peer)
 
-  def removeLocationHint(obj: Obj[S])(implicit tx: S#Tx): Option[Point2D] =
+  final def removeLocationHint(obj: Obj[S])(implicit tx: S#Tx): Option[Point2D] =
     locHintMap.getAndTransform(_ - obj)(tx.peer).get(obj)
 
-  private val locHintMap = TxnLocal(Map.empty[Obj[S], Point2D])
+  private[this] val locHintMap = TxnLocal(Map.empty[Obj[S], Point2D])
 
-  private def finalizeProcAndCollector(proc: Obj[S], colSrcOpt: Option[Obj[S]], pt: Point2D)
-                                      (implicit tx: S#Tx): Unit = {
-    val colOpt = colSrcOpt.map(in => Obj.copy(in))
+  private[this] def finalizeProcAndCollector(proc: Obj[S], colSrcOpt: Option[Obj[S]], pt: Point2D)
+                                            (implicit tx: S#Tx): Unit = {
+    val colOpt = colSrcOpt.map(Obj.copy(_))
 
     prepareObj(proc)
-    colOpt.foreach(prepareObj)
-
     setLocationHint(proc, if (colOpt.isEmpty) pt else new Point2D.Double(pt.getX, pt.getY - 30))
-    colOpt.foreach(setLocationHint(_, new Point2D.Double(pt.getX, pt.getY + 30)))
+
+    colOpt.foreach { col =>
+      prepareObj(col)
+      setLocationHint(col, new Point2D.Double(pt.getX, pt.getY + 30))
+    }
 
     nuages.surface match {
       case Surface.Timeline(tl) =>
-        val time    = transport.position
-        val span    = Span.From(time): SpanLikeObj[S]
+        val pos = transport.position
 
-        def addToTimeline(tl0: Timeline.Modifiable[S], obj: Obj[S])(implicit tx: S#Tx): Unit = {
-          val spanEx = SpanLikeObj.newVar[S](span)
+        def addToTimeline(tl0: Timeline.Modifiable[S], frameOffset: Long, obj: Obj[S])(implicit tx: S#Tx): Unit = {
+          val start   = pos - frameOffset
+          val span    = Span.From(start): SpanLikeObj[S]
+          val spanEx  = SpanLikeObj.newVar[S](span)
           tl0.add(spanEx, obj)
         }
 
@@ -71,43 +74,25 @@ trait PanelImplTxnFuns[S <: Sys[S]] {
 
             val out     = genP.outputs.add(Proc.scanMainOut)
             val colAttr = colP.attr
-            val in      = colAttr.get(Proc.scanMainIn).fold[Timeline.Modifiable[S]] {
-              val _links = Timeline[S]
-              colAttr.put(Proc.scanMainIn, _links)
-              _links
-            } {
-              case _links: Timeline.Modifiable[S] => _links
-              case prev => // what to here, immutable timeline?
-                val _links = Timeline[S]
-                addToTimeline(_links, prev) // XXX TODO -- or Span.all?
-                colAttr.put(Proc.scanMainIn, _links)
-                _links
-            }
-            addToTimeline(in, out)
+            require(!colAttr.contains(Proc.scanMainIn))
+            val in      = Timeline[S]
+            colAttr.put(Proc.scanMainIn, in)
+            addToTimeline(in, pos, out)
 
           case _ =>
         }
 
-        addToTimeline(tl, proc)
-        colOpt.foreach(addToTimeline(tl, _))
+        addToTimeline               (tl, 0L, proc)
+        colOpt.foreach(addToTimeline(tl, 0L, _   ))
 
       case Surface.Folder(f) =>
         (proc, colOpt) match {
           case (genP: Proc[S], Some(colP: Proc[S])) =>
             val out     = genP.outputs.add(Proc.scanMainOut)
             val colAttr = colP.attr
-            val in      = colAttr.get(Proc.scanMainIn).fold[Folder[S]] {
-              val _links = Folder[S]
-              colAttr.put(Proc.scanMainIn, _links)
-              _links
-            } {
-              case _links: Folder[S] => _links
-              case prev => // what to here, immutable timeline?
-                val _links = Folder[S]
-                _links.addLast(prev)
-                colAttr.put(Proc.scanMainIn, _links)
-                _links
-            }
+            require(!colAttr.contains(Proc.scanMainIn))
+            val in      = Folder[S]
+            colAttr.put(Proc.scanMainIn, in)
             in.addLast(out)
 
           case _ =>
@@ -118,19 +103,19 @@ trait PanelImplTxnFuns[S <: Sys[S]] {
     }
   }
 
-  def insertMacro(macroF: Folder[S], pt: Point2D)(implicit tx: S#Tx): Unit = {
+  final def insertMacro(macroF: Folder[S], pt: Point2D)(implicit tx: S#Tx): Unit = {
     val copies = Nuages.copyGraph(macroF.iterator.toIndexedSeq)
     copies.foreach { cpy =>
       finalizeProcAndCollector(cpy, None, pt)
     }
   }
 
-  def createGenerator(genSrc: Obj[S], colSrcOpt: Option[Obj[S]], pt: Point2D)(implicit tx: S#Tx): Unit = {
+  final def createGenerator(genSrc: Obj[S], colSrcOpt: Option[Obj[S]], pt: Point2D)(implicit tx: S#Tx): Unit = {
     val gen = Obj.copy(genSrc)
     finalizeProcAndCollector(gen, colSrcOpt, pt)
   }
 
-    // Removes a child from the `.attr` of a parent. If the value currently stored with
+  // Removes a child from the `.attr` of a parent. If the value currently stored with
   // the attribute map is a collection, tries to smartly remove the child from that collection.
   // Returns `true` if the child was found and removed.
   final def removeCollectionAttribute(parent: Obj[S], key: String, child: Obj[S])
@@ -272,10 +257,10 @@ trait PanelImplTxnFuns[S <: Sys[S]] {
   // attention to the parent object's time offset. Therefore,
   // to match with the current audio implementation, we also
   // do not take that into consideration, but might so in the future...
-  private[this] def parentTimeOffset()(implicit tx: S#Tx): Long = transport.position
+  private[this] def parentTimeOffset()(implicit tx: S#Tx): Long = ???! // transport.position
 
-  def insertFilter(pred: Output[S], succ: (Obj[S], String), fltSrc: Obj[S], fltPt: Point2D)
-                  (implicit tx: S#Tx): Unit = {
+  final def insertFilter(pred: Output[S], succ: (Obj[S], String), fltSrc: Obj[S], fltPt: Point2D)
+                        (implicit tx: S#Tx): Unit = {
     val flt = Obj.copy(fltSrc)
 
     flt match {
@@ -302,8 +287,8 @@ trait PanelImplTxnFuns[S <: Sys[S]] {
                            (implicit tx: S#Tx): Unit =
     addCollectionAttribute(parent = succ, key = succKey, child = pred)
 
-  def appendFilter(pred: Output[S], fltSrc: Obj[S], colSrcOpt: Option[Obj[S]], fltPt: Point2D)
-                  (implicit tx: S#Tx): Unit = {
+  final def appendFilter(pred: Output[S], fltSrc: Obj[S], colSrcOpt: Option[Obj[S]], fltPt: Point2D)
+                        (implicit tx: S#Tx): Unit = {
     val flt = Obj.copy(fltSrc)
 
     flt match {
@@ -314,12 +299,12 @@ trait PanelImplTxnFuns[S <: Sys[S]] {
     finalizeProcAndCollector(flt, colSrcOpt, fltPt)
   }
 
-  private def exec(obj: Obj[S], key: String)(implicit tx: S#Tx): Unit =
+  private[this] def exec(obj: Obj[S], key: String)(implicit tx: S#Tx): Unit =
     for (self <- obj.attr.$[Action](key)) {
       implicit val cursor = transport.scheduler.cursor
       self.execute(Action.Universe(self, workspace, invoker = Some(obj)))
     }
 
-  protected def prepareObj(obj: Obj[S])(implicit tx: S#Tx): Unit = exec(obj, "nuages-prepare")
-  protected def disposeObj(obj: Obj[S])(implicit tx: S#Tx): Unit = exec(obj, "nuages-dispose")
+  protected final def prepareObj(obj: Obj[S])(implicit tx: S#Tx): Unit = exec(obj, "nuages-prepare")
+  protected final def disposeObj(obj: Obj[S])(implicit tx: S#Tx): Unit = exec(obj, "nuages-dispose")
 }

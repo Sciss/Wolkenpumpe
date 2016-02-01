@@ -186,7 +186,7 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
       require(curr.isDefined)
       val beforeStart = curr.start
       val nowStart    = currentOffset()
-      log(s"$this updateChild($before - $beforeStart / ${TimeRef.framesToSecs(beforeStart)}s, $now - $nowStart / ${TimeRef.framesToSecs(nowStart)}s)")
+      // log(s"$this updateChild($before - $beforeStart / ${TimeRef.framesToSecs(beforeStart)}s, $now - $nowStart / ${TimeRef.framesToSecs(nowStart)}s)")
       if (beforeStart != nowStart && isTimeline) {
         val nowStartObj = LongObj.newVar[S](nowStart)
         grm.add(nowStartObj, now)
@@ -239,7 +239,7 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
     graphemeH().eventAfter(frame).getOrElse(Long.MaxValue)
 
   protected def processEvent(frame: Long)(implicit tx: S#Tx): Unit = {
-    log(s"$this processEvent($frame / ${TimeRef.framesToSecs(frame)}s)")
+    // log(s"$this processEvent($frame / ${TimeRef.framesToSecs(frame)}s)")
     val gr    = graphemeH()
     val child = gr.valueAt(frame).getOrElse(throw new IllegalStateException(s"Found no value at $frame"))
     setChild(start = frame, child = child)

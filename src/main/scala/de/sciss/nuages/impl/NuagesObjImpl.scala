@@ -28,7 +28,7 @@ import de.sciss.lucre.synth.{Synth, Sys}
 import de.sciss.nuages.Nuages.Surface
 import de.sciss.span.{Span, SpanLike}
 import de.sciss.synth.proc.Implicits._
-import de.sciss.synth.proc.{ObjKeys, Output, Proc}
+import de.sciss.synth.proc.{Folder, Timeline, ObjKeys, Output, Proc}
 import prefuse.util.ColorLib
 import prefuse.visual.{AggregateItem, VisualItem}
 
