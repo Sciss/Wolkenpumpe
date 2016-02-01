@@ -46,7 +46,7 @@ trait PanelImplDialogs[S <: Sys[S]] {
 
   protected def component: Component
 
-  protected def insertFilter(pred: Output[S], succ: (Obj[S], String), fltSrc: Obj[S], fltPt: Point2D)
+  protected def insertFilter(pred: Output[S], succ: NuagesAttribute[S], fltSrc: Obj[S], fltPt: Point2D)
                             (implicit tx: S#Tx): Unit
 
   protected def createGenerator(genSrc: Obj[S], colSrcOpt: Option[Obj[S]], pt: Point2D)(implicit tx: S#Tx): Unit
@@ -70,13 +70,13 @@ trait PanelImplDialogs[S <: Sys[S]] {
             listFlt1.list.foreach { fltList =>
               fltList.get(fltIdx).foreach {
                 case flt: Proc[S] =>
-                  (fltPred.parent.obj, fltSucc.parent.obj) match {
-                    case (pred: Proc[S], succ: Proc[S]) =>
+                  fltPred.parent.obj match {
+                    case pred: Proc[S] =>
                       for {
                         predScan <- pred.outputs.get(fltPred.key)
                         // succScan <- succ.attr   .get(fltSucc.key)
                       } {
-                        insertFilter(predScan, (succ, fltSucc.key), flt, displayPt)
+                        insertFilter(predScan, fltSucc, flt, displayPt)
                       }
                     case _ =>
                   }

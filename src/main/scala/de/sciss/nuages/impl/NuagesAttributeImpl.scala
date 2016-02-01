@@ -107,7 +107,7 @@ object NuagesAttributeImpl {
   }
 
   private abstract class Impl[S <: SSys[S]](val parent: NuagesObj[S], val key: String, val spec: ParamSpec)
-    extends NuagesParamImpl[S] with NuagesAttribute[S] with Parent[S] { self =>
+    extends NuagesParamImpl[S] with NuagesAttribute[S] { self =>
 
     // ---- abstract ----
 

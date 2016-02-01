@@ -111,7 +111,12 @@ object NuagesAttribute {
     def addChild(child: Obj[S])(implicit tx: S#Tx): Unit
   }
 }
-trait NuagesAttribute[S <: Sys[S]] extends NuagesAttribute.Input[S] with NuagesParam[S] {
+
+trait NuagesAttribute[S <: Sys[S]]
+  extends NuagesAttribute.Input[S]
+    with NuagesAttribute.Parent[S]
+    with NuagesParam[S] {
+
   def addPNode   (in: NuagesAttribute.Input[S], n: PNode, isFree: Boolean): Unit
   def removePNode(in: NuagesAttribute.Input[S], n: PNode                 ): Unit
 

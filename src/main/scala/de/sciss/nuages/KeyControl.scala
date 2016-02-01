@@ -218,9 +218,9 @@ object KeyControl {
               showCategoryInput(filters) { implicit tx => (obj, pt0) =>
                 val pred    = vOut.output
                 val inAttr  = vIn.attribute
-                val succ    = inAttr.parent.obj -> inAttr.key
+                // val succ    = inAttr.parent.obj -> inAttr.key
                 // main.display.getTransform.transform(pt0, p2d)
-                main.insertFilter(pred = pred, succ = succ, fltSrc = obj, fltPt = pt0)
+                main.insertFilter(pred = pred, succ = inAttr, fltSrc = obj, fltPt = pt0)
               }
             }
 
@@ -231,9 +231,9 @@ object KeyControl {
                 main.cursor.step { implicit tx =>
                   val pred    = vOut.output
                   val inAttr  = vIn.attribute
-                  val succ    = inAttr.parent.obj -> inAttr.key
-                  println(s"insertFilter(pred = $pred, succ = $succ)")
-                  main.insertFilter(pred = pred, succ = succ, fltSrc = objH(), fltPt = pt)
+                  // val succ    = inAttr.parent.obj -> inAttr.key
+                  // println(s"insertFilter(pred = $pred, succ = $succ)")
+                  main.insertFilter(pred = pred, succ = inAttr, fltSrc = objH(), fltPt = pt)
                 }
               }
             }

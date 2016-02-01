@@ -107,6 +107,6 @@ trait NuagesPanel[S <: Sys[S]] extends View[S] {
   def appendFilter(pred: Output[S], fltSrc: Obj[S], colSrcOpt: Option[Obj[S]], fltPt: Point2D)
                   (implicit tx: S#Tx): Unit
 
-  def insertFilter(pred: Output[S], succ: (Obj[S], String), fltSrc: Obj[S], fltPt: Point2D)
+  def insertFilter(pred: Output[S], succ: NuagesAttribute[S], fltSrc: Obj[S], fltPt: Point2D)
                   (implicit tx: S#Tx): Unit
 }

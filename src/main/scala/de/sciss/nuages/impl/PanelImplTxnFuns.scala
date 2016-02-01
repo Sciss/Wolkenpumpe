@@ -38,69 +38,74 @@ trait PanelImplTxnFuns[S <: Sys[S]] {
 
   // ---- impl ----
 
+  private[this] val locHintMap = TxnLocal(Map.empty[Obj[S], Point2D])
+
   final def setLocationHint(obj: Obj[S], loc: Point2D)(implicit tx: S#Tx): Unit =
     locHintMap.transform(_ + (obj -> loc))(tx.peer)
 
   final def removeLocationHint(obj: Obj[S])(implicit tx: S#Tx): Option[Point2D] =
     locHintMap.getAndTransform(_ - obj)(tx.peer).get(obj)
 
-  private[this] val locHintMap = TxnLocal(Map.empty[Obj[S], Point2D])
+  private[this] def addToTimeline(tl: Timeline.Modifiable[S], frameOffset: Long, obj: Obj[S])
+                                 (implicit tx: S#Tx): Unit = {
+    val pos     = transport.position
+    val start   = pos - frameOffset
+    val span    = Span.From(start): SpanLikeObj[S]
+    val spanEx  = SpanLikeObj.newVar[S](span)
+    tl.add(spanEx, obj)
+  }
+
+  private[this] def connectToNewSink(out: Output[S], sink: Obj[S], key: String = Proc.scanMainIn)
+                                    (implicit tx: S#Tx): Unit =
+    nuages.surface match {
+      case Surface.Timeline(tl) =>
+        val pos = transport.position
+
+        val colAttr = sink.attr
+        require(!colAttr.contains(key))
+        val in      = Timeline[S]
+        colAttr.put(Proc.scanMainIn, in)
+        addToTimeline(in, pos, out)
+
+      case Surface.Folder(f) =>
+        val colAttr = sink.attr
+        require(!colAttr.contains(key))
+        val in      = Folder[S]
+        colAttr.put(Proc.scanMainIn, in)
+        in.addLast(out)
+    }
+
+  private[this] def prepareAndLocate(proc: Obj[S], pt: Point2D)(implicit tx: S#Tx): Unit = {
+    prepareObj(proc)
+    setLocationHint(proc, pt)
+  }
+
+  private[this] def addNewObject(obj: Obj[S])(implicit tx: S#Tx): Unit =
+    nuages.surface match {
+      case Surface.Timeline(tl) =>
+        addToTimeline(tl, 0L, obj)
+      case Surface.Folder(f) =>
+        f.addLast(obj)
+    }
 
   private[this] def finalizeProcAndCollector(proc: Obj[S], colSrcOpt: Option[Obj[S]], pt: Point2D)
                                             (implicit tx: S#Tx): Unit = {
     val colOpt = colSrcOpt.map(Obj.copy(_))
 
-    prepareObj(proc)
-    setLocationHint(proc, if (colOpt.isEmpty) pt else new Point2D.Double(pt.getX, pt.getY - 30))
+    prepareAndLocate(proc, if (colOpt.isEmpty) pt else new Point2D.Double(pt.getX, pt.getY - 30))
 
     colOpt.foreach { col =>
-      prepareObj(col)
-      setLocationHint(col, new Point2D.Double(pt.getX, pt.getY + 30))
+      prepareAndLocate(col, new Point2D.Double(pt.getX, pt.getY + 30))
+      proc match {
+        case genP: Proc[S] =>
+          val out = genP.outputs.add(Proc.scanMainOut)
+          connectToNewSink(out, sink = col)
+        case _ =>
+      }
     }
 
-    nuages.surface match {
-      case Surface.Timeline(tl) =>
-        val pos = transport.position
-
-        def addToTimeline(tl0: Timeline.Modifiable[S], frameOffset: Long, obj: Obj[S])(implicit tx: S#Tx): Unit = {
-          val start   = pos - frameOffset
-          val span    = Span.From(start): SpanLikeObj[S]
-          val spanEx  = SpanLikeObj.newVar[S](span)
-          tl0.add(spanEx, obj)
-        }
-
-        (proc, colOpt) match {
-          case (genP: Proc[S], Some(colP: Proc[S])) =>
-
-            val out     = genP.outputs.add(Proc.scanMainOut)
-            val colAttr = colP.attr
-            require(!colAttr.contains(Proc.scanMainIn))
-            val in      = Timeline[S]
-            colAttr.put(Proc.scanMainIn, in)
-            addToTimeline(in, pos, out)
-
-          case _ =>
-        }
-
-        addToTimeline               (tl, 0L, proc)
-        colOpt.foreach(addToTimeline(tl, 0L, _   ))
-
-      case Surface.Folder(f) =>
-        (proc, colOpt) match {
-          case (genP: Proc[S], Some(colP: Proc[S])) =>
-            val out     = genP.outputs.add(Proc.scanMainOut)
-            val colAttr = colP.attr
-            require(!colAttr.contains(Proc.scanMainIn))
-            val in      = Folder[S]
-            colAttr.put(Proc.scanMainIn, in)
-            in.addLast(out)
-
-          case _ =>
-        }
-
-        f.addLast(proc)
-        colOpt.foreach(f.addLast)
-    }
+    addNewObject(proc)
+    colOpt.foreach(addNewObject)
   }
 
   final def insertMacro(macroF: Folder[S], pt: Point2D)(implicit tx: S#Tx): Unit = {
@@ -120,6 +125,7 @@ trait PanelImplTxnFuns[S <: Sys[S]] {
   // Returns `true` if the child was found and removed.
   final def removeCollectionAttribute(parent: Obj[S], key: String, child: Obj[S])
                                      (implicit tx: S#Tx): Boolean = {
+    ???!
     val attr = parent.attr
 
     def mkTimeline(): (Timeline.Modifiable[S], SpanLikeObj.Var[S]) = {
@@ -188,6 +194,7 @@ trait PanelImplTxnFuns[S <: Sys[S]] {
 
   final def addCollectionAttribute(parent: Obj[S], key: String, child: Obj[S])
                                   (implicit tx: S#Tx): Unit = {
+    ???!
     val attr = parent.attr
 
     def mkSpan(): SpanLikeObj.Var[S] = {
@@ -259,43 +266,32 @@ trait PanelImplTxnFuns[S <: Sys[S]] {
   // do not take that into consideration, but might so in the future...
   private[this] def parentTimeOffset()(implicit tx: S#Tx): Long = ???! // transport.position
 
-  final def insertFilter(pred: Output[S], succ: (Obj[S], String), fltSrc: Obj[S], fltPt: Point2D)
+  final def insertFilter(pred: Output[S], succ: NuagesAttribute[S], fltSrc: Obj[S], fltPt: Point2D)
                         (implicit tx: S#Tx): Unit = {
     val flt = Obj.copy(fltSrc)
+    prepareAndLocate(flt, fltPt)
 
     flt match {
       case fltP: Proc[S] =>
-        val (succObj, succKey) = succ
-        removeCollectionAttribute(parent = succObj, key = succKey, child = pred)
-
-        connect(pred, fltP)
-        // we may handle 'sinks' here by ignoring them when they don't have an `"out"` scan.
+        connectToNewSink(out = pred, sink = flt)
         for {
           fltOut <- fltP.outputs.get(Proc.scanMainOut)
         } {
-          // pred  .remove(succ)
-          connect(fltOut, succObj, succKey) // fltOut.add   (succ)
+          succ.removeChild(pred)
+          succ.addChild(fltOut)
         }
 
       case _ =>
     }
 
-    finalizeProcAndCollector(flt, None, fltPt)
+    addNewObject(flt)
   }
-
-  private[this] def connect(pred: Output[S], succ: Obj[S], succKey: String = Proc.scanMainIn)
-                           (implicit tx: S#Tx): Unit =
-    addCollectionAttribute(parent = succ, key = succKey, child = pred)
 
   final def appendFilter(pred: Output[S], fltSrc: Obj[S], colSrcOpt: Option[Obj[S]], fltPt: Point2D)
                         (implicit tx: S#Tx): Unit = {
     val flt = Obj.copy(fltSrc)
 
-    flt match {
-      case fltP: Proc[S] => connect(pred, fltP)
-      case _ =>
-    }
-
+    connectToNewSink(out = pred, sink = flt)
     finalizeProcAndCollector(flt, colSrcOpt, fltPt)
   }
 
