@@ -28,7 +28,7 @@ import de.sciss.lucre.synth.{Synth, Sys}
 import de.sciss.nuages.Nuages.Surface
 import de.sciss.span.{Span, SpanLike}
 import de.sciss.synth.proc.Implicits._
-import de.sciss.synth.proc.{Folder, Timeline, ObjKeys, Output, Proc}
+import de.sciss.synth.proc.{ObjKeys, Output, Proc}
 import prefuse.util.ColorLib
 import prefuse.visual.{AggregateItem, VisualItem}
 
@@ -307,22 +307,26 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
       case Surface.Timeline(tl) =>
         val oldSpan     = spanOption
           .getOrElse(throw new IllegalStateException(s"Using a timeline nuages but no span!?"))
-        val frame       = ???! : Long // main.transport.position
-        val newSpanVal  = oldSpan.value.intersect(Span.until(frame))
+        val pos         = main.transport.position
+        val stop        = pos - frameOffset
+        val newSpanVal  = oldSpan.value.intersect(Span.until(stop))
         if (newSpanVal.nonEmpty) {
           oldSpan match {
             case SpanLikeObj.Var(vr) => vr() = newSpanVal
             case _ =>
               val newSpan = SpanLikeObj.newVar[S](newSpanVal)
-              tl.remove(oldSpan, _obj)
+              val ok = tl.remove(oldSpan, _obj)
+              require(ok)
               tl.add   (newSpan, _obj)
           }
         } else {
-          tl.remove(oldSpan, _obj)
+          val ok = tl.remove(oldSpan, _obj)
+          require(ok)
         }
 
       case Surface.Folder(f) =>
-        f.remove(_obj)
+        val ok = f.remove(_obj)
+        require(ok)
         // ...
 
       case _ =>

@@ -39,17 +39,21 @@ object NuagesTimelineAttrInput extends NuagesAttribute.Factory {
 
   def tryConsume[S <: SSys[S]](oldInput: Input[S], /* newOffset: Long, */ newValue: Timeline[S])
                               (implicit tx: S#Tx, context: NuagesContext[S]): Option[Input[S]] = {
-    val attr    = oldInput.attribute
-    val parent  = attr.inputParent
-    val main    = attr.parent.main
-    val time    = ???! : Long // main.transport.position // XXX TODO -- should find a currentFrame somewhere
-    newValue.intersect(time).toList match {
+    val attr          = oldInput.attribute
+    val parent        = attr.parent
+    val main          = parent.main
+    val _frameOffset  = parent.frameOffset
+    if (_frameOffset == Long.MaxValue) return None  // what should we do?
+    val transportPos  = main.transport.position
+    val currentOffset = transportPos - _frameOffset
+
+    newValue.intersect(currentOffset).toList match {
       case (span, Vec(entry)) :: Nil =>
         val head = entry.value
         if (oldInput.tryConsume(newOffset = ???!, newValue = head)) {
           val map = tx.newInMemoryIDMap[Input[S]]
-          val res = new NuagesTimelineAttrInput(attr, frameOffset = ???!, map = map)
-            .consume(entry, oldInput, newValue, parent)
+          val res = new NuagesTimelineAttrInput(attr, frameOffset = _frameOffset, map = map)
+            .consume(entry, oldInput, newValue, attr.inputParent)
           Some(res)
         } else None
 
