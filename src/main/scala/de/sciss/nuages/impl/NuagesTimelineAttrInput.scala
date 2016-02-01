@@ -127,7 +127,7 @@ final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesA
     }
   }
 
-  // XXX DRY --- with PanelImplTxnFuns#removeCollectionAttribute
+  // XXX TODO DRY --- with PanelImplTxnFuns#removeCollectionAttribute
   def removeChild(child: Obj[S])(implicit tx: S#Tx): Unit = {
     val tl = timelineH()
     if (isTimeline) {

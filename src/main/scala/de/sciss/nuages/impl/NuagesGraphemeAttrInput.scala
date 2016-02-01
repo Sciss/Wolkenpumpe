@@ -201,7 +201,19 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
 
   def addChild(child: Obj[S])(implicit tx: S#Tx): Unit = ???!
 
-  def removeChild(child: Obj[S])(implicit tx: S#Tx): Unit = ???!
+  def removeChild(child: Obj[S])(implicit tx: S#Tx): Unit = {
+    val gr = graphemeH()
+    if (isTimeline) {
+      val stop    = currentOffset()
+      val entries = gr.intersect(stop).filter(_.value == child)
+      entries.foreach { entry =>
+        ???!
+      }
+
+    } else {
+      ???!
+    }
+  }
 
   // bubble up if grapheme is not modifiable
   private[this] def updateParent(childBefore: Obj[S], childNow: Obj[S])(implicit tx: S#Tx): Unit = {

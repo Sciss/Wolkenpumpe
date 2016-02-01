@@ -296,6 +296,13 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
     outputs.foreach { case (key, outputView) =>
       val output = outputView.output
       outputView.mappings.foreach { outAttrIn =>
+        // XXX TODO -- if we are the last child,
+        // we should determine whether the sink
+        // is a parameter or filter input. In the
+        // latter case, ok, let it go back to zero,
+        // in the former case, set the last reported
+        // value as scalar.
+        println(s"inputParent = ${outAttrIn.inputParent}")
         outAttrIn.inputParent.removeChild(output)
       }
     }

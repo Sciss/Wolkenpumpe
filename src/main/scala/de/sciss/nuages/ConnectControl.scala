@@ -127,6 +127,8 @@ class ConnectControl[S <: Sys[S]](main: NuagesPanel[S])
           val inputParent = inputView.inputParent
           val output      = outputView.output
           // inputParent.addChild(output)
+          // val _test = inputView.attribute
+          // println(s"current value: ${_test.parent.obj.attr.get(_test.key)}")
           inputParent.updateChild(inputView.input, output)
         }
       }
