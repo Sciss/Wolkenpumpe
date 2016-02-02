@@ -112,7 +112,7 @@ class ClickControl[S <: Sys[S]](main: NuagesPanel[S]) extends ControlAdapter {
       case (srcData: NuagesOutput[S], tgtData: NuagesAttribute.Input[S]) =>
         val tgtAttr = tgtData.attribute
         val res = main.cursor.step { implicit tx =>
-          main.removeCollectionAttribute(parent = tgtAttr.parent.obj, key = tgtAttr.key, child = srcData.output)
+          ???! : Boolean // main.removeCollectionAttribute(parent = tgtAttr.parent.obj, key = tgtAttr.key, child = srcData.output)
         }
         if (!res) println(s"Warning: could not remove edge")
 

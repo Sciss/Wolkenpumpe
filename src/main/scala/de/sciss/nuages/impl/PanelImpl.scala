@@ -114,7 +114,7 @@ object PanelImpl {
 }
 
 final class PanelImplTimeline[S <: Sys[S]](protected val nuagesH: stm.Source[S#Tx, Nuages[S]],
-     val nodeMap: stm.IdentifierMap[S#ID, S#Tx, NuagesObj[S]],
+                                           protected val nodeMap: stm.IdentifierMap[S#ID, S#Tx, NuagesObj[S]],
 //     protected val scanMap: stm.IdentifierMap[S#ID, S#Tx, NuagesOutput[S]],
      protected val missingScans: stm.IdentifierMap[S#ID, S#Tx, List[NuagesAttribute[S]]],
      val config   : Nuages.Config,
@@ -133,7 +133,7 @@ final class PanelImplTimeline[S <: Sys[S]](protected val nuagesH: stm.Source[S#T
   with PanelImplTimelineInit[S]
 
 final class PanelImplFolder[S <: Sys[S]](protected val nuagesH: stm.Source[S#Tx, Nuages[S]],
-     val nodeMap: stm.IdentifierMap[S#ID, S#Tx, NuagesObj[S]],
+                                         protected val nodeMap: stm.IdentifierMap[S#ID, S#Tx, NuagesObj[S]],
 //     protected val scanMap: stm.IdentifierMap[S#ID, S#Tx, NuagesOutput[S]],
      protected val missingScans: stm.IdentifierMap[S#ID, S#Tx, List[NuagesAttribute[S]]],
      val config   : Nuages.Config,
@@ -176,22 +176,22 @@ trait PanelImpl[S <: Sys[S], Repr <: Obj[S], AuralRepr <: AuralObj[S]]
 
   protected def disposeTransport()(implicit tx: S#Tx): Unit
 
+  protected def initObservers(repr: Repr)(implicit tx: S#Tx): Unit
+
   // ---- impl ----
 
-  protected def main: NuagesPanel[S] = this
+  protected final def main: NuagesPanel[S] = this
 
-  protected var observers     = List.empty[Disposable[S#Tx]]
-  protected val auralObserver = Ref(Option.empty[Disposable[S#Tx]])
+  protected final var observers     = List.empty[Disposable[S#Tx]]
+  protected final val auralObserver = Ref(Option.empty[Disposable[S#Tx]])
 
-  protected val auralToViewMap  = TMap.empty[AuralObj[S], NuagesObj[S]]
-  protected val viewToAuralMap  = TMap.empty[NuagesObj[S], AuralObj[S]]
+  protected final val auralToViewMap  = TMap.empty[AuralObj [S], NuagesObj[S]]
+  protected final val viewToAuralMap  = TMap.empty[NuagesObj[S], AuralObj [S]]
 
-  def nuages(implicit tx: S#Tx): Nuages[S] = nuagesH()
+  final def nuages(implicit tx: S#Tx): Nuages[S] = nuagesH()
 
-  private var  _keyControl: Control with Disposable[S#Tx] = _
-  protected def keyControl: Control with Disposable[S#Tx] = _keyControl
-
-  protected def initObservers(repr: Repr)(implicit tx: S#Tx): Unit
+  private[this] var  _keyControl: Control with Disposable[S#Tx] = _
+  protected final def keyControl: Control with Disposable[S#Tx] = _keyControl
 
   final def init(repr: Repr)(implicit tx: S#Tx): this.type = {
     _keyControl = KeyControl(main)
@@ -200,54 +200,31 @@ trait PanelImpl[S <: Sys[S], Repr <: Obj[S], AuralRepr <: AuralObj[S]]
     this
   }
 
-  def dispose()(implicit tx: S#Tx): Unit = {
+  final def dispose()(implicit tx: S#Tx): Unit = {
     disposeTransport()
+    disposeNodes()
     deferTx(stopAnimation())
     clearSolo()
     observers.foreach(_.dispose())
     disposeAuralObserver()
     transport.dispose()
-    auralToViewMap.foreach { case (_, vp) =>
-      vp.dispose()
-    }
+    //    auralToViewMap.foreach { case (_, vp) =>
+    //      vp.dispose()
+    //    }
     viewToAuralMap.clear()
     auralToViewMap.clear()
-    nodeMap       .dispose()
     // scanMap       .dispose()
     missingScans  .dispose()
 
     keyControl    .dispose()
   }
 
-//  private[this] val waiting = TxnLocal(Map.empty[S#ID, List[NuagesOutput[S] => Unit]])
-//
-//  def scanMapGet(id: S#ID)(implicit tx: S#Tx): Option[NuagesOutput[S]] = scanMap.get(id)
-//
-//  def scanMapPut(id: S#ID, view: NuagesOutput[S])(implicit tx: S#Tx): Unit = {
-//    scanMap.put(id, view)
-//    implicit val itx = tx.peer
-//    if (waiting.isInitialized) waiting.transform { m0 =>
-//      m0.get(id).fold(m0) { list =>
-//        list.foreach(_.apply(view))
-//        m0 - id
-//      }
-//    }
-//  }
-//
-//  def scanMapRemove(id: S#ID)(implicit tx: S#Tx): Unit = scanMap.remove(id)
-//
-//  def waitForScanView(id: S#ID)(fun: (NuagesOutput[S]) => Unit)(implicit tx: S#Tx): Unit =
-//    waiting.transform { m0 =>
-//      val list = m0.getOrElse(id, Nil) :+ fun
-//      m0 + (id -> list)
-//    } (tx.peer)
-
-  protected def disposeAuralObserver()(implicit tx: S#Tx): Unit = {
+  protected final def disposeAuralObserver()(implicit tx: S#Tx): Unit = {
     auralReprRef() = None
     auralObserver.swap(None).foreach(_.dispose())
   }
 
-  def selection: Set[NuagesNode[S]] = {
+  final def selection: Set[NuagesNode[S]] = {
     requireEDT()
     val selectedItems = visualization.getGroup(GROUP_SELECTION)
     import scala.collection.JavaConversions._
@@ -260,12 +237,6 @@ trait PanelImpl[S <: Sys[S], Repr <: Obj[S], AuralRepr <: AuralObj[S]]
       case _ => None
     } .toSet
   }
-
-//  def dispose(): Unit = {
-//    stopAnimation()
-//
-//    if (config.collector) println("WARNING! NuagesPanel.dispose -- doesn't handle the collector yet")
-//  }
 
   private[this] val guiCode = TxnLocal(init = Vector.empty[() => Unit], afterCommit = handleGUI)
 
@@ -287,19 +258,19 @@ trait PanelImpl[S <: Sys[S], Repr <: Obj[S], AuralRepr <: AuralObj[S]]
     defer(exec())
   }
 
-  def deferVisTx(thunk: => Unit)(implicit tx: TxnLike): Unit =
+  final def deferVisTx(thunk: => Unit)(implicit tx: TxnLike): Unit =
     guiCode.transform(_ :+ (() => thunk))
 
-  @inline private def stopAnimation(): Unit = {
+  @inline private[this] def stopAnimation(): Unit = {
     visualization.cancel(ACTION_COLOR)
     visualization.cancel(ACTION_LAYOUT)
   }
 
-  @inline private def startAnimation(): Unit =
+  @inline private[this] def startAnimation(): Unit =
     visualization.run(ACTION_COLOR)
 
-  protected def getAuralScanData(aural: AuralObj[S], key: String = Proc.scanMainOut)
-                              (implicit tx: S#Tx): Option[(AudioBus, Node)] = aural match {
+  protected final def getAuralScanData(aural: AuralObj[S], key: String = Proc.scanMainOut)
+                                      (implicit tx: S#Tx): Option[(AudioBus, Node)] = aural match {
     case ap: AuralObj.Proc[S] =>
       None // SCAN
 //      val d = ap.data
@@ -316,7 +287,7 @@ trait PanelImpl[S <: Sys[S], Repr <: Obj[S], AuralRepr <: AuralObj[S]]
 
   // private def close(p: Container): Unit = p.peer.getParent.remove(p.peer)
 
-  def saveMacro(name: String, sel: Set[NuagesObj[S]]): Unit =
+  final def saveMacro(name: String, sel: Set[NuagesObj[S]]): Unit =
     cursor.step { implicit tx =>
      val copies = Nuages.copyGraph(sel.map(_.obj)(breakOut))
 

@@ -20,27 +20,20 @@ import de.sciss.lucre.synth.{AudioBus, Node, Synth, Sys}
 import de.sciss.synth.proc.{AuralObj, Proc}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
-import scala.concurrent.stm.TMap
+import scala.concurrent.stm.{TSet, TMap}
 
 trait PanelImplReact[S <: Sys[S]] {
+  import TxnLike.peer
+
   // ---- abstract ----
 
   def deferVisTx(thunk: => Unit)(implicit tx: TxnLike): Unit
 
   protected def main: NuagesPanel[S]
 
-  def nodeMap     : stm.IdentifierMap[S#ID, S#Tx, NuagesObj [S]]
+  protected def nodeMap: stm.IdentifierMap[S#ID, S#Tx, NuagesObj [S]]
 
-//  protected def scanMap     : stm.IdentifierMap[S#ID, S#Tx, VisualScan[S]]
   protected def missingScans: stm.IdentifierMap[S#ID, S#Tx, List[NuagesAttribute[S]]]
-
-//  protected def scanMapPut(id: S#ID, view: NuagesOutput[S])(implicit tx: S#Tx): Unit
-//  protected def scanMapGet     (id: S#ID)(implicit tx: S#Tx): Option[NuagesOutput[S]]
-
-//  /** Transaction local hack */
-//  protected def waitForScanView(id: S#ID)(fun: NuagesOutput[S] => Unit)(implicit tx: S#Tx): Unit
-
-//  protected def auralTimeline: Ref[Option[AuralObj.Timeline[S]]]
 
   protected def getAuralScanData(aural: AuralObj[S], key: String = Proc.scanMainOut)
                                 (implicit tx: S#Tx): Option[(AudioBus, Node)]
@@ -52,14 +45,12 @@ trait PanelImplReact[S <: Sys[S]] {
 
   protected def mkMonitor(bus: AudioBus, node: Node)(fun: Vec[Double] => Unit)(implicit tx: S#Tx): Synth
 
-//  protected def disposeObj(obj: Obj[S])(implicit tx: S#Tx): Unit
-
   // ---- impl ----
+
+  private[this] val nodeSet = TSet.empty[NuagesObj[S]]
 
   // SCAN
 //  def assignMapping(source: Scan[S], vSink: VisualControl[S])(implicit tx: S#Tx): Unit = {
-//    implicit val itx = tx.peer
-//
 //    def withView(/* debug: Boolean, */ vScan: VisualScan[S]): Unit = {
 //      val vObj = vScan.parent
 //      vSink.mapping.foreach { m =>
@@ -88,7 +79,26 @@ trait PanelImplReact[S <: Sys[S]] {
 //    scanMapGet(source.id).fold(waitForScanView(source.id)(withView))(withView)
 //  }
 
-  protected def auralObjAdded(vp: NuagesObj[S], aural: AuralObj[S])(implicit tx: S#Tx): Unit = {
+  /** Disposes all registered nodes. Disposes `nodeMap`. */
+  protected final def disposeNodes()(implicit tx: S#Tx): Unit = {
+    nodeSet.foreach(_.dispose())
+    nodeSet.clear()
+    nodeMap.dispose()
+  }
+
+  final def registerNode(id: S#ID, view: NuagesObj[S])(implicit tx: S#Tx): Unit = {
+    val ok = nodeSet.add(view)
+    if (!ok) throw new IllegalArgumentException(s"View $view was already registered")
+    nodeMap.put(id, view)
+  }
+
+  final def unregisterNode(id: S#ID, view: NuagesObj[S])(implicit tx: S#Tx): Unit = {
+    val ok = nodeSet.remove(view)
+    if (!ok) throw new IllegalArgumentException(s"View $view was not registered")
+    nodeMap.remove(id)
+  }
+
+  protected final def auralObjAdded(vp: NuagesObj[S], aural: AuralObj[S])(implicit tx: S#Tx): Unit = {
     val config = main.config
     if (config.meters) {
       val key = if (vp.hasOutput(Proc.scanMainOut)) Proc.scanMainOut else Proc.scanMainIn
@@ -97,13 +107,13 @@ trait PanelImplReact[S <: Sys[S]] {
         vp.meterSynth = Some(meterSynth)
       }
     }
-    auralToViewMap.put(aural, vp)(tx.peer)
-    viewToAuralMap.put(vp, aural)(tx.peer)
+    auralToViewMap.put(aural, vp)
+    viewToAuralMap.put(vp, aural)
   }
 
-  protected def auralObjRemoved(aural: AuralObj[S])(implicit tx: S#Tx): Unit = {
-    auralToViewMap.remove(aural)(tx.peer).foreach { vp =>
-      viewToAuralMap.remove(vp)(tx.peer)
+  protected final def auralObjRemoved(aural: AuralObj[S])(implicit tx: S#Tx): Unit = {
+    auralToViewMap.remove(aural).foreach { vp =>
+      viewToAuralMap.remove(vp)
       vp.meterSynth = None
     }
   }

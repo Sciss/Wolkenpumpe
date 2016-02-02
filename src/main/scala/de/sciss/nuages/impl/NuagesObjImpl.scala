@@ -103,7 +103,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
     idH         = tx.newHandle(id)
     objH        = tx.newHandle(obj)
     spanOptionH = spanOption.map(tx.newHandle(_))
-    main.nodeMap.put(id, this)
+    main.registerNode(id, this) // nodeMap.put(id, this)
     main.deferVisTx(initGUI(locOption))
     obj match {
       case proc: Proc[S] => initProc(proc)
@@ -208,7 +208,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
     attrs .foreach(_._2.dispose())
     // inputs .foreach(_._2.dispose())
     outputs.foreach(_._2.dispose())
-    main.nodeMap.remove(idH())
+    main.unregisterNode(idH(), this) // nodeMap.remove(idH())
     main.deferVisTx(disposeGUI())
   }
 
@@ -315,8 +315,9 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
         val oldSpan     = spanOption
           .getOrElse(throw new IllegalStateException(s"Using a timeline nuages but no span!?"))
         val pos         = main.transport.position
-        val stop        = pos - frameOffset
-        val newSpanVal  = oldSpan.value.intersect(Span.until(stop))
+        val stop        = pos // `- parent.frameOffset` (not, because parent = this)
+        val oldSpanVal  = oldSpan.value
+        val newSpanVal  = oldSpanVal.intersect(Span.until(stop))
         if (newSpanVal.nonEmpty) {
           oldSpan match {
             case SpanLikeObj.Var(vr) => vr() = newSpanVal
@@ -324,7 +325,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
               val newSpan = SpanLikeObj.newVar[S](newSpanVal)
               val ok = tl.remove(oldSpan, _obj)
               require(ok)
-              tl.add   (newSpan, _obj)
+              tl.add(newSpan, _obj)
           }
         } else {
           val ok = tl.remove(oldSpan, _obj)
