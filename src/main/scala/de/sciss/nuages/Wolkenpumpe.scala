@@ -34,7 +34,7 @@ object Wolkenpumpe {
   }
 
   def mkTestProcs[S <: Sys[S]]()(implicit tx: S#Tx, nuages: Nuages[S]): Unit = {
-    val dsl = new DSL[S]
+    val dsl = DSL[S]
     import de.sciss.synth.ugen._
     import de.sciss.synth.{Server => _, _}
     import dsl._

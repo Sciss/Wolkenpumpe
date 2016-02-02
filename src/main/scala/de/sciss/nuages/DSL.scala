@@ -16,13 +16,14 @@ package de.sciss.nuages
 import de.sciss.lucre.expr.{DoubleObj, DoubleVector, StringObj}
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.Obj
-import de.sciss.synth.proc.graph.{Attribute, ScanIn, ScanOut}
+import de.sciss.synth.proc.graph.{ScanInFix, Attribute, ScanIn, ScanOut}
 import de.sciss.synth.proc.{Folder, Proc}
 import de.sciss.synth.{GE, Rate, SynthGraph, audio, control, proc, scalar}
 
 import scala.concurrent.stm.TxnLocal
 
 object DSL {
+  def apply[S <: stm.Sys[S]]: DSL[S] = new DSL[S]
 //  /** Magnet pattern for mkPar */
 //  sealed trait ParDefault extends Any {
 //    def mkObj[S <: Sys[S]](spec: ParamSpec)(implicit tx: S#Tx): Obj[S]
@@ -42,7 +43,7 @@ object DSL {
 //    }
 //  }
 }
-class DSL[S <: stm.Sys[S]] {
+class DSL[S <: stm.Sys[S]] private() {
   // val imp = ExprImplicits[S]
   import proc.Implicits._
 
@@ -151,15 +152,13 @@ class DSL[S <: stm.Sys[S]] {
     obj
   }
 
-  def filter(name: String)(fun: GE => GE)(implicit tx: S#Tx, n: Nuages[S]): Proc[S] = {
+  def filter(name: String, numChannels: Int = -1)(fun: GE => GE)(implicit tx: S#Tx, n: Nuages[S]): Proc[S] = {
     val obj = mkProcObj(name) {
-      val in  = ScanIn(Proc.mainIn)
+      val in  = if (numChannels == -1) ScanIn() else ScanInFix(numChannels)
       val out = fun(in)
       ScanOut(Proc.mainOut, out)
     }
     val proc  = obj
-    // SCAN
-    // proc.inputs .add(Proc.mainIn )
     proc.outputs.add(Proc.mainOut)
     insertByName(n.filters.get, obj)
     obj
@@ -171,20 +170,18 @@ class DSL[S <: stm.Sys[S]] {
     obj.outputs.add(key)
   }
 
-  def sink(name: String)(fun: GE => Unit)(implicit tx: S#Tx, n: Nuages[S]): Proc[S] =
-    sinkLike(n.filters.get, name, fun)
+  def sink(name: String, numChannels: Int = -1)(fun: GE => Unit)(implicit tx: S#Tx, n: Nuages[S]): Proc[S] =
+    sinkLike(n.filters.get, name = name, numChannels = numChannels, fun = fun)
 
-  def collector(name: String)(fun: GE => Unit)(implicit tx: S#Tx, n: Nuages[S]): Proc[S] =
-    sinkLike(n.collectors.get, name, fun)
+  def collector(name: String, numChannels: Int = -1)(fun: GE => Unit)(implicit tx: S#Tx, n: Nuages[S]): Proc[S] =
+    sinkLike(n.collectors.get, name = name, numChannels = numChannels, fun = fun)
 
-  private def sinkLike(folder: Folder[S], name: String, fun: GE => Unit)
-                      (implicit tx: S#Tx, nuages: Nuages[S]): Proc[S] = {
+  private[this] def sinkLike(folder: Folder[S], name: String, numChannels: Int, fun: GE => Unit)
+                            (implicit tx: S#Tx, nuages: Nuages[S]): Proc[S] = {
     val obj = mkProcObj(name) {
-      val in = ScanIn(Proc.mainIn)
+      val in = if (numChannels == -1) ScanIn() else ScanInFix(numChannels)
       fun(in)
     }
-    // SCAN
-//    obj.inputs.add(Proc.mainIn)
     insertByName(folder, obj)
     obj
   }
