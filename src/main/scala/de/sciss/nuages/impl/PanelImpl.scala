@@ -269,7 +269,7 @@ trait PanelImpl[S <: Sys[S], Repr <: Obj[S], AuralRepr <: AuralObj[S]]
   @inline private[this] def startAnimation(): Unit =
     visualization.run(ACTION_COLOR)
 
-  protected final def getAuralScanData(aural: AuralObj[S], key: String = Proc.scanMainOut)
+  protected final def getAuralScanData(aural: AuralObj[S], key: String = Proc.mainOut)
                                       (implicit tx: S#Tx): Option[(AudioBus, Node)] = aural match {
     case ap: AuralObj.Proc[S] =>
       None // SCAN

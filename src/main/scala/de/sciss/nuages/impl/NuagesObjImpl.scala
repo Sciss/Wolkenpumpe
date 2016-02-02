@@ -269,11 +269,11 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
   private[this] def removeSelf()(implicit tx: S#Tx): Unit = {
     // ---- connect former input sources to former output sinks ----
     // - in the previous version we limit ourselves to
-    //  `Proc.scanMainIn` and `Proc.scanMainOut`.
+    //  `Proc.mainIn` and `Proc.mainOut`.
 
     for {
-      outputView <- outputs.get(Proc.scanMainOut)
-      inputAttr  <- attrs  .get(Proc.scanMainIn )
+      outputView <- outputs.get(Proc.mainOut)
+      inputAttr  <- attrs  .get(Proc.mainIn )
       sourceView <- inputAttr.collect {
         case out: NuagesOutput.Input[S] => out
       }

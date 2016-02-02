@@ -55,7 +55,7 @@ trait PanelImplTxnFuns[S <: Sys[S]] {
     tl.add(spanEx, obj)
   }
 
-  private[this] def connectToNewSink(out: Output[S], sink: Obj[S], key: String = Proc.scanMainIn)
+  private[this] def connectToNewSink(out: Output[S], sink: Obj[S], key: String = Proc.mainIn)
                                     (implicit tx: S#Tx): Unit =
     nuages.surface match {
       case Surface.Timeline(tl) =>
@@ -64,14 +64,14 @@ trait PanelImplTxnFuns[S <: Sys[S]] {
         val colAttr = sink.attr
         require(!colAttr.contains(key))
         val in      = Timeline[S]
-        colAttr.put(Proc.scanMainIn, in)
+        colAttr.put(Proc.mainIn, in)
         addToTimeline(in, pos, out)
 
       case Surface.Folder(f) =>
         val colAttr = sink.attr
         require(!colAttr.contains(key))
         val in      = Folder[S]
-        colAttr.put(Proc.scanMainIn, in)
+        colAttr.put(Proc.mainIn, in)
         in.addLast(out)
     }
 
@@ -98,7 +98,7 @@ trait PanelImplTxnFuns[S <: Sys[S]] {
       prepareAndLocate(col, new Point2D.Double(pt.getX, pt.getY + 30))
       proc match {
         case genP: Proc[S] =>
-          val out = genP.outputs.add(Proc.scanMainOut)
+          val out = genP.outputs.add(Proc.mainOut)
           connectToNewSink(out, sink = col)
         case _ =>
       }
@@ -275,7 +275,7 @@ trait PanelImplTxnFuns[S <: Sys[S]] {
       case fltP: Proc[S] =>
         connectToNewSink(out = pred, sink = flt)
         for {
-          fltOut <- fltP.outputs.get(Proc.scanMainOut)
+          fltOut <- fltP.outputs.get(Proc.mainOut)
         } {
           succ.removeChild(pred)
           succ.addChild(fltOut)

@@ -35,7 +35,7 @@ trait PanelImplReact[S <: Sys[S]] {
 
   protected def missingScans: stm.IdentifierMap[S#ID, S#Tx, List[NuagesAttribute[S]]]
 
-  protected def getAuralScanData(aural: AuralObj[S], key: String = Proc.scanMainOut)
+  protected def getAuralScanData(aural: AuralObj[S], key: String = Proc.mainOut)
                                 (implicit tx: S#Tx): Option[(AudioBus, Node)]
 
   protected def auralToViewMap: TMap[AuralObj[S], NuagesObj[S]]
@@ -101,7 +101,7 @@ trait PanelImplReact[S <: Sys[S]] {
   protected final def auralObjAdded(vp: NuagesObj[S], aural: AuralObj[S])(implicit tx: S#Tx): Unit = {
     val config = main.config
     if (config.meters) {
-      val key = if (vp.hasOutput(Proc.scanMainOut)) Proc.scanMainOut else Proc.scanMainIn
+      val key = if (vp.hasOutput(Proc.mainOut)) Proc.mainOut else Proc.mainIn
       getAuralScanData(aural, key = key).foreach { case (bus, node) =>
         val meterSynth = mkMeter(bus, node)(vp.meterUpdate)
         vp.meterSynth = Some(meterSynth)

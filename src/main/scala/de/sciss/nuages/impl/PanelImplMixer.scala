@@ -37,7 +37,7 @@ trait PanelImplMixer[S <: Sys[S]] {
   protected def auralToViewMap: TMap[AuralObj[S], NuagesObj[S]]
   protected def viewToAuralMap: TMap[NuagesObj[S], AuralObj[S]]
 
-  protected def getAuralScanData(aural: AuralObj[S], key: String = Proc.scanMainOut)
+  protected def getAuralScanData(aural: AuralObj[S], key: String = Proc.mainOut)
                                 (implicit tx: S#Tx): Option[(AudioBus, Node)]
 
   // ---- impl ----

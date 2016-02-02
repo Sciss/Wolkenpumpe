@@ -16,7 +16,7 @@ package de.sciss.nuages
 import de.sciss.lucre.expr.{DoubleObj, DoubleVector, StringObj}
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.Obj
-import de.sciss.synth.proc.graph.{Attribute, ScanIn, ScanInFix, ScanOut}
+import de.sciss.synth.proc.graph.{Attribute, ScanIn, ScanOut}
 import de.sciss.synth.proc.{Folder, Proc}
 import de.sciss.synth.{GE, Rate, SynthGraph, audio, control, proc, scalar}
 
@@ -143,9 +143,9 @@ class DSL[S <: stm.Sys[S]] {
   def generator(name: String)(fun: => GE)(implicit tx: S#Tx, n: Nuages[S]): Proc[S] = {
     val obj = mkProcObj(name) {
       val out = fun
-      ScanOut(Proc.scanMainOut, out)
+      ScanOut(Proc.mainOut, out)
     }
-    obj.outputs.add(Proc.scanMainOut)
+    obj.outputs.add(Proc.mainOut)
     val genOpt = n.generators
     insertByName(genOpt.get, obj)
     obj
@@ -153,14 +153,14 @@ class DSL[S <: stm.Sys[S]] {
 
   def filter(name: String)(fun: GE => GE)(implicit tx: S#Tx, n: Nuages[S]): Proc[S] = {
     val obj = mkProcObj(name) {
-      val in  = ScanIn(Proc.scanMainIn)
+      val in  = ScanIn(Proc.mainIn)
       val out = fun(in)
-      ScanOut(Proc.scanMainOut, out)
+      ScanOut(Proc.mainOut, out)
     }
     val proc  = obj
     // SCAN
-    // proc.inputs .add(Proc.scanMainIn )
-    proc.outputs.add(Proc.scanMainOut)
+    // proc.inputs .add(Proc.mainIn )
+    proc.outputs.add(Proc.mainOut)
     insertByName(n.filters.get, obj)
     obj
   }
@@ -180,11 +180,11 @@ class DSL[S <: stm.Sys[S]] {
   private def sinkLike(folder: Folder[S], name: String, fun: GE => Unit)
                       (implicit tx: S#Tx, nuages: Nuages[S]): Proc[S] = {
     val obj = mkProcObj(name) {
-      val in = ScanIn(Proc.scanMainIn)
+      val in = ScanIn(Proc.mainIn)
       fun(in)
     }
     // SCAN
-//    obj.inputs.add(Proc.scanMainIn)
+//    obj.inputs.add(Proc.mainIn)
     insertByName(folder, obj)
     obj
   }

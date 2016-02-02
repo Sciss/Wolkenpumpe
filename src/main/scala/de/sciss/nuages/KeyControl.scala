@@ -245,7 +245,7 @@ object KeyControl {
               val e1 = Pressed(code = Key(e.getKeyCode), modifiers = e.getModifiers)
               d.itemKeyPressed(vi, e1)
               d match {
-                case vOut: NuagesOutput[S] if vOut.name == Proc.scanMainOut =>
+                case vOut: NuagesOutput[S] if vOut.name == Proc.mainOut =>
                   def perform[A](fun: Point2D => A): A = {
                     val vis   = main.visualization
                     val _ve   = vis.getVisualItem(NuagesPanel.GROUP_GRAPH, ni)
