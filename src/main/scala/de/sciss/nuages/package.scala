@@ -26,8 +26,8 @@ package object nuages {
 
   private lazy val logHeader = new SimpleDateFormat("[d MMM yyyy, HH:mm''ss.SSS] 'Nuages' ", Locale.US)
 
-  var showLog     = true
-  var showAggrLog = true
+  var showLog     = false // true
+  var showAggrLog = false // true
 
   var AGGR_LOCK   = false
 

@@ -191,7 +191,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
     _aggr = main.aggrTable.addItem().asInstanceOf[AggregateItem]
     val vi = mkPNode()
     locOption.foreach { pt =>
-      println(s"location: $pt")
+      // println(s"location: $pt")
       vi.setEndX(pt.getX)
       vi.setEndY(pt.getY)
     }
