@@ -15,7 +15,7 @@ package de.sciss.nuages
 package impl
 
 import de.sciss.lucre.synth.Sys
-import prefuse.data.{Edge => PEdge}
+import prefuse.data.{Edge => PEdge, Node => PNode}
 import prefuse.visual.VisualItem
 
 trait NuagesParamImpl[S <: Sys[S]] extends NuagesDataImpl[S] /* NuagesNodeImpl[S] */ with NuagesParam[S] {
@@ -38,7 +38,6 @@ trait NuagesParamRootImpl[S <: Sys[S]] extends NuagesParamImpl[S] with NuagesNod
     _pEdge  = g.addEdge(parent.pNode, pNode)
     log(s"mkPNodeAndEdge($name)")
     val pVi = main.visualization.getVisualItem(NuagesPanel.GROUP_GRAPH, parent.pNode)
-
     vi.setEndX(pVi.getEndX)
     vi.setEndY(pVi.getEndY)
     vi

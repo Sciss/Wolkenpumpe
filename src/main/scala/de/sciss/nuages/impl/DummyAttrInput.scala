@@ -25,6 +25,8 @@ class DummyAttrInput[S <: Sys[S]](val attribute: NuagesAttribute[S], objH: stm.S
 
   def numChannels: Int = 1
 
+  def numChildren(implicit tx: S#Tx): Int = 1
+
   def value: Vec[Double] = Vector(0.0)
 
   def tryConsume(newOffset: Long, newValue: Obj[S])(implicit tx: S#Tx): Boolean = false

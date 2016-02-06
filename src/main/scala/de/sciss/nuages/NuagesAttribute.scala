@@ -84,6 +84,8 @@ object NuagesAttribute {
 
     def input(implicit tx: S#Tx): Obj[S]
 
+    def numChildren(implicit tx: S#Tx): Int
+
     /** Runs a deep collection for particular input. This
       * will perform a nested search for collection views
       * such as grapheme or timeline.
@@ -109,6 +111,8 @@ object NuagesAttribute {
       * the underlying nuages surface is a timeline.
       */
     def addChild(child: Obj[S])(implicit tx: S#Tx): Unit
+
+    def numChildren(implicit tx: S#Tx): Int
   }
 }
 
@@ -121,6 +125,8 @@ trait NuagesAttribute[S <: Sys[S]]
   def removePNode(in: NuagesAttribute.Input[S], n: PNode                 ): Unit
 
   def spec: ParamSpec
+
+  def isControl: Boolean
 
   /** Attempts to replace the contents of the view.
     *

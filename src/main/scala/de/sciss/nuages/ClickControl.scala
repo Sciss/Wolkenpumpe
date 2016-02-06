@@ -16,6 +16,7 @@ package de.sciss.nuages
 import java.awt.event.MouseEvent
 import java.awt.geom.{Point2D, Rectangle2D}
 
+import de.sciss.lucre.expr.{DoubleVector, DoubleObj}
 import de.sciss.lucre.synth.Sys
 import prefuse.Display
 import prefuse.controls.ControlAdapter
@@ -110,11 +111,34 @@ class ClickControl[S <: Sys[S]](main: NuagesPanel[S]) extends ControlAdapter {
     val nTgt = ei.getTargetItem
     (nSrc.get(COL_NUAGES), nTgt.get(COL_NUAGES)) match {
       case (srcData: NuagesOutput[S], tgtData: NuagesAttribute.Input[S]) =>
-        val tgtAttr = tgtData.attribute
-        val res = main.cursor.step { implicit tx =>
-          ???! : Boolean // main.removeCollectionAttribute(parent = tgtAttr.parent.obj, key = tgtAttr.key, child = srcData.output)
+        main.cursor.step { implicit tx =>
+          // val inputParent = tgtData.inputParent
+          val before      = srcData.output
+          val inAttr      = tgtData.attribute
+          val inOpt       = srcData.mappings.find(_.attribute == inAttr)
+          inOpt.fold[Unit] {
+            println(s"Warning: cannot find input for $srcData")
+          } { in =>
+            // val inputParent = tgtData.inputParent
+            val inputParent = in.inputParent
+            // println(s"numChildren = ${inputParent.numChildren}")
+            if (inputParent.numChildren > 1 /* || !inAttr.isControl */) {
+              inputParent.removeChild(before)
+            } else {
+//            val numCh = NOT: EDT - tgtData.numChannels
+//            val now   = if (tgtData.attribute.isControl) {
+//              val v = NOT: EDT - tgtData.value
+//              if (numCh == 1) DoubleObj.newVar(v.head) else DoubleVector.newVar(v)
+//            } else {
+//              if (numCh == 1) DoubleObj.newVar(0.0) else DoubleVector.newVar(Vector.fill(numCh)(0.0))
+//            }
+              val numCh = 2   // XXX TODO
+              val now   = DoubleVector.newVar(Vector.fill(numCh)(0.0))
+              inputParent.updateChild(before, now)
+            }
+          }
         }
-        if (!res) println(s"Warning: could not remove edge")
+        // if (!res) println(s"Warning: could not remove edge")
 
       case (a, b) =>
     }

@@ -123,6 +123,8 @@ object NuagesAttributeImpl {
 
     // ... methods ...
 
+    final def isControl: Boolean = key != "in"  // XXX TODO --- not cool
+
     // loop
 
     final def attribute: NuagesAttribute[S] = this
@@ -133,6 +135,8 @@ object NuagesAttributeImpl {
     // proxy
 
     final def numChannels: Int = inputView.numChannels
+
+    final def numChildren(implicit tx: S#Tx): Int = inputView.numChildren
 
     final def tryConsume(newOffset: Long, to: Obj[S])(implicit tx: S#Tx): Boolean =
       inputView.tryConsume(newOffset = newOffset, newValue = to)
@@ -199,7 +203,8 @@ object NuagesAttributeImpl {
       } else {
         now
       }
-      require(objAttr.get(key).contains(before))
+      val found = objAttr.get(key)
+      require(found.contains(before), s"updateChild($before, $now) -- found $found")
       objAttr.put(key, value)
     }
 
@@ -287,12 +292,16 @@ object NuagesAttributeImpl {
 
       def mkSummary() = {
         val ns  = g.addNode()
-        val vis = main.visualization.getVisualItem(NuagesPanel.GROUP_GRAPH, ns)
-        vis.set(NuagesPanel.COL_NUAGES, this)
+        val vis = main.visualization
+        val vi  = vis.getVisualItem(NuagesPanel.GROUP_GRAPH, ns)
+        vi.set(NuagesPanel.COL_NUAGES, this)
         val sz  = nodeSize
-        if (sz != 1.0f) vis.set(VisualItem.SIZE, sz)
+        if (sz != 1.0f) vi.set(VisualItem.SIZE, sz)
         val ei  = g.addEdge(ns, parent.pNode)
         val ee  = g.addEdge(n , ns)
+        val pVi = vis.getVisualItem(NuagesPanel.GROUP_GRAPH, parent.pNode)
+        vi.setEndX(pVi.getEndX)
+        vi.setEndY(pVi.getEndY)
         addAggr(ns)
         SummaryState(ns, ei) -> ee
       }
@@ -325,6 +334,11 @@ object NuagesAttributeImpl {
       if (isFree) {
         require (!_freeNodes.contains(n))
         _freeNodes  += n -> newEdge
+        val vis = main.visualization
+        val pVi = vis.getVisualItem(NuagesPanel.GROUP_GRAPH, parent.pNode)
+        val vi  = vis.getVisualItem(NuagesPanel.GROUP_GRAPH, n)
+        vi.setEndX(pVi.getEndX)
+        vi.setEndY(pVi.getEndY)
       } else {
         require (!_boundNodes.contains(n))
         _boundNodes += n -> newEdge

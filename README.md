@@ -20,6 +20,10 @@ Builds with sbt 0.13 against Scala 2.11 and 2.10.
 
 The current version `v` is `"2.3.0"`.
 
+## contributing
+
+Please see the file [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+
 ## mouse control
 
 - wheel zooms

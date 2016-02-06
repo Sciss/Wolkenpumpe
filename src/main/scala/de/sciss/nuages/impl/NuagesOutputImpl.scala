@@ -97,7 +97,7 @@ final class NuagesOutputImpl[S <: Sys[S]] private(val parent: NuagesObj[S],
     main.deferVisTx(disposeGUI())
   }
 
-  private def initGUI(): Unit = {
+  private[this] def initGUI(): Unit = {
     requireEDT()
     mkPNodeAndEdge()
   }

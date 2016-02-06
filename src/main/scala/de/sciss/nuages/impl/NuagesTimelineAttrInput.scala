@@ -88,6 +88,8 @@ final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesA
     this
   }
 
+  def numChildren(implicit tx: S#Tx): Int = collect { case x => x.numChildren } .sum
+
   private def consume(timed: Timed[S], childView: Input[S], tl: Timeline[S], parent: Parent[S])
                      (implicit tx: S#Tx): this.type = {
     log(s"$attribute timeline consume")
@@ -104,7 +106,10 @@ final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesA
   def collect[A](pf: PartialFunction[Input[S], A])(implicit tx: S#Tx): Iterator[A] =
     viewSet.iterator.flatMap(_.collect(pf))
 
-  def updateChild(before: Obj[S], now: Obj[S])(implicit tx: S#Tx): Unit = ???!
+  def updateChild(before: Obj[S], now: Obj[S])(implicit tx: S#Tx): Unit = {
+    removeChild(before)
+    addChild(now)
+  }
 
   def addChild(child: Obj[S])(implicit tx: S#Tx): Unit = {
     val tl = timelineH()

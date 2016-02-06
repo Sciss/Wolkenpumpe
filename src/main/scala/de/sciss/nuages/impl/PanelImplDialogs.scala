@@ -56,7 +56,7 @@ trait PanelImplDialogs[S <: Sys[S]] {
 
   protected def insertMacro(macroF: Folder[S], pt: Point2D)(implicit tx: S#Tx): Unit
 
-  private lazy val createFilterInsertDialog: OverlayPanel = {
+  private[this] lazy val createFilterInsertDialog: OverlayPanel = {
     val p = new OverlayPanel()
     p.contents += listFlt1.component
     p.contents += Swing.VStrut(4)
@@ -64,7 +64,7 @@ trait PanelImplDialogs[S <: Sys[S]] {
       listFlt1.guiSelection match {
         case Vec(fltIdx) =>
           p.close()
-          val displayPt = display.getAbsoluteCoordinate(p.location, null)
+          val displayPt = dialogPoint(p)
           cursor.step { implicit tx =>
             // val nuages = nuagesH()
             listFlt1.list.foreach { fltList =>
@@ -99,7 +99,7 @@ trait PanelImplDialogs[S <: Sys[S]] {
         case Vec(genIdx) =>
           val colIdxOpt = listCol1.guiSelection.headOption
           p.close()
-          val displayPt = display.getAbsoluteCoordinate(p.location, null)
+          val displayPt = dialogPoint(p)
           cursor.step { implicit tx =>
             // val nuages = nuagesH()
             for {
@@ -123,7 +123,7 @@ trait PanelImplDialogs[S <: Sys[S]] {
 
   private def createFilterOnlyFromDialog(p: OverlayPanel)(objFun: S#Tx => Option[Obj[S]]): Unit = {
     p.close()
-    val displayPt = display.getAbsoluteCoordinate(p.location, null)
+    val displayPt = dialogPoint(p)
     cursor.step { implicit tx =>
       objFun(tx).foreach {
         case flt: Proc[S] =>
@@ -169,7 +169,7 @@ trait PanelImplDialogs[S <: Sys[S]] {
 
         case (Some(fltIdx), Some(colIdx)) =>
           p.close()
-          val displayPt = display.getAbsoluteCoordinate(p.location, null)
+          val displayPt = dialogPoint(p)
           cursor.step { implicit tx =>
             listFlt2.list.foreach { fltList =>
               listCol2.list.foreach { colList =>
@@ -199,7 +199,13 @@ trait PanelImplDialogs[S <: Sys[S]] {
     }
   }
 
-  private lazy val createInsertMacroDialog: OverlayPanel = {
+  private[this] def dialogPoint(p: OverlayPanel): Point2D = {
+    val pt        = p.locationHint.getOrElse(p.location)
+    val displayPt = display.getAbsoluteCoordinate(pt, null)
+    displayPt
+  }
+
+  private[this] lazy val createInsertMacroDialog: OverlayPanel = {
     val p = new OverlayPanel()
     p.contents += listMacro.component
     p.contents += Swing.VStrut(4)
@@ -207,7 +213,7 @@ trait PanelImplDialogs[S <: Sys[S]] {
       listMacro.guiSelection match {
         case Vec(macIdx) =>
           p.close()
-          val displayPt = display.getAbsoluteCoordinate(p.location, null)
+          val displayPt = dialogPoint(p)
           cursor.step { implicit tx =>
             listMacro.list.foreach { macroList =>
               macroList.get(macIdx).foreach {
@@ -225,9 +231,10 @@ trait PanelImplDialogs[S <: Sys[S]] {
   def showOverlayPanel(p: OverlayPanel, ptOpt: Option[Point] = None): Boolean = {
     if (overlay.isDefined) return false
     val pp = p.peer
-    val c = component
+    val c  = component
     val dw = c.peer.getWidth  - pp.getWidth
     val dh = c.peer.getHeight - pp.getHeight
+    p.locationHint = ptOpt
     ptOpt.fold {
       pp.setLocation(math.max(0, dw/2), math.min(dh, dh/2))
     } { pt =>

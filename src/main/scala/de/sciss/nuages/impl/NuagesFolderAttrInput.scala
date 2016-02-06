@@ -109,6 +109,8 @@ final class NuagesFolderAttrInput[S <: SSys[S]] private(val attribute: NuagesAtt
     }
   }
 
+  def numChildren(implicit tx: S#Tx): Int = collect { case x => x.numChildren } .sum
+
   def collect[A](pf: PartialFunction[Input[S], A])(implicit tx: S#Tx): Iterator[A] =
     map().iterator.flatMap(_.collect(pf))
 

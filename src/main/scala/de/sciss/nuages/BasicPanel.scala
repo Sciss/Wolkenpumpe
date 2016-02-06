@@ -21,7 +21,7 @@ import de.sciss.desktop.{FocusType, KeyStrokes}
 import de.sciss.swingplus.DoClickAction
 
 import scala.swing.event.Key
-import scala.swing.{BoxPanel, Button, Orientation, Swing}
+import scala.swing.{Point, BoxPanel, Button, Orientation, Swing}
 
 class BasicPanel(orientation: Orientation.Value) extends BoxPanel(orientation) {
   def this() = this(Orientation.Vertical)
@@ -37,6 +37,8 @@ class OverlayPanel(orientation: Orientation.Value) extends BasicPanel(orientatio
   import java.awt.AWTEvent._
 
   def this() = this(Orientation.Vertical)
+
+  var locationHint = Option.empty[Point]
 
   override lazy val peer: JPanel with SuperMixin = {
     val p = new JPanel with SuperMixin {

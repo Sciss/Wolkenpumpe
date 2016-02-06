@@ -64,7 +64,9 @@ final class NuagesDoubleVectorAttrInput[S <: SSys[S]](val attribute: NuagesAttri
 
   def numChannels = valueA.size
 
-//  protected def setControlTxn(v: Vec[Double])(implicit tx: S#Tx): Unit = {
+  def numChildren(implicit tx: S#Tx): Int = 1
+
+  //  protected def setControlTxn(v: Vec[Double])(implicit tx: S#Tx): Unit = {
 ////    val attr = parent.obj.attr
 //    sourceOpt.foreach { src =>
 //      val vc = DoubleVector.newConst[S](v)

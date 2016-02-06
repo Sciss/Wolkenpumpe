@@ -20,7 +20,7 @@ import java.awt.{Color, Graphics2D}
 
 import de.sciss.dsp.FastLog
 import de.sciss.intensitypalette.IntensityPalette
-import de.sciss.lucre.expr.SpanLikeObj
+import de.sciss.lucre.expr.{DoubleVector, SpanLikeObj}
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Disposable, Obj, TxnLike}
 import de.sciss.lucre.swing.requireEDT
@@ -191,6 +191,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
     _aggr = main.aggrTable.addItem().asInstanceOf[AggregateItem]
     val vi = mkPNode()
     locOption.foreach { pt =>
+      println(s"location: $pt")
       vi.setEndX(pt.getX)
       vi.setEndY(pt.getY)
     }
@@ -302,8 +303,16 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
         // latter case, ok, let it go back to zero,
         // in the former case, set the last reported
         // value as scalar.
-        println(s"inputParent = ${outAttrIn.inputParent}")
-        outAttrIn.inputParent.removeChild(output)
+        // AAA
+        // println(s"inputParent = ${outAttrIn.inputParent}")
+        val inAttr = outAttrIn.attribute
+        if (inAttr.isControl) {
+          val numCh       = 2   // XXX TODO
+          val now         = DoubleVector.newVar(Vector.fill(numCh)(0.0))
+          outAttrIn.inputParent.updateChild(output, now)
+        } else {
+          outAttrIn.inputParent.removeChild(output)
+        }
       }
     }
 

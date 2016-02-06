@@ -206,6 +206,7 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
     if (isTimeline) {
       val stop    = currentOffset()
       val entries = gr.intersect(stop).filter(_.value == child)
+      // AAA
       entries.foreach { entry =>
         ???!
       }
@@ -266,5 +267,10 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
       val newView     = NuagesAttribute.mkInput(attribute, parent = this, frameOffset = childOffset, value = child)
       currentView()   = new View(start = start, input = newView)
     }
+  }
+
+  def numChildren(implicit tx: S#Tx): Int = {
+    val curr = currentView()
+    if (curr.isEmpty) 0 else curr.input.numChildren
   }
 }

@@ -129,7 +129,10 @@ class ConnectControl[S <: Sys[S]](main: NuagesPanel[S])
           // inputParent.addChild(output)
           // val _test = inputView.attribute
           // println(s"current value: ${_test.parent.obj.attr.get(_test.key)}")
-          inputParent.updateChild(inputView.input, output)
+          if (inputView.attribute.isControl)
+            inputParent.updateChild(inputView.input, output)
+          else
+            inputParent.addChild(output)
         }
       }
     }

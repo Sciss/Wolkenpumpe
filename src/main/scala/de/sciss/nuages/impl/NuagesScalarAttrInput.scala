@@ -36,6 +36,8 @@ trait NuagesScalarAttrInput[S <: Sys[S]] extends NuagesAttrInputImpl[S] {
 
   def numChannels = 1
 
+  def numChildren(implicit tx: S#Tx): Int = 1
+
   import NuagesDataImpl.gLine
 
   protected def renderValueUpdated(): Unit = renderValueUpdated1(toDouble(renderedValue))
