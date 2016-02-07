@@ -16,16 +16,14 @@ package impl
 
 import de.sciss.lucre.stm
 import de.sciss.lucre.swing.{defer, deferTx, requireEDT}
-import de.sciss.lucre.synth.{Txn, Synth, Node, AudioBus, Sys}
+import de.sciss.lucre.synth.{AudioBus, Node => SNode, Synth, Sys, Txn}
+import de.sciss.nuages.impl.PanelImpl.LAYOUT_TIME
 import de.sciss.osc
-import de.sciss.synth.proc.{Proc, AuralObj}
-import de.sciss.synth.{message, addToTail, SynthGraph}
-
-import PanelImpl.LAYOUT_TIME
+import de.sciss.synth.{SynthGraph, addToTail, message}
 
 import scala.collection.breakOut
 import scala.collection.immutable.{IndexedSeq => Vec}
-import scala.concurrent.stm.{TMap, Ref}
+import scala.concurrent.stm.Ref
 
 trait PanelImplMixer[S <: Sys[S]] {
   // ---- abstract ----
@@ -34,11 +32,11 @@ trait PanelImplMixer[S <: Sys[S]] {
 
   def cursor: stm.Cursor[S]
 
-  protected def auralToViewMap: TMap[AuralObj[S], NuagesObj[S]]
-  protected def viewToAuralMap: TMap[NuagesObj[S], AuralObj[S]]
-
-  protected def getAuralScanData(aural: AuralObj[S], key: String = Proc.mainOut)
-                                (implicit tx: S#Tx): Option[(AudioBus, Node)]
+  //  protected def auralToViewMap: TMap[AuralObj[S], NuagesObj[S]]
+  //  protected def viewToAuralMap: TMap[NuagesObj[S], AuralObj[S]]
+  //
+  //  protected def getAuralScanData(aural: AuralObj[S], key: String = Proc.mainOut)
+  //                                (implicit tx: S#Tx): Option[(AudioBus, Node)]
 
   // ---- impl ----
 
@@ -49,7 +47,7 @@ trait PanelImplMixer[S <: Sys[S]] {
   private val soloInfo        = Ref(Option.empty[(NuagesObj[S], Synth)])
   private val _masterSynth    = Ref(Option.empty[Synth])
 
-  protected def mkMeter(bus: AudioBus, node: Node)(fun: Double => Unit)(implicit tx: S#Tx): Synth = {
+  final def mkMeter(bus: AudioBus, node: SNode)(fun: Double => Unit)(implicit tx: S#Tx): Synth = {
     val numCh  = bus.numChannels
     val graph  = meterGraphMap.getOrElse(numCh, {
       val res = SynthGraph {
@@ -64,11 +62,12 @@ trait PanelImplMixer[S <: Sys[S]] {
       meterGraphMap += numCh -> res
       res
     })
-    val syn = Synth.play(graph, Some("meter"))(node.server.defaultGroup, addAction = addToTail,
+    val server  = node.server
+    val syn     = Synth.play(graph, Some("meter"))(server.defaultGroup, addAction = addToTail,
       dependencies = node :: Nil)
     syn.read(bus -> "in")
     val NodeID = syn.peer.id
-    val trigResp = message.Responder.add(node.server.peer) {
+    val trigResp = message.Responder.add(server.peer) {
       case message.Trigger(NodeID, 0, peak: Float) => defer(fun(peak))
     }
     // Responder.add is non-transactional. Thus, if the transaction fails, we need to remove it.
@@ -79,7 +78,7 @@ trait PanelImplMixer[S <: Sys[S]] {
     syn
   }
 
-  protected def mkMonitor(bus: AudioBus, node: Node)(fun: Vec[Double] => Unit)(implicit tx: S#Tx): Synth = {
+  protected def mkMonitor(bus: AudioBus, node: SNode)(fun: Vec[Double] => Unit)(implicit tx: S#Tx): Synth = {
     val numCh  = bus.numChannels
     val graph  = monitorGraphMap.getOrElse(numCh, {
       val res = SynthGraph {
@@ -125,28 +124,29 @@ trait PanelImplMixer[S <: Sys[S]] {
     cursor.step { implicit tx =>
       implicit val itx = tx.peer
       clearSolo()
-      if (onOff) viewToAuralMap.get(vp).foreach { auralProc =>
-        getAuralScanData(auralProc).foreach { case (bus, node) =>
-          val sg = SynthGraph {
-            import de.sciss.synth._
-            import de.sciss.synth.ugen._
-            val numIn     = bus.numChannels
-            val numOut    = outChans.size
-            // println(s"numIn = $numIn, numOut = $numOut")
-            val in        = In.ar("in".kr, numIn)
-            val amp       = "amp".kr(1f)
-            val sigOut    = SplayAz.ar(numOut, in)
-            val mix       = sigOut * amp
-            outChans.zipWithIndex.foreach { case (ch, idx) =>
-              ReplaceOut.ar(ch, mix \ idx)
-            }
-          }
-          val soloSynth = Synth.play(sg, Some("solo"))(target = node.server.defaultGroup, addAction = addToTail,
-            args = "amp" -> soloVolume() :: Nil, dependencies = node :: Nil)
-          soloSynth.read(bus -> "in")
-          soloInfo.set(Some(vp -> soloSynth))
-        }
-      }
+      if (onOff)
+//        viewToAuralMap.get(vp).foreach { auralProc =>
+//          getAuralScanData(auralProc).foreach { case (bus, node) =>
+//            val sg = SynthGraph {
+//              import de.sciss.synth._
+//              import de.sciss.synth.ugen._
+//              val numIn     = bus.numChannels
+//              val numOut    = outChans.size
+//              // println(s"numIn = $numIn, numOut = $numOut")
+//              val in        = In.ar("in".kr, numIn)
+//              val amp       = "amp".kr(1f)
+//              val sigOut    = SplayAz.ar(numOut, in)
+//              val mix       = sigOut * amp
+//              outChans.zipWithIndex.foreach { case (ch, idx) =>
+//                ReplaceOut.ar(ch, mix \ idx)
+//              }
+//            }
+//            val soloSynth = Synth.play(sg, Some("solo"))(target = node.server.defaultGroup, addAction = addToTail,
+//              args = "amp" -> soloVolume() :: Nil, dependencies = node :: Nil)
+//            soloSynth.read(bus -> "in")
+//            soloInfo.set(Some(vp -> soloSynth))
+//          }
+//        }
       deferTx(vp.soloed = onOff)
     }
   }

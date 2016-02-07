@@ -33,13 +33,13 @@ trait PanelImplReact[S <: Sys[S]] {
 
   protected def nodeMap: stm.IdentifierMap[S#ID, S#Tx, NuagesObj [S]]
 
-  protected def missingScans: stm.IdentifierMap[S#ID, S#Tx, List[NuagesAttribute[S]]]
+  // protected def missingScans: stm.IdentifierMap[S#ID, S#Tx, List[NuagesAttribute[S]]]
 
-  protected def getAuralScanData(aural: AuralObj[S], key: String = Proc.mainOut)
-                                (implicit tx: S#Tx): Option[(AudioBus, Node)]
-
-  protected def auralToViewMap: TMap[AuralObj[S], NuagesObj[S]]
-  protected def viewToAuralMap: TMap[NuagesObj[S], AuralObj[S]]
+  //  protected def getAuralScanData(aural: AuralObj[S], key: String = Proc.mainOut)
+  //                                (implicit tx: S#Tx): Option[(AudioBus, Node)]
+  //
+  //  protected def auralToViewMap: TMap[AuralObj[S], NuagesObj[S]]
+  //  protected def viewToAuralMap: TMap[NuagesObj[S], AuralObj[S]]
 
   protected def mkMeter  (bus: AudioBus, node: Node)(fun: Double => Unit)(implicit tx: S#Tx): Synth
 
@@ -98,23 +98,23 @@ trait PanelImplReact[S <: Sys[S]] {
     nodeMap.remove(id)
   }
 
-  protected final def auralObjAdded(vp: NuagesObj[S], aural: AuralObj[S])(implicit tx: S#Tx): Unit = {
-    val config = main.config
-    if (config.meters) {
-      val key = if (vp.hasOutput(Proc.mainOut)) Proc.mainOut else Proc.mainIn
-      getAuralScanData(aural, key = key).foreach { case (bus, node) =>
-        val meterSynth = mkMeter(bus, node)(vp.meterUpdate)
-        vp.meterSynth = Some(meterSynth)
-      }
-    }
-    auralToViewMap.put(aural, vp)
-    viewToAuralMap.put(vp, aural)
-  }
+//  protected final def auralObjAdded(vp: NuagesObj[S], aural: AuralObj[S])(implicit tx: S#Tx): Unit = {
+//    val config = main.config
+//    if (config.meters) {
+//      val key = if (vp.hasOutput(Proc.mainOut)) Proc.mainOut else Proc.mainIn
+//      getAuralScanData(aural, key = key).foreach { case (bus, node) =>
+//        val meterSynth = mkMeter(bus, node)(vp.meterUpdate)
+//        vp.meterSynth = Some(meterSynth)
+//      }
+//    }
+//    auralToViewMap.put(aural, vp)
+//    viewToAuralMap.put(vp, aural)
+//  }
 
-  protected final def auralObjRemoved(aural: AuralObj[S])(implicit tx: S#Tx): Unit = {
-    auralToViewMap.remove(aural).foreach { vp =>
-      viewToAuralMap.remove(vp)
-      vp.meterSynth = None
-    }
-  }
+//  protected final def auralObjRemoved(aural: AuralObj[S])(implicit tx: S#Tx): Unit = {
+//    auralToViewMap.remove(aural).foreach { vp =>
+//      viewToAuralMap.remove(vp)
+//      vp.meterSynth = None
+//    }
+//  }
 }

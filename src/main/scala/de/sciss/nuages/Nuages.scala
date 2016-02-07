@@ -84,7 +84,7 @@ object Nuages extends Obj.Type {
   }
 
   private final class ConfigBuilderImpl extends ConfigBuilder {
-    override def toString = s"Nuages.ConfigBuilder@{$hashCode().toHexString}"
+    override def toString = s"Nuages.ConfigBuilder@${hashCode().toHexString}"
 
     var masterChannels: Option[Vec[Int]] = None
     var soloChannels  : Option[Vec[Int]] = None

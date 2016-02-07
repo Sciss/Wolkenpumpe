@@ -18,7 +18,7 @@ import java.awt.geom.Point2D
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Sys, Obj, TxnLike}
 import de.sciss.lucre.swing.View
-import de.sciss.lucre.synth.{Synth, Sys => SSys, Txn}
+import de.sciss.lucre.synth.{Sys => SSys, Node => SNode, AudioBus, Synth, Txn}
 import de.sciss.nuages.impl.{PanelImpl => Impl}
 import de.sciss.synth.proc.{Output, AuralSystem, Transport, WorkspaceHandle}
 import prefuse.data.Graph
@@ -91,6 +91,8 @@ trait NuagesPanel[S <: Sys[S]] extends View[S] {
 
   def masterSynth(implicit tx: Txn): Option[Synth]
   def masterSynth_=(value: Option[Synth])(implicit tx: Txn): Unit
+
+  def mkMeter(bus: AudioBus, node: SNode)(fun: Double => Unit)(implicit tx: S#Tx): Synth
 
   /** Schedule code to be executed during paused visualization animation
     * on the EDT after the commit of the transaction.

@@ -19,9 +19,9 @@ import de.sciss.nuages.NuagesAttribute.Input
 import de.sciss.synth.proc.Output
 
 object NuagesOutput {
-  def apply[S <: SSys[S]](parent: NuagesObj[S], output: Output[S])
+  def apply[S <: SSys[S]](parent: NuagesObj[S], output: Output[S], meter: Boolean)
                         (implicit tx: S#Tx, context: NuagesContext[S]): NuagesOutput[S] =
-    impl.NuagesOutputImpl(parent, output = output)
+    impl.NuagesOutputImpl(parent, output = output, meter = meter)
 
   trait Input[S <: Sys[S]] extends NuagesAttribute.Input[S] {
     def output(implicit tx: S#Tx): Output[S]

@@ -31,7 +31,7 @@ trait PanelImplFolderInit[S <: Sys[S]] {
 
   protected var observers: List[Disposable[S#Tx]]
 
-  protected def auralObserver: Ref[Option[Disposable[S#Tx]]]
+  // protected def auralObserver: Ref[Option[Disposable[S#Tx]]]
 
   protected def removeLocationHint(obj: Obj[S])(implicit tx: S#Tx): Option[Point2D]
 
@@ -39,11 +39,11 @@ trait PanelImplFolderInit[S <: Sys[S]] {
 
   protected def nodeMap: stm.IdentifierMap[S#ID, S#Tx, NuagesObj[S]]
 
-  protected def auralObjAdded(vp: NuagesObj[S], aural: AuralObj[S])(implicit tx: S#Tx): Unit
+  //  protected def auralObjAdded(vp: NuagesObj[S], aural: AuralObj[S])(implicit tx: S#Tx): Unit
+  //
+  //  protected def auralObjRemoved(aural: AuralObj[S])(implicit tx: S#Tx): Unit
 
-  protected def auralObjRemoved(aural: AuralObj[S])(implicit tx: S#Tx): Unit
-
-  protected def disposeAuralObserver()(implicit tx: S#Tx): Unit
+  // protected def disposeAuralObserver()(implicit tx: S#Tx): Unit
 
   protected def disposeObj(obj: Obj[S])(implicit tx: S#Tx): Unit
 
@@ -53,31 +53,31 @@ trait PanelImplFolderInit[S <: Sys[S]] {
 
   final def isTimeline = false
 
-  protected final val auralReprRef = Ref(Option.empty[AuralObj.Folder[S]])
+  // protected final val auralReprRef = Ref(Option.empty[AuralObj.Folder[S]])
 
   protected final def disposeTransport()(implicit tx: S#Tx): Unit = ()
 
   final protected def initObservers(folder: Folder[S])(implicit tx: S#Tx): Unit = {
-    observers ::= transport.react { implicit tx => {
-      case Transport.ViewAdded(_, auralFolder: AuralObj.Folder[S]) =>
-        val obs = auralFolder.contents.react { implicit tx => {
-          case AuralObj.FolderLike.ViewAdded  (_, view) =>
-            val id = view.obj().id
-            nodeMap.get(id).foreach { vp =>
-              auralObjAdded(vp, view)
-            }
-          case AuralObj.FolderLike.ViewRemoved(_, view) =>
-            auralObjRemoved(view)
-        }}
-        disposeAuralObserver()
-        auralReprRef () = Some(auralFolder)
-        auralObserver() = Some(obs        )
-
-      case Transport.ViewRemoved(_, auralTL: AuralObj.Timeline[S]) =>
-        disposeAuralObserver()
-
-      case _ =>
-    }}
+//    observers ::= transport.react { implicit tx => {
+//      case Transport.ViewAdded(_, auralFolder: AuralObj.Folder[S]) =>
+//        val obs = auralFolder.contents.react { implicit tx => {
+//          case AuralObj.FolderLike.ViewAdded  (_, view) =>
+//            val id = view.obj().id
+//            nodeMap.get(id).foreach { vp =>
+//              auralObjAdded(vp, view)
+//            }
+//          case AuralObj.FolderLike.ViewRemoved(_, view) =>
+//            auralObjRemoved(view)
+//        }}
+//        disposeAuralObserver()
+//        auralReprRef () = Some(auralFolder)
+//        auralObserver() = Some(obs        )
+//
+//      case Transport.ViewRemoved(_, auralTL: AuralObj.Timeline[S]) =>
+//        disposeAuralObserver()
+//
+//      case _ =>
+//    }}
     transport.addObject(folder)
 
     observers ::= folder.changed.react { implicit tx => upd =>
@@ -98,11 +98,11 @@ trait PanelImplFolderInit[S <: Sys[S]] {
       spanValue = Span.All, spanOption = None,
       hasMeter = config.meters, hasSolo = config.soloChannels.isDefined)
 
-    auralReprRef().foreach { auralFolder =>
-      auralFolder.getView(obj).foreach { auralObj =>
-        auralObjAdded(vp, auralObj)
-      }
-    }
+    //    auralReprRef().foreach { auralFolder =>
+    //      auralFolder.getView(obj).foreach { auralObj =>
+    //        auralObjAdded(vp, auralObj)
+    //      }
+    //    }
   }
 
   private def removeNode(obj: Obj[S])(implicit tx: S#Tx): Unit = {

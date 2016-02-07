@@ -40,8 +40,7 @@ object NuagesObjImpl {
   private val colrPeak = Array.tabulate(91)(ang => new Color(IntensityPalette.apply(ang / 90f)))
 
   def apply[S <: Sys[S]](main: NuagesPanel[S], locOption: Option[Point2D], id: S#ID, obj: Obj[S],
-                         spanValue: SpanLike,
-                         spanOption: Option[SpanLikeObj[S]], hasMeter: Boolean, hasSolo: Boolean)
+                         spanValue: SpanLike, spanOption: Option[SpanLikeObj[S]], hasMeter: Boolean, hasSolo: Boolean)
                         (implicit tx: S#Tx, context: NuagesContext[S]): NuagesObj[S] = {
     val frameOffset = spanValue match {
       case hs: Span.HasStart  => hs.start
@@ -118,7 +117,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
   def hasOutput(key: String)(implicit tx: TxnLike): Boolean = outputs.contains(key)
 
   private[this] def initProc(proc: Proc[S])(implicit tx: S#Tx): Unit = {
-    proc.outputs.iterator.foreach { case (_, output) => outputAdded(output) }
+    proc.outputs.iterator.foreach(outputAdded)
 
     observers ::= proc.changed.react { implicit tx => upd =>
       upd.changes.foreach {
@@ -175,7 +174,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
     }
 
   private[this] def outputAdded(output: Output[S])(implicit tx: S#Tx): Unit = {
-    val view = NuagesOutput(this, output)
+    val view = NuagesOutput(this, output, meter = hasMeter && output.key == Proc.mainOut)
     outputs.put(output.key, view)
   }
 

@@ -17,7 +17,7 @@ import java.awt.geom.Point2D
 
 import de.sciss.lucre.expr.SpanLikeObj
 import de.sciss.lucre.stm.{Obj, Sys, TxnLike}
-import de.sciss.lucre.synth.{Synth, Sys => SSys}
+import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.span.SpanLike
 import prefuse.visual.AggregateItem
 
@@ -64,8 +64,8 @@ trait NuagesObj[S <: Sys[S]]
 
   def hasOutput(key: String)(implicit tx: TxnLike): Boolean
 
-  def meterSynth(implicit tx: S#Tx): Option[Synth]
-  def meterSynth_=(value: Option[Synth])(implicit tx: S#Tx): Unit
+  //  def meterSynth(implicit tx: S#Tx): Option[Synth]
+  //  def meterSynth_=(value: Option[Synth])(implicit tx: S#Tx): Unit
 
   //  def addCollectionAttribute(key: String, child: Obj[S])(implicit tx: S#Tx): Unit
   //

@@ -19,25 +19,26 @@ import java.awt.event.MouseEvent
 import java.awt.geom.Point2D
 
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.TxnLike
+import de.sciss.lucre.stm.{Disposable, TxnLike}
 import de.sciss.lucre.swing.requireEDT
-import de.sciss.lucre.synth.Sys
+import de.sciss.lucre.synth.{Node => SNode, Sys}
 import de.sciss.nuages.NuagesAttribute.Input
-import de.sciss.synth.proc.Output
+import de.sciss.synth.proc.{AuralContext, AuralOutput, Output, Transport}
 import prefuse.visual.VisualItem
 
 import scala.concurrent.stm.TSet
 
 object NuagesOutputImpl {
-  def apply[S <: Sys[S]](parent: NuagesObj[S], output: Output[S])
+  def apply[S <: Sys[S]](parent: NuagesObj[S], output: Output[S], meter: Boolean)
                         (implicit tx: S#Tx, context: NuagesContext[S]): NuagesOutputImpl[S] = {
-    val res = new NuagesOutputImpl(parent, tx.newHandle(output), key = output.key)
+    val res = new NuagesOutputImpl(parent, tx.newHandle(output), key = output.key, meter = meter)
     res.init(output)
   }
 }
 final class NuagesOutputImpl[S <: Sys[S]] private(val parent: NuagesObj[S],
                                                   val outputH: stm.Source[S#Tx, Output[S]],
-                                                  val key: String)(implicit context: NuagesContext[S])
+                                                  val key: String, meter: Boolean)
+                                                 (implicit context: NuagesContext[S])
   extends NuagesParamRootImpl[S] with NuagesOutput[S] {
 
   import NuagesDataImpl._
@@ -47,14 +48,15 @@ final class NuagesOutputImpl[S <: Sys[S]] private(val parent: NuagesObj[S],
 
   protected def nodeSize = 0.333333f
 
-  private val mappingsSet = TSet.empty[Input[S]]
+  private[this] val mappingsSet = TSet.empty[Input[S]]
+  private[this] val disposables = TSet.empty[Disposable[S#Tx]]
 
   def output(implicit tx: S#Tx): Output[S] = outputH()
 
   def mappings(implicit tx: S#Tx): Set[Input[S]] = mappingsSet.snapshot
 
-  def addMapping   (view: Input[S])(implicit tx: S#Tx): Unit = {
-    val res = mappingsSet.add   (view)
+  def addMapping(view: Input[S])(implicit tx: S#Tx): Unit = {
+    val res = mappingsSet.add(view)
     if (!res) throw new IllegalArgumentException(s"View $view was already registered")
   }
 
@@ -68,32 +70,27 @@ final class NuagesOutputImpl[S <: Sys[S]] private(val parent: NuagesObj[S],
   }
 
   private def init(output: Output[S])(implicit tx: S#Tx): this.type = {
-    // val map = parent.outputs
-    // map.put(key, this)(tx.peer)
     main.deferVisTx(initGUI())      // IMPORTANT: first
-//    main.scanMapPut(output.id, this)  // IMPORTANT: second
     context.putAux[NuagesOutput[S]](output.id, this)
 
-    // SCAN
-//    observers ::= output.changed.react { implicit tx => upd =>
-//      upd.changes.foreach {
-//        case Scan.Added  (sink) => withScan(sink)(addEdgeGUI(this, _))
-//        case Scan.Removed(sink) => withScan(sink)(removeEdgeGUI)
-//      }
-//    }
-//    output.iterator.foreach { sink =>
-//      withScan(sink)(addEdgeGUI(this, _))
-//    }
+    if (meter) {
+      val t = main.transport
+      val obs = t.react { implicit tx => {
+        case Transport.AuralStarted(_, auralContext) =>
+        case _ =>
+      }}
+      disposables.add(obs)
+      t.contextOption.foreach(auralStarted)
+    }
+
     this
   }
 
   def dispose()(implicit tx: S#Tx): Unit = {
-    // val map = parent.outputs
-    // map.remove(key)(tx.peer)
-    // main.scanMapRemove(output.id)
+    disposables.foreach(_.dispose())
+    disposables.clear()
     mappingsSet.clear()
     context.removeAux(output.id)
-//    observers.foreach(_.dispose())
     main.deferVisTx(disposeGUI())
   }
 
@@ -114,4 +111,22 @@ final class NuagesOutputImpl[S <: Sys[S]] private(val parent: NuagesObj[S],
 
   protected def renderDetail(g: Graphics2D, vi: VisualItem): Unit =
     drawName(g, vi, diam * vi.getSize.toFloat * 0.5f)
+
+  private[this] def auralOutputAdded(auralOutput: AuralOutput[S])(implicit tx: S#Tx): Unit = {
+    val bus   = auralOutput.bus
+    val node  = auralOutput.view.nodeOption.fold[SNode](bus.server.defaultGroup)(_.node)
+    val syn   = main.mkMeter(bus = bus, node = node)(parent.meterUpdate)
+    disposables.add(syn)
+  }
+
+  private[this] def auralStarted(auralContext: AuralContext[S])(implicit tx: S#Tx): Unit = {
+    val id = output.id
+    auralContext.getAux[AuralOutput[S]](id).fold[Unit] {
+      val obs = auralContext.observeAux[AuralOutput[S]](id) { implicit tx => {
+        case AuralContext.AuxAdded(_, auralOutput) => auralOutputAdded(auralOutput)
+        // case AuralContext.AuxRemoved(_, auralOutput) => auralOutputRemoved(auralOutput)
+      }}
+      disposables.add(obs)
+    } (auralOutputAdded)
+  }
 }
