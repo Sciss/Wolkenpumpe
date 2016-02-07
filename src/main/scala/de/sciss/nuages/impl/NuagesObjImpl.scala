@@ -132,8 +132,8 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
     attr.iterator.foreach { case (key, obj) => attrAdded(key, obj) }
     observers ::= attr.changed.react { implicit tx => upd =>
       upd.changes.foreach {
-        case Obj.AttrAdded  (key, obj) => attrAdded(key, obj)
-        case Obj.AttrRemoved(key, obj) => attrRemoved(key)
+        case Obj.AttrAdded   (key, obj)         => attrAdded   (key, obj)
+        case Obj.AttrRemoved (key, obj)         => attrRemoved (key)
         case Obj.AttrReplaced(key, before, now) => attrReplaced(key, before = before, now = now)
       }
     }
@@ -143,6 +143,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
     if (isAttrShown(key)) {
       val view = NuagesAttribute(key = key, value = value, parent = parent)
       val res  = attrs.put(key, view)
+      auralRef().foreach(view.auralObjAdded)
       assert(res.isEmpty)
     }
 
@@ -177,6 +178,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
   private[this] def outputAdded(output: Output[S])(implicit tx: S#Tx): Unit = {
     val view = NuagesOutput(this, output, meter = hasMeter && output.key == Proc.mainOut)
     outputs.put(output.key, view)
+    auralRef().foreach(view.auralObjAdded)
   }
 
   private[this] def outputRemoved(output: Output[S])(implicit tx: S#Tx): Unit = {
@@ -267,13 +269,22 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
     lastUpdate  = time
   }
 
+  private[this] val auralRef = Ref(Option.empty[AuralObj.Proc[S]])
+
   def auralObjAdded  (aural: AuralObj[S])(implicit tx: S#Tx): Unit = aural match {
-    case ap: AuralObj.Proc[S] => outputs.foreach(_._2.auralObjAdded  (ap))
+    case ap: AuralObj.Proc[S] =>
+      outputs.foreach(_._2.auralObjAdded  (ap))
+      attrs  .foreach(_._2.auralObjAdded  (ap))
+      auralRef() = Some(ap)
+
     case _ =>
   }
 
   def auralObjRemoved(aural: AuralObj[S])(implicit tx: S#Tx): Unit = aural match {
-    case ap: AuralObj.Proc[S] => outputs.foreach(_._2.auralObjRemoved(ap))
+    case ap: AuralObj.Proc[S] =>
+      outputs.foreach(_._2.auralObjRemoved(ap))
+      attrs  .foreach(_._2.auralObjRemoved(ap))
+      auralRef() = None
     case _ =>
   }
 

@@ -34,7 +34,4 @@ trait NuagesOutput[S <: Sys[S]] extends NuagesParam[S] with NuagesNode[S] {
   def removeMapping(view: Input[S])(implicit tx: S#Tx): Unit
 
   def output(implicit tx: S#Tx): Output[S]
-
-  def auralObjAdded  (aural: AuralObj.Proc[S])(implicit tx: S#Tx): Unit
-  def auralObjRemoved(aural: AuralObj.Proc[S])(implicit tx: S#Tx): Unit
 }

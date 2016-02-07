@@ -14,6 +14,7 @@
 package de.sciss.nuages
 
 import de.sciss.lucre.stm.Sys
+import de.sciss.synth.proc.AuralObj
 
 trait NuagesParam[S <: Sys[S]] extends NuagesData[S] {
   // ---- methods to be called on the EDT ----
@@ -22,4 +23,7 @@ trait NuagesParam[S <: Sys[S]] extends NuagesData[S] {
 
   /** The scan or attribute key in `parent` to point to this component. */
   def key: String
+
+  def auralObjAdded  (aural: AuralObj.Proc[S])(implicit tx: S#Tx): Unit
+  def auralObjRemoved(aural: AuralObj.Proc[S])(implicit tx: S#Tx): Unit
 }

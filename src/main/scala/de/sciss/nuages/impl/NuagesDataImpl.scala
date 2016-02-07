@@ -50,6 +50,16 @@ object NuagesDataImpl {
   final val margin2       = margin * 2
 
   final val threeDigits   = new MathContext(3, RoundingMode.HALF_UP)
+
+  /** Changes `gLine`. */
+  def setSpine(v: Double): Unit = {
+    val ang   = ((1.0 - v) * 1.5 - 0.25) * math.Pi
+    val cos   = math.cos(ang)
+    val sin   = math.sin(ang)
+    val x0    = (1 + cos) * diam05
+    val y0    = (1 - sin) * diam05
+    gLine.setLine(x0, y0, x0 - (cos * diam * 0.2), y0 + (sin * diam * 0.2))
+  }
 }
 trait NuagesDataImpl[S <: Sys[S]] extends NuagesData[S] {
   import NuagesDataImpl._

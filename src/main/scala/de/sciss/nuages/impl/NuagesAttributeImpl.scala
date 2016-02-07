@@ -21,7 +21,9 @@ import de.sciss.lucre.stm.{Obj, Sys}
 import de.sciss.lucre.swing.requireEDT
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.nuages.NuagesAttribute.{Factory, Input, Parent}
+import de.sciss.nuages.NuagesPanel.GROUP_GRAPH
 import de.sciss.span.Span
+import de.sciss.synth.proc.AuralObj.Proc
 import de.sciss.synth.proc.{TimeRef, Folder, Grapheme, Output, Timeline}
 import prefuse.data.{Edge => PEdge, Node => PNode}
 import prefuse.visual.VisualItem
@@ -38,13 +40,6 @@ object NuagesAttributeImpl {
   }
 
   def factories: Iterable[Factory] = map.values
-
-//  def apply[S <: SSys[S]](key: String, value: Obj[S], parent: NuagesObj[S])
-//                        (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute[S] =
-//    tryApply(key, value, parent).getOrElse {
-//      val tid = value.tpe.typeID
-//      throw new IllegalArgumentException(s"No NuagesAttribute available for $key / $value / type 0x${tid.toHexString}")
-//    }
 
   def apply[S <: SSys[S]](key: String, _value: Obj[S], parent: NuagesObj[S])
                          (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute[S] = {
@@ -69,12 +64,6 @@ object NuagesAttributeImpl {
     val opt = map.get(tid)
     opt
   }
-
-  //  private[this] def withFactory[S <: Sys[S], A](value: Obj[S])(fun: FactoryR[_] => A): Option[A] = {
-  //    val tid = value.tpe.typeID
-  //    val opt = map.get(tid)
-  //    opt.map(f => fun(f.asInstanceOf[FactoryR[_]]))
-  //  }
 
   private[this] var map = Map[Int, Factory](
     IntObj      .typeID -> NuagesIntAttrInput,
@@ -123,7 +112,7 @@ object NuagesAttributeImpl {
 
     // ... methods ...
 
-    final def isControl: Boolean = key != "in"  // XXX TODO --- not cool
+    final val isControl: Boolean = key != "in"  // XXX TODO --- not cool
 
     // loop
 
@@ -151,7 +140,7 @@ object NuagesAttributeImpl {
 
     override def toString = s"NuagesAttribute($parent, $key)"
 
-    private[this] def nodeSize = 0.333333f
+    private[this] def nodeSize = if (isControl) 1f else 0.333333f
 
     private[this] def currentOffset()(implicit tx: S#Tx): Long = {
       val fr = parent.frameOffset
@@ -293,13 +282,13 @@ object NuagesAttributeImpl {
       def mkSummary() = {
         val ns  = g.addNode()
         val vis = main.visualization
-        val vi  = vis.getVisualItem(NuagesPanel.GROUP_GRAPH, ns)
+        val vi  = vis.getVisualItem(GROUP_GRAPH, ns)
         vi.set(NuagesPanel.COL_NUAGES, this)
         val sz  = nodeSize
         if (sz != 1.0f) vi.set(VisualItem.SIZE, sz)
         val ei  = g.addEdge(ns, parent.pNode)
         val ee  = g.addEdge(n , ns)
-        val pVi = vis.getVisualItem(NuagesPanel.GROUP_GRAPH, parent.pNode)
+        val pVi = vis.getVisualItem(GROUP_GRAPH, parent.pNode)
         vi.setEndX(pVi.getEndX)
         vi.setEndY(pVi.getEndY)
         addAggr(ns)
@@ -335,8 +324,8 @@ object NuagesAttributeImpl {
         require (!_freeNodes.contains(n))
         _freeNodes  += n -> newEdge
         val vis = main.visualization
-        val pVi = vis.getVisualItem(NuagesPanel.GROUP_GRAPH, parent.pNode)
-        val vi  = vis.getVisualItem(NuagesPanel.GROUP_GRAPH, n)
+        val pVi = vis.getVisualItem(GROUP_GRAPH, parent.pNode)
+        val vi  = vis.getVisualItem(GROUP_GRAPH, n)
         vi.setEndX(pVi.getEndX)
         vi.setEndY(pVi.getEndY)
       } else {
@@ -346,7 +335,7 @@ object NuagesAttributeImpl {
     }
 
     private[this] def removeAggr(n: PNode): Unit = {
-      val vi = main.visualization.getVisualItem(NuagesPanel.GROUP_GRAPH, n)
+      val vi = main.visualization.getVisualItem(GROUP_GRAPH, n)
       logAggr(s"rem $vi@${vi.hashCode.toHexString} - $this")
       // VALIDATE_AGGR("before removeAggr")
       assert(parent.aggr.containsItem(vi))
@@ -355,7 +344,7 @@ object NuagesAttributeImpl {
     }
 
     private[this] def addAggr(n: PNode): Unit = {
-      val vi = main.visualization.getVisualItem(NuagesPanel.GROUP_GRAPH, n)
+      val vi = main.visualization.getVisualItem(GROUP_GRAPH, n)
       logAggr(s"add $vi${vi.hashCode.toHexString} - $this")
       // VALIDATE_AGGR("before empty>free")
       assert(!parent.aggr.containsItem(vi))
@@ -388,7 +377,7 @@ object NuagesAttributeImpl {
           if (numFree > 1) prev else {
             g.removeEdge(es)
             removeAggr(ns)
-            val vi = main.visualization.getVisualItem(NuagesPanel.GROUP_GRAPH, ns)
+            val vi = main.visualization.getVisualItem(GROUP_GRAPH, ns)
             g.removeNode(ns)
             assert(!vi.isValid)
             assert(!attribute.parent.aggr.containsItem(vi))
@@ -413,25 +402,14 @@ object NuagesAttributeImpl {
 
     def dispose()(implicit tx: S#Tx): Unit = {
       inputView.dispose()
-      // parent.params.remove(key)
     }
 
-//    private[this] def VALIDATE_AGGR(name: String): Unit = {
-//      require (AGGR_LOCK)
-//      val m_vis = main.visualization
-//      val aggr  = m_vis.getGroup(PanelImpl.AGGR_PROC) // .asInstanceOf[ AggregateTable ]
-//      if (aggr.getTupleCount == 0) return // do we have any to process?
-//
-////      println(s"VALIDATE_AGGR begin $name - $aggr@${aggr.hashCode.toHexString}")
-//      var maxSz = 0
-//      val iter1 = aggr.tuples()
-//      while (iter1.hasNext) {
-//        val item = iter1.next().asInstanceOf[AggregateItem]
-////        println(s"...$item@${item.hashCode.toHexString}")
-//        maxSz = math.max(maxSz, 4 * 2 * item.getAggregateSize)
-//      }
-////      println(s"maxSz = $maxSz")
-////      println(s"VALIDATE_AGGR end   $name")
-//    }
+    def auralObjAdded  (aural: Proc[S])(implicit tx: S#Tx): Unit = {
+      // XXX TODO
+    }
+
+    def auralObjRemoved(aural: Proc[S])(implicit tx: S#Tx): Unit = {
+      // XXX TODO
+    }
   }
 }

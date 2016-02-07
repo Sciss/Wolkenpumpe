@@ -14,23 +14,21 @@
 package de.sciss.nuages
 package impl
 
+import java.awt.Graphics2D
 import java.awt.event.MouseEvent
-import java.awt.geom.{Arc2D, Area, GeneralPath, Point2D}
-import java.awt.{Graphics2D, Shape}
+import java.awt.geom.{Arc2D, Area, Point2D}
 
 import de.sciss.lucre.expr.{Expr, Type}
-import de.sciss.lucre.stm.{TxnLike, Obj, Disposable, Sys}
+import de.sciss.lucre.stm.{Disposable, Obj, Sys, TxnLike}
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.lucre.{expr, stm}
 import de.sciss.nuages.NuagesAttribute.{Input, Parent}
 import prefuse.data.{Node => PNode}
-import prefuse.util.ColorLib
 import prefuse.visual.VisualItem
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm.Ref
 import scala.language.higherKinds
-import scala.util.control.NonFatal
 
 object NuagesAttrInputImpl {
   private final class Drag(val angStart: Double, val valueStart: Vec[Double], val instant: Boolean) {
@@ -38,7 +36,7 @@ object NuagesAttrInputImpl {
   }
 }
 trait NuagesAttrInputImpl[S <: SSys[S]]
-  extends NuagesDataImpl[S]
+  extends RenderAttrValue[S]
   with AttrInputKeyControl[S]
   with NuagesAttrInputBase[S] {
 
@@ -48,15 +46,11 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
 
   // ---- abstract ----
 
-  type A
-
   type Ex[~ <: Sys[~]] <: expr.Expr[~, A]
 
   protected def tpe: Type.Expr[A, Ex]
 
   protected def mkConst(v: Vec[Double])(implicit tx: S#Tx): Ex[S] with Expr.Const[S, A]
-
-  protected def renderValueUpdated(): Unit
 
   protected def valueText(v: Vec[Double]): String
 
@@ -64,23 +58,15 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
 
   // ---- impl ----
 
-  final protected var renderedValue: A = null.asInstanceOf[A] // invalidRenderedValue
-
-  private[this] var renderedValid: Boolean = false
-
-  @volatile
-  protected final var valueA: A = _
-
   final protected def nodeSize = 1f
 
   private[this] val containerArea   = new Area()
-  protected final val valueArea     = new Area()
 
   private[this] var drag: Drag      = null
 
   private[this] val objH = Ref.make[(stm.Source[S#Tx, Ex[S]], Disposable[S#Tx])]()  // object and its observer
 
-  private[this] def spec: ParamSpec = attribute.spec
+  protected final def spec: ParamSpec = attribute.spec
 
   final def main: NuagesPanel[S]  = attribute.parent.main
 
@@ -107,42 +93,10 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
       val Var(vr) = before
       vr() = nowConst
     }
-    //    val attr = parent.obj.attr
-    //    val vc   = DoubleObj.newConst[S](v.head)
-    //    attr.$[DoubleObj](key) match {
-    //      case Some(DoubleObj.Var(vr)) => vr() = vc
-    //      case _ => attr.put(key, DoubleObj.newVar(vc))
-    //    }
   }
 
-  private[this] val spikes: Shape = if (spec.warp == IntWarp) {
-    val loInt = spec.map(0.0).toInt
-    val hiInt = spec.map(1.0).toInt
-    val sz    = hiInt - loInt
-    if (sz > 1 && sz <= 33) { // at least one spike and ignore if too many
-    val res = new GeneralPath
-      var i = loInt + 1
-      while (i < hiInt) {
-        val v = spec.inverseMap(i)
-        // println(s"spike($i) = $v")
-        setSpine(v)
-        res.append(gLine, false)
-        i += 1
-      }
-      res
-    } else null
-  } else null
-
   // use only on the EDT
-  private[this] var editable: Boolean = _
-
-  final protected def updateValueAndRefresh(v: A)(implicit tx: S#Tx): Unit =
-    main.deferVisTx {
-      valueA = v
-      val _vis = main.visualization
-      val visItem = _vis.getVisualItem(NuagesPanel.GROUP_GRAPH, pNode)
-      _vis.damageReport(visItem, visItem.getBounds)
-    }
+  protected final var editable: Boolean = _
 
   def dispose()(implicit tx: S#Tx): Unit = {
     objH()._2.dispose()
@@ -160,6 +114,9 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
     // val aggr = attribute.parent.aggr
     // assert(!aggr.containsItem(vi), s"still in aggr $aggr@${aggr.hashCode.toHexString}: $vi@${vi.hashCode.toHexString}")
   }
+
+  private[this] def updateValueAndRefresh(v: A)(implicit tx: S#Tx): Unit =
+    main.deferVisTx(updateValueAndRefreshVis(v, pNode))
 
   def tryConsume(newOffset: Long, to: Obj[S])(implicit tx: S#Tx): Boolean = to.tpe == this.tpe && {
     val newObj = to.asInstanceOf[Ex[S]]
@@ -228,18 +185,9 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
     } else false
   }
 
-//  final def removeMapping()(implicit tx: S#Tx): Unit = setControlTxn(value)
-
   protected final def setControl(v: Vec[Double], instant: Boolean): Unit =
     atomic { implicit tx =>
-      // try {
       setControlTxn(v)
-      //      } catch {
-      //        case NonFatal(ex) =>
-      //          println(s"WTF? $this.setControl($v)")
-      //          ex.printStackTrace()
-      //          throw ex
-      //      }
     }
 
   final override def itemDragged(vi: VisualItem, e: MouseEvent, pt: Point2D): Unit =
@@ -279,26 +227,7 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
     renderedValid = false
   }
 
-  // changes `gLine`
-  final protected def setSpine(v: Double): Unit = {
-    val ang   = ((1.0 - v) * 1.5 - 0.25) * math.Pi
-    val cos   = math.cos(ang)
-    val sin   = math.sin(ang)
-    val x0    = (1 + cos) * diam05
-    val y0    = (1 - sin) * diam05
-    gLine.setLine(x0, y0, x0 - (cos * diam * 0.2), y0 + (sin * diam * 0.2))
-  }
-
-  final protected def renderDetail(g: Graphics2D, vi: VisualItem): Unit = {
-    val v = valueA // .currentApprox
-    if (!renderedValid || renderedValue != v) {
-      renderedValue = v
-      renderValueUpdated()
-      renderedValid = true
-    }
-
-    g.setColor(if (editable) colrManual else colrMapped)
-    g.fill(valueArea)
+  protected def renderDrag(g: Graphics2D): Unit = {
     val isDrag = drag != null
     if (isDrag) {
       if (!drag.instant) {
@@ -309,38 +238,11 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
         g.setStroke(strkOrig)
       }
     }
-    g.setColor(ColorLib.getColor(vi.getStrokeColor))
-    g.draw(gp)
+  }
 
-    if (spikes != null) {
-      val strkOrig = g.getStroke
-      g.setStroke(strkDotted)
-      g.draw(spikes)
-      g.setStroke(strkOrig)
-    }
-
+  final protected def renderDetail(g: Graphics2D, vi: VisualItem): Unit = {
+    renderValueDetail(g, vi)
+    val isDrag = drag != null
     drawLabel(g, vi, diam * vi.getSize.toFloat * 0.33333f, if (isDrag) valueText(drag.dragValue) else name)
-  }
-
-  final protected def renderValueUpdated1(v: Double): Unit = {
-    val vc        = math.max(0, math.min(1, v))
-    val angExtent = (vc * 270).toInt
-    val angStart  = 225 - angExtent
-    // val pValArc   = new Arc2D.Double(0, 0, r.getWidth, r.getHeight, angStart, angExtent, Arc2D.PIE)
-    gArc.setArc(0, 0, r.getWidth, r.getHeight, angStart, angExtent, Arc2D.PIE)
-    valueArea.reset()
-    valueArea.add(new Area(gArc))
-    valueArea.subtract(new Area(innerE))
-  }
-
-  final protected def valueText1(v: Double): String = {
-    val m = spec.map(v)
-    if (spec.warp == IntWarp) m.toInt.toString
-    else {
-      if (m == Double.PositiveInfinity) "Inf"
-      else if (m == Double.NegativeInfinity) "-Inf"
-      else if (java.lang.Double.isNaN(m)) "NaN"
-      else new java.math.BigDecimal(m, threeDigits).toPlainString
-    }
   }
 }

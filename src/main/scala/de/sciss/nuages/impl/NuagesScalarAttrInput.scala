@@ -22,29 +22,33 @@ import de.sciss.lucre.synth.Sys
 import scala.collection.immutable.{IndexedSeq => Vec}
 
 trait NuagesScalarAttrInput[S <: Sys[S]] extends NuagesAttrInputImpl[S] {
+  // ---- abstract ----
+
   protected def toDouble  (in: A     ): Double
   protected def fromDouble(in: Double): A
 
-  def value: Vec[Double] = Vector(toDouble(valueA))
+  // ---- impl ----
 
-  protected def mkConst(v: Vec[Double])(implicit tx: S#Tx): Ex[S] with Expr.Const[S, A] = {
+  final def value: Vec[Double] = Vector(toDouble(valueA))
+
+  protected final def mkConst(v: Vec[Double])(implicit tx: S#Tx): Ex[S] with Expr.Const[S, A] = {
     require(v.size == 1)
     tpe.newConst(fromDouble(v(0)))
   }
 
   // def tryMigrate(to: Obj[S])(implicit tx: S#Tx): Boolean = ...
 
-  def numChannels = 1
+  final def numChannels = 1
 
-  def numChildren(implicit tx: S#Tx): Int = 1
+  final def numChildren(implicit tx: S#Tx): Int = 1
 
-  import NuagesDataImpl.gLine
+  import NuagesDataImpl.{gLine, setSpine}
 
-  protected def renderValueUpdated(): Unit = renderValueUpdated1(toDouble(renderedValue))
+  protected final def renderValueUpdated(): Unit = renderValueUpdated1(toDouble(renderedValue))
 
-  protected def valueText(v: Vec[Double]): String = valueText1(v.head)
+  protected final def valueText(v: Vec[Double]): String = valueText1(v.head)
 
-  protected def drawAdjust(g: Graphics2D, v: Vec[Double]): Unit = {
+  protected final def drawAdjust(g: Graphics2D, v: Vec[Double]): Unit = {
     setSpine(v.head)
     g.draw(gLine)
   }
