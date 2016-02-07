@@ -17,18 +17,19 @@ package impl
 import java.awt.Graphics2D
 
 import de.sciss.lucre.expr.{BooleanObj, DoubleObj, DoubleVector, IntObj, LongObj, SpanLikeObj}
-import de.sciss.lucre.stm.{Obj, Sys}
+import de.sciss.lucre.stm.{TxnLike, Disposable, Obj, Sys}
 import de.sciss.lucre.swing.requireEDT
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.nuages.NuagesAttribute.{Factory, Input, Parent}
 import de.sciss.nuages.NuagesPanel.GROUP_GRAPH
 import de.sciss.span.Span
 import de.sciss.synth.proc.AuralObj.Proc
-import de.sciss.synth.proc.{TimeRef, Folder, Grapheme, Output, Timeline}
+import de.sciss.synth.proc.{AuralView, AuralObj, AuralAttribute, TimeRef, Folder, Grapheme, Output, Timeline}
 import prefuse.data.{Edge => PEdge, Node => PNode}
 import prefuse.visual.VisualItem
 
 import scala.collection.immutable.{IndexedSeq => Vec}
+import scala.concurrent.stm.Ref
 import scala.swing.Color
 
 object NuagesAttributeImpl {
@@ -48,7 +49,6 @@ object NuagesAttributeImpl {
     val _frameOffset  = parent.frameOffset
     val res = new Impl[S](parent = parent, key = key, spec = spec) { self =>
       protected val inputView = mkInput(attr = self, parent = self, frameOffset = _frameOffset, value = _value)
-      // valueA = Vector(0.0)  // XXX TODO
     }
     res
   }
@@ -86,8 +86,6 @@ object NuagesAttributeImpl {
   def getSpec[S <: Sys[S]](parent: NuagesObj[S], key: String)(implicit tx: S#Tx): ParamSpec =
     parent.obj.attr.$[ParamSpec.Obj](s"$key-${ParamSpec.Key}").map(_.value).getOrElse(defaultSpec)
 
-//  private final val scanValue = Vector(0.5): Vec[Double] // XXX TODO
-
   // updated on EDT
   private sealed trait State {
     def isSummary: Boolean
@@ -103,6 +101,8 @@ object NuagesAttributeImpl {
   private abstract class Impl[S <: SSys[S]](val parent: NuagesObj[S], val key: String, val spec: ParamSpec)
     extends RenderAttrDoubleVec[S] with NuagesParamImpl[S] with NuagesAttribute[S] { self =>
 
+    import TxnLike.peer
+
     // ---- abstract ----
 
     protected def inputView: NuagesAttribute.Input[S]
@@ -111,9 +111,15 @@ object NuagesAttributeImpl {
 
     // ... state ...
 
-    private[this] var _state      = EmptyState: State
-    private[this] var _freeNodes  = Map.empty[PNode, PEdge]
-    private[this] var _boundNodes = Map.empty[PNode, PEdge]
+    // edt
+    private[this] var _state        = EmptyState: State
+    private[this] var _freeNodes    = Map.empty[PNode, PEdge]
+    private[this] var _boundNodes   = Map.empty[PNode, PEdge]
+
+    // txn
+    private[this] val auralObjObs   = Ref(Disposable.empty[S#Tx])
+    private[this] val auralAttrObs  = Ref(Disposable.empty[S#Tx])
+    private[this] val auralTgtObs   = Ref(Disposable.empty[S#Tx])
 
     // ... methods ...
 
@@ -170,7 +176,6 @@ object NuagesAttributeImpl {
           .map { newInput =>
             val res = new Impl[S](parent = parent, key = key, spec = spec) {
               protected val inputView = newInput
-              // valueA = Vector(0.0)  // XXX TODO
             }
             main.deferVisTx {
               res.initReplace(self._state, freeNodes = self._freeNodes, boundNodes = self._boundNodes)
@@ -424,15 +429,54 @@ object NuagesAttributeImpl {
     protected def valueColor: Color = colrMapped
 
     def dispose()(implicit tx: S#Tx): Unit = {
+      auralObjRemoved()
       inputView.dispose()
     }
 
-    def auralObjAdded  (aural: Proc[S])(implicit tx: S#Tx): Unit = {
-      // XXX TODO
+    private[this] def setAuralValue(v: AuralAttribute.Value)(implicit tx: S#Tx): Unit = {
+      // println(f"$key%-6s - aural value = $v")
     }
 
-    def auralObjRemoved(aural: Proc[S])(implicit tx: S#Tx): Unit = {
-      // XXX TODO
+    private[this] def checkAuralTarget(aa: AuralAttribute[S])(implicit tx: S#Tx): Unit =
+      aa.targetOption.foreach { tgt =>
+        tgt.valueOption.foreach(setAuralValue)
+        val obs = tgt.react { implicit tx => setAuralValue }
+        auralTgtObs.swap(obs).dispose()
+      }
+
+    private[this] def auralTgtRemoved()(implicit tx: S#Tx): Unit =
+      auralTgtObs.swap(Disposable.empty).dispose()
+
+    private[this] def auralAttrAdded(aa: AuralAttribute[S])(implicit tx: S#Tx): Unit = {
+      checkAuralTarget(aa)
+      val obs = aa.react { implicit tx => {
+        case AuralView.Playing => checkAuralTarget(aa)
+        case AuralView.Stopped => auralTgtRemoved()
+        case _ =>
+      }}
+      auralAttrObs.swap(obs).dispose()
     }
+
+    private[this] def auralAttrRemoved()(implicit tx: S#Tx): Unit = {
+      auralTgtRemoved()
+      auralAttrObs.swap(Disposable.empty).dispose()
+    }
+
+    def auralObjAdded(aural: Proc[S])(implicit tx: S#Tx): Unit = if (isControl) {
+      aural.getAttr(key).foreach(auralAttrAdded)
+      val obs = aural.ports.react { implicit tx => {
+        case AuralObj.Proc.AttrAdded  (_, aa) if aa.key == key => auralAttrAdded(aa)
+        case AuralObj.Proc.AttrRemoved(_, aa) if aa.key == key => auralAttrRemoved()
+        case _ =>
+      }}
+      auralObjObs.swap(obs).dispose()
+    }
+
+    private[this] def auralObjRemoved()(implicit tx: S#Tx): Unit = if (isControl) {
+      auralAttrRemoved()
+      auralObjObs.swap(Disposable.empty).dispose()
+    }
+
+    def auralObjRemoved(aural: Proc[S])(implicit tx: S#Tx): Unit = auralObjRemoved()
   }
 }
