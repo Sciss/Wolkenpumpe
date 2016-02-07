@@ -19,6 +19,7 @@ import de.sciss.lucre.expr.SpanLikeObj
 import de.sciss.lucre.stm.{Obj, Sys, TxnLike}
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.span.SpanLike
+import de.sciss.synth.proc.AuralObj
 import prefuse.visual.AggregateItem
 
 object NuagesObj {
@@ -64,16 +65,6 @@ trait NuagesObj[S <: Sys[S]]
 
   def hasOutput(key: String)(implicit tx: TxnLike): Boolean
 
-  //  def meterSynth(implicit tx: S#Tx): Option[Synth]
-  //  def meterSynth_=(value: Option[Synth])(implicit tx: S#Tx): Unit
-
-  //  def addCollectionAttribute(key: String, child: Obj[S])(implicit tx: S#Tx): Unit
-  //
-  //    /** Removes a child from the attribute map of this view's object.
-  //    * If the value currently stored with the attribute map is a collection,
-  //    * tries to smartly remove the child from that collection.
-  //    *
-  //    * @return `true` if the child was found and removed.
-  //    */
-  //  def removeCollectionAttribute(key: String, child: Obj[S])(implicit tx: S#Tx): Boolean
+  def auralObjAdded  (aural: AuralObj[S])(implicit tx: S#Tx): Unit
+  def auralObjRemoved(aural: AuralObj[S])(implicit tx: S#Tx): Unit
 }

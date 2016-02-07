@@ -32,7 +32,7 @@ trait PanelImplTimelineInit[S <: Sys[S]] extends NuagesTimelineBase[S] {
 
   protected var observers: List[Disposable[S#Tx]]
 
-  // protected def auralObserver: Ref[Option[Disposable[S#Tx]]]
+  protected def auralObserver: Ref[Option[Disposable[S#Tx]]]
 
   protected def removeLocationHint(obj: Obj[S])(implicit tx: S#Tx): Option[Point2D]
 
@@ -41,8 +41,8 @@ trait PanelImplTimelineInit[S <: Sys[S]] extends NuagesTimelineBase[S] {
   //  protected def auralObjAdded(vp: NuagesObj[S], aural: AuralObj[S])(implicit tx: S#Tx): Unit
   //
   //  protected def auralObjRemoved(aural: AuralObj[S])(implicit tx: S#Tx): Unit
-  //
-  //  protected def disposeAuralObserver()(implicit tx: S#Tx): Unit
+
+  protected def disposeAuralObserver()(implicit tx: S#Tx): Unit
 
   protected def disposeObj(obj: Obj[S])(implicit tx: S#Tx): Unit
 
@@ -52,7 +52,7 @@ trait PanelImplTimelineInit[S <: Sys[S]] extends NuagesTimelineBase[S] {
 
   final def isTimeline = true
 
-  // protected final val auralReprRef = Ref(Option.empty[AuralObj.Timeline[S]])
+  protected final val auralReprRef = Ref(Option.empty[AuralObj.Timeline[S]])
 
   protected final var timelineH: stm.Source[S#Tx, Timeline[S]] = _
 
@@ -60,25 +60,27 @@ trait PanelImplTimelineInit[S <: Sys[S]] extends NuagesTimelineBase[S] {
     timelineH = tx.newHandle(timeline)
 
     val t = transport
-//    observers ::= t.react { implicit tx => {
-//      case Transport.ViewAdded(_, auralTimeline: AuralObj.Timeline[S]) =>
-//        val obs = auralTimeline.contents.react { implicit tx => {
-//          case AuralObj.Timeline.ViewAdded  (_, timed, view) =>
-//            nodeMap.get(timed).foreach { vp =>
-//              auralObjAdded(vp, view)
-//            }
-//          case AuralObj.Timeline.ViewRemoved(_, view) =>
-//            auralObjRemoved(view)
-//        }}
-//        disposeAuralObserver()
-//        auralReprRef () = Some(auralTimeline)
-//        auralObserver() = Some(obs          )
-//
-//      case Transport.ViewRemoved(_, auralTL: AuralObj.Timeline[S]) =>
-//        disposeAuralObserver()
-//
-//      case _ =>
-//    }}
+    observers ::= t.react { implicit tx => {
+      case Transport.ViewAdded(_, auralTimeline: AuralObj.Timeline[S]) =>
+        val obs = auralTimeline.contents.react { implicit tx => {
+          case AuralObj.Container.ViewAdded  (_, id, view) =>
+            nodeMap.get(id).foreach { vp =>
+              vp.auralObjAdded(view)
+            }
+          case AuralObj.Container.ViewRemoved(_, id, view) =>
+            nodeMap.get(id).foreach { vp =>
+              vp.auralObjRemoved(view)
+            }
+        }}
+        disposeAuralObserver()
+        auralReprRef () = Some(auralTimeline)
+        auralObserver() = Some(obs          )
+
+      case Transport.ViewRemoved(_, auralTL: AuralObj.Timeline[S]) =>
+        disposeAuralObserver()
+
+      case _ =>
+    }}
     t.addObject(timeline)
 
     initTimeline(timeline)
@@ -97,12 +99,12 @@ trait PanelImplTimelineInit[S <: Sys[S]] extends NuagesTimelineBase[S] {
       spanValue = span, spanOption = Some(timed.span),
       hasMeter = config.meters, hasSolo = config.soloChannels.isDefined)
 
-//    for {
-//      auralTimeline <- auralReprRef()
-//      auralObj      <- auralTimeline.getView(timed)
-//    } {
-//      auralObjAdded(vp, auralObj)
-//    }
+    for {
+      auralTimeline <- auralReprRef()
+      auralObj      <- auralTimeline.getView(timed)
+    } {
+      vp.auralObjAdded(auralObj)
+    }
   }
 
   protected final def removeNode(span: SpanLike, timed: Timed[S])(implicit tx: S#Tx): Unit = {

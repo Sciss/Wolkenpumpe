@@ -172,7 +172,7 @@ trait PanelImpl[S <: Sys[S], Repr <: Obj[S], AuralRepr <: AuralObj[S]]
 
   protected def nuagesH: stm.Source[S#Tx, Nuages[S]]
 
-  // protected def auralReprRef: Ref[Option[AuralRepr]]
+  protected def auralReprRef: Ref[Option[AuralRepr]]
 
   protected def disposeTransport()(implicit tx: S#Tx): Unit
 
@@ -183,7 +183,7 @@ trait PanelImpl[S <: Sys[S], Repr <: Obj[S], AuralRepr <: AuralObj[S]]
   protected final def main: NuagesPanel[S] = this
 
   protected final var observers     = List.empty[Disposable[S#Tx]]
-  // protected final val auralObserver = Ref(Option.empty[Disposable[S#Tx]])
+  protected final val auralObserver = Ref(Option.empty[Disposable[S#Tx]])
 
   //  protected final val auralToViewMap  = TMap.empty[AuralObj [S], NuagesObj[S]]
   //  protected final val viewToAuralMap  = TMap.empty[NuagesObj[S], AuralObj [S]]
@@ -206,7 +206,7 @@ trait PanelImpl[S <: Sys[S], Repr <: Obj[S], AuralRepr <: AuralObj[S]]
     deferTx(stopAnimation())
     clearSolo()
     observers.foreach(_.dispose())
-    // disposeAuralObserver()
+    disposeAuralObserver()
     transport.dispose()
     //    auralToViewMap.foreach { case (_, vp) =>
     //      vp.dispose()
@@ -219,10 +219,10 @@ trait PanelImpl[S <: Sys[S], Repr <: Obj[S], AuralRepr <: AuralObj[S]]
     keyControl    .dispose()
   }
 
-  //  protected final def disposeAuralObserver()(implicit tx: S#Tx): Unit = {
-  //    auralReprRef() = None
-  //    auralObserver.swap(None).foreach(_.dispose())
-  //  }
+  protected final def disposeAuralObserver()(implicit tx: S#Tx): Unit = {
+    auralReprRef() = None
+    auralObserver.swap(None).foreach(_.dispose())
+  }
 
   final def selection: Set[NuagesNode[S]] = {
     requireEDT()

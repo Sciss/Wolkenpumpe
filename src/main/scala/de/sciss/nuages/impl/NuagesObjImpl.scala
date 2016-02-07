@@ -28,7 +28,7 @@ import de.sciss.lucre.synth.{Synth, Sys}
 import de.sciss.nuages.Nuages.Surface
 import de.sciss.span.{Span, SpanLike}
 import de.sciss.synth.proc.Implicits._
-import de.sciss.synth.proc.{ObjKeys, Output, Proc}
+import de.sciss.synth.proc.{AuralObj, ObjKeys, Output, Proc}
 import prefuse.util.ColorLib
 import prefuse.visual.{AggregateItem, VisualItem}
 
@@ -90,6 +90,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
 
   def aggr: AggregateItem = _aggr
 
+  def id        (implicit tx: S#Tx): S#ID                   = idH()
   def obj       (implicit tx: S#Tx): Obj[S]                 = objH()
   def spanOption(implicit tx: S#Tx): Option[SpanLikeObj[S]] = spanOptionH.map(_.apply())
 
@@ -265,6 +266,9 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
 
     lastUpdate  = time
   }
+
+  def auralObjAdded  (aural: AuralObj[S])(implicit tx: S#Tx): Unit = ???!
+  def auralObjRemoved(aural: AuralObj[S])(implicit tx: S#Tx): Unit = ???!
 
   private[this] def removeSelf()(implicit tx: S#Tx): Unit = {
     // ---- connect former input sources to former output sinks ----
