@@ -65,9 +65,9 @@ object NuagesAttribute {
 
     // ---- edt ----
 
-    def value: Vec[Double]
-
-    def numChannels: Int
+//    def value: Vec[Double]
+//
+//    def numChannels: Int
 
     // ---- transactional ----
 

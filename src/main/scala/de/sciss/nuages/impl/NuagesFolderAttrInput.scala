@@ -117,9 +117,9 @@ final class NuagesFolderAttrInput[S <: SSys[S]] private(val attribute: NuagesAtt
   private[this] def mkChild(elem: Obj[S])(implicit tx: S#Tx): NuagesAttribute.Input[S] =
     NuagesAttribute.mkInput(attribute, value = elem, frameOffset = Long.MaxValue, parent = this)
 
-  def value: Vec[Double] = ???!
-
-  def numChannels: Int = ???!
+//  def value: Vec[Double] = ...
+//
+//  def numChannels: Int = ...
 
   def dispose()(implicit tx: S#Tx): Unit = {
     _observer.dispose()

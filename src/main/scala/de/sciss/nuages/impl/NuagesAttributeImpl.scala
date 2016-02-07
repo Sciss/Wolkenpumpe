@@ -128,14 +128,14 @@ object NuagesAttributeImpl {
 
     // proxy
 
-    final def numChannels: Int = inputView.numChannels
+    // final def numChannels: Int = inputView.numChannels
 
     final def numChildren(implicit tx: S#Tx): Int = inputView.numChildren
 
     final def tryConsume(newOffset: Long, to: Obj[S])(implicit tx: S#Tx): Boolean =
       inputView.tryConsume(newOffset = newOffset, newValue = to)
 
-    final def value: Vec[Double] = inputView.value
+    // final def value: Vec[Double] = inputView.value
 
     final def collect[A](pf: PartialFunction[Input[S], A])(implicit tx: S#Tx): Iterator[A] = inputView.collect(pf)
 

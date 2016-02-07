@@ -96,9 +96,9 @@ final class NuagesOutputAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S
     }
   }
 
-  def value: Vec[Double] = ???!
-
-  def numChannels: Int = ???!
+//  def value: Vec[Double] = ...
+//
+//  def numChannels: Int = ...
 
   def numChildren(implicit tx: S#Tx): Int = 1
 }

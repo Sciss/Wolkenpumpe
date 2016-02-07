@@ -221,9 +221,9 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
     inputParent.updateChild(before = ???!, now = ???!)
   }
 
-  def value: Vec[Double] = ???!
-
-  def numChannels: Int = ???!
+//  def value: Vec[Double] = ...
+//
+//  def numChannels: Int = ...
 
   def dispose()(implicit tx: S#Tx): Unit = {
     log(s"$this dispose")

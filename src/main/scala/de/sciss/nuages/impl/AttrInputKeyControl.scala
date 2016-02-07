@@ -38,6 +38,10 @@ trait AttrInputKeyControl[S <: Sys[S]] extends ClipboardOwner {
 
   protected def setControl(v: Vec[Double], instant: Boolean): Unit
 
+  protected def numChannels: Int
+
+  protected def value: Vec[Double]
+
   // ---- impl ----
 
   override def itemKeyPressed(vi: VisualItem, e: KeyControl.Pressed): Unit =

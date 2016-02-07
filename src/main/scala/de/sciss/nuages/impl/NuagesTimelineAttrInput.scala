@@ -178,9 +178,9 @@ final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesA
     childView.dispose()
   }
 
-  def value: Vec[Double] = ???!
-
-  def numChannels: Int = ???!
+//  def value: Vec[Double] = ...
+//
+//  def numChannels: Int = ...
 
   def dispose()(implicit tx: S#Tx): Unit = {
     log(s"$attribute timeline dispose")
