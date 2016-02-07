@@ -23,24 +23,26 @@ import prefuse.data.{Node => PNode}
 import prefuse.util.ColorLib
 import prefuse.visual.VisualItem
 
+import scala.swing.Color
+
 trait RenderAttrValue[S <: Sys[S]] extends NuagesDataImpl[S] {
   type A
 
-  protected final var renderedValue: A = null.asInstanceOf[A]
+  protected final var renderedValue: A        = null.asInstanceOf[A]
+  protected final var renderedValid: Boolean  = false
 
-  protected final var renderedValid: Boolean = false
-
-  protected final val valueArea = new Area()
+  protected final val valueArea               = new Area()
+  protected final val containerArea           = new Area()
 
   // ---- abstract ----
-
-  protected def editable: Boolean
 
   protected def spec: ParamSpec
 
   protected def renderDrag(g: Graphics2D): Unit
 
   protected def renderValueUpdated(): Unit
+
+  protected def valueColor: Color
 
   @volatile
   protected final var valueA: A = _
@@ -80,7 +82,7 @@ trait RenderAttrValue[S <: Sys[S]] extends NuagesDataImpl[S] {
       renderedValid = true
     }
 
-    g.setColor(if (editable) colrManual else colrMapped)
+    g.setColor(valueColor)
     g.fill(valueArea)
     renderDrag(g)
     g.setColor(ColorLib.getColor(vi.getStrokeColor))
@@ -116,5 +118,16 @@ trait RenderAttrValue[S <: Sys[S]] extends NuagesDataImpl[S] {
       else if (java.lang.Double.isNaN(m)) "NaN"
       else new java.math.BigDecimal(m, threeDigits).toPlainString
     }
+  }
+
+  final protected def updateContainerArea(): Unit = {
+    // val pContArc = new Arc2D.Double(0, 0, r.getWidth, r.getHeight, -45, 270, Arc2D.PIE)
+    gArc.setArc(0, 0, r.getWidth, r.getHeight, -45, 270, Arc2D.PIE)
+    containerArea.reset()
+    containerArea.add(new Area(gArc))
+    containerArea.subtract(new Area(innerE))
+    gp.append(containerArea, false)
+    // renderedValue = invalidRenderedValue // Vector.empty // Double.NaN // triggers updateRenderValue
+    renderedValid = false
   }
 }

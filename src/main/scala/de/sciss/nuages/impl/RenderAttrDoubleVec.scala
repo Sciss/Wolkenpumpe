@@ -26,7 +26,7 @@ trait RenderAttrDoubleVec[S <: Sys[S]] extends RenderAttrValue[S] {
 
   private[this] var allValuesEqual = false
 
-  import NuagesDataImpl.{gArc, gEllipse, gLine, setSpine}
+  import NuagesDataImpl.{gArc, gEllipse, gLine, margin, setSpine}
 
   protected final def renderValueUpdated(): Unit = {
     val rv: Vec[Double] = renderedValue // why IntelliJ !?
@@ -47,7 +47,7 @@ trait RenderAttrDoubleVec[S <: Sys[S]] extends RenderAttrValue[S] {
       renderValueUpdated1(rv.head)
     } else {
       var ch = 0
-      val m1 = NuagesDataImpl.margin / sz
+      val m1 = margin / sz
       val w  = r.getWidth
       val h  = r.getHeight
       var m2 = 0.0

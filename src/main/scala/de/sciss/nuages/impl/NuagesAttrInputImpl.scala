@@ -29,6 +29,7 @@ import prefuse.visual.VisualItem
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm.Ref
 import scala.language.higherKinds
+import scala.swing.Color
 
 object NuagesAttrInputImpl {
   private final class Drag(val angStart: Double, val valueStart: Vec[Double], val instant: Boolean) {
@@ -60,8 +61,6 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
 
   final protected def nodeSize = 1f
 
-  private[this] val containerArea   = new Area()
-
   private[this] var drag: Drag      = null
 
   private[this] val objH = Ref.make[(stm.Source[S#Tx, Ex[S]], Disposable[S#Tx])]()  // object and its observer
@@ -75,6 +74,8 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
   def name: String = attribute.name
 
   private[this] def isTimeline: Boolean = attribute.parent.main.isTimeline
+
+  protected final def valueColor: Color = if (editable) colrManual else colrMapped
 
   final def input(implicit tx: S#Tx): Obj[S] = objH()._1()
 
@@ -216,16 +217,7 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
       drag = null
     }
 
-  final protected def boundsResized(): Unit = {
-    // val pContArc = new Arc2D.Double(0, 0, r.getWidth, r.getHeight, -45, 270, Arc2D.PIE)
-    gArc.setArc(0, 0, r.getWidth, r.getHeight, -45, 270, Arc2D.PIE)
-    containerArea.reset()
-    containerArea.add(new Area(gArc))
-    containerArea.subtract(new Area(innerE))
-    gp.append(containerArea, false)
-    // renderedValue = invalidRenderedValue // Vector.empty // Double.NaN // triggers updateRenderValue
-    renderedValid = false
-  }
+  final protected def boundsResized(): Unit = updateContainerArea()
 
   protected def renderDrag(g: Graphics2D): Unit = {
     val isDrag = drag != null

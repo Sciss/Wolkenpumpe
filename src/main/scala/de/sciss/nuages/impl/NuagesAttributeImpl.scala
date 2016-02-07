@@ -29,6 +29,7 @@ import prefuse.data.{Edge => PEdge, Node => PNode}
 import prefuse.visual.VisualItem
 
 import scala.collection.immutable.{IndexedSeq => Vec}
+import scala.swing.Color
 
 object NuagesAttributeImpl {
   private[this] final val sync = new AnyRef
@@ -47,6 +48,7 @@ object NuagesAttributeImpl {
     val _frameOffset  = parent.frameOffset
     val res = new Impl[S](parent = parent, key = key, spec = spec) { self =>
       protected val inputView = mkInput(attr = self, parent = self, frameOffset = _frameOffset, value = _value)
+      // valueA = Vector(0.0)  // XXX TODO
     }
     res
   }
@@ -87,16 +89,19 @@ object NuagesAttributeImpl {
 //  private final val scanValue = Vector(0.5): Vec[Double] // XXX TODO
 
   // updated on EDT
-  private sealed trait State
-  private case object EmptyState extends State
-  private case class InternalState(pNode: PNode) extends State
+  private sealed trait State {
+    def isSummary: Boolean
+  }
+  private case object EmptyState extends State { def isSummary = false }
+  private case class InternalState(pNode: PNode) extends State { def isSummary = false }
   private case class SummaryState (pNode: PNode, pEdge: PEdge) extends State {
-    var freeNodes  = Set.empty[PNode]
-    var boundNodes = Set.empty[PNode]
+    var freeNodes   = Set.empty[PNode]
+    var boundNodes  = Set.empty[PNode]
+    def isSummary   = true
   }
 
   private abstract class Impl[S <: SSys[S]](val parent: NuagesObj[S], val key: String, val spec: ParamSpec)
-    extends NuagesParamImpl[S] with NuagesAttribute[S] { self =>
+    extends RenderAttrDoubleVec[S] with NuagesParamImpl[S] with NuagesAttribute[S] { self =>
 
     // ---- abstract ----
 
@@ -165,6 +170,7 @@ object NuagesAttributeImpl {
           .map { newInput =>
             val res = new Impl[S](parent = parent, key = key, spec = spec) {
               protected val inputView = newInput
+              // valueA = Vector(0.0)  // XXX TODO
             }
             main.deferVisTx {
               res.initReplace(self._state, freeNodes = self._freeNodes, boundNodes = self._boundNodes)
@@ -295,7 +301,8 @@ object NuagesAttributeImpl {
         SummaryState(ns, ei) -> ee
       }
 
-      val (newState, newEdge) = _state match {
+      val oldState = _state
+      val (newState, newEdge) = oldState match {
         case EmptyState =>
           if (isFree) {
             val e = g.addEdge(n, parent.pNode)
@@ -331,6 +338,11 @@ object NuagesAttributeImpl {
       } else {
         require (!_boundNodes.contains(n))
         _boundNodes += n -> newEdge
+      }
+
+      if (newState != oldState && newState.isSummary && isControl) {
+        valueA = Vector(0.0) //  Vector.fill(math.max(1, numChannels))(0.0)
+        // XXX TODO --- launch rockets
       }
     }
 
@@ -395,10 +407,21 @@ object NuagesAttributeImpl {
       }
     }
 
-    protected def boundsResized(): Unit = ()
+    protected def boundsResized(): Unit = if (_state.isSummary && isControl) updateContainerArea()
+
+    import NuagesDataImpl.{colrMapped, diam}
 
     protected def renderDetail(g: Graphics2D, vi: VisualItem): Unit =
-      drawName(g, vi, NuagesDataImpl.diam * vi.getSize.toFloat * 0.5f)
+      if (_state.isSummary && isControl) {
+        renderValueDetail(g, vi)
+        drawLabel(g, vi, diam * vi.getSize.toFloat * 0.33333f, name)
+      } else {
+        drawName(g, vi, NuagesDataImpl.diam * vi.getSize.toFloat * 0.5f)
+      }
+
+    protected def renderDrag(g: Graphics2D): Unit = ()
+
+    protected def valueColor: Color = colrMapped
 
     def dispose()(implicit tx: S#Tx): Unit = {
       inputView.dispose()
