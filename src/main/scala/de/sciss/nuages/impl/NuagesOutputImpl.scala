@@ -23,10 +23,10 @@ import de.sciss.lucre.stm.{Disposable, TxnLike}
 import de.sciss.lucre.swing.requireEDT
 import de.sciss.lucre.synth.{Node => SNode, Sys}
 import de.sciss.nuages.NuagesAttribute.Input
-import de.sciss.synth.proc.{AuralContext, AuralOutput, Output, Transport}
+import de.sciss.synth.proc.{AuralObj, AuralOutput, Output}
 import prefuse.visual.VisualItem
 
-import scala.concurrent.stm.TSet
+import scala.concurrent.stm.{Ref, TSet}
 
 object NuagesOutputImpl {
   def apply[S <: Sys[S]](parent: NuagesObj[S], output: Output[S], meter: Boolean)
@@ -48,8 +48,9 @@ final class NuagesOutputImpl[S <: Sys[S]] private(val parent: NuagesObj[S],
 
   protected def nodeSize = 0.333333f
 
-  private[this] val mappingsSet = TSet.empty[Input[S]]
-  private[this] val disposables = TSet.empty[Disposable[S#Tx]]
+  private[this] val mappingsSet       = TSet.empty[Input[S]]
+  private[this] val auralObserverRef  = Ref(Disposable.empty[S#Tx])
+  private[this] val meterSynthRef     = Ref(Disposable.empty[S#Tx])
 
   def output(implicit tx: S#Tx): Output[S] = outputH()
 
@@ -72,23 +73,29 @@ final class NuagesOutputImpl[S <: Sys[S]] private(val parent: NuagesObj[S],
   private def init(output: Output[S])(implicit tx: S#Tx): this.type = {
     main.deferVisTx(initGUI())      // IMPORTANT: first
     context.putAux[NuagesOutput[S]](output.id, this)
-
-    if (meter) {
-      val t = main.transport
-      val obs = t.react { implicit tx => {
-        case Transport.AuralStarted(_, auralContext) =>
-        case _ =>
-      }}
-      disposables.add(obs)
-      t.contextOption.foreach(auralStarted)
-    }
-
     this
   }
 
+  def auralObjAdded  (aural: AuralObj.Proc[S])(implicit tx: S#Tx): Unit = if (meter) {
+    aural.getOutput(key).foreach(mkMeterSynth)
+    val obs = aural.ports.react { implicit tx => {
+      case AuralObj.Proc.OutputAdded  (_, auralOutput) => mkMeterSynth(auralOutput)
+      case AuralObj.Proc.OutputRemoved(_, auralOutput) => disposeMeterSynth()
+      case _ =>
+    }}
+    auralObserverRef.swap(obs).dispose()
+  }
+
+  def auralObjRemoved(aural: AuralObj.Proc[S])(implicit tx: S#Tx): Unit = if (meter) {
+    disposeMeterSynth()
+    disposeAuralObserver()
+  }
+
   def dispose()(implicit tx: S#Tx): Unit = {
-    disposables.foreach(_.dispose())
-    disposables.clear()
+    if (meter) {
+      disposeMeterSynth()
+      disposeAuralObserver()
+    }
     mappingsSet.clear()
     context.removeAux(output.id)
     main.deferVisTx(disposeGUI())
@@ -112,21 +119,16 @@ final class NuagesOutputImpl[S <: Sys[S]] private(val parent: NuagesObj[S],
   protected def renderDetail(g: Graphics2D, vi: VisualItem): Unit =
     drawName(g, vi, diam * vi.getSize.toFloat * 0.5f)
 
-  private[this] def auralOutputAdded(auralOutput: AuralOutput[S])(implicit tx: S#Tx): Unit = {
+  private[this] def mkMeterSynth(auralOutput: AuralOutput[S])(implicit tx: S#Tx): Unit = {
     val bus   = auralOutput.bus
     val node  = auralOutput.view.nodeOption.fold[SNode](bus.server.defaultGroup)(_.node)
     val syn   = main.mkMeter(bus = bus, node = node)(parent.meterUpdate)
-    disposables.add(syn)
+    meterSynthRef.swap(syn).dispose()
   }
 
-  private[this] def auralStarted(auralContext: AuralContext[S])(implicit tx: S#Tx): Unit = {
-    val id = output.id
-    auralContext.getAux[AuralOutput[S]](id).fold[Unit] {
-      val obs = auralContext.observeAux[AuralOutput[S]](id) { implicit tx => {
-        case AuralContext.AuxAdded(_, auralOutput) => auralOutputAdded(auralOutput)
-        // case AuralContext.AuxRemoved(_, auralOutput) => auralOutputRemoved(auralOutput)
-      }}
-      disposables.add(obs)
-    } (auralOutputAdded)
-  }
+  private[this] def disposeMeterSynth()(implicit tx: S#Tx): Unit =
+    meterSynthRef.swap(Disposable.empty).dispose()
+
+  private[this] def disposeAuralObserver()(implicit tx: S#Tx): Unit =
+    auralObserverRef.swap(Disposable.empty).dispose()
 }

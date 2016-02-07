@@ -267,8 +267,15 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
     lastUpdate  = time
   }
 
-  def auralObjAdded  (aural: AuralObj[S])(implicit tx: S#Tx): Unit = ???!
-  def auralObjRemoved(aural: AuralObj[S])(implicit tx: S#Tx): Unit = ???!
+  def auralObjAdded  (aural: AuralObj[S])(implicit tx: S#Tx): Unit = aural match {
+    case ap: AuralObj.Proc[S] => outputs.foreach(_._2.auralObjAdded  (ap))
+    case _ =>
+  }
+
+  def auralObjRemoved(aural: AuralObj[S])(implicit tx: S#Tx): Unit = aural match {
+    case ap: AuralObj.Proc[S] => outputs.foreach(_._2.auralObjRemoved(ap))
+    case _ =>
+  }
 
   private[this] def removeSelf()(implicit tx: S#Tx): Unit = {
     // ---- connect former input sources to former output sinks ----

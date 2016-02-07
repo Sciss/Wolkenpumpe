@@ -16,7 +16,7 @@ package de.sciss.nuages
 import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.nuages.NuagesAttribute.Input
-import de.sciss.synth.proc.Output
+import de.sciss.synth.proc.{AuralObj, Output}
 
 object NuagesOutput {
   def apply[S <: SSys[S]](parent: NuagesObj[S], output: Output[S], meter: Boolean)
@@ -34,4 +34,7 @@ trait NuagesOutput[S <: Sys[S]] extends NuagesParam[S] with NuagesNode[S] {
   def removeMapping(view: Input[S])(implicit tx: S#Tx): Unit
 
   def output(implicit tx: S#Tx): Output[S]
+
+  def auralObjAdded  (aural: AuralObj.Proc[S])(implicit tx: S#Tx): Unit
+  def auralObjRemoved(aural: AuralObj.Proc[S])(implicit tx: S#Tx): Unit
 }
