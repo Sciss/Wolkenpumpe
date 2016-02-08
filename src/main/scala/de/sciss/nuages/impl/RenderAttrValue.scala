@@ -49,8 +49,7 @@ trait RenderAttrValue[S <: Sys[S]] extends NuagesDataImpl[S] {
 
   // ---- impl ----
 
-  protected final def updateValueAndRefreshVis(v: A, pNode: PNode): Unit = {
-    valueA = v
+  protected final def damageReport(pNode: PNode): Unit = {
     val _vis = main.visualization
     val visItem = _vis.getVisualItem(NuagesPanel.GROUP_GRAPH, pNode)
     _vis.damageReport(visItem, visItem.getBounds)

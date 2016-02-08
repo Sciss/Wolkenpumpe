@@ -120,6 +120,7 @@ object NuagesAttributeImpl {
     private[this] val auralObjObs   = Ref(Disposable.empty[S#Tx])
     private[this] val auralAttrObs  = Ref(Disposable.empty[S#Tx])
     private[this] val auralTgtObs   = Ref(Disposable.empty[S#Tx])
+    private[this] val valueSynthRef = Ref(Disposable.empty[S#Tx])
 
     // ... methods ...
 
@@ -411,13 +412,16 @@ object NuagesAttributeImpl {
         case other => other
       }
     }
+    
+    @inline
+    private[this] def showsValue: Boolean = _state.isSummary && isControl
 
-    protected def boundsResized(): Unit = if (_state.isSummary && isControl) updateContainerArea()
+    protected def boundsResized(): Unit = if (showsValue) updateContainerArea()
 
     import NuagesDataImpl.{colrMapped, diam}
 
     protected def renderDetail(g: Graphics2D, vi: VisualItem): Unit =
-      if (_state.isSummary && isControl) {
+      if (showsValue) {
         renderValueDetail(g, vi)
         drawLabel(g, vi, diam * vi.getSize.toFloat * 0.33333f, name)
       } else {
@@ -433,8 +437,33 @@ object NuagesAttributeImpl {
       inputView.dispose()
     }
 
+//    private[this] def updateValueAndRefresh(v: Vec[Double]): Unit =
+//      if (showsValue) {
+//        valueA = v
+//        _state match {
+//          case ss: SummaryState => damageReport(ss.pNode)
+//          case _ =>
+//            assert(assertion = false, message = _state)
+//        }
+//      }
+
+    private[this] def setAuralScalarValue(v: Vec[Double])(implicit tx: S#Tx): Unit = {
+      disposeValueSynth()
+      valueA = v
+      // main.deferVisTx(updateValueAndRefresh(v))
+    }
+
     private[this] def setAuralValue(v: AuralAttribute.Value)(implicit tx: S#Tx): Unit = {
       // println(f"$key%-6s - aural value = $v")
+      v match {
+        case AuralAttribute.ScalarValue (f )  => setAuralScalarValue(Vector(f.toDouble))
+        case AuralAttribute.ScalarVector(xs)  => setAuralScalarValue(xs.map(_.toDouble))
+        case AuralAttribute.Stream(nodeRef, bus) =>
+          val syn = main.mkValueMeter(bus, nodeRef.node) { xs =>
+            valueA = xs // setAuralScalarValue(xs)
+          }
+          valueSynthRef.swap(syn).dispose()
+      }
     }
 
     private[this] def checkAuralTarget(aa: AuralAttribute[S])(implicit tx: S#Tx): Unit =
@@ -444,8 +473,13 @@ object NuagesAttributeImpl {
         auralTgtObs.swap(obs).dispose()
       }
 
-    private[this] def auralTgtRemoved()(implicit tx: S#Tx): Unit =
+    private[this] def disposeValueSynth()(implicit tx: S#Tx): Unit =
+      valueSynthRef.swap(Disposable.empty).dispose()
+
+    private[this] def auralTgtRemoved()(implicit tx: S#Tx): Unit = {
+      disposeValueSynth()
       auralTgtObs.swap(Disposable.empty).dispose()
+    }
 
     private[this] def auralAttrAdded(aa: AuralAttribute[S])(implicit tx: S#Tx): Unit = {
       checkAuralTarget(aa)

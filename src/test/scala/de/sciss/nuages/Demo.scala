@@ -97,6 +97,10 @@ object Demo {
         tx.newHandle(nuages)
       }
       w.run(nuagesH)
+
+//      system.step { implicit tx =>
+//        w.auralSystem.whenStarted(s => s.peer.dumpOSC(filter = _.name != "/meters"))
+//      }
     }
   }
 }

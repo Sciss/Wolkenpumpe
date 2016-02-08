@@ -122,7 +122,7 @@ final class NuagesOutputImpl[S <: Sys[S]] private(val parent: NuagesObj[S],
   private[this] def mkMeterSynth(auralOutput: AuralOutput[S])(implicit tx: S#Tx): Unit = {
     val bus   = auralOutput.bus
     val node  = auralOutput.view.nodeOption.fold[SNode](bus.server.defaultGroup)(_.node)
-    val syn   = main.mkMeter(bus = bus, node = node)(parent.meterUpdate)
+    val syn   = main.mkPeakMeter(bus = bus, node = node)(parent.meterUpdate)
     meterSynthRef.swap(syn).dispose()
   }
 

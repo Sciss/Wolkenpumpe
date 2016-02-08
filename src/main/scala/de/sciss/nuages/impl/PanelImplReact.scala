@@ -41,7 +41,7 @@ trait PanelImplReact[S <: Sys[S]] {
   //  protected def auralToViewMap: TMap[AuralObj[S], NuagesObj[S]]
   //  protected def viewToAuralMap: TMap[NuagesObj[S], AuralObj[S]]
 
-  protected def mkMeter  (bus: AudioBus, node: Node)(fun: Double => Unit)(implicit tx: S#Tx): Synth
+  // protected def mkMeter  (bus: AudioBus, node: Node)(fun: Double => Unit)(implicit tx: S#Tx): Synth
 
   protected def mkMonitor(bus: AudioBus, node: Node)(fun: Vec[Double] => Unit)(implicit tx: S#Tx): Synth
 

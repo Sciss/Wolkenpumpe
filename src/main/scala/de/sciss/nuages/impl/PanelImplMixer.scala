@@ -40,16 +40,18 @@ trait PanelImplMixer[S <: Sys[S]] {
 
   // ---- impl ----
 
-  // simple cache from num-channels to graph
-  private var meterGraphMap   = Map.empty[Int, SynthGraph]
-  private var monitorGraphMap = Map.empty[Int, SynthGraph]
-  private val soloVolume      = Ref(NuagesPanel.soloAmpSpec._2)  // 0.5
-  private val soloInfo        = Ref(Option.empty[(NuagesObj[S], Synth)])
-  private val _masterSynth    = Ref(Option.empty[Synth])
+  // simple cache from num-channels to graph.
+  // no need to make these transactional, cache misses are ok here
+  private[this] var monitorGraphMap     = Map.empty[Int, SynthGraph]
+  private[this] var peakMeterGraphMap   = Map.empty[Int, SynthGraph]
+  private[this] var valueMeterGraphMap  = Map.empty[Int, SynthGraph]
+  private[this] val soloVolume          = Ref(NuagesPanel.soloAmpSpec._2)  // 0.5
+  private[this] val soloInfo            = Ref(Option.empty[(NuagesObj[S], Synth)])
+  private[this] val _masterSynth        = Ref(Option.empty[Synth])
 
-  final def mkMeter(bus: AudioBus, node: SNode)(fun: Double => Unit)(implicit tx: S#Tx): Synth = {
+  final def mkPeakMeter(bus: AudioBus, node: SNode)(fun: Double => Unit)(implicit tx: S#Tx): Synth = {
     val numCh  = bus.numChannels
-    val graph  = meterGraphMap.getOrElse(numCh, {
+    val graph  = peakMeterGraphMap.getOrElse(numCh, {
       val res = SynthGraph {
         import de.sciss.synth._
         import de.sciss.synth.ugen._
@@ -59,16 +61,57 @@ trait PanelImplMixer[S <: Sys[S]] {
         val peakM   = Reduce.max(peak)
         SendTrig.kr(meterTr, peakM)
       }
-      meterGraphMap += numCh -> res
+      peakMeterGraphMap += numCh -> res
       res
     })
     val server  = node.server
-    val syn     = Synth.play(graph, Some("meter"))(server.defaultGroup, addAction = addToTail,
+    val syn     = Synth.play(graph, Some("peak"))(server.defaultGroup, addAction = addToTail,
       dependencies = node :: Nil)
     syn.read(bus -> "in")
     val NodeID = syn.peer.id
     val trigResp = message.Responder.add(server.peer) {
       case message.Trigger(NodeID, 0, peak: Float) => defer(fun(peak))
+    }
+    // Responder.add is non-transactional. Thus, if the transaction fails, we need to remove it.
+    scala.concurrent.stm.Txn.afterRollback { _ =>
+      trigResp.remove()
+    } (tx.peer)
+    syn.onEnd(trigResp.remove())
+    syn
+  }
+
+  final def mkValueMeter(bus: AudioBus, node: SNode)(fun: Vec[Double] => Unit)(implicit tx: S#Tx): Synth = {
+    // return mkPeakMeter(bus, node)(d => fun(Vector(d)))
+
+    val numCh = bus.numChannels
+    val Name  = "/snap" // "/reply"
+    val graph = valueMeterGraphMap.getOrElse(numCh, {
+      val res = SynthGraph {
+        import de.sciss.synth._
+        import de.sciss.synth.ugen._
+        val meterTr = Impulse.kr(1000.0 / LAYOUT_TIME)
+        val busGE   = "in".kr
+        val sig     = In.ar(busGE, numCh)
+        // val sig     = InFeedback.ar(busGE, numCh)
+        // sig  .poll(1, "signal")
+        // busGE.poll(1, "bus"   )
+        val values  = A2K.kr(sig)
+        SendReply.kr(trig = meterTr, values = values, msgName = Name)
+      }
+      valueMeterGraphMap += numCh -> res
+      res
+    })
+    val server  = node.server
+    val syn     = Synth.play(graph, Some("snap"))(server.defaultGroup, addAction = addToTail,
+      dependencies = node :: Nil)
+    syn.read(bus -> "in")
+    val NodeID = syn.peer.id
+    val trigResp = message.Responder.add(server.peer) {
+      case osc.Message(Name, NodeID, 0, raw @ _*) =>
+        val values: Vec[Double] = raw.collect {
+          case f: Float => f.toDouble
+        } (breakOut)
+        defer(fun(values))
     }
     // Responder.add is non-transactional. Thus, if the transaction fails, we need to remove it.
     scala.concurrent.stm.Txn.afterRollback { _ =>

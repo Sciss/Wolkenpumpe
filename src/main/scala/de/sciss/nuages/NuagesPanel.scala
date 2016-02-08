@@ -25,6 +25,7 @@ import prefuse.data.Graph
 import prefuse.visual.{AggregateTable, VisualGraph}
 import prefuse.{Display, Visualization}
 
+import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.swing.Point
 
 object NuagesPanel {
@@ -92,7 +93,8 @@ trait NuagesPanel[S <: Sys[S]] extends View[S] {
   def masterSynth(implicit tx: Txn): Option[Synth]
   def masterSynth_=(value: Option[Synth])(implicit tx: Txn): Unit
 
-  def mkMeter(bus: AudioBus, node: SNode)(fun: Double => Unit)(implicit tx: S#Tx): Synth
+  def mkPeakMeter (bus: AudioBus, node: SNode)(fun: Double      => Unit)(implicit tx: S#Tx): Synth
+  def mkValueMeter(bus: AudioBus, node: SNode)(fun: Vec[Double] => Unit)(implicit tx: S#Tx): Synth
 
   /** Schedule code to be executed during paused visualization animation
     * on the EDT after the commit of the transaction.

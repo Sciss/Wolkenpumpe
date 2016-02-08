@@ -117,7 +117,10 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
   }
 
   private[this] def updateValueAndRefresh(v: A)(implicit tx: S#Tx): Unit =
-    main.deferVisTx(updateValueAndRefreshVis(v, pNode))
+    main.deferVisTx {
+      valueA = v
+      damageReport(pNode)
+    }
 
   def tryConsume(newOffset: Long, to: Obj[S])(implicit tx: S#Tx): Boolean = to.tpe == this.tpe && {
     val newObj = to.asInstanceOf[Ex[S]]
