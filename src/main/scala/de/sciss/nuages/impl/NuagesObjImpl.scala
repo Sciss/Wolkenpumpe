@@ -329,7 +329,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
         val inAttr = outAttrIn.attribute
         if (inAttr.isControl) {
           val numCh       = 2   // XXX TODO
-          val now         = DoubleVector.newVar(Vector.fill(numCh)(0.0))
+          val now         = DoubleVector.newVar[S](Vector.fill(numCh)(0.0))
           outAttrIn.inputParent.updateChild(output, now)
         } else {
           outAttrIn.inputParent.removeChild(output)

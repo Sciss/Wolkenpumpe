@@ -1,6 +1,6 @@
 name               := "Wolkenpumpe"
 
-version            := "2.4.0-SNAPSHOT"
+version            := "2.4.0"
 
 organization       := "de.sciss"
 
@@ -10,14 +10,14 @@ description        := "A Prefuse based visual interface for SoundProcesses, a so
 
 licenses           := Seq("GPL v2+" -> url( "http://www.gnu.org/licenses/gpl-2.0.txt"))
 
-scalaVersion       := "2.11.7"
+scalaVersion       := "2.11.8"
 
-crossScalaVersions := Seq("2.11.7", "2.10.6")
+crossScalaVersions := Seq("2.11.8", "2.10.6")
 
 resolvers          += "Oracle Repository" at "http://download.oracle.com/maven"  // required for sleepycat
 
-lazy val soundProcessesVersion      = "3.4.0-SNAPSHOT"
-lazy val scalaColliderSwingVersion  = "1.27.0"
+lazy val soundProcessesVersion      = "3.4.0"
+lazy val scalaColliderSwingVersion  = "1.27.1"
 lazy val prefuseVersion             = "1.0.1"
 lazy val lucreSwingVersion          = "1.3.0"
 lazy val swingPlusVersion           = "0.2.1"
@@ -27,10 +27,10 @@ lazy val scissDSPVersion            = "1.2.2"
 
 // ---- test ----
 
-lazy val webLaFVersion              = "1.28"
-lazy val lucreVersion               = "3.3.1-SNAPSHOT"
+lazy val subminVersion              = "0.1.0"
+lazy val lucreVersion               = "3.3.1"
 lazy val scalaTestVersion           = "2.2.6"
-lazy val scoptVersion               = "3.3.0"
+lazy val scoptVersion               = "3.4.0"
 
 libraryDependencies ++= Seq(
   "de.sciss"          %% "soundprocesses-views"    % soundProcessesVersion,
@@ -42,8 +42,8 @@ libraryDependencies ++= Seq(
   "de.sciss"          %% "scissdsp"                % scissDSPVersion,
   "de.sciss"          %  "intensitypalette"        % intensityVersion,
   "de.sciss"          %% "lucre-bdb"               % lucreVersion       % "test",
-  "de.sciss"          %  "weblaf"                  % webLaFVersion      % "test",
-  "org.scalatest"     %% "scalatest"              % scalaTestVersion   % "test",
+  "de.sciss"          %  "submin"                  % subminVersion      % "test",
+  "org.scalatest"     %% "scalatest"               % scalaTestVersion   % "test",
   "com.github.scopt"  %% "scopt" % scoptVersion
 )
 
@@ -84,11 +84,3 @@ pomExtra := { val n = name.value
    </developer>
 </developers>
 }
-
-// ---- ls.implicit.ly ----
-
-// seq(lsSettings :_*)
-// 
-// (LsKeys.tags   in LsKeys.lsync) := Seq("sound-synthesis", "gui", "sound", "music", "supercollider")
-// (LsKeys.ghUser in LsKeys.lsync) := Some("Sciss")
-// (LsKeys.ghRepo in LsKeys.lsync) := Some(name.value)

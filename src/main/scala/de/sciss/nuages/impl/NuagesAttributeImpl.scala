@@ -205,7 +205,7 @@ object NuagesAttributeImpl {
         now
       }
       val found = objAttr.get(key)
-      require(found.contains(before), s"updateChild($before, $now) -- found $found")
+      require(found == Some(before), s"updateChild($before, $now) -- found $found")
       objAttr.put(key, value)
     }
 

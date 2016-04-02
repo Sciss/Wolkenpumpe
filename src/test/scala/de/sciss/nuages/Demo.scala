@@ -1,9 +1,9 @@
 package de.sciss.nuages
 
-import com.alee.laf.WebLookAndFeel
 import de.sciss.file.File
 import de.sciss.lucre.stm.store.BerkeleyDB
 import de.sciss.lucre.synth.InMemory
+import de.sciss.submin.Submin
 import de.sciss.synth.Server
 import de.sciss.synth.proc.Durable
 
@@ -14,14 +14,14 @@ object Demo {
 
   def main(args: Array[String]): Unit = {
     val p = new scopt.OptionParser[Config]("Demo") {
-      opt[File]('d', "durable") text "Durable database" action { case (f, c) => c.copy(durable = Some(f)) }
+      opt[File]('d', "durable")  text "Durable database"         action { case (f, c) => c.copy(durable  = Some(f)) }
       opt[Unit]('t', "timeline") text "Use performance timeline" action { case (_, c) => c.copy(timeline = true) }
     }
     p.parse(args, Config()).fold(sys.exit(1))(run)
   }
 
   def run(config: Config): Unit = {
-    WebLookAndFeel.install()
+    Submin.install(true)
     Wolkenpumpe.init()
 
     config.durable match {

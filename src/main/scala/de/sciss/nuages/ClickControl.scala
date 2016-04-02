@@ -133,7 +133,7 @@ class ClickControl[S <: Sys[S]](main: NuagesPanel[S]) extends ControlAdapter {
 //              if (numCh == 1) DoubleObj.newVar(0.0) else DoubleVector.newVar(Vector.fill(numCh)(0.0))
 //            }
               val numCh = 2   // XXX TODO
-              val now   = DoubleVector.newVar(Vector.fill(numCh)(0.0))
+              val now   = DoubleVector.newVar[S](Vector.fill(numCh)(0.0))
               inputParent.updateChild(before, now)
             }
           }
