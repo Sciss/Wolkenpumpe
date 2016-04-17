@@ -1,22 +1,16 @@
 name               := "Wolkenpumpe"
-
-version            := "2.5.0-SNAPSHOT"
+version            := "2.5.0"
 
 organization       := "de.sciss"
-
-homepage           := Some(url("https://github.com/Sciss/" + name.value))
-
+homepage           := Some(url(s"https://github.com/Sciss/${name.value}"))
 description        := "A Prefuse based visual interface for SoundProcesses, a sound synthesis framework"
-
 licenses           := Seq("GPL v2+" -> url( "http://www.gnu.org/licenses/gpl-2.0.txt"))
-
 scalaVersion       := "2.11.8"
-
 crossScalaVersions := Seq("2.11.8", "2.10.6")
 
 resolvers          += "Oracle Repository" at "http://download.oracle.com/maven"  // required for sleepycat
 
-lazy val soundProcessesVersion      = "3.4.1-SNAPSHOT"
+lazy val soundProcessesVersion      = "3.4.1"
 lazy val scalaColliderSwingVersion  = "1.28.0"
 lazy val prefuseVersion             = "1.0.1"
 lazy val lucreSwingVersion          = "1.3.0"

@@ -243,7 +243,7 @@ trait PanelImpl[S <: Sys[S], Repr <: Obj[S], AuralRepr <: AuralObj[S]]
   private[this] def handleGUI(seq: Vec[() => Unit]): Unit = {
     def exec(): Unit = visualization.synchronized {
       stopAnimation()
-      AGGR_LOCK = true
+      // AGGR_LOCK = true
       seq.foreach { fun =>
         try {
           fun()
@@ -251,7 +251,7 @@ trait PanelImpl[S <: Sys[S], Repr <: Obj[S], AuralRepr <: AuralObj[S]]
           case NonFatal(e) => e.printStackTrace()
         }
       }
-      AGGR_LOCK = false
+      // AGGR_LOCK = false
       startAnimation()
     }
 

@@ -84,6 +84,7 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
     log(s"$this init")
     graphemeH   = tx.newHandle(gr)
     inputParent = parent
+    initPosition()
     initObserver(gr)
     initGrapheme(gr)
     initTransport()
@@ -96,6 +97,7 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
     graphemeH             = tx.newHandle(gr)
     inputParent           = parent
     childView.inputParent = this
+    initPosition()
     initObserver(gr)
     currentView()         = new View(start = start, input = childView)
     initTransport()
@@ -186,7 +188,7 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
       require(curr.isDefined)
       val beforeStart = curr.start
       val nowStart    = currentOffset()
-      // log(s"$this updateChild($before - $beforeStart / ${TimeRef.framesToSecs(beforeStart)}s, $now - $nowStart / ${TimeRef.framesToSecs(nowStart)}s)")
+      log(s"$this updateChild($before - $beforeStart / ${TimeRef.framesToSecs(beforeStart)}, $now - $nowStart / ${TimeRef.framesToSecs(nowStart)})")
       if (beforeStart != nowStart && isTimeline) {
         val nowStartObj = LongObj.newVar[S](nowStart)
         grm.add(nowStartObj, now)

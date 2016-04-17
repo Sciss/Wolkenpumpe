@@ -26,10 +26,10 @@ package object nuages {
 
   private lazy val logHeader = new SimpleDateFormat("[d MMM yyyy, HH:mm''ss.SSS] 'Nuages' ", Locale.US)
 
-  var showLog     = false // true
-  var showAggrLog = false // true
+  var showLog     = false
+  var showAggrLog = false
 
-  var AGGR_LOCK   = false
+  // var AGGR_LOCK   = false
 
   @elidable(CONFIG) private[nuages] def log(what: => String): Unit =
     if (showLog) println(s"${logHeader.format(new Date())}$what")
@@ -37,7 +37,7 @@ package object nuages {
 
   @elidable(CONFIG) private[nuages] def logAggr(what: => String): Unit =
     if (showAggrLog) {
-      require(AGGR_LOCK)
+      // require(AGGR_LOCK)
       Console.out.println(s"${logHeader.format(new Date())} aggr $what")
     }
 
