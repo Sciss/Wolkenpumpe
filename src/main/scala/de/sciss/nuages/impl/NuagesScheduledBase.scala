@@ -72,6 +72,13 @@ trait NuagesScheduledBase[S <: Sys[S]] {
 
   final protected def isDisposed(implicit tx: S#Tx): Boolean = disposed()
 
+  /** This must be called before `initTransport` and before `initTimeline`. */
+  final protected def initPosition()(implicit tx: S#Tx): Unit = {
+    setTransportPosition(transport.position)
+    offsetRef() = currentOffset()
+  }
+
+  /** This must be called after `initPosition` and after `initTimeline`. */
   final protected def initTransport()(implicit tx: S#Tx): Unit = {
     val t = transport
     observer = t.react { implicit tx => upd => if (!disposed()) upd match {
@@ -86,9 +93,6 @@ trait NuagesScheduledBase[S <: Sys[S]] {
         if (isPlaying) play()
       case _ =>
     }}
-
-    setTransportPosition(t.position)
-    offsetRef() = currentOffset()
 
     if (t.isPlaying) play()
   }

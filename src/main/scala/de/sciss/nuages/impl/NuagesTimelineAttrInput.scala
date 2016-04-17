@@ -83,6 +83,7 @@ final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesA
     log(s"$attribute timeline init")
     timelineH   = tx.newHandle(tl)
     inputParent = parent
+    initPosition()
     initTimeline(tl)
     initTransport()
     this
@@ -120,7 +121,6 @@ final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesA
     }
 
     if (isTimeline) {
-      // XXX TODO --- DRY with NuagesAttributeImpl#addChild
       val span = mkSpan()
       tl.modifiableOption.fold[Unit] {
         ???!
@@ -132,7 +132,6 @@ final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesA
     }
   }
 
-  // XXX TODO DRY --- with PanelImplTxnFuns#removeCollectionAttribute
   def removeChild(child: Obj[S])(implicit tx: S#Tx): Unit = {
     val tl = timelineH()
     if (isTimeline) {
@@ -177,10 +176,6 @@ final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesA
     assert(found)
     childView.dispose()
   }
-
-//  def value: Vec[Double] = ...
-//
-//  def numChannels: Int = ...
 
   def dispose()(implicit tx: S#Tx): Unit = {
     log(s"$attribute timeline dispose")

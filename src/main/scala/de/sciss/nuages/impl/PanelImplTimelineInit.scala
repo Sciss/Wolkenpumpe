@@ -83,6 +83,7 @@ trait PanelImplTimelineInit[S <: Sys[S]] extends NuagesTimelineBase[S] {
     }}
     t.addObject(timeline)
 
+    initPosition()
     initTimeline(timeline)
     initTransport()
   }

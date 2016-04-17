@@ -35,7 +35,9 @@ trait NuagesTimelineBase[S <: Sys[S]] extends NuagesScheduledBase[S] {
 
   private[this] var observer: Disposable[S#Tx] = _
 
-  /** Calls `initTimelineObserver` followed by creating live views. */
+  /** Calls `initTimelineObserver` followed by creating live views.
+    * This must be called after `initPosition` and before `initTransport`.
+    */
   final protected def initTimeline(tl: Timeline[S])(implicit tx: S#Tx): Unit = {
     initTimelineObserver(tl)
     val offset0 = currentOffset()

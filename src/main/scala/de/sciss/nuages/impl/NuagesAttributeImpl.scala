@@ -17,14 +17,14 @@ package impl
 import java.awt.Graphics2D
 
 import de.sciss.lucre.expr.{BooleanObj, DoubleObj, DoubleVector, IntObj, LongObj, SpanLikeObj}
-import de.sciss.lucre.stm.{TxnLike, Disposable, Obj, Sys}
+import de.sciss.lucre.stm.{Disposable, Obj, Sys, TxnLike}
 import de.sciss.lucre.swing.requireEDT
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.nuages.NuagesAttribute.{Factory, Input, Parent}
 import de.sciss.nuages.NuagesPanel.GROUP_GRAPH
 import de.sciss.span.Span
 import de.sciss.synth.proc.AuralObj.Proc
-import de.sciss.synth.proc.{AuralView, AuralObj, AuralAttribute, TimeRef, Folder, Grapheme, Output, Timeline}
+import de.sciss.synth.proc.{AuralAttribute, AuralObj, AuralView, Folder, Grapheme, Output, TimeRef, Timeline}
 import prefuse.data.{Edge => PEdge, Node => PNode}
 import prefuse.visual.VisualItem
 
@@ -135,14 +135,10 @@ object NuagesAttributeImpl {
 
     // proxy
 
-    // final def numChannels: Int = inputView.numChannels
-
     final def numChildren(implicit tx: S#Tx): Int = inputView.numChildren
 
     final def tryConsume(newOffset: Long, to: Obj[S])(implicit tx: S#Tx): Boolean =
       inputView.tryConsume(newOffset = newOffset, newValue = to)
-
-    // final def value: Vec[Double] = inputView.value
 
     final def collect[A](pf: PartialFunction[Input[S], A])(implicit tx: S#Tx): Iterator[A] = inputView.collect(pf)
 
@@ -209,83 +205,92 @@ object NuagesAttributeImpl {
       objAttr.put(key, value)
     }
 
-    def addChild(child: Obj[S])(implicit tx: S#Tx): Unit = {
-      val objAttr = parent.obj.attr
+    def addChild(child: Obj[S])(implicit tx: S#Tx): Unit =
+      inputView match {
+        case inP: Parent[S] => inP.addChild(child)
+        case _ =>
+          val objAttr = parent.obj.attr
 
-      def mkSpan(): SpanLikeObj.Var[S] = {
-        val start = currentOffset()
-        SpanLikeObj.newVar[S](Span.from(start))
-      }
+          def mkSpan(): SpanLikeObj.Var[S] = {
+            val start = currentOffset()
+            SpanLikeObj.newVar[S](Span.from(start))
+          }
 
-      def mkTimeline(): (Timeline.Modifiable[S], SpanLikeObj.Var[S]) = {
-        val tl    = Timeline[S]
-        val span  = mkSpan()
-        (tl, span)
-      }
+          def mkTimeline(): (Timeline.Modifiable[S], SpanLikeObj.Var[S]) = {
+            val tl    = Timeline[S]
+            val span  = mkSpan()
+            (tl, span)
+          }
 
-      objAttr.get(key).fold[Unit] {
-        if (main.isTimeline) {
-          val (tl, span) = mkTimeline()
-          tl.add(span, child)
-          objAttr.put(key, tl)
-        } else {
-          objAttr.put(key, child)
-        }
-
-      } {
-        case f: Folder[S] =>
-          if (main.isTimeline) {
-            val (tl, span) = mkTimeline()
-            f.iterator.foreach { elem =>
-              val span2 = SpanLikeObj.newVar(span())
-              tl.add(span2, elem)
+          objAttr.get(key).fold[Unit] {
+            // XXX TODO -- this shouldn't happen, because otherwise there would be no NuagesAttribute (ourself)
+            if (main.isTimeline) {
+              val (tl, span) = mkTimeline()
+              tl.add(span, child)
+              objAttr.put(key, tl)
+            } else {
+              objAttr.put(key, child)
             }
+
+          } {
+//            case f: Folder[S] =>
+//              if (main.isTimeline) {
+//                val (tl, span) = mkTimeline()
+//                f.iterator.foreach { elem =>
+//                  val span2 = SpanLikeObj.newVar(span())
+//                  tl.add(span2, elem)
+//                }
+//                tl.add(span, child)
+//                objAttr.put(key, tl)
+//
+//              } else {
+//                f.addLast(child)
+//              }
+//
+//            case tl: Timeline.Modifiable[S] if main.isTimeline =>
+//              val span = mkSpan()
+//              tl.add(span, child)
+//
+//            case
+            other =>
+              if (main.isTimeline) {
+                val (tl, span) = mkTimeline()
+                val span2 = SpanLikeObj.newVar(span())  // we want the two spans to be independent
+                tl.add(span2, other)
+                tl.add(span , child)
+                objAttr.put(key, tl)
+
+              } else {
+                // what are we going to do here...?
+                // we'll pack the other into a new folder,
+                // although we currently have no symmetric action
+                // if other is a timeline!
+                // (finding a timeline in a folder when we dissolve
+                // a folder, so we might end up with nested timeline objects)
+
+                val f = Folder[S]
+                f.addLast(other)
+                f.addLast(child)
+                objAttr.put(key, f)
+              }
+          }
+      }
+
+    def removeChild(child: Obj[S])(implicit tx: S#Tx): Unit =
+      inputView match {
+        case inP: Parent[S] =>
+          inP.removeChild(child)
+        case _ =>
+          val objAttr = parent.obj.attr
+          if (main.isTimeline) {
+            val tl          = Timeline[S]
+            val span        = SpanLikeObj.newVar[S](Span.until(currentOffset()))
             tl.add(span, child)
             objAttr.put(key, tl)
-
           } else {
-            f.addLast(child)
-          }
-
-        case tl: Timeline.Modifiable[S] if main.isTimeline =>
-          val span = mkSpan()
-          tl.add(span, child)
-
-        case other =>
-          if (main.isTimeline) {
-            val (tl, span) = mkTimeline()
-            val span2 = SpanLikeObj.newVar(span())  // we want the two spans to be independent
-            tl.add(span2, other)
-            tl.add(span , child)
-            objAttr.put(key, tl)
-
-          } else {
-            // what are we going to do here...?
-            // we'll pack the other into a new folder,
-            // although we currently have no symmetric action
-            // if other is a timeline!
-            // (finding a timeline in a folder when we dissolve
-            // a folder, so we might end up with nested timeline objects)
-
-            val f = Folder[S]
-            f.addLast(other)
-            f.addLast(child)
-            objAttr.put(key, f)
+            objAttr.remove(key)
           }
       }
-    }
-
-    def removeChild(child: Obj[S])(implicit tx: S#Tx): Unit = {
-      val objAttr = parent.obj.attr
-      if (main.isTimeline) {
-        val tl          = Timeline[S]
-        val span        = SpanLikeObj.newVar[S](Span.until(currentOffset()))
-        tl.add(span, child)
-        objAttr.put(key, tl)
-      } else {
-        objAttr.remove(key)
-      }
-    }
 
     final def addPNode(in: Input[S], n: PNode, isFree: Boolean): Unit = {
       requireEDT()
@@ -437,24 +442,12 @@ object NuagesAttributeImpl {
       inputView.dispose()
     }
 
-//    private[this] def updateValueAndRefresh(v: Vec[Double]): Unit =
-//      if (showsValue) {
-//        valueA = v
-//        _state match {
-//          case ss: SummaryState => damageReport(ss.pNode)
-//          case _ =>
-//            assert(assertion = false, message = _state)
-//        }
-//      }
-
     private[this] def setAuralScalarValue(v: Vec[Double])(implicit tx: S#Tx): Unit = {
       disposeValueSynth()
       valueA = v
-      // main.deferVisTx(updateValueAndRefresh(v))
     }
 
     private[this] def setAuralValue(v: AuralAttribute.Value)(implicit tx: S#Tx): Unit = {
-      // println(f"$key%-6s - aural value = $v")
       v match {
         case AuralAttribute.ScalarValue (f )  => setAuralScalarValue(Vector(f.toDouble))
         case AuralAttribute.ScalarVector(xs)  => setAuralScalarValue(xs.map(_.toDouble))

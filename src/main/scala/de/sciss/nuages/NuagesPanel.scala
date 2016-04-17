@@ -103,13 +103,8 @@ trait NuagesPanel[S <: Sys[S]] extends View[S] {
 
   def createGenerator(gen: Obj[S], colOpt: Option[Obj[S]], pt: Point2D)(implicit tx: S#Tx): Unit
 
-  // def nodeMap: stm.IdentifierMap[S#ID, S#Tx, NuagesObj [S]]
-
   def registerNode  (id: S#ID, view: NuagesObj[S])(implicit tx: S#Tx): Unit
   def unregisterNode(id: S#ID, view: NuagesObj[S])(implicit tx: S#Tx): Unit
-
-  //  def addCollectionAttribute   (parent: Obj[S], key: String, child: Obj[S])(implicit tx: S#Tx): Unit
-  //  def removeCollectionAttribute(parent: Obj[S], key: String, child: Obj[S])(implicit tx: S#Tx): Boolean
 
   def appendFilter(pred: Output[S], fltSrc: Obj[S], colSrcOpt: Option[Obj[S]], fltPt: Point2D)
                   (implicit tx: S#Tx): Unit

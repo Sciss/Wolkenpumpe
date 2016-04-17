@@ -52,7 +52,7 @@ object KeyControl {
   final case class Pressed(code: Key.Value, modifiers: Int)
 
   private def internalFlavor[A](implicit ct: reflect.ClassTag[A]): DataFlavor =
-    new DataFlavor(DataFlavor.javaJVMLocalObjectMimeType + ";class=\"" + ct.runtimeClass.getName + "\"")
+    new DataFlavor(s"""${DataFlavor.javaJVMLocalObjectMimeType};class="${ct.runtimeClass.getName}"""")
 
   final class ControlDrag(val values: Vec[Double], val spec: ParamSpec) extends Transferable {
     def getTransferDataFlavors: Array[DataFlavor] = Array(ControlFlavor)
