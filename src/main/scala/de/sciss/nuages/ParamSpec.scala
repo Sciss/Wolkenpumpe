@@ -14,10 +14,11 @@
 package de.sciss.nuages
 
 import de.sciss.lucre.event.Targets
-import de.sciss.lucre.expr.impl.ExprTypeImpl
 import de.sciss.lucre.expr.Expr
+import de.sciss.lucre.expr.impl.ExprTypeImpl
+import de.sciss.lucre.stm
 import de.sciss.lucre.stm.Sys
-import de.sciss.serial.{ImmutableSerializer, DataInput, DataOutput, Writable}
+import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer, Writable}
 import de.sciss.synth
 
 object ParamSpec {
@@ -85,6 +86,16 @@ object ParamSpec {
   }
 
   def read(in: DataInput): ParamSpec = serializer.read(in)
+
+  /** Currently copies only name and spec. */
+  def copyAttr[S <: Sys[S]](source: stm.Obj[S], target: stm.Obj[S])(implicit tx: S#Tx): Unit = {
+    val a = source.attr
+    val b = target.attr
+
+    a.get(Key).foreach { spec =>
+      b.put(Key, spec)
+    }
+  }
 }
 final case class ParamSpec(lo: Double = 0.0, hi: Double = 1.0, warp: Warp = LinearWarp, // step: Double = 0.0,
                            unit: String = "")

@@ -45,7 +45,8 @@ object NuagesAttributeImpl {
 
   def apply[S <: SSys[S]](key: String, _value: Obj[S], parent: NuagesObj[S])
                          (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute[S] = {
-    val spec          = getSpec(parent, key)
+//    val spec          = getSpec(parent, key)
+    val spec          = getSpec(_value)
     val _frameOffset  = parent.frameOffset
     val res = new Impl[S](parent = parent, key = key, spec = spec) { self =>
       protected val inputView = mkInput(attr = self, parent = self, frameOffset = _frameOffset, value = _value)
@@ -83,8 +84,10 @@ object NuagesAttributeImpl {
   
   private val defaultSpec = ParamSpec()
 
-  def getSpec[S <: Sys[S]](parent: NuagesObj[S], key: String)(implicit tx: S#Tx): ParamSpec =
-    parent.obj.attr.$[ParamSpec.Obj](s"$key-${ParamSpec.Key}").map(_.value).getOrElse(defaultSpec)
+//  def getSpec[S <: Sys[S]](parent: NuagesObj[S], key: String)(implicit tx: S#Tx): ParamSpec =
+//    parent.obj.attr.$[ParamSpec.Obj](s"$key-${ParamSpec.Key}").map(_.value).getOrElse(defaultSpec)
+    def getSpec[S <: Sys[S]](value: Obj[S])(implicit tx: S#Tx): ParamSpec =
+      value.attr.$[ParamSpec.Obj](ParamSpec.Key).map(_.value).getOrElse(defaultSpec)
 
   // updated on EDT
   private sealed trait State {
@@ -195,6 +198,7 @@ object NuagesAttributeImpl {
           gr.add(timeBefore, before)
         }
         val timeNow     = LongObj.newVar[S](start)
+        ParamSpec.copyAttr(source = before, target = gr)
         gr.add(timeNow, now)
         gr
       } else {
@@ -226,6 +230,7 @@ object NuagesAttributeImpl {
             // XXX TODO -- this shouldn't happen, because otherwise there would be no NuagesAttribute (ourself)
             if (main.isTimeline) {
               val (tl, span) = mkTimeline()
+              // XXX TODO --- copy attr from child?
               tl.add(span, child)
               objAttr.put(key, tl)
             } else {
@@ -258,6 +263,7 @@ object NuagesAttributeImpl {
                 val span2 = SpanLikeObj.newVar(span())  // we want the two spans to be independent
                 tl.add(span2, other)
                 tl.add(span , child)
+                ParamSpec.copyAttr(source = other, target = tl)
                 objAttr.put(key, tl)
 
               } else {
@@ -271,6 +277,7 @@ object NuagesAttributeImpl {
                 val f = Folder[S]
                 f.addLast(other)
                 f.addLast(child)
+                ParamSpec.copyAttr(source = other, target = f)
                 objAttr.put(key, f)
               }
           }
@@ -285,6 +292,7 @@ object NuagesAttributeImpl {
           if (main.isTimeline) {
             val tl          = Timeline[S]
             val span        = SpanLikeObj.newVar[S](Span.until(currentOffset()))
+            ParamSpec.copyAttr(source = child, target = tl)
             tl.add(span, child)
             objAttr.put(key, tl)
           } else {

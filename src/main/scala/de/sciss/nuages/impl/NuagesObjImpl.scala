@@ -52,7 +52,7 @@ object NuagesObjImpl {
 
   private val fastLog = FastLog(base = 10, q = 11)
 
-  private[this] val specSuffix  = s"-${ParamSpec.Key}"
+//  private[this] val specSuffix  = s"-${ParamSpec.Key}"
   private[this] val ignoredKeys = Set(ObjKeys.attrName, Nuages.attrShortcut)
 
 //  private def mkParam[S <: Sys[S]](parent: NuagesObj[S], key: String, obj: Obj[S])
@@ -60,7 +60,7 @@ object NuagesObjImpl {
 //    if (!(key.endsWith(specSuffix) || ignoredKeys.contains(key)))
 //      NuagesAttribute /* .tryApply */ (key = key, value = obj, parent = parent)
 
-  private def isAttrShown(key: String): Boolean = !(key.endsWith(specSuffix) || ignoredKeys.contains(key))
+  private def isAttrShown(key: String): Boolean = !(/* key.endsWith(specSuffix) || */ ignoredKeys.contains(key))
 }
 final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
                                                var name: String,

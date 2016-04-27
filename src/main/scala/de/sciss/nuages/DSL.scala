@@ -100,21 +100,21 @@ class DSL[S <: stm.Sys[S]] private() {
   }
 
   private def mkPar(rate: Rate, key: String, spec: ParamSpec, default: Attribute.Default)(implicit tx: S#Tx): GE = {
-    val obj       = current.get(tx.peer)
-    val paramObj  = default match {
+    val obj = current.get(tx.peer)
+    val paramObj: Obj[S] = default match {
       case Attribute.Scalar(x) =>
-        val defaultN  = spec.inverseMap(x)
+        val defaultN = spec.inverseMap(x)
         DoubleObj.newVar(DoubleObj.newConst[S](defaultN))
       case Attribute.Vector(xs) =>
-        val defaultN  = xs.map(spec.inverseMap)
+        val defaultN = xs.map(spec.inverseMap)
         DoubleVector.newVar(DoubleVector.newConst[S](defaultN))
     }
-    val specObj   = ParamSpec.Obj.newConst[S](spec)
+    val specObj = ParamSpec.Obj.newConst[S](spec)
+    paramObj.attr.put(ParamSpec.Key, specObj)
     obj.attr.put(key, paramObj)
-    obj.attr.put(s"$key-${ParamSpec.Key}", specObj)
-    val sig       = Attribute(rate, key, default, fixed = default.numChannels > 1)  // XXX TODO -- is this always good?
-    // val clip      = sig.clip(0, 1)
-    val clip      = sig.max(0).min(1)   // some crazy bugs in Clip
+    // obj.attr.put(s"$key-${ParamSpec.Key}", specObj)
+    val sig = Attribute(rate, key, default, fixed = default.numChannels > 1)  // XXX TODO -- is this always good?
+    val clip = sig.max(0).min(1)   // some crazy bugs in Clip
     spec.map(clip)
   }
 

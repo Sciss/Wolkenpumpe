@@ -13,6 +13,9 @@
 
 package de.sciss.nuages
 
+import de.sciss.lucre.stm.{Obj, Sys}
+import de.sciss.synth.proc.ObjKeys
+
 object Util {
   /** Binary search on an indexed collection.
     *
