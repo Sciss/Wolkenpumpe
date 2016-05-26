@@ -113,7 +113,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
   }
 
   def isCollector(implicit tx: TxnLike): Boolean =
-    outputs.isEmpty && attrs.contains("in") && attrs.size == 1
+    outputs.isEmpty && name.startsWith("O-") // attrs.contains("in") && attrs.size == 1
 
   def hasOutput(key: String)(implicit tx: TxnLike): Boolean = outputs.contains(key)
 

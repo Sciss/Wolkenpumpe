@@ -1,5 +1,5 @@
 name               := "Wolkenpumpe"
-version            := "2.6.0"
+version            := "2.6.1-SNAPSHOT"
 
 organization       := "de.sciss"
 homepage           := Some(url(s"https://github.com/Sciss/${name.value}"))
