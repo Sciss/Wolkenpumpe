@@ -743,7 +743,7 @@ object ScissProcs {
 
     filterF("pitch") { in =>
       val pTrans  = pAudio("shift", ParamSpec(0.125, 4, ExpWarp), default(1.0 ))
-      val pTime   = pAudio("time" , ParamSpec(0.01,  1, ExpWarp), default(0.1 ))
+      val pTime   = pAudio("time" , ParamSpec(0.01,  1, ExpWarp), default(0.01))
       val pPitch  = pAudio("pitch", ParamSpec(0.01,  1, ExpWarp), default(0.01))
       val pMix    = mkMix()
 
@@ -751,7 +751,9 @@ object ScissProcs {
       val pitch         = A2K.kr(pTrans)
       val timeDisperse  = A2K.kr(pTime )
       val pitchDisperse = A2K.kr(pPitch)
-      val flt           = PitchShift.ar(in, grainSize, pitch, pitchDisperse, timeDisperse * grainSize)
+      val flt0          = PitchShift.ar(in, grainSize, pitch, pitchDisperse, timeDisperse * grainSize)
+      val gain          = 2.5 - pMix.max(0.5)
+      val flt           = flt0 * gain // compensate for gain (approximate)
       mix(in, flt, pMix)
     }
 
