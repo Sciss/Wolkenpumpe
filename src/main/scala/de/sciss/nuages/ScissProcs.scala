@@ -1064,6 +1064,7 @@ object ScissProcs {
     // -------------- CONTROL SIGNALS --------------
 
     generator("a~pulse") {
+      shortcut = "shift P"
       val pFreq   = pAudio("freq"   , ParamSpec(0.1 , 10000, ExpWarp), default(15.0))
       val pW      = pAudio("width"  , ParamSpec(0.0 ,     1.0),        default(0.5))
       val pLo     = pAudio("lo"     , ParamSpec(0.0 , 1), default(0.0))
@@ -1077,6 +1078,7 @@ object ScissProcs {
     }
 
     generator("a~sin") {
+      shortcut = "shift S"
       val pFreq   = pAudio("freq"   , ParamSpec(0.1 , 10000, ExpWarp), default(15.0))
       val pLo     = pAudio("lo"     , ParamSpec(0.0 , 1), default(0.0))
       val pHi     = pAudio("hi"     , ParamSpec(0.0 , 1), default(1.0))
