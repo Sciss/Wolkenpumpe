@@ -37,9 +37,10 @@ object NuagesAttrInputImpl {
   }
 }
 trait NuagesAttrInputImpl[S <: SSys[S]]
-  extends RenderAttrValue[S]
-  with AttrInputKeyControl[S]
-  with NuagesAttrInputBase[S] {
+  extends RenderAttrValue     [S]
+  with AttrInputKeyControl    [S]
+  with NuagesAttrInputBase    [S]
+  with NuagesAttribute.Numeric {
 
   import NuagesAttrInputImpl.Drag
   import NuagesDataImpl._
@@ -183,7 +184,7 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
         val angV = Vector.fill(numChannels)(ang)
         if (instant) setControl(angV, instant = true)
         angV
-      } else value
+      } else numericValue
       drag = new Drag(ang, vStart, instant = instant)
       true
     } else false

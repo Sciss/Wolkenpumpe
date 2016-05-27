@@ -293,6 +293,8 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
     // - in the previous version we limit ourselves to
     //  `Proc.mainIn` and `Proc.mainOut`.
 
+    var updatedMain = false // XXX TODO -- horrible, dirty hack
+
     for {
       outputView <- outputs.get(Proc.mainOut)
       inputAttr  <- attrs  .get(Proc.mainIn )
@@ -304,7 +306,13 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
       // println(s"For re-connection we found: ${it.mkString(", ")}")
       val parent = sinkView.inputParent
       val child  = sourceView.output
-      parent.addChild(child)
+      if (sinkView.attribute.isControl) {
+        val before = obj
+        parent.updateChild(before, child)
+        updatedMain = true
+      } else {
+        parent.addChild(child)
+      }
       // main.addCollectionAttribute(parent = ..., key = ..., child = ...)
     }
 
@@ -328,9 +336,20 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
         // println(s"inputParent = ${outAttrIn.inputParent}")
         val inAttr = outAttrIn.attribute
         if (inAttr.isControl) {
-          val numCh       = 2   // XXX TODO
-          val now         = DoubleVector.newVar[S](Vector.fill(numCh)(0.0))
-          outAttrIn.inputParent.updateChild(output, now)
+          // skip if we already re-wired our own input
+          if (key != Proc.mainOut || !updatedMain) {
+            val now = inAttr match {
+              case num: NuagesAttribute.Numeric =>
+                requireEDT()
+                DoubleVector.newVar[S](num.numericValue)
+
+              case _ =>
+                println(s"Warning: no numeric attribute input for $inAttr")
+                val numCh = 2   // XXX TODO
+                DoubleVector.newVar[S](Vector.fill(numCh)(0.0))
+            }
+            outAttrIn.inputParent.updateChild(output, now)
+          }
         } else {
           outAttrIn.inputParent.removeChild(output)
         }

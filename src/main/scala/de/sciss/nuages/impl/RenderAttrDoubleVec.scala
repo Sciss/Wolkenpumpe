@@ -21,12 +21,14 @@ import de.sciss.lucre.synth.Sys
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.swing.Graphics2D
 
-trait RenderAttrDoubleVec[S <: Sys[S]] extends RenderAttrValue[S] {
+trait RenderAttrDoubleVec[S <: Sys[S]] extends RenderAttrValue[S] with NuagesAttribute.Numeric {
   type A = Vec[Double]
 
   private[this] var allValuesEqual = false
 
   import NuagesDataImpl.{gArc, gEllipse, gLine, margin, setSpine}
+
+  final def numericValue: Vec[Double] = valueA
 
   protected final def renderValueUpdated(): Unit = {
     val rv: Vec[Double] = renderedValue // why IntelliJ !?

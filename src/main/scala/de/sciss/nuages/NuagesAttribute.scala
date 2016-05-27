@@ -96,6 +96,14 @@ object NuagesAttribute {
     def collect[A](pf: PartialFunction[Input[S], A])(implicit tx: S#Tx): Iterator[A]
   }
 
+  /** An attribute or attribute input that provides
+    * a numeric view of its current state.
+    */
+  trait Numeric {
+    /** On the EDT! */
+    def numericValue: Vec[Double]
+  }
+
   trait Parent[S <: Sys[S]] {
     /** Updates a child, possibly moving it into a grapheme if
       * the underlying nuages surface is a timeline.

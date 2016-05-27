@@ -29,7 +29,7 @@ trait NuagesScalarAttrInput[S <: Sys[S]] extends NuagesAttrInputImpl[S] {
 
   // ---- impl ----
 
-  final def value: Vec[Double] = Vector(toDouble(valueA))
+  final def numericValue: Vec[Double] = Vector(toDouble(valueA))
 
   protected final def mkConst(v: Vec[Double])(implicit tx: S#Tx): Ex[S] with Expr.Const[S, A] = {
     require(v.size == 1)

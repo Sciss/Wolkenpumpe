@@ -989,6 +989,12 @@ object ScissProcs {
       mix(in, flt, pMix)
     }
 
+    filterF("mono") { in =>
+      val pMix  = mkMix()
+      val flt   = Mix.mono(in) / NumChannels(in)
+      mix(in, flt, pMix)
+    }
+
     //        val buf         = LocalBuf(numFrames = 1024, numChannels = 1)
     //        val chain1      = FFT(buf, in)
     //        val loud        = Loudness    .kr(chain1)

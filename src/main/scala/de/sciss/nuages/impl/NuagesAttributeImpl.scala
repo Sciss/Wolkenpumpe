@@ -186,27 +186,32 @@ object NuagesAttributeImpl {
     }
 
     final def updateChild(before: Obj[S], now: Obj[S])(implicit tx: S#Tx): Unit = {
-      val objAttr = parent.obj.attr
-      val value = if (main.isTimeline) {
-        val gr          = Grapheme[S]
-        val start       = currentOffset()
+      inputView match {
+        case inP: Parent[S] =>
+          inP.updateChild(before, now)
+        case _ =>
+        val objAttr = parent.obj.attr
+        val value = if (main.isTimeline) {
+          val gr          = Grapheme[S]
+          val start       = currentOffset()
 
-        log(s"$this updateChild($before, $now - $start / ${TimeRef.framesToSecs(start)}s)")
+          log(s"$this updateChild($before, $now - $start / ${TimeRef.framesToSecs(start)}s)")
 
-        if (start != 0L) {
-          val timeBefore  = LongObj.newVar[S](0L) // XXX TODO ?
-          gr.add(timeBefore, before)
+          if (start != 0L) {
+            val timeBefore  = LongObj.newVar[S](0L) // XXX TODO ?
+            gr.add(timeBefore, before)
+          }
+          val timeNow     = LongObj.newVar[S](start)
+          ParamSpec.copyAttr(source = before, target = gr)
+          gr.add(timeNow, now)
+          gr
+        } else {
+          now
         }
-        val timeNow     = LongObj.newVar[S](start)
-        ParamSpec.copyAttr(source = before, target = gr)
-        gr.add(timeNow, now)
-        gr
-      } else {
-        now
+        val found = objAttr.get(key)
+        require(found == Some(before), s"updateChild($before, $now) -- found $found")
+        objAttr.put(key, value)
       }
-      val found = objAttr.get(key)
-      require(found == Some(before), s"updateChild($before, $now) -- found $found")
-      objAttr.put(key, value)
     }
 
     def addChild(child: Obj[S])(implicit tx: S#Tx): Unit =

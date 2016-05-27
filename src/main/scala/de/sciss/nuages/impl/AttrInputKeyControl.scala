@@ -32,15 +32,13 @@ import scala.swing.{Label, Orientation, Swing, TextField}
 import scala.util.Try
 
 trait AttrInputKeyControl[S <: Sys[S]] extends ClipboardOwner {
-  _: NuagesAttribute.Input[S] with NuagesData[S] =>
+  _: NuagesAttribute.Input[S] with NuagesAttribute.Numeric with NuagesData[S] =>
 
   // ---- abstract ----
 
-  protected def setControl(v: Vec[Double], instant: Boolean): Unit
-
   protected def numChannels: Int
 
-  protected def value: Vec[Double]
+  protected def setControl(v: Vec[Double], instant: Boolean): Unit
 
   // ---- impl ----
 
@@ -48,7 +46,7 @@ trait AttrInputKeyControl[S <: Sys[S]] extends ClipboardOwner {
     if ((e.modifiers & KeyStrokes.menu1.mask) == KeyStrokes.menu1.mask) {
       if (e.code == Key.C) {        // copy
         val clip = Toolkit.getDefaultToolkit.getSystemClipboard
-        val data = new KeyControl.ControlDrag(value, attribute.spec)
+        val data = new KeyControl.ControlDrag(numericValue, attribute.spec)
         clip.setContents(data, this)
       } else  if (e.code == Key.V) {  // paste clipboard
         val clip = Toolkit.getDefaultToolkit.getSystemClipboard
@@ -77,7 +75,7 @@ trait AttrInputKeyControl[S <: Sys[S]] extends ClipboardOwner {
       case 'c'  => Vector.fill(numChannels)(0.5)
       case '['  =>
         val s  = attribute.spec
-        val vs = value
+        val vs = numericValue
         val vNew = if (s.warp == IntWarp) {
           vs.map(v => s.inverseMap(s.map(v) - 1))
         } else vs.map(_ - 0.005)
@@ -85,14 +83,14 @@ trait AttrInputKeyControl[S <: Sys[S]] extends ClipboardOwner {
 
       case ']'  =>
         val s  = attribute.spec
-        val vs = value
+        val vs = numericValue
         val vNew = if (s.warp == IntWarp) {
           vs.map(v => s.inverseMap(s.map(v) + 1))
         } else vs.map(_ + 0.005)
         vNew.map(math.min(1.0, _))
 
       case '{'  =>  // decrease channel spacing
-        val vs      = value
+        val vs      = numericValue
         val max     = vs.max
         val min     = vs.min
         val mid     = (min + max) / 2
@@ -104,7 +102,7 @@ trait AttrInputKeyControl[S <: Sys[S]] extends ClipboardOwner {
         }
 
       case '}'  =>  // increase channel spacing
-        val vs      = value
+        val vs      = numericValue
         val max     = vs.max
         val min     = vs.min
         val newMin  = math.max(0.0, min - 0.0025)
@@ -126,7 +124,7 @@ trait AttrInputKeyControl[S <: Sys[S]] extends ClipboardOwner {
   private[this] def showParamInput(vi: VisualItem): Unit = {
     val p = new OverlayPanel {
       val spec    = attribute.spec
-      val ggValue = new TextField(f"${spec.map(value.head)}%1.3f", 12)
+      val ggValue = new TextField(f"${spec.map(numericValue.head)}%1.3f", 12)
       ggValue.background = Color.black
       ggValue.foreground = Color.white
       ggValue.peer.addAncestorListener(new AncestorListener {

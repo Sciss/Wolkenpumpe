@@ -131,8 +131,12 @@ trait PanelImplTxnFuns[S <: Sys[S]] {
         for {
           fltOut <- fltP.outputs.get(Proc.mainOut)
         } {
-          succ.removeChild(pred)
-          succ.addChild(fltOut)
+          if (succ.isControl) {
+            succ.updateChild(pred, fltOut)
+          } else {
+            succ.removeChild(pred)
+            succ.addChild(fltOut)
+          }
         }
 
       case _ =>
