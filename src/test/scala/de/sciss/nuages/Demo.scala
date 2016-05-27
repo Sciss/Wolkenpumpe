@@ -11,7 +11,8 @@ import de.sciss.synth.proc.Durable
 object Demo {
   case class Config(durable: Option[File] = None, timeline: Boolean = false)
 
-  val DEBUG = true
+  val DEBUG     = true
+  val DUMP_OSC  = false
 
   def main(args: Array[String]): Unit = {
     val p = new scopt.OptionParser[Config]("Demo") {
@@ -46,6 +47,11 @@ object Demo {
   private def mkNuages[S <: Sys[S]](nuagesH: stm.Source[S#Tx, Nuages[S]])(implicit cursor: stm.Cursor[S]): Unit = {
     val w = new DemoNuages[S]
     w.run(nuagesH)
+    if (DUMP_OSC) cursor.step { implicit tx =>
+      w.auralSystem.whenStarted(_.peer.dumpOSC(filter = m =>
+        m.name != "/meters" && m.name != "/tr"
+      ))
+    }
   }
 
   def run(config: Config): Unit = {

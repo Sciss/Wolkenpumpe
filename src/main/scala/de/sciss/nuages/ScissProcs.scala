@@ -226,7 +226,7 @@ object ScissProcs {
         val loopFrames  = BufFrames.kr(bufID)
 
         val numBufChans = spec.numChannels
-        val numChans    = if (sConfig.generatorChannels > 0) sConfig.generatorChannels else numBufChans
+        // val numChans    = if (sConfig.generatorChannels > 0) sConfig.generatorChannels else numBufChans
 
         val trig1       = Pad.LocalIn.kr(pSpeed)
         val gateTrig1   = PulseDivider.kr(trig = trig1, div = 2, start = 1)

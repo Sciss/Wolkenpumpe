@@ -1,5 +1,5 @@
 name               := "Wolkenpumpe"
-version            := "2.7.0-SNAPSHOT"
+version            := "2.7.0"
 
 organization       := "de.sciss"
 homepage           := Some(url(s"https://github.com/Sciss/${name.value}"))
@@ -10,7 +10,7 @@ crossScalaVersions := Seq("2.11.8", "2.10.6")
 
 resolvers          += "Oracle Repository" at "http://download.oracle.com/maven"  // required for sleepycat
 
-lazy val soundProcessesVersion      = "3.5.0"
+lazy val soundProcessesVersion      = "3.5.1"
 lazy val scalaColliderSwingVersion  = "1.29.0"
 lazy val prefuseVersion             = "1.0.1"
 lazy val lucreSwingVersion          = "1.4.0"
