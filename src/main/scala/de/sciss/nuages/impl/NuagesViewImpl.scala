@@ -268,6 +268,7 @@ object NuagesViewImpl {
         val meterData     = Zip(peak, rms) // XXX correct?
         SendReply.kr(meterTr, meterData, "/meters")
 
+        import Ops._
         val amp = "amp".kr(1f)
         (masterBus zip sigMast0).foreach { case (ch, sig) =>
           ReplaceOut.ar(ch, Limiter.ar(sig * amp))

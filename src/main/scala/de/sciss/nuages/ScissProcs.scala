@@ -207,11 +207,11 @@ object ScissProcs {
 
     //    if (settings.numLoops > 0) {
 
-    def default(in: Double): Attribute.Default =
+    def default(in: Double): ControlValues =
       if (sConfig.generatorChannels <= 0)
-        Attribute.Scalar(in)
+        in
       else
-        Attribute.Vector(Vector.fill(sConfig.generatorChannels)(in))
+        Vector.fill(sConfig.generatorChannels)(in)
 
     def mkLoop[T <: stm.Sys[T]](art: Artifact[T])(implicit tx: T#Tx, n: Nuages[T]): Unit = {
       val dsl = DSL[T]

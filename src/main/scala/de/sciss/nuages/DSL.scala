@@ -16,8 +16,9 @@ package de.sciss.nuages
 import de.sciss.lucre.expr.{DoubleObj, DoubleVector, StringObj}
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.Obj
-import de.sciss.synth.proc.graph.{ScanInFix, Attribute, ScanIn, ScanOut}
+import de.sciss.synth.proc.graph.{Attribute, ScanIn, ScanInFix, ScanOut}
 import de.sciss.synth.proc.{Folder, Proc}
+import de.sciss.synth.ugen.ControlValues
 import de.sciss.synth.{GE, Rate, SynthGraph, audio, control, proc, scalar}
 
 import scala.concurrent.stm.TxnLocal
@@ -66,13 +67,13 @@ class DSL[S <: stm.Sys[S]] private() {
     p
   }
 
-  def pAudio(key: String, spec: ParamSpec, default: Attribute.Default)(implicit tx: S#Tx): GE =
+  def pAudio(key: String, spec: ParamSpec, default: ControlValues)(implicit tx: S#Tx): GE =
     mkPar(audio, key = key, spec = spec, default = default)
 
-  def pControl(key: String, spec: ParamSpec, default: Attribute.Default)(implicit tx: S#Tx): GE =
+  def pControl(key: String, spec: ParamSpec, default: ControlValues)(implicit tx: S#Tx): GE =
     mkPar(control, key = key, spec = spec, default = default)
 
-  def pScalar(key: String, spec: ParamSpec, default: Attribute.Default)(implicit tx: S#Tx): GE =
+  def pScalar(key: String, spec: ParamSpec, default: ControlValues)(implicit tx: S#Tx): GE =
     mkPar(scalar, key = key, spec = spec, default = default)
 
   // SCAN
@@ -99,21 +100,21 @@ class DSL[S <: stm.Sys[S]] private() {
     }
   }
 
-  private def mkPar(rate: Rate, key: String, spec: ParamSpec, default: Attribute.Default)(implicit tx: S#Tx): GE = {
+  private def mkPar(rate: Rate, key: String, spec: ParamSpec, default: ControlValues)(implicit tx: S#Tx): GE = {
     val obj = current.get(tx.peer)
-    val paramObj: Obj[S] = default match {
-      case Attribute.Scalar(x) =>
+    val paramObj: Obj[S] = default.seq match {
+      case Seq(x) =>
         val defaultN = spec.inverseMap(x)
         DoubleObj.newVar(DoubleObj.newConst[S](defaultN))
-      case Attribute.Vector(xs) =>
-        val defaultN = xs.map(spec.inverseMap)
+      case _ =>
+        val defaultN = default.seq.map(spec.inverseMap(_))
         DoubleVector.newVar(DoubleVector.newConst[S](defaultN))
     }
     val specObj = ParamSpec.Obj.newConst[S](spec)
     paramObj.attr.put(ParamSpec.Key, specObj)
     obj.attr.put(key, paramObj)
     // obj.attr.put(s"$key-${ParamSpec.Key}", specObj)
-    val sig = Attribute(rate, key, default, fixed = default.numChannels > 1)  // XXX TODO -- is this always good?
+    val sig = Attribute(rate, key, default.seq, fixed = default.seq.size > 1)  // XXX TODO -- is this always good?
     val clip = sig.max(0).min(1)   // some crazy bugs in Clip
     spec.map(clip)
   }

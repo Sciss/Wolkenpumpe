@@ -54,7 +54,8 @@ trait PanelImplMixer[S <: Sys[S]] {
     val graph  = peakMeterGraphMap.getOrElse(numCh, {
       val res = SynthGraph {
         import de.sciss.synth._
-        import de.sciss.synth.ugen._
+        import ugen._
+        import Ops._
         val meterTr = Impulse.kr(1000.0 / LAYOUT_TIME)
         val sig     = In.ar("in".kr, numCh)
         val peak    = Peak.kr(sig, meterTr) // .outputs
@@ -88,7 +89,8 @@ trait PanelImplMixer[S <: Sys[S]] {
     val graph = valueMeterGraphMap.getOrElse(numCh, {
       val res = SynthGraph {
         import de.sciss.synth._
-        import de.sciss.synth.ugen._
+        import ugen._
+        import Ops._
         val meterTr = Impulse.kr(1000.0 / LAYOUT_TIME)
         val busGE   = "in".kr
         val sig     = In.ar(busGE, numCh)
@@ -126,7 +128,8 @@ trait PanelImplMixer[S <: Sys[S]] {
     val graph  = monitorGraphMap.getOrElse(numCh, {
       val res = SynthGraph {
         import de.sciss.synth._
-        import de.sciss.synth.ugen._
+        import ugen._
+        import Ops._
         val meterTr = Impulse.kr(1000.0 / LAYOUT_TIME)
         val sig     = In.ar("in".kr, numCh)
         SendReply.kr(meterTr, sig)
