@@ -114,7 +114,7 @@ class DSL[S <: stm.Sys[S]] private() {
     paramObj.attr.put(ParamSpec.Key, specObj)
     obj.attr.put(key, paramObj)
     // obj.attr.put(s"$key-${ParamSpec.Key}", specObj)
-    val sig = Attribute(rate, key, default.seq, fixed = default.seq.size > 1)  // XXX TODO -- is this always good?
+    val sig = Attribute(rate, key, Some(default.seq), fixed = if (default.seq.size > 1) default.seq.size else -1)  // XXX TODO -- is this always good?
     val clip = sig.max(0).min(1)   // some crazy bugs in Clip
     spec.map(clip)
   }
