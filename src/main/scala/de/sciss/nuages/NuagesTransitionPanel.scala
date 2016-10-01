@@ -73,7 +73,7 @@ class NuagesTransitionPanel( main: NuagesPanel ) extends JPanel {
       addButton( ggTypeInstant )
       addButton( ggTypeGlide )
       addButton( ggTypeXFade )
-      models   = new JavaConversions.JEnumerationWrapper( bg.getElements ).toArray.map( _.getModel )
+      models   = JavaConversions.enumerationAsScalaIterator( bg.getElements ).toArray.map( _.getModel )
 //      panel.setLayout( new BoxLayout( panel, BoxLayout.Y_AXIS ))
       panel.setLayout( new BoxLayout( panel, BoxLayout.X_AXIS ))
 //      panel.add( box )

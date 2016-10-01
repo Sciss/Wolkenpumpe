@@ -1,37 +1,28 @@
-name := "wolkenpumpe"
-
-version := "0.34"
-
+name         := "wolkenpumpe"
+version      := "0.34"
 organization := "de.sciss"
-
-homepage := Some( url( "https://github.com/Sciss/Wolkenpumpe" ))
-
-description := "A Prefuse based visual interface for SoundProcesses, a sound synthesis framework"
-
-licenses := Seq( "GPL v2+" -> url( "http://www.gnu.org/licenses/gpl-2.0.txt" ))
-
-scalaVersion := "2.9.2"
+homepage     := Some(url(s"https://github.com/Sciss/${name.value}"))
+description  := "A Prefuse based visual interface for SoundProcesses, a sound synthesis framework"
+licenses     := Seq("GPL v2+" -> url("http://www.gnu.org/licenses/gpl-2.0.txt"))
+scalaVersion := "2.11.8"
 
 libraryDependencies ++= Seq(
-   "de.sciss" % "prefuse-core" % "0.21",
+   "de.sciss" %  "prefuse-core"   % "0.21",
    "de.sciss" %% "soundprocesses" % "0.34"
 )
 
-retrieveManaged := true
-
-scalacOptions ++= Seq( "-deprecation", "-unchecked" )
+scalacOptions ++= Seq("-deprecation", "-unchecked")
 
 // ---- publishing ----
 
 publishMavenStyle := true
 
-publishTo <<= version { (v: String) =>
-   Some( if( v.endsWith( "-SNAPSHOT" ))
+publishTo :=
+   Some(if (isSnapshot.value)
       "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
    else
       "Sonatype Releases"  at "https://oss.sonatype.org/service/local/staging/deploy/maven2"
    )
-}
 
 publishArtifact in Test := false
 
@@ -50,15 +41,3 @@ pomExtra :=
    </developer>
 </developers>
 
-// ---- ls.implicit.ly ----
-
-seq( lsSettings :_* )
-
-(LsKeys.tags in LsKeys.lsync) := Seq( "sound-synthesis", "gui", "sound", "music", "supercollider" )
-
-(LsKeys.ghUser in LsKeys.lsync) := Some( "Sciss" )
-
-(LsKeys.ghRepo in LsKeys.lsync) := Some( "Wolkenpumpe" )
-
-// bug in ls -- doesn't find the licenses from global scope
-(licenses in LsKeys.lsync) := Seq( "GPL v2+" -> url( "http://www.gnu.org/licenses/gpl-2.0.txt" ))
