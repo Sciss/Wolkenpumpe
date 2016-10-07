@@ -24,7 +24,6 @@ import de.sciss.lucre.synth.Sys
 import de.sciss.synth
 import de.sciss.synth.io.AudioFile
 import de.sciss.synth.{GE, proc}
-import de.sciss.synth.proc.graph.Attribute
 import de.sciss.synth.proc.{Proc, AudioCue, Action, AuralSystem, Folder, SoundProcesses}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -228,7 +227,7 @@ object ScissProcs {
         val numBufChans = spec.numChannels
         // val numChans    = if (sConfig.generatorChannels > 0) sConfig.generatorChannels else numBufChans
 
-        val trig1       = Pad.LocalIn.kr(pSpeed)
+        val trig1       = LocalIn.kr(Pad(0, pSpeed)) // Pad.LocalIn.kr(pSpeed)
         val gateTrig1   = PulseDivider.kr(trig = trig1, div = 2, start = 1)
         val gateTrig2   = PulseDivider.kr(trig = trig1, div = 2, start = 0)
         val startFrame  = pStart *  loopFrames
@@ -423,7 +422,7 @@ object ScissProcs {
       val buf         = LocalBuf(numFrames = numFrames, numChannels = Pad(1, in))
       ClearBuf(buf)
       val time        = Lag.ar(pTime)
-      val lin         = Pad.LocalIn.ar(in)
+      val lin         = LocalIn.ar(Pad(0, in)) // Pad.LocalIn.ar(in)
       val feed        = pFeed
       val wDry        = (1 - feed).sqrt
       val wWet        = feed.sqrt
@@ -574,7 +573,7 @@ object ScissProcs {
 
       // val numChans    = if (sConfig.generatorChannels > 0) sConfig.generatorChannels else 1
 
-      val trig        = Pad.LocalIn.kr(pSpeed)
+      val trig        = LocalIn.kr(Pad(0, pSpeed)) // Pad.LocalIn.kr(pSpeed)
 
       val white       = TRand.kr(0, 1, trig)
       val dur         = LinExp.kr(white, 0, 1, minDur, maxDur)
