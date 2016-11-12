@@ -1,5 +1,5 @@
 name               := "Wolkenpumpe"
-version            := "2.11.0"
+version            := "2.11.1-SNAPSHOT"
 
 organization       := "de.sciss"
 homepage           := Some(url(s"https://github.com/Sciss/${name.value}"))
@@ -10,8 +10,8 @@ crossScalaVersions := Seq("2.11.8", "2.10.6")
 
 resolvers          += "Oracle Repository" at "http://download.oracle.com/maven"  // required for sleepycat
 
-lazy val soundProcessesVersion      = "3.9.0"
-lazy val scalaColliderVersion       = "1.22.0"
+lazy val soundProcessesVersion      = "3.9.1"
+lazy val scalaColliderVersion       = "1.22.1-SNAPSHOT"
 lazy val scalaColliderSwingVersion  = "1.32.0"
 lazy val prefuseVersion             = "1.0.1"
 lazy val lucreSwingVersion          = "1.4.2"
@@ -43,7 +43,11 @@ libraryDependencies ++= Seq(
   "org.scalatest"     %% "scalatest"               % scalaTestVersion   % "test"
 )
 
-scalacOptions ++= Seq("-deprecation", "-unchecked", "-feature", "-encoding", "utf8", "-Xfuture")
+scalacOptions ++= {
+  val xs = Seq("-deprecation", "-unchecked", "-feature", "-encoding", "utf8", "-Xfuture")
+  val ys = if (scalaVersion.value.startsWith("2.10")) xs else xs :+ "-Xlint:-stars-align,_"  // syntax not supported in Scala 2.10
+  ys
+}
 
 // ---- console ----
 

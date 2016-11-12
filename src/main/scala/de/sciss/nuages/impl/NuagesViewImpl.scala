@@ -93,6 +93,15 @@ object NuagesViewImpl {
           sd.setFullScreenWindow(if (sd.getFullScreenWindow == frame.peer) null else frame.peer)
         }
       })
+
+      val treeName = "dump-tree"
+      iMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_T, Toolkit.getDefaultToolkit.getMenuShortcutKeyMask |
+        InputEvent.SHIFT_MASK), treeName)
+      aMap.put(treeName, new AbstractAction(treeName) {
+        def actionPerformed(e: ActionEvent): Unit = {
+          _serverPanel.server.foreach(_.dumpTree(controls = true))
+        }
+      })
     }
 
     private def guiInit(): Unit = {

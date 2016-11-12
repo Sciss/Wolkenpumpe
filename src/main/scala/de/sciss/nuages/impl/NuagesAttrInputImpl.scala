@@ -70,7 +70,7 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
 
   final def main: NuagesPanel[S]  = attribute.parent.main
 
-  private[this] def atomic[A](fun: S#Tx => A): A = main.transport.scheduler.cursor.step(fun)
+  private[this] def atomic[B](fun: S#Tx => B): B = main.transport.scheduler.cursor.step(fun)
 
   def name: String = attribute.name
 
@@ -80,7 +80,7 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
 
   final def input(implicit tx: S#Tx): Obj[S] = objH()._1()
 
-  final def collect[A](pf: PartialFunction[Input[S], A])(implicit tx: S#Tx): Iterator[A] =
+  final def collect[B](pf: PartialFunction[Input[S], B])(implicit tx: S#Tx): Iterator[B] =
     if (pf.isDefinedAt(this)) Iterator.single(pf(this)) else Iterator.empty
 
   private[this] def setControlTxn(v: Vec[Double])(implicit tx: S#Tx): Unit = {

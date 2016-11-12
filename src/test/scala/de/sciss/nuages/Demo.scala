@@ -9,15 +9,15 @@ import de.sciss.synth.Server
 import de.sciss.synth.proc.Durable
 
 object Demo {
-  case class Config(durable: Option[File] = None, timeline: Boolean = false)
+  case class Config(durable: Option[File] = None, timeline: Boolean = false, dumpOSC: Boolean = false)
 
-  val DEBUG     = true
-  val DUMP_OSC  = false
+  val DEBUG = true
 
   def main(args: Array[String]): Unit = {
     val p = new scopt.OptionParser[Config]("Demo") {
       opt[File]('d', "durable")  text "Durable database"         action { case (f, c) => c.copy(durable  = Some(f)) }
       opt[Unit]('t', "timeline") text "Use performance timeline" action { case (_, c) => c.copy(timeline = true) }
+      opt[Unit]("dump-osc")      text "Dump OSC messages"        action { case (_, c) => c.copy(dumpOSC  = true) }
     }
     p.parse(args, Config()).fold(sys.exit(1))(run)
   }
@@ -28,7 +28,7 @@ object Demo {
                                      aCfg: Server.ConfigBuilder): Unit = {
       super.configure(sCfg, nCfg, aCfg)
       if (DEBUG) {
-        sCfg.generatorChannels = 2
+        sCfg.generatorChannels  = 2
         sCfg.micInputs          = Vector.empty
         sCfg.lineInputs         = Vector.empty
         sCfg.lineOutputs        = Vector.empty
@@ -44,10 +44,11 @@ object Demo {
     }
   }
 
-  private def mkNuages[S <: Sys[S]](nuagesH: stm.Source[S#Tx, Nuages[S]])(implicit cursor: stm.Cursor[S]): Unit = {
+  private def mkNuages[S <: Sys[S]](config: Config, nuagesH: stm.Source[S#Tx, Nuages[S]])
+                                   (implicit cursor: stm.Cursor[S]): Unit = {
     val w = new DemoNuages[S]
     w.run(nuagesH)
-    if (DUMP_OSC) cursor.step { implicit tx =>
+    if (config.dumpOSC) cursor.step { implicit tx =>
       w.auralSystem.whenStarted(_.peer.dumpOSC(filter = m =>
         m.name != "/meters" && m.name != "/tr"
       ))
@@ -70,7 +71,7 @@ object Demo {
         val nuagesH = system.root { implicit tx =>
           if (config.timeline) Nuages.timeline[S] else Nuages.folder[S]
         }
-        mkNuages(nuagesH)
+        mkNuages(config, nuagesH)
 
     case None =>
       type S = InMemory
@@ -80,7 +81,7 @@ object Demo {
         val nuages = if (config.timeline) Nuages.timeline[S] else Nuages.folder[S]
         tx.newHandle(nuages)
       }
-      mkNuages(nuagesH)
+      mkNuages(config, nuagesH)
     }
   }
 }

@@ -340,15 +340,18 @@ object ScissProcs {
     generator("~gray") {
       val pAmp  = pAudio("amp", ParamSpec(0.01, 1, ExpWarp), default(0.1))
       val amp   = pAmp
-      // val amp   = ForceChan(amp0)
-      GrayNoise.ar(amp)
+      val out   = GrayNoise.ar(amp)
+      // out.poll(1, "gray")
+      out
     }
 
     generator("~sin") {
       shortcut = "S"
       val freq  = pAudio("freq", ParamSpec(0.1 , 10000, ExpWarp), default(15.0))
       val pAmp  = pAudio("amp" , ParamSpec(0.01,     1, ExpWarp), default( 0.1))
-      SinOsc.ar(freq) * pAmp
+      val out   = SinOsc.ar(freq) * pAmp
+      // out.poll(1, "sin")
+      out
     }
 
     generator("~pulse") {
@@ -488,7 +491,8 @@ object ScissProcs {
       val hlb   = Hilbert.ar(DelayN.ar(in, 0.01, 0.01))
       val hlb2  = Hilbert.ar(Normalizer.ar(in, dur = 0.02))
       val flt   = hlb.real * hlb2.real - hlb.imag * hlb2.imag
-      mix(in, flt, pMix)
+      val out   = mix(in, flt, pMix)
+      out
     }
 
     filterF("hilbert") { in =>
@@ -1110,7 +1114,9 @@ object ScissProcs {
       val pHi     = pAudio("hi"     , ParamSpec(0.0 , 1), default(1.0))
       // GrayNoise.ar.linlin(-1, 1, pLo, pHi)
       val amp     = Pad(1.0, pLo)
-      GrayNoise.ar(amp).linlin(-1, 1, pLo, pHi)
+      val out     = GrayNoise.ar(amp).linlin(-1, 1, pLo, pHi)
+      // out.poll(1, "gray")
+      out
     }
 
     filterF("a~rand") { in =>

@@ -143,7 +143,7 @@ object NuagesAttributeImpl {
     final def tryConsume(newOffset: Long, to: Obj[S])(implicit tx: S#Tx): Boolean =
       inputView.tryConsume(newOffset = newOffset, newValue = to)
 
-    final def collect[A](pf: PartialFunction[Input[S], A])(implicit tx: S#Tx): Iterator[A] = inputView.collect(pf)
+    final def collect[B](pf: PartialFunction[Input[S], B])(implicit tx: S#Tx): Iterator[B] = inputView.collect(pf)
 
     def input(implicit tx: S#Tx): Obj[S] = inputView.input
 
