@@ -25,6 +25,8 @@ import de.sciss.synth.proc.{AuralSystem, SoundProcesses}
 import de.sciss.synth.{Server => SServer}
 
 object Wolkenpumpe {
+  // var ALWAYS_CONTROL = true
+
   def main(args: Array[String]): Unit = {
     type S = InMemory
     implicit val system = InMemory()

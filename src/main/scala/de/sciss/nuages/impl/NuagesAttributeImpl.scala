@@ -127,7 +127,8 @@ object NuagesAttributeImpl {
 
     // ... methods ...
 
-    final val isControl: Boolean = key != "in"  // XXX TODO --- not cool
+//    final val isControl: Boolean = key != "in"  // XXX TODO --- not cool
+    final val isControl: Boolean = /* Wolkenpumpe.ALWAYS_CONTROL || */  key != "in"  // XXX TODO --- not cool
 
     // loop
 

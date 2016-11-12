@@ -50,7 +50,7 @@ object Demo {
     w.run(nuagesH)
     if (config.dumpOSC) cursor.step { implicit tx =>
       w.auralSystem.whenStarted(_.peer.dumpOSC(filter = m =>
-        m.name != "/meters" && m.name != "/tr"
+        m.name != "/meters" && m.name != "/tr" && m.name != "/snap"
       ))
     }
   }

@@ -88,7 +88,16 @@ final class NuagesFolderAttrInput[S <: SSys[S]] private(val attribute: NuagesAtt
     }}
   }
 
-  def updateChild(before: Obj[S], now: Obj[S])(implicit tx: S#Tx): Unit = ???!
+  def updateChild(before: Obj[S], now: Obj[S])(implicit tx: S#Tx): Unit = {
+    ???!
+    val folder = objH()
+    if (isTimeline) {
+      ???!
+    } else {
+      folder.remove (before)
+      folder.addLast(now)
+    }
+  }
 
   def addChild(child: Obj[S])(implicit tx: S#Tx): Unit = {
     val folder = objH()

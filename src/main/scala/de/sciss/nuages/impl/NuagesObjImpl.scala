@@ -288,7 +288,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
     case _ =>
   }
 
-  private[this] def removeSelf()(implicit tx: S#Tx): Unit = {
+  private[this] def removeSelfOLD()(implicit tx: S#Tx): Unit = {
     // ---- connect former input sources to former output sinks ----
     // - in the previous version we limit ourselves to
     //  `Proc.mainIn` and `Proc.mainOut`.
@@ -355,6 +355,115 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
         }
       }
     }
+
+    // ---- remove proc ----
+    val _obj = objH()
+    main.nuages.surface match {
+      // XXX TODO --- DRY - NuagesTimelineAttrInput#removeChild
+      case Surface.Timeline(tl) =>
+        val oldSpan     = spanOption
+          .getOrElse(throw new IllegalStateException(s"Using a timeline nuages but no span!?"))
+        val pos         = main.transport.position
+        val stop        = pos // `- parent.frameOffset` (not, because parent = this)
+      val oldSpanVal  = oldSpan.value
+        val newSpanVal  = oldSpanVal.intersect(Span.until(stop))
+        if (newSpanVal.nonEmpty) {
+          oldSpan match {
+            case SpanLikeObj.Var(vr) => vr() = newSpanVal
+            case _ =>
+              val newSpan = SpanLikeObj.newVar[S](newSpanVal)
+              val ok = tl.remove(oldSpan, _obj)
+              require(ok)
+              tl.add(newSpan, _obj)
+          }
+        } else {
+          val ok = tl.remove(oldSpan, _obj)
+          require(ok)
+        }
+
+      case Surface.Folder(f) =>
+        val ok = f.remove(_obj)
+        require(ok)
+      // ...
+
+      case _ =>
+    }
+
+    // XXX TODO --- remove orphaned input or output procs
+  }
+
+  private[this] def removeSelf()(implicit tx: S#Tx): Unit = {
+    // ---- connect former input sources to former output sinks ----
+    // - in the previous version we limit ourselves to
+    //  `Proc.mainIn` and `Proc.mainOut`.
+
+    var updatedMain = false // XXX TODO -- horrible, dirty hack
+
+    var TO_DO = List.empty[() => Unit]
+
+    for {
+      outputView <- outputs.get(Proc.mainOut)
+      inputAttr  <- attrs  .get(Proc.mainIn )
+      sourceView <- inputAttr.collect {
+        case out: NuagesOutput.Input[S] => out
+      }
+      sinkView   <- outputView.mappings
+    } {
+      // println(s"For re-connection we found: ${it.mkString(", ")}")
+      val parent = sinkView.inputParent
+      val child  = sourceView.output
+      if (sinkView.attribute.isControl) {
+        val before = obj
+        parent.updateChild(before, child)
+        updatedMain = true
+      } else {
+        // parent.addChild(child)
+        TO_DO.::= { () => parent.addChild(child) }
+      }
+      // main.addCollectionAttribute(parent = ..., key = ..., child = ...)
+    }
+
+    // ---- disconnect outputs ----
+    // - we leave the inputs untouched because
+    //   they are seen from self and thus will
+    //   disappear visually and aurally. if
+    //   an offline edit extends the self span,
+    //   those connections will automatically extend
+    //   likewise.
+    outputs.foreach { case (key, outputView) =>
+      val output = outputView.output
+      outputView.mappings.foreach { outAttrIn =>
+        // XXX TODO -- if we are the last child,
+        // we should determine whether the sink
+        // is a parameter or filter input. In the
+        // latter case, ok, let it go back to zero,
+        // in the former case, set the last reported
+        // value as scalar.
+        // AAA
+        // println(s"inputParent = ${outAttrIn.inputParent}")
+        val inAttr = outAttrIn.attribute
+        if (inAttr.isControl) {
+          // skip if we already re-wired our own input
+          if (key != Proc.mainOut || !updatedMain) {
+            val now = inAttr match {
+              case num: NuagesAttribute.Numeric =>
+                requireEDT()
+                DoubleVector.newVar[S](num.numericValue)
+
+              case _ =>
+                println(s"Warning: no numeric attribute input for $inAttr")
+                val numCh = 2   // XXX TODO
+                DoubleVector.newVar[S](Vector.fill(numCh)(0.0))
+            }
+            outAttrIn.inputParent.updateChild(output, now)
+          }
+        } else {
+          outAttrIn.inputParent.removeChild(output)
+        }
+      }
+    }
+
+    if (TO_DO.nonEmpty) TO_DO.reverse.foreach(_.apply())
 
     // ---- remove proc ----
     val _obj = objH()
