@@ -1,17 +1,22 @@
-name               := "Wolkenpumpe"
-version            := "2.11.1-SNAPSHOT"
+lazy val baseName        = "Wolkenpumpe"
+lazy val baseNameL       = baseName.toLowerCase
+lazy val projectVersion  = "2.11.1"
+lazy val mimaVersion     = "2.11.0"
 
-organization       := "de.sciss"
-homepage           := Some(url(s"https://github.com/Sciss/${name.value}"))
-description        := "A Prefuse based visual interface for SoundProcesses, a sound synthesis framework"
-licenses           := Seq("GPL v2+" -> url( "http://www.gnu.org/licenses/gpl-2.0.txt"))
-scalaVersion       := "2.11.8"
-crossScalaVersions := Seq("2.11.8", "2.10.6")
+name                 := baseName
+version              := projectVersion
 
-resolvers          += "Oracle Repository" at "http://download.oracle.com/maven"  // required for sleepycat
+organization         := "de.sciss"
+homepage             := Some(url(s"https://github.com/Sciss/${name.value}"))
+description          := "A Prefuse based visual interface for SoundProcesses, a sound synthesis framework"
+licenses             := Seq("GPL v2+" -> url( "http://www.gnu.org/licenses/gpl-2.0.txt"))
+scalaVersion         := "2.11.8"
+crossScalaVersions   := Seq("2.11.8", "2.10.6")
+ 
+resolvers            += "Oracle Repository" at "http://download.oracle.com/maven"  // required for sleepycat
 
 lazy val soundProcessesVersion      = "3.9.1"
-lazy val scalaColliderVersion       = "1.22.1-SNAPSHOT"
+lazy val scalaColliderVersion       = "1.22.1"
 lazy val scalaColliderSwingVersion  = "1.32.0"
 lazy val prefuseVersion             = "1.0.1"
 lazy val lucreSwingVersion          = "1.4.2"
@@ -42,6 +47,8 @@ libraryDependencies ++= Seq(
   "de.sciss"          %  "submin"                  % subminVersion      % "test",
   "org.scalatest"     %% "scalatest"               % scalaTestVersion   % "test"
 )
+
+mimaPreviousArtifacts := Set("de.sciss" %% baseNameL % mimaVersion)
 
 scalacOptions ++= {
   val xs = Seq("-deprecation", "-unchecked", "-feature", "-encoding", "utf8", "-Xfuture")
