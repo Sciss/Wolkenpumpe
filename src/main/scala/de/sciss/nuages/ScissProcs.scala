@@ -75,10 +75,10 @@ object ScissProcs {
 
     var audioFilesFolder: Option[File] = None
 
-    var lineInputs  : Vec[NamedBusConfig] = Vec.empty
-    var micInputs   : Vec[NamedBusConfig] = Vec.empty
-    var lineOutputs : Vec[NamedBusConfig] = Vec.empty
-    var masterGroups: Vec[NamedBusConfig] = Vec.empty
+    var lineInputs  : Vec[NamedBusConfig] = Vector.empty
+    var micInputs   : Vec[NamedBusConfig] = Vector.empty
+    var lineOutputs : Vec[NamedBusConfig] = Vector.empty
+    var masterGroups: Vec[NamedBusConfig] = Vector.empty
 
     var recDir: File = file(sys.props("java.io.tmpdir"))
 
@@ -1249,13 +1249,17 @@ object ScissProcs {
       val masterCfg         = NamedBusConfig("", 0, numChans)
       val masterGroupsCfg   = masterCfg +: sConfig.masterGroups
 
-      masterGroupsCfg.zipWithIndex.foreach { case (cfg, idx) =>
+      masterGroupsCfg.zipWithIndex.foreach { case (cfg, _ /* idx */) =>
         def placeChannels(sig: GE): GE = {
           if (cfg.numChannels == numChans) sig
           else {
-            Seq(Silent.ar(cfg.offset),
-              Flatten(sig),
-              Silent.ar(numChans - (cfg.offset + cfg.numChannels))): GE
+            Flatten(
+              Seq(
+                Silent.ar(cfg.offset),
+                Flatten(sig),
+                Silent.ar(numChans - (cfg.offset + cfg.numChannels))
+              )
+            )
           }
         }
 
@@ -1351,6 +1355,6 @@ object ScissProcs {
       }
     }
 
-    collectorF("O-mute") { in => DC.ar(0) }
+    collectorF("O-mute") { _ => DC.ar(0) }
   }
 }
