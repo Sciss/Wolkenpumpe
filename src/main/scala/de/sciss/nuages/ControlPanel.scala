@@ -71,10 +71,11 @@ class ControlPanel private(val config: ControlPanel.Config)
     val p           = new PeakMeter()
     p.orientation   = Orientation.Horizontal
     p.numChannels   = numChannels
-    p.borderVisible = true
+    val useBorder   = numChannels <= 8
+    p.borderVisible = useBorder
     val d           = p.preferredSize
-    val dn          = 30 / numChannels
-    d.height        = numChannels * dn + 7
+    val dn          = math.max(4, 30 / numChannels)
+    d.height        = numChannels * dn + (if (useBorder) 7 else 1)
     p.maximumSize   = d
     p.preferredSize = d
     Some(p)

@@ -114,7 +114,7 @@ final class NuagesOutputImpl[S <: Sys[S]] private(val parent: NuagesObj[S],
     true
   }
 
-  protected def boundsResized() = ()
+  protected def boundsResized(): Unit = ()
 
   protected def renderDetail(g: Graphics2D, vi: VisualItem): Unit =
     drawName(g, vi, diam * vi.getSize.toFloat * 0.5f)

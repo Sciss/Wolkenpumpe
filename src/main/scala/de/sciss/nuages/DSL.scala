@@ -43,6 +43,8 @@ object DSL {
 //      DoubleVector.newVar(DoubleVector.newConst[S](defaultN))
 //    }
 //  }
+
+  var useScanFixed = false
 }
 class DSL[S <: stm.Sys[S]] private() {
   // val imp = ExprImplicits[S]

@@ -165,7 +165,7 @@ trait PanelImplMixer[S <: Sys[S]] {
     }
   }
 
-  def setSolo(vp: NuagesObj[S], onOff: Boolean): Unit = main.config.soloChannels.foreach { outChans =>
+  def setSolo(vp: NuagesObj[S], onOff: Boolean): Unit = main.config.soloChannels.foreach { _ /* outChans */ =>
     requireEDT()
     cursor.step { implicit tx =>
       implicit val itx = tx.peer
