@@ -1324,10 +1324,11 @@ object ScissProcs {
           val freq        = pFreq
           val lag         = pLag
           val pw          = pPow
-          val rands       = Lag.ar(TRand.ar(0, 1, Dust.ar(List.fill(outChannels)(freq))).pow(pw), lag)
-          val outSig0     = sig1 * rands
-//          NumChannels(sig).poll(0, "HELLO-FOO")
-          val outSig      = Mix(outSig0)
+//          val rands       = Lag.ar(TRand.ar(0, 1, Dust.ar(List.fill(outChannels)(freq))).pow(pw), lag)
+          val rands       = Lag.ar(TRand.ar(0, 1, Dust.ar(WrapExtendChannels(outChannels, freq))).pow(pw), lag)
+//          NumChannels(rands).poll(0, "HELLO-rands")
+          val outSig      = sig1 * rands
+//          NumChannels(outSig).poll(0, "HELLO-outSig")
           placeChannels(outSig)
         }
 
