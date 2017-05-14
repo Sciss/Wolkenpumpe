@@ -2,7 +2,7 @@
  *  NuagesAttributeImpl.scala
  *  (Wolkenpumpe)
  *
- *  Copyright (c) 2008-2016 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2008-2017 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v2+
  *
@@ -49,7 +49,8 @@ object NuagesAttributeImpl {
     val spec          = getSpec(_value)
     val _frameOffset  = parent.frameOffset
     val res = new Impl[S](parent = parent, key = key, spec = spec) { self =>
-      protected val inputView = mkInput(attr = self, parent = self, frameOffset = _frameOffset, value = _value)
+      protected val inputView: Input[S] =
+        mkInput(attr = self, parent = self, frameOffset = _frameOffset, value = _value)
     }
     res
   }
@@ -160,8 +161,7 @@ object NuagesAttributeImpl {
       main.transport.position - fr
     }
 
-    private def initReplace(state: State, freeNodes: Map[PNode, PEdge], boundNodes: Map[PNode, PEdge])
-                           (implicit tx: S#Tx): Unit = {
+    private def initReplace(state: State, freeNodes: Map[PNode, PEdge], boundNodes: Map[PNode, PEdge]): Unit = {
       requireEDT()
       this._state       = state
       this._freeNodes   = freeNodes
@@ -176,7 +176,7 @@ object NuagesAttributeImpl {
                            newValue = newValue.asInstanceOf[factory.Repr[S]])
           .map { newInput =>
             val res = new Impl[S](parent = parent, key = key, spec = spec) {
-              protected val inputView = newInput
+              protected val inputView: Input[S] = newInput
             }
             main.deferVisTx {
               res.initReplace(self._state, freeNodes = self._freeNodes, boundNodes = self._boundNodes)

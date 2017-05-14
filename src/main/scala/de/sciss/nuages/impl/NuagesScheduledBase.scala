@@ -2,7 +2,7 @@
  *  NuagesScheduledBase.scala
  *  (Wolkenpumpe)
  *
- *  Copyright (c) 2008-2016 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2008-2017 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v2+
  *
@@ -52,7 +52,7 @@ trait NuagesScheduledBase[S <: Sys[S]] {
   protected final def currentOffset()(implicit tx: S#Tx): Long =
     playShiftRef() + transport.position
 
-  protected final def disposeTransport()(implicit tx: S#Tx): Unit = {
+  protected def disposeTransport()(implicit tx: S#Tx): Unit = {
     disposed() = true
     clearSched()
     observer.dispose()

@@ -2,7 +2,7 @@
  *  NuagesFolderAttrInput.scala
  *  (Wolkenpumpe)
  *
- *  Copyright (c) 2008-2016 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2008-2017 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v2+
  *
@@ -15,12 +15,11 @@ package de.sciss.nuages
 package impl
 
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{TxnLike, Disposable, Obj, Sys}
+import de.sciss.lucre.stm.{Disposable, Obj, Sys, TxnLike}
 import de.sciss.lucre.synth.{Sys => SSys}
-import de.sciss.nuages.NuagesAttribute.{Parent, Input}
+import de.sciss.nuages.NuagesAttribute.{Input, Parent}
 import de.sciss.synth.proc.Folder
 
-import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm.Ref
 
 object NuagesFolderAttrInput extends NuagesAttribute.Factory {
@@ -82,7 +81,7 @@ final class NuagesFolderAttrInput[S <: SSys[S]] private(val attribute: NuagesAtt
       case Folder.Added(idx, elem) =>
         val view = mkChild(elem)
         map.transform(_.patch(idx, view :: Nil, 0))
-      case Folder.Removed(idx, elem) =>
+      case Folder.Removed(idx, _ /* elem */) =>
         val view = map.getAndTransform(_.patch(idx, Nil, 1)).apply(idx)
         view.dispose()
     }}

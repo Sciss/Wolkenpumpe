@@ -2,7 +2,7 @@
  *  NuagesParamImpl.scala
  *  (Wolkenpumpe)
  *
- *  Copyright (c) 2008-2016 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2008-2017 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v2+
  *
@@ -15,7 +15,7 @@ package de.sciss.nuages
 package impl
 
 import de.sciss.lucre.synth.Sys
-import prefuse.data.{Edge => PEdge, Node => PNode}
+import prefuse.data.{Edge => PEdge}
 import prefuse.visual.VisualItem
 
 trait NuagesParamImpl[S <: Sys[S]] extends NuagesDataImpl[S] /* NuagesNodeImpl[S] */ with NuagesParam[S] {

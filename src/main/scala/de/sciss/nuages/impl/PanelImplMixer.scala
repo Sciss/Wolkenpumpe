@@ -2,7 +2,7 @@
  *  PanelImplMixer.scala
  *  (Wolkenpumpe)
  *
- *  Copyright (c) 2008-2016 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2008-2017 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v2+
  *
@@ -168,7 +168,7 @@ trait PanelImplMixer[S <: Sys[S]] {
   def setSolo(vp: NuagesObj[S], onOff: Boolean): Unit = main.config.soloChannels.foreach { _ /* outChans */ =>
     requireEDT()
     cursor.step { implicit tx =>
-      implicit val itx = tx.peer
+//      implicit val itx = tx.peer
       clearSolo()
       if (onOff)
 //        viewToAuralMap.get(vp).foreach { auralProc =>

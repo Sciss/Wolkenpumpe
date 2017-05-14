@@ -2,7 +2,7 @@
  *  DSL.scala
  *  (Wolkenpumpe)
  *
- *  Copyright (c) 2008-2016 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2008-2017 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v2+
  *
@@ -180,7 +180,7 @@ class DSL[S <: stm.Sys[S]] private() {
     sinkLike(n.collectors.get, name = name, numChannels = numChannels, fun = fun)
 
   private[this] def sinkLike(folder: Folder[S], name: String, numChannels: Int, fun: GE => Unit)
-                            (implicit tx: S#Tx, nuages: Nuages[S]): Proc[S] = {
+                            (implicit tx: S#Tx): Proc[S] = {
     val obj = mkProcObj(name) {
       val in = if (numChannels == -1) ScanIn() else ScanInFix(numChannels)
       fun(in)

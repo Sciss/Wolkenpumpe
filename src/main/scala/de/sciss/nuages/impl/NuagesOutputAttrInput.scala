@@ -2,7 +2,7 @@
  *  NuagesOutputAttrInput.scala
  *  (Wolkenpumpe)
  *
- *  Copyright (c) 2008-2016 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2008-2017 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v2+
  *
@@ -21,7 +21,6 @@ import de.sciss.nuages.NuagesAttribute.{Parent, Input}
 import de.sciss.synth.proc.Output
 import prefuse.data.{Node => PNode}
 
-import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm.Ref
 
 object NuagesOutputAttrInput extends NuagesAttributeSingleFactory {

@@ -2,7 +2,7 @@
  *  NuagesTimelineBase.scala
  *  (Wolkenpumpe)
  *
- *  Copyright (c) 2008-2016 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2008-2017 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v2+
  *
@@ -34,6 +34,11 @@ trait NuagesTimelineBase[S <: Sys[S]] extends NuagesScheduledBase[S] {
   // ---- impl ----
 
   private[this] var observer: Disposable[S#Tx] = _
+
+  override protected def disposeTransport()(implicit tx: S#Tx): Unit = {
+    super.disposeTransport()
+    observer.dispose()
+  }
 
   /** Calls `initTimelineObserver` followed by creating live views.
     * This must be called after `initPosition` and before `initTransport`.

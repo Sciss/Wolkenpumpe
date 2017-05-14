@@ -2,7 +2,7 @@
  *  ScissProcs.scala
  *  (Wolkenpumpe)
  *
- *  Copyright (c) 2008-2016 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2008-2017 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v2+
  *
@@ -23,8 +23,8 @@ import de.sciss.lucre.stm
 import de.sciss.lucre.synth.Sys
 import de.sciss.synth
 import de.sciss.synth.io.AudioFile
+import de.sciss.synth.proc.{Action, AudioCue, Folder, Proc, SoundProcesses}
 import de.sciss.synth.{GE, proc}
-import de.sciss.synth.proc.{Proc, AudioCue, Action, AuralSystem, Folder, SoundProcesses}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.language.implicitConversions
@@ -129,7 +129,7 @@ object ScissProcs {
   def WrapExtendChannels(n: Int, sig: GE): GE = Vec.tabulate(n)(sig \ _)
 
   def apply[S <: Sys[S]](sConfig: ScissProcs.Config, nConfig: Nuages.Config, nuagesFinder: NuagesFinder)
-                        (implicit tx: S#Tx, cursor: stm.Cursor[S], nuages: Nuages[S], aural: AuralSystem): Unit = {
+                        (implicit tx: S#Tx, nuages: Nuages[S]): Unit = {
     import synth._
     import ugen._
 

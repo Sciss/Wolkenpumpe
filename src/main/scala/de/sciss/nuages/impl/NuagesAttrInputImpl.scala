@@ -2,7 +2,7 @@
  *  NuagesAttrInputImpl.scala
  *  (Wolkenpumpe)
  *
- *  Copyright (c) 2008-2016 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2008-2017 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v2+
  *
@@ -16,7 +16,7 @@ package impl
 
 import java.awt.Graphics2D
 import java.awt.event.MouseEvent
-import java.awt.geom.{Arc2D, Area, Point2D}
+import java.awt.geom.Point2D
 
 import de.sciss.lucre.expr.{Expr, Type}
 import de.sciss.lucre.stm.{Disposable, Obj, Sys, TxnLike}

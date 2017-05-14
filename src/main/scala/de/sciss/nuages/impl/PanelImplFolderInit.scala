@@ -2,7 +2,7 @@
  *  PanelImplFolderInit.scala
  *  (Wolkenpumpe)
  *
- *  Copyright (c) 2008-2016 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2008-2017 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v2+
  *
@@ -74,7 +74,7 @@ trait PanelImplFolderInit[S <: Sys[S]] {
         auralReprRef () = Some(auralFolder)
         auralObserver() = Some(obs        )
 
-      case Transport.ViewRemoved(_, auralTL: AuralObj.Timeline[S]) =>
+      case Transport.ViewRemoved(_, _: AuralObj.Timeline[S]) =>
         disposeAuralObserver()
 
       case _ =>
@@ -83,8 +83,8 @@ trait PanelImplFolderInit[S <: Sys[S]] {
 
     observers ::= folder.changed.react { implicit tx => upd =>
       upd.changes.foreach {
-        case Folder.Added  (index, child) => addNode   (child)
-        case Folder.Removed(index, child) => removeNode(child)
+        case Folder.Added  (_ /* index */, child) => addNode   (child)
+        case Folder.Removed(_ /* index */, child) => removeNode(child)
       }
     }
 

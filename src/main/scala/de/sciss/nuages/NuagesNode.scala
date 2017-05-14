@@ -2,7 +2,7 @@
  *  VisualNode.scala
  *  (Wolkenpumpe)
  *
- *  Copyright (c) 2008-2016 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2008-2017 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v2+
  *
@@ -13,7 +13,7 @@
 
 package de.sciss.nuages
 
-import de.sciss.lucre.stm.{Sys, Disposable}
+import de.sciss.lucre.stm.Sys
 import prefuse.data.{Node => PNode}
 
 /** The common super type of all Prefuse objects

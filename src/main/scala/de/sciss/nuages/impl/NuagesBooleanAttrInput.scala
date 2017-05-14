@@ -2,7 +2,7 @@
  *  NuagesBooleanAttrInput.scala
  *  (Wolkenpumpe)
  *
- *  Copyright (c) 2008-2016 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2008-2017 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v2+
  *
@@ -18,8 +18,6 @@ import de.sciss.lucre.expr.{BooleanObj, Type}
 import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.nuages.NuagesAttribute.{Input, Parent}
-
-import scala.concurrent.stm.Ref
 
 object NuagesBooleanAttrInput extends NuagesAttributeSingleFactory {
   def typeID: Int = BooleanObj.typeID

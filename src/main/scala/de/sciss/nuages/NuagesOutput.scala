@@ -2,7 +2,7 @@
  *  VisualScan.scala
  *  (Wolkenpumpe)
  *
- *  Copyright (c) 2008-2016 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2008-2017 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v2+
  *
@@ -16,7 +16,7 @@ package de.sciss.nuages
 import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.nuages.NuagesAttribute.Input
-import de.sciss.synth.proc.{AuralObj, Output}
+import de.sciss.synth.proc.Output
 
 object NuagesOutput {
   def apply[S <: SSys[S]](parent: NuagesObj[S], output: Output[S], meter: Boolean)

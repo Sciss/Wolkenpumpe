@@ -2,7 +2,7 @@
  *  DragAndMouseDelegateControl.scala
  *  (Wolkenpumpe)
  *
- *  Copyright (c) 2008-2016 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2008-2017 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v2+
  *
@@ -44,7 +44,7 @@ object DragAndMouseDelegateControl {
 
   def getVisualData[S <: Sys[S]](vis: Visualization, vi: VisualItem): Option[NuagesData[S]] =
     vis.getRenderer(vi) match {
-      case pr: NuagesShapeRenderer[_] =>
+      case _: NuagesShapeRenderer[_] =>
         val data = vi.get(COL_NUAGES).asInstanceOf[NuagesData[S]]
         Option(data)
 
@@ -60,7 +60,7 @@ class DragAndMouseDelegateControl[S <: Sys[S]](vis: Visualization) extends Contr
   import DragAndMouseDelegateControl._
   import NuagesPanel._
 
-  private var hoverItem : Option[VisualItem] = None
+//  private var hoverItem : Option[VisualItem] = None
   private var drag      : Option[Drag      ] = None
 
   override def itemEntered(vi: VisualItem, e: MouseEvent): Unit = {
@@ -77,7 +77,7 @@ class DragAndMouseDelegateControl[S <: Sys[S]](vis: Visualization) extends Contr
       case _ =>
     }
     e.getComponent.setCursor(csrHand)
-    hoverItem = Some(vi)
+//    hoverItem = Some(vi)
     vi match {
       case ni: NodeItem =>
         setFixed(ni, fixed = true)
@@ -105,7 +105,7 @@ class DragAndMouseDelegateControl[S <: Sys[S]](vis: Visualization) extends Contr
 
       case _ =>
     }
-    hoverItem = None
+//    hoverItem = None
     vi match {
       case ni: NodeItem =>
         setFixed(ni, fixed = false)
@@ -153,7 +153,7 @@ class DragAndMouseDelegateControl[S <: Sys[S]](vis: Visualization) extends Contr
 
       case _ =>
     }
-    drag.foreach { dr =>
+    drag.foreach { _ =>
       setFixed(vi, fixed = false)
       drag = None
     }

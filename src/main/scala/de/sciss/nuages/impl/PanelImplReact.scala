@@ -2,7 +2,7 @@
  *  PanelImplReact.scala
  *  (Wolkenpumpe)
  *
- *  Copyright (c) 2008-2016 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2008-2017 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v2+
  *
@@ -17,10 +17,9 @@ package impl
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.TxnLike
 import de.sciss.lucre.synth.{AudioBus, Node, Synth, Sys}
-import de.sciss.synth.proc.{AuralObj, Proc}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
-import scala.concurrent.stm.{TSet, TMap}
+import scala.concurrent.stm.TSet
 
 trait PanelImplReact[S <: Sys[S]] {
   import TxnLike.peer

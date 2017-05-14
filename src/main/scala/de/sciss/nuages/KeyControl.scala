@@ -2,7 +2,7 @@
  *  KeyControl.scala
  *  (Wolkenpumpe)
  *
- *  Copyright (c) 2008-2016 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2008-2017 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v2+
  *
@@ -133,8 +133,8 @@ object KeyControl {
     override def mouseDragged(e: MouseEvent): Unit = lastPt.setLocation(e.getX, e.getY)
     override def mouseMoved  (e: MouseEvent): Unit = lastPt.setLocation(e.getX, e.getY)
 
-    private def mkEmptyCategory()(implicit tx: S#Tx): Category[S] = new Category[S] {
-      def dispose()(implicit tx: S#Tx) = ()
+    private def mkEmptyCategory(): Category[S] = new Category[S] {
+      def dispose()(implicit tx: S#Tx): Unit = ()
 
       def get(ks  : KeyStroke): Option[stm.Source[S#Tx, Obj[S]]] = None
       def get(name: String   ): Option[stm.Source[S#Tx, Obj[S]]] = None
@@ -143,9 +143,9 @@ object KeyControl {
     }
 
     private def mkCategory(f: Folder[S])(implicit tx: S#Tx): Category[S] = new CategoryImpl[S] {
-      protected val idMap = tx.newInMemoryIDMap[KeyStroke]
+      protected val idMap: IdentifierMap[S#ID, S#Tx, KeyStroke] = tx.newInMemoryIDMap[KeyStroke]
 
-      protected val observer = f.changed.react { implicit tx => upd =>
+      protected val observer: Disposable[S#Tx] = f.changed.react { implicit tx =>upd =>
         upd.changes.foreach {
           case Folder.Added  (_, elem) => elemAdded  (elem)
           case Folder.Removed(_, elem) => elemRemoved(elem)
@@ -214,7 +214,7 @@ object KeyControl {
           }
 
           if (e.getKeyCode == KeyEvent.VK_ENTER) {
-            perform { (vOut, vIn, pt) =>
+            perform { (vOut, vIn, _ /* pt */) =>
               showCategoryInput(filters) { implicit tx => (obj, pt0) =>
                 val pred    = vOut.output
                 val inAttr  = vIn.attribute
@@ -255,7 +255,7 @@ object KeyControl {
                   }
 
                   if (e.getKeyCode == KeyEvent.VK_ENTER) {
-                    perform { pt =>
+                    perform { _ /* pt */ =>
                       val category = if (e.isShiftDown) collectors else filters
                       showCategoryInput(category) { implicit tx => (obj, pt0) =>
                         val pred = vOut.output
@@ -299,7 +299,7 @@ object KeyControl {
           def ancestorAdded  (e: AncestorEvent): Unit = ggName.requestFocus()
         })
 
-        var candidates = Vec.empty[String]
+        var candidates: Vec[String] = Vector.empty
 
         val ggCandidates              = new ListView(ListView.Model.wrap(candidates))
         ggCandidates.background       = Color.black

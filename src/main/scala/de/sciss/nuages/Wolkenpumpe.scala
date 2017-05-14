@@ -2,7 +2,7 @@
  *  Wolkenpumpe.scala
  *  (Wolkenpumpe)
  *
- *  Copyright (c) 2008-2016 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2008-2017 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v2+
  *
@@ -164,10 +164,8 @@ class Wolkenpumpe[S <: Sys[S]] {
 
   /** Subclasses may want to override this. */
   protected def registerProcesses(sCfg: ScissProcs.Config, nCfg: Nuages.Config, nuagesFinder: NuagesFinder)
-                                 (implicit tx: S#Tx, cursor: stm.Cursor[S], nuages: Nuages[S],
-                                  aural: AuralSystem): Unit = {
+                                 (implicit tx: S#Tx, nuages: Nuages[S]): Unit =
     ScissProcs[S](sCfg, nCfg, nuagesFinder)
-  }
 
   def run(nuagesH: stm.Source[S#Tx, Nuages[S]])(implicit cursor: stm.Cursor[S]): Unit = {
     Wolkenpumpe.init()

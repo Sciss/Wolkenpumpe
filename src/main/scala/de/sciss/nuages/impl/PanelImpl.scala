@@ -2,7 +2,7 @@
  *  PanelImpl.scala
  *  (Wolkenpumpe)
  *
- *  Copyright (c) 2008-2016 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2008-2017 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v2+
  *
@@ -14,39 +14,21 @@
 package de.sciss.nuages
 package impl
 
-import java.awt.geom.Point2D
-import java.awt.{Color, Dimension, Graphics2D, LayoutManager, Point, Rectangle, RenderingHints}
-import javax.swing.JPanel
-import javax.swing.event.{AncestorEvent, AncestorListener}
+import java.awt.Color
 
-import de.sciss.lucre.expr.{SpanLikeObj, DoubleObj}
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{Obj, Disposable, TxnLike}
-import de.sciss.lucre.swing.impl.ComponentHolder
+import de.sciss.lucre.stm.{Disposable, Obj, TxnLike}
 import de.sciss.lucre.swing.{ListView, defer, deferTx, requireEDT}
-import de.sciss.lucre.synth.{AudioBus, Node, Synth, Sys, Txn}
+import de.sciss.lucre.synth.{AudioBus, Node, Sys}
 import de.sciss.nuages.Nuages.Surface
-import de.sciss.span.{Span, SpanLike}
-import de.sciss.synth.proc.{Action, AuralObj, AuralSystem, Folder, Proc, Timeline, Transport, WorkspaceHandle}
-import de.sciss.synth.{proc, SynthGraph, addToTail, message}
-import prefuse.action.assignment.ColorAction
-import prefuse.action.layout.graph.ForceDirectedLayout
-import prefuse.action.{ActionList, RepaintAction}
-import prefuse.activity.Activity
-import prefuse.controls.{Control, WheelZoomControl, ZoomControl}
-import prefuse.data.event.TupleSetListener
-import prefuse.data.tuple.{DefaultTupleSet, TupleSet}
-import prefuse.data.{Graph, Table, Tuple}
-import prefuse.render.{DefaultRendererFactory, EdgeRenderer, PolygonRenderer}
-import prefuse.util.ColorLib
-import prefuse.visual.expression.InGroupPredicate
-import prefuse.visual.{AggregateTable, NodeItem, VisualGraph, VisualItem}
-import prefuse.{Constants, Display, Visualization}
+import de.sciss.synth.proc
+import de.sciss.synth.proc.{AuralObj, AuralSystem, Folder, Proc, Timeline, Transport, WorkspaceHandle}
+import prefuse.controls.Control
+import prefuse.visual.NodeItem
 
 import scala.collection.breakOut
 import scala.collection.immutable.{IndexedSeq => Vec}
-import scala.concurrent.stm.{Ref, TMap, TxnExecutor, TxnLocal}
-import scala.swing.{Component, Swing}
+import scala.concurrent.stm.{Ref, TxnLocal}
 import scala.util.control.NonFatal
 
 object PanelImpl {
@@ -96,7 +78,7 @@ object PanelImpl {
   final val LAYOUT_TIME   = 50
 
   def mkListView[S <: Sys[S]](folderOpt: Option[Folder[S]])
-                             (implicit tx: S#Tx, cursor: stm.Cursor[S]): ListView[S, Obj[S], Unit] = {
+                             (implicit tx: S#Tx): ListView[S, Obj[S], Unit] = {
     import proc.Implicits._
     val h = ListView.Handler[S, Obj[S], Unit /* Obj.Update[S] */] { implicit tx => obj => obj.name } (_ => (_, _) => None)
     implicit val ser = de.sciss.lucre.expr.List.serializer[S, Obj[S] /* , Unit */ /* Obj.Update[S] */]
@@ -164,7 +146,7 @@ trait PanelImpl[S <: Sys[S], Repr <: Obj[S], AuralRepr <: AuralObj[S]]
   {
   panel =>
 
-  import NuagesPanel.{GROUP_SELECTION, GROUP_GRAPH, COL_NUAGES}
+  import NuagesPanel.{COL_NUAGES, GROUP_SELECTION}
   import PanelImpl._
   import TxnLike.peer
 
@@ -182,8 +164,8 @@ trait PanelImpl[S <: Sys[S], Repr <: Obj[S], AuralRepr <: AuralObj[S]]
 
   protected final def main: NuagesPanel[S] = this
 
-  protected final var observers     = List.empty[Disposable[S#Tx]]
-  protected final val auralObserver = Ref(Option.empty[Disposable[S#Tx]])
+  protected final var observers: List[Disposable[S#Tx]] = Nil
+  protected final val auralObserver                     = Ref(Option.empty[Disposable[S#Tx]])
 
   //  protected final val auralToViewMap  = TMap.empty[AuralObj [S], NuagesObj[S]]
   //  protected final val viewToAuralMap  = TMap.empty[NuagesObj[S], AuralObj [S]]
@@ -227,8 +209,8 @@ trait PanelImpl[S <: Sys[S], Repr <: Obj[S], AuralRepr <: AuralObj[S]]
   final def selection: Set[NuagesNode[S]] = {
     requireEDT()
     val selectedItems = visualization.getGroup(GROUP_SELECTION)
-    import scala.collection.JavaConversions._
-    selectedItems.tuples().flatMap {
+    import scala.collection.JavaConverters._
+    selectedItems.tuples().asScala.flatMap {
       case ni: NodeItem =>
         ni.get(COL_NUAGES) match {
           case vn: NuagesNode[S] => Some(vn)
@@ -271,7 +253,7 @@ trait PanelImpl[S <: Sys[S], Repr <: Obj[S], AuralRepr <: AuralObj[S]]
 
   protected final def getAuralScanData(aural: AuralObj[S], key: String = Proc.mainOut)
                                       (implicit tx: S#Tx): Option[(AudioBus, Node)] = aural match {
-    case ap: AuralObj.Proc[S] =>
+    case _: AuralObj.Proc[S] =>
       None // SCAN
 //      val d = ap.data
 //      for {

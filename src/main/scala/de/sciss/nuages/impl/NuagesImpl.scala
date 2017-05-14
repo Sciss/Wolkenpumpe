@@ -2,7 +2,7 @@
  *  NuagesImpl.scala
  *  (Wolkenpumpe)
  *
- *  Copyright (c) 2008-2016 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2008-2017 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v2+
  *
@@ -52,11 +52,6 @@ object NuagesImpl {
     val sPeer = Timeline[S]
     apply(Surface.Timeline(sPeer))
   }
-
-  // `isScan` is true for scan-links and `false` for attribute mappings
-  private final class LinkPreservation[S <: Sys[S]](val sink: Proc[S], val sinkKey  : String,
-                                                    val source: Proc[S]  , val sourceKey: String,
-                                                    val isScan: Boolean)
 
   def copyGraph[S <: Sys[S]](xs: Vec[Obj[S]])(implicit tx: S#Tx): Vec[Obj[S]] = {
     val inProcs = xs.collect {
@@ -143,7 +138,7 @@ object NuagesImpl {
       if (it.hasNext) Some(it.next()) else None
     }
 
-    private[this] def disconnect()(implicit tx: S#Tx) = ()
+    private[this] def disconnect(): Unit = ()
 
     def connect()(implicit tx: S#Tx): this.type = {
       // XXX TODO -- currently not listening to folder etc.
