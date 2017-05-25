@@ -1,7 +1,7 @@
 lazy val baseName        = "Wolkenpumpe"
 lazy val baseNameL       = baseName.toLowerCase
-lazy val projectVersion  = "2.14.0"
-lazy val mimaVersion     = "2.14.0"
+lazy val projectVersion  = "2.15.0"
+lazy val mimaVersion     = "2.15.0"
 
 name                 := baseName
 version              := projectVersion
@@ -17,7 +17,7 @@ resolvers            += "Oracle Repository" at "http://download.oracle.com/maven
 
 lazy val soundProcessesVersion      = "3.12.0"
 lazy val scalaColliderVersion       = "1.22.3"
-lazy val scalaColliderSwingVersion  = "1.32.2"
+lazy val scalaColliderSwingVersion  = "1.33.0"
 lazy val prefuseVersion             = "1.0.1"
 lazy val lucreSwingVersion          = "1.5.0"
 lazy val swingPlusVersion           = "0.2.2"
