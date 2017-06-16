@@ -79,8 +79,8 @@ final class NuagesOutputImpl[S <: Sys[S]] private(val parent: NuagesObj[S],
   def auralObjAdded  (aural: AuralObj.Proc[S])(implicit tx: S#Tx): Unit = if (meter) {
     aural.getOutput(key).foreach(mkMeterSynth)
     val obs = aural.ports.react { implicit tx => {
-      case AuralObj.Proc.OutputAdded  (_, auralOutput) => mkMeterSynth(auralOutput)
-      case AuralObj.Proc.OutputRemoved(_, auralOutput) => disposeMeterSynth()
+      case AuralObj.Proc.OutputAdded  (_, auralOutput)  => mkMeterSynth(auralOutput)
+      case AuralObj.Proc.OutputRemoved(_, _)            => disposeMeterSynth()
       case _ =>
     }}
     auralObserverRef.swap(obs).dispose()

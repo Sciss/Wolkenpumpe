@@ -102,8 +102,9 @@ final case class ParamSpec(lo: Double = 0.0, hi: Double = 1.0, warp: Warp = Line
   extends Writable {
 
   import synth._
-  def range = hi - lo
-  def ratio = hi / lo
+
+  def range: Double = hi - lo
+  def ratio: Double = hi / lo
 
   def clip(value: Double): Double = math.max(lo, math.min(hi, value))
 

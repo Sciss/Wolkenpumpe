@@ -35,8 +35,8 @@ object NuagesPanel {
   private[nuages] val COL_NUAGES      = "nuages"
   private[nuages] val GROUP_SELECTION = "sel"
 
-  final val masterAmpSpec       = ParamSpec(0.01, 10.0, ExponentialWarp) -> 1.0
-  final val soloAmpSpec         = ParamSpec(0.10, 10.0, ExponentialWarp) -> 0.5
+  final val masterAmpSpec : (ParamSpec, Double) = ParamSpec(0.01, 10.0, ExponentialWarp) -> 1.0
+  final val soloAmpSpec   : (ParamSpec, Double) = ParamSpec(0.10, 10.0, ExponentialWarp) -> 0.5
 
   def apply[S <: SSys[S]](nuages: Nuages[S], config: Nuages.Config)
                         (implicit tx: S#Tx, aural: AuralSystem,

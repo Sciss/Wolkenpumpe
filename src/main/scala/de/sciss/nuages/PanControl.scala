@@ -16,7 +16,8 @@ package de.sciss.nuages
 import java.awt.event.MouseEvent
 
 class PanControl extends prefuse.controls.PanControl {
-  private var active = false
+  private[this] var active = false
+
   override def mousePressed(e: MouseEvent): Unit = {
     if (e.isShiftDown) return
     active = true

@@ -46,8 +46,8 @@ object NuagesDataImpl {
   final val gLine         = new Line2D   .Double
   final val gEllipse      = new Ellipse2D.Double
 
-  final val margin        = diam   * 0.2
-  final val margin2       = margin * 2
+  final val margin  : Double = diam   * 0.2
+  final val margin2 : Double = margin * 2
 
   final val threeDigits   = new MathContext(3, RoundingMode.HALF_UP)
 
@@ -123,15 +123,15 @@ trait NuagesDataImpl[S <: Sys[S]] extends NuagesData[S] {
     g.setTransform(atOrig)
   }
 
-  def itemEntered (vi: VisualItem, e: MouseEvent, pt: Point2D) = ()
-  def itemExited  (vi: VisualItem, e: MouseEvent, pt: Point2D) = ()
+  def itemEntered (vi: VisualItem, e: MouseEvent, pt: Point2D): Unit    = ()
+  def itemExited  (vi: VisualItem, e: MouseEvent, pt: Point2D): Unit    = ()
   def itemPressed (vi: VisualItem, e: MouseEvent, pt: Point2D): Boolean = false
-  def itemReleased(vi: VisualItem, e: MouseEvent, pt: Point2D) = ()
-  def itemDragged (vi: VisualItem, e: MouseEvent, pt: Point2D) = ()
+  def itemReleased(vi: VisualItem, e: MouseEvent, pt: Point2D): Unit    = ()
+  def itemDragged (vi: VisualItem, e: MouseEvent, pt: Point2D): Unit    = ()
 
-  def itemKeyPressed (vi: VisualItem, e: KeyControl.Pressed) = ()
-  def itemKeyReleased(vi: VisualItem, e: KeyControl.Pressed) = ()
-  def itemKeyTyped   (vi: VisualItem, e: KeyControl.Typed  ) = ()
+  def itemKeyPressed (vi: VisualItem, e: KeyControl.Pressed): Unit = ()
+  def itemKeyReleased(vi: VisualItem, e: KeyControl.Pressed): Unit = ()
+  def itemKeyTyped   (vi: VisualItem, e: KeyControl.Typed  ): Unit = ()
 
   private[this] var lastFontT: AffineTransform = _
   private[this] var lastLabel: String = _

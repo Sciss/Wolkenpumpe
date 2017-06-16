@@ -58,7 +58,7 @@ trait PanelImplTxnFuns[S <: Sys[S]] {
   private[this] def connectToNewSink(out: Output[S], sink: Obj[S], key: String = Proc.mainIn)
                                     (implicit tx: S#Tx): Unit =
     nuages.surface match {
-      case Surface.Timeline(tl) =>
+      case Surface.Timeline(_) =>
         val pos = transport.position
 
         val colAttr = sink.attr
@@ -67,7 +67,7 @@ trait PanelImplTxnFuns[S <: Sys[S]] {
         colAttr.put(Proc.mainIn, in)
         addToTimeline(in, pos, out)
 
-      case Surface.Folder(f) =>
+      case Surface.Folder(_) =>
         val colAttr = sink.attr
         require(!colAttr.contains(key))
         val in      = Folder[S]

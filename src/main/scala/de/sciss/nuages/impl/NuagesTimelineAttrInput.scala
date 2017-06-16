@@ -48,7 +48,7 @@ object NuagesTimelineAttrInput extends NuagesAttribute.Factory {
     val currentOffset = transportPos - _frameOffset
 
     newValue.intersect(currentOffset).toList match {
-      case (span, Vec(entry)) :: Nil =>
+      case (_ /* span */, Vec(entry)) :: Nil =>
         val head = entry.value
         if (oldInput.tryConsume(newOffset = ???!, newValue = head)) {
           val map = tx.newInMemoryIDMap[Input[S]]
@@ -136,7 +136,7 @@ final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesA
     val tl = timelineH()
     if (isTimeline) {
       val stop = currentOffset()
-      val entries = tl.intersect(stop).flatMap { case (span, xs) =>
+      val entries = tl.intersect(stop).flatMap { case (_ /* span */, xs) =>
         xs.filter(_.value == child)
       }
       entries.foreach { timed =>

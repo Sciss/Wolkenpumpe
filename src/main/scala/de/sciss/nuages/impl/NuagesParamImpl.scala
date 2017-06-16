@@ -24,8 +24,8 @@ trait NuagesParamImpl[S <: Sys[S]] extends NuagesDataImpl[S] /* NuagesNodeImpl[S
 //    _pEdge
 //  }
 
-  final def name: String = key
-  final def main = parent.main
+  final def name: String          = key
+  final def main: NuagesPanel[S]  = parent.main
 }
 
 trait NuagesParamRootImpl[S <: Sys[S]] extends NuagesParamImpl[S] with NuagesNodeRootImpl[S] {

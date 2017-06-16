@@ -247,7 +247,7 @@ trait PanelImplDialogs[S <: Sys[S]] {
     c.revalidate()
     c.repaint()
     pp.addAncestorListener(new AncestorListener {
-      def ancestorAdded(e: AncestorEvent) = ()
+      def ancestorAdded(e: AncestorEvent): Unit = ()
 
       def ancestorRemoved(e: AncestorEvent): Unit = {
         pp.removeAncestorListener(this)
@@ -257,7 +257,7 @@ trait PanelImplDialogs[S <: Sys[S]] {
         }
       }
 
-      def ancestorMoved(e: AncestorEvent) = ()
+      def ancestorMoved(e: AncestorEvent): Unit = ()
     })
     overlay = Some(p)
     true

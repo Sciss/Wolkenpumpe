@@ -210,7 +210,9 @@ object NuagesAttributeImpl {
           now
         }
         val found = objAttr.get(key)
-        require(found == Some(before), s"updateChild($before, $now) -- found $found")
+        if (found != Some(before))   // Option.contains not available in Scala 2.10
+          sys.error(s"updateChild($before, $now) -- found $found")
+
         objAttr.put(key, value)
       }
     }

@@ -133,7 +133,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
     observers ::= attr.changed.react { implicit tx => upd =>
       upd.changes.foreach {
         case Obj.AttrAdded   (key, obj)         => attrAdded   (key, obj)
-        case Obj.AttrRemoved (key, obj)         => attrRemoved (key)
+        case Obj.AttrRemoved (key, _  )         => attrRemoved (key)
         case Obj.AttrReplaced(key, before, now) => attrReplaced(key, before = before, now = now)
       }
     }

@@ -123,7 +123,7 @@ object ParametricWarp {
   * to linear mapping.
   */
 final case class ParametricWarp(curvature: Double) extends Warp {
-  def id = ParametricWarp.id
+  def id: Int = ParametricWarp.id
 
   private[this] val useLin  = curvature.abs < 0.001
   private[this] val grow    = math.exp(curvature)

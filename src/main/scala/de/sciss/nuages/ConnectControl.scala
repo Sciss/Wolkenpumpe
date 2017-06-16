@@ -40,7 +40,7 @@ class ConnectControl[S <: Sys[S]](main: NuagesPanel[S])
 
   private var drag: Option[Drag[S]] = None
 
-  def prePaint(d: Display, g: Graphics2D) = ()
+  def prePaint(d: Display, g: Graphics2D): Unit = ()
 
   def postPaint(d: Display, g: Graphics2D): Unit = drag.foreach { dr =>
     g.setColor(if (dr.target.isDefined) Color.green else Color.red)
@@ -96,7 +96,7 @@ class ConnectControl[S <: Sys[S]](main: NuagesPanel[S])
     d.getAbsoluteCoordinate(screenPt, dr.targetLoc)
     val vi        = d.findItem(screenPt)
     val tgt       = vi match {
-      case ni: NodeItem =>
+      case _: NodeItem =>
         vi.get(COL_NUAGES) match {
           case vCtl: NuagesAttribute.Input[S] if vCtl.attribute.parent != dr.source.outputView.parent =>
             Some(DragTarget(vi, vCtl))

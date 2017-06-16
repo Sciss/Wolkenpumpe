@@ -22,7 +22,7 @@ class PanelLayout(peer: javax.swing.JComponent) extends LayoutManager {
   def minimumLayoutSize  (parent: java.awt.Container): Dimension = peer.getMinimumSize
   def preferredLayoutSize(parent: java.awt.Container): Dimension = peer.getPreferredSize
 
-  def removeLayoutComponent(comp: java.awt.Component) = ()
+  def removeLayoutComponent(comp: java.awt.Component): Unit = ()
 
-  def addLayoutComponent(name: String, comp: java.awt.Component) = ()
+  def addLayoutComponent(name: String, comp: java.awt.Component): Unit = ()
 }

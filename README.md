@@ -11,6 +11,8 @@ Wolkenpumpe is a live improvisation interface based on ScalaCollider / SoundProc
 
 This is Wolkenpumpe 6th generation. Generation 5 was based on the old non-tracing Sound Processes version. Generation 4 was based on SuperCollider and SwingOSC, see [sourceforge.net/projects/tintantmare](http://sourceforge.net/projects/tintantmare/). Generation 3 was solely based on SuperCollider. Generation 1 or 2 was based on Max/MSP.
 
+Note that you can use this interface through [Mellite](https://github.com/Sciss/Mellite/).
+
 <img src="screenshot.png" alt="screenshot" width="520" height="449"/>
 
 ## building

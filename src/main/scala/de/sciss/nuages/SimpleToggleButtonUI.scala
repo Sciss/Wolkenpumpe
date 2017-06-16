@@ -56,5 +56,5 @@ class SimpleToggleButtonUI extends BasicToggleButtonUI {
   }
 
   override protected def paintFocus(g: Graphics, b: AbstractButton,
-                                    viewRect: Rectangle, textRect: Rectangle, iconRect: Rectangle) = ()
+                                    viewRect: Rectangle, textRect: Rectangle, iconRect: Rectangle): Unit = ()
 }

@@ -33,7 +33,7 @@ import scala.swing.Color
 
 object NuagesAttrInputImpl {
   private final class Drag(val angStart: Double, val valueStart: Vec[Double], val instant: Boolean) {
-    var dragValue = valueStart
+    var dragValue: Vec[Double] = valueStart
   }
 }
 trait NuagesAttrInputImpl[S <: SSys[S]]
@@ -62,7 +62,7 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
 
   final protected def nodeSize = 1f
 
-  private[this] var drag: Drag      = null
+  private[this] var drag: Drag = _
 
   private[this] val objH = Ref.make[(stm.Source[S#Tx, Ex[S]], Disposable[S#Tx])]()  // object and its observer
 

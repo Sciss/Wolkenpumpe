@@ -41,7 +41,7 @@ final class NuagesDoubleVectorAttrInput[S <: SSys[S]](val attribute: NuagesAttri
   protected def mkConst(v: Vec[Double])(implicit tx: S#Tx): DoubleVector[S] with Const[S, Vec[Double]] =
     tpe.newConst(v)
 
-  def numChannels = valueA.size
+  def numChannels: Int = valueA.size
 
   def numChildren(implicit tx: S#Tx): Int = 1
 }

@@ -142,7 +142,7 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
 
     def dispose()(implicit tx: S#Tx): Unit = if (isDefined) input.dispose()
 
-    override def toString = if (isEmpty) "View(<empty>)" else s"View($start, $input)"
+    override def toString: String = if (isEmpty) "View(<empty>)" else s"View($start, $input)"
   }
 
   private[this] def emptyView   = new View(Long.MaxValue, null)

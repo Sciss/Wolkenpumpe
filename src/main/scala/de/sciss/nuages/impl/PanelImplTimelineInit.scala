@@ -76,7 +76,7 @@ trait PanelImplTimelineInit[S <: Sys[S]] extends NuagesTimelineBase[S] {
         auralReprRef () = Some(auralTimeline)
         auralObserver() = Some(obs          )
 
-      case Transport.ViewRemoved(_, auralTL: AuralObj.Timeline[S]) =>
+      case Transport.ViewRemoved(_, _: AuralObj.Timeline[S]) =>
         disposeAuralObserver()
 
       case _ =>
