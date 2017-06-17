@@ -42,6 +42,10 @@ object ScissProcs {
     def lineInputs  : Vec[NamedBusConfig]
     def micInputs   : Vec[NamedBusConfig]
     def lineOutputs : Vec[NamedBusConfig]
+
+    /** Indices are 'secondary', i.e. they index the logical master channels,
+      * not physical channels.
+      */
     def masterGroups: Vec[NamedBusConfig]
 
     // set to zero to switch off
@@ -269,7 +273,8 @@ object ScissProcs {
         val pFeed     = Mix.mono(pFeed0) / NumChannels(pFeed0)
         // val boost     = Mix.mono(pBoost) / NumChannels(pBoost)
         val boost     = pBoost
-        val pureIn    = In.ar(NumOutputBuses.ir + cfg.offset, cfg.numChannels) * boost
+//        val pureIn    = In.ar(NumOutputBuses.ir + cfg.offset, cfg.numChannels) * boost
+        val pureIn    = PhysicalIn.ar(cfg.indices) * boost
         val bandFrequencies = List(150, 800, 3000)
         val ins       = HPZ1.ar(pureIn) // .outputs
         var outs: GE = 0
@@ -310,7 +315,8 @@ object ScissProcs {
         val pBoost = pAudio("gain", ParamSpec(0.1, 10, ExpWarp), default(1.0))
 
         val boost   = pBoost
-        val sig     = In.ar(NumOutputBuses.ir + cfg.offset, cfg.numChannels) * boost
+//        val sig     = In.ar(NumOutputBuses.ir + cfg.offset, cfg.numChannels) * boost
+        val sig     = PhysicalIn.ar(cfg.indices) * boost
         // val numOut  = masterChansOption.fold(2)(_.size)
         val numOut  = if (sConfig.generatorChannels <= 0) masterChansOption.fold(2)(_.size) else sConfig.generatorChannels
 
@@ -1246,19 +1252,27 @@ object ScissProcs {
 
     masterChansOption.foreach { masterChans =>
       val numChans          = masterChans.size
-      val masterCfg         = NamedBusConfig("", 0, numChans)
+      val masterCfg         = NamedBusConfig("", 0 until numChans)
       val masterGroupsCfg   = masterCfg +: sConfig.masterGroups
 
       masterGroupsCfg.zipWithIndex.foreach { case (cfg, _ /* idx */) =>
         def placeChannels(sig: GE): GE = {
           if (cfg.numChannels == numChans) sig
           else {
+            val flatSig = Flatten(sig)
             Flatten(
-              Seq(
-                Silent.ar(cfg.offset),
-                Flatten(sig),
-                Silent.ar(numChans - (cfg.offset + cfg.numChannels))
-              )
+//              Seq(
+//                Silent.ar(cfg.offset),
+//                Flatten(sig),
+//                Silent.ar(numChans - cfg.stopOffset)
+//              )
+              Seq.tabulate[GE](numChans) { ch =>
+                val inIdx = cfg.indices.indexOf(ch)
+                if (inIdx < 0)
+                  DC.ar(0)
+                else
+                  flatSig \ inIdx
+              }
             )
           }
         }

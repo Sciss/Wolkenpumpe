@@ -240,10 +240,10 @@ object NuagesViewImpl {
         val sigMast: GE = sigMast0
         // external recorders
         sConfig.lineOutputs.foreach { cfg =>
-          val off     = cfg.offset
+//          val off     = cfg.offset
           val numOut  = cfg.numChannels
           val numIn   = masterBus.size // numChannels
-        val sig1: GE = if (numOut == numIn) {
+          val sig1: GE = if (numOut == numIn) {
             sigMast
           } else if (numIn == 1) {
             Seq.fill[GE](numOut)(sigMast)
@@ -252,16 +252,18 @@ object NuagesViewImpl {
             Limiter.ar(sigOut, (-0.2).dbamp)
           }
           //            assert( sig1.numOutputs == numOut )
-          Out.ar(off, sig1)
+          // Out.ar(off, sig1)
+          PhysicalOut.ar(cfg.indices, sig1)
         }
         // master + people meters
         val meterTr    = Impulse.kr(20)
         val (peoplePeak, peopleRMS) = {
           val groups = /* if( NuagesApp.METER_MICS ) */ sConfig.micInputs ++ sConfig.lineInputs // else sConfig.lineInputs
           val res = groups.map { cfg =>
-              val off        = cfg.offset
+//              val off        = cfg.offset
               val numIn      = cfg.numChannels
-              val pSig       = In.ar(NumOutputBuses.ir + off, numIn)
+//              val pSig       = In.ar(NumOutputBuses.ir + off, numIn)
+              val pSig       = PhysicalIn.ar(cfg.indices)
               val peak       = Peak.kr(pSig, meterTr) // .outputs
               val peakM      = Reduce.max(peak)
               val rms        = A2K.kr(Lag.ar(pSig.squared, 0.1))

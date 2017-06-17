@@ -36,6 +36,9 @@ object Nuages extends Obj.Type {
 
   def read[S <: Sys[S]](in: DataInput, access: S#Acc)(implicit tx: S#Tx): Nuages[S] = Impl.read(in, access)
 
+  /** Looks for all of `CategoryNames` and creates top-level folders of that name, if they do not exist yet. */
+  def mkCategoryFolders[S <: Sys[S]](n: Nuages[S])(implicit tx: S#Tx): Unit = Impl.mkCategoryFolders(n)
+
   // ---- config ----
 
   override def readIdentifiedObj[S <: Sys[S]](in: DataInput, access: S#Acc)(implicit tx: S#Tx): Obj[S] =
@@ -127,6 +130,9 @@ object Nuages extends Obj.Type {
   final val NameGenerators  = "generators"
   final val NameCollectors  = "collectors"
   final val NameMacros      = "macros"
+
+  final val CategoryNames: List[String] =
+    List(Nuages.NameGenerators, Nuages.NameFilters, Nuages.NameCollectors, Nuages.NameMacros)
 
   // ---- event ----
 

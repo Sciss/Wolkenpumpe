@@ -24,7 +24,10 @@ import de.sciss.synth
 object ParamSpec {
   final val typeID = 21
 
-  final val Key = "spec"
+  final val Key     = "spec"
+  final val DashKey = "-spec"
+
+  def composeKey(attrKey: String): String = s"$attrKey$DashKey"
 
   private final val COOKIE = 0x505301 // "PS\1"
 
@@ -87,14 +90,14 @@ object ParamSpec {
 
   def read(in: DataInput): ParamSpec = serializer.read(in)
 
-  /** Currently copies only name and spec. */
+  /** A no-op now! */
   def copyAttr[S <: Sys[S]](source: stm.Obj[S], target: stm.Obj[S])(implicit tx: S#Tx): Unit = {
-    val a = source.attr
-    val b = target.attr
-
-    a.get(Key).foreach { spec =>
-      b.put(Key, spec)
-    }
+//    val a = source.attr
+//    val b = target.attr
+//
+//    a.get(Key).foreach { spec =>
+//      b.put(Key, spec)
+//    }
   }
 }
 final case class ParamSpec(lo: Double = 0.0, hi: Double = 1.0, warp: Warp = LinearWarp, // step: Double = 0.0,

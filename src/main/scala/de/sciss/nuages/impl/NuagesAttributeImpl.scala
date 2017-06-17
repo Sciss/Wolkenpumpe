@@ -45,8 +45,8 @@ object NuagesAttributeImpl {
 
   def apply[S <: SSys[S]](key: String, _value: Obj[S], parent: NuagesObj[S])
                          (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute[S] = {
-//    val spec          = getSpec(parent, key)
-    val spec          = getSpec(_value)
+    val spec          = getSpec(parent, key)
+//    val spec          = getSpec(_value)
     val _frameOffset  = parent.frameOffset
     val res = new Impl[S](parent = parent, key = key, spec = spec) { self =>
       protected val inputView: Input[S] =
@@ -85,10 +85,11 @@ object NuagesAttributeImpl {
   
   private val defaultSpec = ParamSpec()
 
-//  def getSpec[S <: Sys[S]](parent: NuagesObj[S], key: String)(implicit tx: S#Tx): ParamSpec =
-//    parent.obj.attr.$[ParamSpec.Obj](s"$key-${ParamSpec.Key}").map(_.value).getOrElse(defaultSpec)
-    def getSpec[S <: Sys[S]](value: Obj[S])(implicit tx: S#Tx): ParamSpec =
-      value.attr.$[ParamSpec.Obj](ParamSpec.Key).map(_.value).getOrElse(defaultSpec)
+  def getSpec[S <: Sys[S]](parent: NuagesObj[S], key: String)(implicit tx: S#Tx): ParamSpec =
+    parent.obj.attr.$[ParamSpec.Obj](ParamSpec.composeKey(key)).map(_.value).getOrElse(defaultSpec)
+
+//  def getSpec[S <: Sys[S]](value: Obj[S])(implicit tx: S#Tx): ParamSpec =
+//    value.attr.$[ParamSpec.Obj](ParamSpec.Key).map(_.value).getOrElse(defaultSpec)
 
   // updated on EDT
   private sealed trait State {

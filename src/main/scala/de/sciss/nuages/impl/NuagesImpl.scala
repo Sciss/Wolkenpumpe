@@ -29,11 +29,28 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 object NuagesImpl {
   private[this] def mkCategFolder[S <: Sys[S]]()(implicit tx: S#Tx): proc.Folder[S] = {
     val folder = proc.Folder[S]
-    folder.addLast(mkFolderObj(Nuages.NameGenerators))
-    folder.addLast(mkFolderObj(Nuages.NameFilters   ))
-    folder.addLast(mkFolderObj(Nuages.NameCollectors))
-    folder.addLast(mkFolderObj(Nuages.NameMacros    ))
+    Nuages.CategoryNames.foreach { name =>
+      folder.addLast(mkFolderObj(name))
+    }
     folder
+  }
+
+  private def findChildIn[S <: Sys[S]](_folder: Folder[S], name: String)(implicit tx: S#Tx): Option[Folder[S]] = {
+    // val foo = _folder.iterator.toList.map(_.name)
+    val it = _folder.iterator.collect {
+      case f: Folder[S] /* FolderElem.Obj(f) */ if f.name == name => f
+    }
+    if (it.hasNext) Some(it.next()) else None
+  }
+
+  def mkCategoryFolders[S <: Sys[S]](n: Nuages[S])(implicit tx: S#Tx): Unit = {
+    val folder    = n.folder
+    val toCreate  = Nuages.CategoryNames.filter { name =>
+      findChildIn(folder, name).isEmpty
+    }
+    toCreate.foreach { name =>
+      folder.addLast(mkFolderObj(name))
+    }
   }
 
   def apply[S <: Sys[S]](surface: Surface[S])(implicit tx: S#Tx): Nuages[S] = {
@@ -130,13 +147,7 @@ object NuagesImpl {
     def collectors(implicit tx: S#Tx): Option[Folder[S]] = findChild(Nuages.NameCollectors)
     def macros    (implicit tx: S#Tx): Option[Folder[S]] = findChild(Nuages.NameMacros    )
 
-    private def findChild(name: String)(implicit tx: S#Tx): Option[Folder[S]] = {
-      // val foo = _folder.iterator.toList.map(_.name)
-      val it = _folder.iterator.collect {
-        case f: Folder[S] /* FolderElem.Obj(f) */ if f.name == name => f
-      }
-      if (it.hasNext) Some(it.next()) else None
-    }
+    private def findChild(name: String)(implicit tx: S#Tx): Option[Folder[S]] = findChildIn(_folder, name)
 
     private[this] def disconnect(): Unit = ()
 

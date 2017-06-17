@@ -152,12 +152,12 @@ class Wolkenpumpe[S <: Sys[S]] {
 
     sCfg.audioFilesFolder   = Some(userHome / "Music" / "tapes")
     sCfg.micInputs          = Vector(
-      NamedBusConfig("m-dpa"  , 0, 1),
-      NamedBusConfig("m-at "  , 3, 1)
+      NamedBusConfig("m-dpa"  , 0 until 1),
+      NamedBusConfig("m-at "  , 3 until 4)
     )
-    sCfg.lineInputs         = Vector(NamedBusConfig("pirro", 2, 1))
+    sCfg.lineInputs         = Vector(NamedBusConfig("pirro", 2 until 3))
     sCfg.lineOutputs        = Vector(
-      NamedBusConfig("sum", 5, 1)
+      NamedBusConfig("sum", 5 until 6)
       // , NamedBusConfig("hp", 6, 2)  // while 'solo' doesn't work
     )
   }
