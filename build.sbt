@@ -34,6 +34,7 @@ lazy val scoptVersion               = "3.6.0"
 
 libraryDependencies ++= Seq(
   "de.sciss"          %% "soundprocesses-views"    % soundProcessesVersion,
+  "de.sciss"          %% "soundprocesses-compiler" % soundProcessesVersion,
   "de.sciss"          %% "scalacollider"           % scalaColliderVersion,
   "de.sciss"          %% "scalacolliderswing-core" % scalaColliderSwingVersion,
   "de.sciss"          %  "prefuse-core"            % prefuseVersion,

@@ -19,8 +19,11 @@ import de.sciss.file._
 import de.sciss.lucre.stm
 import de.sciss.lucre.synth.{InMemory, Sys}
 import de.sciss.osc
-import de.sciss.synth.proc.{AuralSystem, SoundProcesses}
+import de.sciss.synth.proc.{AuralSystem, Code, Compiler, SoundProcesses}
 import de.sciss.synth.{Server => SServer}
+
+import scala.concurrent.Future
+import scala.util.{Failure, Success}
 
 object Wolkenpumpe {
   // var ALWAYS_CONTROL = true
@@ -163,8 +166,17 @@ class Wolkenpumpe[S <: Sys[S]] {
 
   /** Subclasses may want to override this. */
   protected def registerProcesses(nuages: Nuages[S], nCfg: Nuages.Config, sCfg: ScissProcs.Config)
-                                 (implicit tx: S#Tx): Unit =
-    ScissProcs[S](nuages, nCfg, sCfg)
+                                 (implicit tx: S#Tx, cursor: stm.Cursor[S],
+                                  compiler: Code.Compiler): Future[Unit] = {
+    val futActions = ScissProcs.compileActions[S]()
+    import SoundProcesses.executionContext
+    futActions.map { actions =>
+      cursor.step { implicit tx =>
+        ScissProcs[S](nuages, nCfg, sCfg, actions)
+      }
+      ()
+    }
+  }
 
   def run(nuagesH: stm.Source[S#Tx, Nuages[S]])(implicit cursor: stm.Cursor[S]): Unit = {
     Wolkenpumpe.init()
@@ -191,24 +203,29 @@ class Wolkenpumpe[S <: Sys[S]] {
     aCfg.outputBusChannels  = maxOutputs
     aCfg.inputBusChannels   = maxInputs
 
-    /* val f = */ cursor.step { implicit tx =>
-      val n               = nuagesH() // Nuages[S]
-      implicit val aural  = AuralSystem()
-      _aural = aural
+    implicit val compiler: Code.Compiler = Compiler()
 
-      // val nuagesH = tx.newHandle(n)
-//      val finder  = new NuagesFinder {
-//        def findNuages[T <: stm.Sys[T]](universe: Universe[T])(implicit tx: T#Tx): Nuages[T] = {
-//          nuagesH.asInstanceOf[stm.Source[T#Tx, Nuages[T]]]()
-//        }
-//      }
-
+    val futPrep = cursor.step { implicit tx =>
+      val n = nuagesH()
+      _aural = AuralSystem()
       registerProcesses(n, nCfg, sCfg)
+    }
 
-      import de.sciss.synth.proc.WorkspaceHandle.Implicits._
-      _view = NuagesView(n, nCfg)
-      /* val frame = */ NuagesFrame(_view, undecorated = false /* true */)
-      aural.start(aCfg)
+    import SoundProcesses.executionContext
+    futPrep.onComplete {
+      case Success(_) =>
+        cursor.step { implicit tx =>
+          val n = nuagesH()
+          import de.sciss.synth.proc.WorkspaceHandle.Implicits._
+          implicit val aural = _aural
+            _view = NuagesView(n, nCfg)
+          /* val frame = */ NuagesFrame(_view, undecorated = false /* true */)
+          aural.start(aCfg)
+        }
+
+      case Failure(ex) =>
+        Console.err.println("Wolkenpumpe, failed to initialize:")
+        ex.printStackTrace()
     }
   }
 }
