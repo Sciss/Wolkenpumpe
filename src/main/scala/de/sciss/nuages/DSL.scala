@@ -25,24 +25,6 @@ import scala.concurrent.stm.TxnLocal
 
 object DSL {
   def apply[S <: stm.Sys[S]]: DSL[S] = new DSL[S]
-//  /** Magnet pattern for mkPar */
-//  sealed trait ParDefault extends Any {
-//    def mkObj[S <: Sys[S]](spec: ParamSpec)(implicit tx: S#Tx): Obj[S]
-//  }
-//  implicit final class ParScalar(val `this`: Double) extends AnyVal with ParDefault { me =>
-//    import me.{`this` => default}
-//    def mkObj[S <: Sys[S]](spec: ParamSpec)(implicit tx: S#Tx): Obj[S] = {
-//      val defaultN  = spec.inverseMap(default)
-//      DoubleObj.newVar(DoubleObj.newConst[S](defaultN))
-//    }
-//  }
-//  implicit final class ParVector(val `this`: Vec[Double]) extends AnyVal with ParDefault { me =>
-//    import me.{`this` => default}
-//    def mkObj[S <: Sys[S]](spec: ParamSpec)(implicit tx: S#Tx): Obj[S] = {
-//      val defaultN  = default.map(spec.inverseMap)
-//      DoubleVector.newVar(DoubleVector.newConst[S](defaultN))
-//    }
-//  }
 
   var useScanFixed = false
 }

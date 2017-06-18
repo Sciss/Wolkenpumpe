@@ -22,9 +22,9 @@ import de.sciss.lucre.artifact.{Artifact, ArtifactLocation}
 import de.sciss.lucre.stm
 import de.sciss.lucre.synth.Sys
 import de.sciss.synth
+import de.sciss.synth.GE
 import de.sciss.synth.io.AudioFile
-import de.sciss.synth.proc.{Action, AudioCue, Folder, Proc, SoundProcesses}
-import de.sciss.synth.{GE, proc}
+import de.sciss.synth.proc.{Action, AudioCue, Proc, SoundProcesses}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.language.implicitConversions
@@ -77,31 +77,25 @@ object ScissProcs {
     extends Config
 
   private final val attrRecArtifact = "file"
-  private final val RecName         = "rec"
   private final val attrPrepareRec  = "prepare-rec"
   private final val attrDisposeRec  = "dispose-rec"
 
-  def getRecLocation[S <: stm.Sys[S]](root: Folder[S], recDir: => File)(implicit tx: S#Tx): ArtifactLocation[S] = {
-    import proc.Implicits._
-
-    val it = root.iterator.flatMap {
-      case objT: ArtifactLocation[S] if objT.name == RecName => Some(objT) // .modifiableOption
-      case _ => None
-    }
-    if (it.hasNext) it.next() else {
+  def getRecLocation[S <: stm.Sys[S]](n: Nuages[S], recDir: => File)(implicit tx: S#Tx): ArtifactLocation[S] = {
+    val attr = n.attr
+    attr.$[ArtifactLocation](Nuages.attrRecLoc).getOrElse {
       if (!recDir.exists()) tx.afterCommit(recDir.mkdirs())
-      val newLoc    = ArtifactLocation.newVar[S](recDir)
-      val newLocObj = newLoc // Obj(ArtifactLocationElem(newLoc))
-      newLocObj.name = RecName
-      root.modifiableOption.foreach(_.addLast(newLocObj))
+      val newLoc = ArtifactLocation.newVar[S](recDir)
+      // newLoc.name = RecName
+      // root.modifiableOption.foreach(_.addLast(newLoc))
+      attr.put(Nuages.attrRecLoc, newLoc)
       newLoc
     }
   }
 
   def WrapExtendChannels(n: Int, sig: GE): GE = Vec.tabulate(n)(sig \ _)
 
-  def apply[S <: Sys[S]](sConfig: ScissProcs.Config, nConfig: Nuages.Config)
-                        (implicit tx: S#Tx, nuages: Nuages[S]): Unit = {
+  def apply[S <: Sys[S]](nuages: Nuages[S], nConfig: Nuages.Config, sConfig: ScissProcs.Config)
+                        (implicit tx: S#Tx): Unit = {
     import synth._
     import ugen._
 
@@ -110,12 +104,11 @@ object ScissProcs {
 
     val masterChansOption = nConfig.masterChannels
 
-//    val loc   = ArtifactLocation.newVar[S](file(sys.props("java.io.tmpdir")))
-//    val locH  = tx.newHandle(loc)
-
     def ForceChan(in: GE): GE = if (sConfig.generatorChannels <= 0) in else {
       WrapExtendChannels(sConfig.generatorChannels, in)
     }
+
+    implicit val _nuages: Nuages[S] = nuages
 
     def filterF   (name: String)(fun: GE => GE): Proc[S] =
       filter      (name, if (DSL.useScanFixed) sConfig.generatorChannels else -1)(fun)
@@ -178,11 +171,12 @@ object ScissProcs {
       else
         Vector.fill(sConfig.generatorChannels)(in)
 
-    def mkLoop[T <: stm.Sys[T]](art: Artifact[T])(implicit tx: T#Tx, n: Nuages[T]): Unit = {
+    def mkLoop[T <: stm.Sys[T]](n: Nuages[T], art: Artifact[T])(implicit tx: T#Tx): Unit = {
       val dsl = DSL[T]
       import dsl._
       val f       = art.value
       val spec    = AudioFile.readSpec(f)
+      implicit val nuages: Nuages[T] = n
       val procObj = generator(f.base) {
         val pSpeed      = pAudio  ("speed", ParamSpec(0.125, 2.3511, ExpWarp), default(1.0))
         val pStart      = pControl("start", ParamSpec(0, 1), default(0.0))
@@ -934,10 +928,10 @@ object ScissProcs {
       def apply[T <: stm.Sys[T]](universe: Action.Universe[T])(implicit tx: T#Tx): Unit = {
         import universe._
         invoker.foreach { obj =>
-          val name            = recFormat.format(new Date)
-          implicit val nuages: Nuages[T] = Nuages.find[T]()
+          val name              = recFormat.format(new Date)
+          val nuages: Nuages[T] = Nuages.find[T]()
             .getOrElse(sys.error("sinkRecDispose: Cannot find Nuages instance"))
-          val loc     = getRecLocation(nuages.folder, sConfig.recDir)
+          val loc     = getRecLocation(nuages, sConfig.recDir)
           val artM    = Artifact[T](loc, Artifact.Child(name)) // loc.add(loc.directory / name) // XXX TODO - should check that it is different from previous value
           // println(name)
           obj.attr.put(attrRecArtifact, artM) // Obj(ArtifactElem(artM)))
@@ -953,9 +947,9 @@ object ScissProcs {
           obj.attr.$[Artifact](attrRecArtifact).foreach { artObj =>
             SoundProcesses.scheduledExecutorService.schedule(new Runnable {
               def run(): Unit = SoundProcesses.atomic[T, Unit] { implicit tx =>
-                implicit val nuages: Nuages[T] = Nuages.find[T]()
+                val nuages: Nuages[T] = Nuages.find[T]()
                   .getOrElse(sys.error("sinkRecDispose: Cannot find Nuages instance"))
-                mkLoop[T](artObj)
+                mkLoop[T](nuages, artObj)
               } (universe.cursor)
             }, 1000, TimeUnit.MILLISECONDS)
           }

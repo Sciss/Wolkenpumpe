@@ -162,9 +162,9 @@ class Wolkenpumpe[S <: Sys[S]] {
   }
 
   /** Subclasses may want to override this. */
-  protected def registerProcesses(sCfg: ScissProcs.Config, nCfg: Nuages.Config)
-                                 (implicit tx: S#Tx, nuages: Nuages[S]): Unit =
-    ScissProcs[S](sCfg, nCfg)
+  protected def registerProcesses(nuages: Nuages[S], nCfg: Nuages.Config, sCfg: ScissProcs.Config)
+                                 (implicit tx: S#Tx): Unit =
+    ScissProcs[S](nuages, nCfg, sCfg)
 
   def run(nuagesH: stm.Source[S#Tx, Nuages[S]])(implicit cursor: stm.Cursor[S]): Unit = {
     Wolkenpumpe.init()
@@ -192,7 +192,7 @@ class Wolkenpumpe[S <: Sys[S]] {
     aCfg.inputBusChannels   = maxInputs
 
     /* val f = */ cursor.step { implicit tx =>
-      implicit val n      = nuagesH() // Nuages[S]
+      val n               = nuagesH() // Nuages[S]
       implicit val aural  = AuralSystem()
       _aural = aural
 
@@ -203,7 +203,7 @@ class Wolkenpumpe[S <: Sys[S]] {
 //        }
 //      }
 
-      registerProcesses(sCfg, nCfg)
+      registerProcesses(n, nCfg, sCfg)
 
       import de.sciss.synth.proc.WorkspaceHandle.Implicits._
       _view = NuagesView(n, nCfg)

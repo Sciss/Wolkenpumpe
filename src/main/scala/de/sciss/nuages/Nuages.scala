@@ -170,6 +170,11 @@ object Nuages extends Obj.Type {
     */
   final val attrDispose     = "nuages-dispose"
 
+  /** Convenience key for storing `ArtifactLocation`
+    * of base directory for recording live snippets.
+    */
+  final val attrRecLoc      = "nuages-rec-loc"
+
   final val NameFilters     = "filters"
   final val NameGenerators  = "generators"
   final val NameCollectors  = "collectors"
