@@ -168,14 +168,7 @@ class Wolkenpumpe[S <: Sys[S]] {
   protected def registerProcesses(nuages: Nuages[S], nCfg: Nuages.Config, sCfg: ScissProcs.Config)
                                  (implicit tx: S#Tx, cursor: stm.Cursor[S],
                                   compiler: Code.Compiler): Future[Unit] = {
-    val futActions = ScissProcs.compileActions[S]()
-    import SoundProcesses.executionContext
-    futActions.map { actions =>
-      cursor.step { implicit tx =>
-        ScissProcs[S](nuages, nCfg, sCfg, actions)
-      }
-      ()
-    }
+    ScissProcs.compileAndApply[S](nuages, nCfg, sCfg)
   }
 
   def run(nuagesH: stm.Source[S#Tx, Nuages[S]])(implicit cursor: stm.Cursor[S]): Unit = {

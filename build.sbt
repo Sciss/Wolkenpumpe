@@ -1,7 +1,7 @@
 lazy val baseName        = "Wolkenpumpe"
 lazy val baseNameL       = baseName.toLowerCase
-lazy val projectVersion  = "2.16.0-SNAPSHOT"
-lazy val mimaVersion     = "2.15.0"
+lazy val projectVersion  = "2.16.0"
+lazy val mimaVersion     = "2.16.0"
 
 name                 := baseName
 version              := projectVersion
@@ -11,12 +11,12 @@ homepage             := Some(url(s"https://github.com/Sciss/${name.value}"))
 description          := "A Prefuse based visual interface for SoundProcesses, a sound synthesis framework"
 licenses             := Seq("GPL v2+" -> url( "http://www.gnu.org/licenses/gpl-2.0.txt"))
 scalaVersion         := "2.12.2"
-crossScalaVersions   := Seq("2.12.2", "2.11.11", "2.10.6")
+crossScalaVersions   := Seq("2.12.2", "2.11.11")
  
 resolvers            += "Oracle Repository" at "http://download.oracle.com/maven"  // required for sleepycat
 
-lazy val soundProcessesVersion      = "3.12.3"
-lazy val scalaColliderVersion       = "1.22.4-SNAPSHOT"
+lazy val soundProcessesVersion      = "3.12.4"
+lazy val scalaColliderVersion       = "1.22.4"
 lazy val scalaColliderSwingVersion  = "1.33.1"
 lazy val prefuseVersion             = "1.0.1"
 lazy val lucreSwingVersion          = "1.5.1"
@@ -28,7 +28,7 @@ lazy val scissDSPVersion            = "1.2.3"
 // ---- test ----
 
 lazy val subminVersion              = "0.2.1"
-lazy val lucreVersion               = "3.4.1-SNAPSHOT"
+lazy val lucreVersion               = "3.4.1"
 lazy val scalaTestVersion           = "3.0.3"
 lazy val scoptVersion               = "3.6.0"
 

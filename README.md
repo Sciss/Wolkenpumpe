@@ -17,13 +17,13 @@ Note that you can use this interface through [Mellite](https://github.com/Sciss/
 
 ## building
 
-Builds with sbt 0.13 against Scala 2.12, 2.11, 2.10.
+Builds with sbt 0.13 against Scala 2.12, 2.11. The last version to support Scala 2.10 is 2.15.0.
 
 ## linking
 
     "de.sciss" %% "wolkenpumpe" % v
 
-The current version `v` is `"2.15.1"`.
+The current version `v` is `"2.16.0"`.
 
 ## contributing
 

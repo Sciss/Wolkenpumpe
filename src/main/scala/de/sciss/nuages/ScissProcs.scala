@@ -201,6 +201,18 @@ object ScissProcs {
     def actionRecDisposeH: stm.Source[S#Tx, Action[S]]
   }
 
+  def compileAndApply[S <: Sys[S]](nuages: Nuages[S], nConfig: Nuages.Config, sConfig: ScissProcs.Config)
+                                  (implicit tx: S#Tx, cursor: stm.Cursor[S],
+                                   compiler: Code.Compiler): Future[Unit] = {
+    val futActions = compileActions[S]()
+    import SoundProcesses.executionContext
+    futActions.map { actions =>
+      cursor.step { implicit tx =>
+        ScissProcs[S](nuages, nConfig, sConfig, actions)
+      }
+    }
+  }
+
   def compileActions[S <: Sys[S]]()(implicit tx: S#Tx, cursor: stm.Cursor[S],
                                     compiler: Code.Compiler): Future[Actions[S]] = {
     val futRecPrepare = Action.compile[S](Code.Action("""de.sciss.nuages.ScissProcs.recPrepare(universe)"""))
