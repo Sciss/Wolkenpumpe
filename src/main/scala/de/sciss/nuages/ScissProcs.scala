@@ -175,9 +175,9 @@ object ScissProcs {
                                 generatorChannels: Int, highPass: Int, recDir: File)
     extends Config
 
-  private final val attrRecArtifact = "file"
-  private final val attrRecGenChans = "gen-chans"
-  private final val attrRecDir      = "rec-dir"
+  private final val attrRecArtifact = "$file"
+  private final val attrRecGenChans = "$gen-chans"
+  private final val attrRecDir      = "$rec-dir"
 
 //  private final val attrPrepareRec  = "prepare-rec"
 //  private final val attrDisposeRec  = "dispose-rec"

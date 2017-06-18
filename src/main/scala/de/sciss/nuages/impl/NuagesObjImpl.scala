@@ -60,7 +60,8 @@ object NuagesObjImpl {
 //    if (!(key.endsWith(specSuffix) || ignoredKeys.contains(key)))
 //      NuagesAttribute /* .tryApply */ (key = key, value = obj, parent = parent)
 
-  private def isAttrShown(key: String): Boolean = !ignoredKeys.contains(key) && !key.endsWith(ParamSpec.DashKey)
+  private def isAttrShown(key: String): Boolean =
+    !ignoredKeys.contains(key) && !key.endsWith(ParamSpec.DashKey) && !key.startsWith("$")
 }
 final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
                                                var name: String,
