@@ -18,9 +18,7 @@ import java.awt.Font
 import de.sciss.file._
 import de.sciss.lucre.stm
 import de.sciss.lucre.synth.{InMemory, Sys}
-import de.sciss.nuages.ScissProcs.NuagesFinder
 import de.sciss.osc
-import de.sciss.synth.proc.Action.Universe
 import de.sciss.synth.proc.{AuralSystem, SoundProcesses}
 import de.sciss.synth.{Server => SServer}
 
@@ -37,8 +35,8 @@ object Wolkenpumpe {
 
   def mkTestProcs[S <: Sys[S]]()(implicit tx: S#Tx, nuages: Nuages[S]): Unit = {
     val dsl = DSL[S]
-    import de.sciss.synth.ugen._
     import de.sciss.synth._
+    import de.sciss.synth.ugen._
     import dsl._
 
     generator("Sprink") {
@@ -164,9 +162,9 @@ class Wolkenpumpe[S <: Sys[S]] {
   }
 
   /** Subclasses may want to override this. */
-  protected def registerProcesses(sCfg: ScissProcs.Config, nCfg: Nuages.Config, nuagesFinder: NuagesFinder)
+  protected def registerProcesses(sCfg: ScissProcs.Config, nCfg: Nuages.Config)
                                  (implicit tx: S#Tx, nuages: Nuages[S]): Unit =
-    ScissProcs[S](sCfg, nCfg, nuagesFinder)
+    ScissProcs[S](sCfg, nCfg)
 
   def run(nuagesH: stm.Source[S#Tx, Nuages[S]])(implicit cursor: stm.Cursor[S]): Unit = {
     Wolkenpumpe.init()
@@ -199,13 +197,13 @@ class Wolkenpumpe[S <: Sys[S]] {
       _aural = aural
 
       // val nuagesH = tx.newHandle(n)
-      val finder  = new NuagesFinder {
-        def findNuages[T <: stm.Sys[T]](universe: Universe[T])(implicit tx: T#Tx): Nuages[T] = {
-          nuagesH.asInstanceOf[stm.Source[T#Tx, Nuages[T]]]()
-        }
-      }
+//      val finder  = new NuagesFinder {
+//        def findNuages[T <: stm.Sys[T]](universe: Universe[T])(implicit tx: T#Tx): Nuages[T] = {
+//          nuagesH.asInstanceOf[stm.Source[T#Tx, Nuages[T]]]()
+//        }
+//      }
 
-      registerProcesses(sCfg, nCfg, finder)
+      registerProcesses(sCfg, nCfg)
 
       import de.sciss.synth.proc.WorkspaceHandle.Implicits._
       _view = NuagesView(n, nCfg)

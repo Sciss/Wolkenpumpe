@@ -25,8 +25,24 @@ import de.sciss.synth.proc.Implicits._
 import de.sciss.synth.proc.{Folder, Proc, Timeline}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
+import scala.concurrent.stm.TxnLocal
 
 object NuagesImpl {
+  private[this] val nuagesLocal = TxnLocal[Nuages[_]]()
+
+  def use[S <: Sys[S], A](n: Nuages[S])(body: => A)(implicit tx: S#Tx): A = {
+    val old = nuagesLocal.swap(n)(tx.peer)
+    try {
+      body
+    } finally {
+      nuagesLocal.set(old)(tx.peer)
+    }
+  }
+
+  def find[S <: Sys[S]]()(implicit tx: S#Tx): Option[Nuages[S]] = {
+    Option(nuagesLocal.get(tx.peer).asInstanceOf[Nuages[S]])
+  }
+
   private[this] def mkCategFolder[S <: Sys[S]]()(implicit tx: S#Tx): proc.Folder[S] = {
     val folder = proc.Folder[S]
     Nuages.CategoryNames.foreach { name =>

@@ -16,7 +16,7 @@ package de.sciss.nuages
 import de.sciss.lucre.stm.{Disposable, NoSys, Obj, Sys}
 import de.sciss.lucre.{event => evt}
 import de.sciss.nuages.impl.{NuagesImpl => Impl}
-import de.sciss.serial.{Writable, DataOutput, DataInput, Serializer}
+import de.sciss.serial.{DataInput, DataOutput, Serializer, Writable}
 import de.sciss.synth.proc
 import de.sciss.synth.proc.Folder
 
@@ -38,6 +38,11 @@ object Nuages extends Obj.Type {
 
   /** Looks for all of `CategoryNames` and creates top-level folders of that name, if they do not exist yet. */
   def mkCategoryFolders[S <: Sys[S]](n: Nuages[S])(implicit tx: S#Tx): Unit = Impl.mkCategoryFolders(n)
+
+  /** Find current instance, provided during particular
+    * actions such as prepare (see `attrPrepare`) and dispose (see `attrDispose`).
+    */
+  def find[S <: Sys[S]]()(implicit tx: S#Tx): Option[Nuages[S]] = Impl.find()
 
   // ---- config ----
 
@@ -152,6 +157,18 @@ object Nuages extends Obj.Type {
     * @see [[javax.swing.KeyStroke#getKeyStroke(String)]]
     */
   final val attrShortcut    = "nuages-shortcut"
+
+  /** Attribute key for placing a preparatory `Action`
+    * with a sound process. This is invoked when a new
+    * process is created by the user within Wolkenpumpe.
+    */
+  final val attrPrepare     = "nuages-prepare"
+
+  /** Attribute key for placing a clean-up `Action`
+    * with a sound process. This is invoked when a
+    * process is deleted by the user within Wolkenpumpe.
+    */
+  final val attrDispose     = "nuages-dispose"
 
   final val NameFilters     = "filters"
   final val NameGenerators  = "generators"

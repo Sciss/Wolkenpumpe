@@ -76,10 +76,10 @@ object ScissProcs {
                                 recDir: File)
     extends Config
 
-  var tapePath: Option[String] = None
-
-  final val KeyRecArtifact  = "file"
-  final val RecName         = "rec"
+  private final val attrRecArtifact = "file"
+  private final val RecName         = "rec"
+  private final val attrPrepareRec  = "prepare-rec"
+  private final val attrDisposeRec  = "dispose-rec"
 
   def getRecLocation[S <: stm.Sys[S]](root: Folder[S], recDir: => File)(implicit tx: S#Tx): ArtifactLocation[S] = {
     import proc.Implicits._
@@ -98,13 +98,9 @@ object ScissProcs {
     }
   }
 
-  trait NuagesFinder {
-    def findNuages[S <: stm.Sys[S]](universe: Action.Universe[S])(implicit tx: S#Tx): Nuages[S]
-  }
-
   def WrapExtendChannels(n: Int, sig: GE): GE = Vec.tabulate(n)(sig \ _)
 
-  def apply[S <: Sys[S]](sConfig: ScissProcs.Config, nConfig: Nuages.Config, nuagesFinder: NuagesFinder)
+  def apply[S <: Sys[S]](sConfig: ScissProcs.Config, nConfig: Nuages.Config)
                         (implicit tx: S#Tx, nuages: Nuages[S]): Unit = {
     import synth._
     import ugen._
@@ -175,12 +171,6 @@ object ScissProcs {
         sigOut
       }
     }
-
-    // val loopFrames  = (sConfig.loopDuration * 44100 /* config.server.sampleRate */).toInt
-    //    val loopBuffers = Vec.fill[Buffer](config.numLoops)(Buffer.alloc(config.server, loopFrames, 2))
-    //    val loopBufIDs  = loopBuffers.map(_.id)
-
-    //    if (settings.numLoops > 0) {
 
     def default(in: Double): ControlValues =
       if (sConfig.generatorChannels <= 0)
@@ -351,12 +341,6 @@ object ScissProcs {
 
     def mix(in: GE, flt: GE, mix: GE): GE = LinXFade2.ar(in, flt, mix * 2 - 1)
     def mkMix(df: Double = 0.0): GE = pAudio("mix", ParamSpec(0, 1), default(df))
-
-//    def mkMix4(): GE = {
-//      val f1 = pAudio("mix1", ParamSpec(0, 1), default = 0)
-//      val f2 = pAudio("mix2", ParamSpec(0, 1), default = 0)
-//      Lag.ar(Seq(f1, f1 * 0.667 + f2 * 0.333, f1 * 0.333, f2 * 0.667, f2))
-//    }
 
     // a 10% direct fade-in/out, possibly with delay to compensate for FFT
     def mkBlend(pred: GE, z: GE, fade: GE, dt: GE = Constant(0)): GE = {
@@ -599,16 +583,6 @@ object ScissProcs {
       val play0       = read0 // Gate.ar(read0, readBad sig_== 0)
       val play        = Flatten(play0)
 
-//      in        .poll(1, "frgmnt-inp")
-//      buf       .poll(1, "frgmnt-buf")
-//      trig      .poll(trig, "frgmnt-TRG")
-//      preSig    .poll(1, "frgmnt-pre")
-//      rec       .poll(1, "frgmnt-rec")
-//      recLevel0 .poll(1, "frgmnt-lvl")
-//      writeSigS .poll(1, "frgmnt-wSg")
-//      writeIdx  .poll(1, "frgmnt-wIx")
-//      read0     .poll(1, "frgmnt-red")
-
       // play.poll(1, "outs")
       mix(in, play, pMix)
     }
@@ -750,18 +724,6 @@ object ScissProcs {
       val pow   = inN.pow(exp)
       val flt   = pow * peak
       mix(in, flt, pMix)
-
-//      val pAmt = pAudio("amt", ParamSpec(0, 1), default(0.5))
-//      val pMix = mkMix()
-//
-//      val amt   = pAmt
-//      val amtM  = 1 - amt
-//      val exp   = amtM * 0.5 + 0.5
-//      val flt0  = in.abs.pow(exp) * in.signum
-//      val amp0  = Amplitude.ar(flt0)
-//      val amp   = amtM + (amp0 * amt)
-//      val flt   = flt0 * amp
-//      mix(in, flt, pMix)
     }
 
     filterF("renoise") { in =>
@@ -796,12 +758,7 @@ object ScissProcs {
       val i_roomSize  = LinExp.kr(extent, 0, 1, 1, 100)
       val i_revTime   = LinExp.kr(extent, 0, 1, 0.3, 20)
       val spread      = 15
-      //      val numChannels = in.numOutputs
-      //      val ins         = in.outputs
-      //      val verbs       = (ins :+ ins.last).grouped(2).toSeq.flatMap(pair =>
-      //        (GVerb.ar(Mix(pair), i_roomSize, i_revTime, color, color, spread, 0, 1, 0.7, i_roomSize) * 0.3).outputs
-      //      )
-      //      val flt: GE = Vector(verbs.take(numChannels): _*) // drops last one if necessary
+
       val fltS        = GVerb.ar(in, i_roomSize, i_revTime, color, color, spread, 0, 1, 0.7, i_roomSize) * 0.3
       val flt         = fltS \ 0   // simply drop the right channels of each verb
       mix(in, flt, pMix)
@@ -910,12 +867,6 @@ object ScissProcs {
 
     filterF("env-perc") { in =>
       shortcut = "E"
-      //      def perc(attack: GE = 0.01, release: GE = 1, level: GE = 1,
-      //               curve: Env.Curve = parametric(-4)): V =
-      //        create(0, Vector[Seg]((attack, level, curve), (release, 0, curve)))
-      //
-      //      def asr(attack: GE = 0.01f, level: GE = 1, release: GE = 1, curve: Curve = parametric(-4)): Env =
-      //        new Env(0, Vector[Segment]((attack, level, curve), (release, 0, curve)), 1)
 
       val attack  = pAudio("atk"   , ParamSpec(0.001,  1.0, ExpWarp), default(0.01))
       val release = pAudio("rls"   , ParamSpec(0.001, 10.0, ExpWarp), default(0.01))
@@ -976,52 +927,34 @@ object ScissProcs {
       mix(in, flt, pMix)
     }
 
-    //        val buf         = LocalBuf(numFrames = 1024, numChannels = 1)
-    //        val chain1      = FFT(buf, in)
-    //        val loud        = Loudness    .kr(chain1)
-    //        val loudN       = (loud / 64).clip(0, 1)
-
     // -------------- SINKS --------------
     val recFormat = new SimpleDateFormat("'rec_'yyMMdd'_'HHmmss'.aif'", Locale.US)
-
-//    val sinkRecPrepare = new Action.Body {
-//      def apply[T <: stm.Sys[T]](universe: Universe[T])(implicit tx: T#Tx): Unit = {
-//        import universe._
-//        for {
-//          art  <- self.attr.$[Artifact]("file")
-//          artM <- art.modifiableOption
-//        } {
-//          val name  = recFormat.format(new Date)
-//          artM.child = Artifact.Child(name) // XXX TODO - should check that it is different from previous value
-//          // println(name)
-//        }
-//      }
-//    }
-//    Action.registerPredef("nuages-prepare-rec", sinkRecPrepare)
 
     val sinkRecPrepare = new Action.Body {
       def apply[T <: stm.Sys[T]](universe: Action.Universe[T])(implicit tx: T#Tx): Unit = {
         import universe._
         invoker.foreach { obj =>
           val name            = recFormat.format(new Date)
-          implicit val nuages = nuagesFinder.findNuages(universe)
+          implicit val nuages: Nuages[T] = Nuages.find[T]()
+            .getOrElse(sys.error("sinkRecDispose: Cannot find Nuages instance"))
           val loc     = getRecLocation(nuages.folder, sConfig.recDir)
           val artM    = Artifact[T](loc, Artifact.Child(name)) // loc.add(loc.directory / name) // XXX TODO - should check that it is different from previous value
           // println(name)
-          obj.attr.put(KeyRecArtifact, artM) // Obj(ArtifactElem(artM)))
+          obj.attr.put(attrRecArtifact, artM) // Obj(ArtifactElem(artM)))
         }
       }
     }
-    Action.registerPredef("nuages-prepare-rec", sinkRecPrepare)
+    Action.registerPredef(ScissProcs.attrPrepareRec, sinkRecPrepare)
 
     val sinkRecDispose = new Action.Body {
       def apply[T <: stm.Sys[T]](universe: Action.Universe[T])(implicit tx: T#Tx): Unit = {
         import universe._
         invoker.foreach { obj =>
-          obj.attr.$[Artifact](KeyRecArtifact).foreach { artObj =>
+          obj.attr.$[Artifact](attrRecArtifact).foreach { artObj =>
             SoundProcesses.scheduledExecutorService.schedule(new Runnable {
               def run(): Unit = SoundProcesses.atomic[T, Unit] { implicit tx =>
-                implicit val nuages = nuagesFinder.findNuages(universe)
+                implicit val nuages: Nuages[T] = Nuages.find[T]()
+                  .getOrElse(sys.error("sinkRecDispose: Cannot find Nuages instance"))
                 mkLoop[T](artObj)
               } (universe.cursor)
             }, 1000, TimeUnit.MILLISECONDS)
@@ -1029,24 +962,24 @@ object ScissProcs {
         }
       }
     }
-    Action.registerPredef("nuages-dispose-rec", sinkRecDispose)
+    Action.registerPredef(ScissProcs.attrDisposeRec, sinkRecDispose)
 
     val sinkRec = sinkF("rec") { in =>
-      proc.graph.DiskOut.ar(KeyRecArtifact, in)
+      proc.graph.DiskOut.ar(attrRecArtifact, in)
     }
-    val sinkPrepObj = Action.predef("nuages-prepare-rec")
-    val sinkDispObj = Action.predef("nuages-dispose-rec")
-    sinkRec    .attr.put("nuages-prepare", sinkPrepObj)
-    sinkRec    .attr.put("nuages-dispose", sinkDispObj)
+    val sinkPrepObj = Action.predef(ScissProcs.attrPrepareRec)
+    val sinkDispObj = Action.predef(ScissProcs.attrDisposeRec)
+    sinkRec    .attr.put(Nuages.attrPrepare, sinkPrepObj)
+    sinkRec    .attr.put(Nuages.attrDispose, sinkDispObj)
 
     val sumRec = generator("rec-sum") {
       val numCh = masterChansOption.map(_.size).getOrElse(1)
       val in    = InFeedback.ar(0, numCh)   // XXX TODO --- should find correct indices!
-      proc.graph.DiskOut.ar(KeyRecArtifact, in)
+      proc.graph.DiskOut.ar(attrRecArtifact, in)
       DC.ar(0)
     }
-    sumRec.attr.put("nuages-prepare", sinkPrepObj)
-    sumRec.attr.put("nuages-dispose", sinkDispObj)
+    sumRec.attr.put(Nuages.attrPrepare, sinkPrepObj)
+    sumRec.attr.put(Nuages.attrDispose, sinkDispObj)
 
     // -------------- CONTROL SIGNALS --------------
 

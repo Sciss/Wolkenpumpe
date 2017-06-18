@@ -156,9 +156,12 @@ trait PanelImplTxnFuns[S <: Sys[S]] {
   private[this] def exec(obj: Obj[S], key: String)(implicit tx: S#Tx): Unit =
     for (self <- obj.attr.$[Action](key)) {
       implicit val cursor = transport.scheduler.cursor
-      self.execute(Action.Universe(self, workspace, invoker = Some(obj)))
+      val n = nuages
+      NuagesImpl.use(n) {
+        self.execute(Action.Universe(self, workspace, invoker = Some(obj)))
+      }
     }
 
-  protected final def prepareObj(obj: Obj[S])(implicit tx: S#Tx): Unit = exec(obj, "nuages-prepare")
-  protected final def disposeObj(obj: Obj[S])(implicit tx: S#Tx): Unit = exec(obj, "nuages-dispose")
+  protected final def prepareObj(obj: Obj[S])(implicit tx: S#Tx): Unit = exec(obj, Nuages.attrPrepare)
+  protected final def disposeObj(obj: Obj[S])(implicit tx: S#Tx): Unit = exec(obj, Nuages.attrDispose)
 }
