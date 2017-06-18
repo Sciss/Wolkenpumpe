@@ -37,7 +37,7 @@ import scala.swing.event.ButtonClicked
 import scala.swing.{BoxPanel, Action, BorderPanel, Button, Component, GridBagPanel, Label, MenuItem, Orientation, TextField}
 
 object NuagesViewImpl {
-  def apply[S <: Sys[S]](nuages: Nuages[S], nuagesConfig: Nuages.Config, scissConfig: ScissProcs.Config)
+  def apply[S <: Sys[S]](nuages: Nuages[S], nuagesConfig: Nuages.Config)
                         (implicit tx: S#Tx, aural: AuralSystem, workspace: WorkspaceHandle[S],
                          cursor: stm.Cursor[S]): NuagesView[S] = {
     implicit val context = NuagesContext[S]
@@ -45,16 +45,15 @@ object NuagesViewImpl {
     val tlm       = TimelineModel(Span(0L, (TimeRef.SampleRate * 60 * 60 * 10).toLong), TimeRef.SampleRate)
     val transport = panel.transport
     val trnspView = TransportView(transport, tlm, hasMillis = false, hasLoop = false, hasShortcuts = false)
-    val res       = new Impl[S](panel, trnspView, scissConfig).init()
+    val res       = new Impl[S](panel, trnspView).init()
     res
   }
 
-  private final class Impl[S <: Sys[S]](val panel: NuagesPanel[S], transportView: View[S],
-                                        sConfig: ScissProcs.Config)
+  private final class Impl[S <: Sys[S]](val panel: NuagesPanel[S], transportView: View[S])
                                        (implicit val cursor: stm.Cursor[S])
     extends NuagesView[S] with ComponentHolder[Component] with AuralSystem.Client { impl =>
 
-    import panel.config
+    import panel.{config => nConfig}
 
     private var _southBox: BoxPanel = _
 
@@ -121,7 +120,7 @@ object NuagesViewImpl {
       ggSouthBox.contents += HStrut(8)
       val cConfig = ControlPanel.Config()
       cConfig.numOutputChannels = panel.config.masterChannels.map(_.size).getOrElse(0)
-      val numInputChannels = sConfig.lineInputs.size + sConfig.micInputs.size
+      val numInputChannels = nConfig.lineInputs.size + nConfig.micInputs.size
       cConfig.numInputChannels  = numInputChannels
       cConfig.log = false
       _controlPanel = ControlPanel(cConfig)
@@ -167,8 +166,8 @@ object NuagesViewImpl {
         ggFaderBox.layout(slid) = gridCon
       }
 
-      if (config.masterChannels.isDefined) mkFader(NuagesPanel.masterAmpSpec, 0.75)(panel.setMasterVolume(_)(_))
-      if (config.soloChannels  .isDefined) mkFader(NuagesPanel.soloAmpSpec  , 0.25)(panel.setSoloVolume  (_)(_))
+      if (nConfig.masterChannels.isDefined) mkFader(NuagesPanel.masterAmpSpec, 0.75)(panel.setMasterVolume(_)(_))
+      if (nConfig.soloChannels  .isDefined) mkFader(NuagesPanel.soloAmpSpec  , 0.25)(panel.setSoloVolume  (_)(_))
 
       _southBox = ggSouthBox
 
@@ -234,12 +233,11 @@ object NuagesViewImpl {
         import de.sciss.synth.ugen._
         // val masterBus = settings.frame.panel.masterBus.get // XXX ouch
         // val sigMast = In.ar( masterBus.index, masterBus.numChannels )
-        import panel.{config => nConfig}
         val masterBus   = nConfig.masterChannels.getOrElse(Vector.empty)
         val sigMast0    = masterBus.map(ch => In.ar(ch))
         val sigMast: GE = sigMast0
         // external recorders
-        sConfig.lineOutputs.foreach { cfg =>
+        nConfig.lineOutputs.foreach { cfg =>
 //          val off     = cfg.offset
           val numOut  = cfg.numChannels
           val numIn   = masterBus.size // numChannels
@@ -258,7 +256,7 @@ object NuagesViewImpl {
         // master + people meters
         val meterTr    = Impulse.kr(20)
         val (peoplePeak, peopleRMS) = {
-          val groups = /* if( NuagesApp.METER_MICS ) */ sConfig.micInputs ++ sConfig.lineInputs // else sConfig.lineInputs
+          val groups = /* if( NuagesApp.METER_MICS ) */ nConfig.micInputs ++ nConfig.lineInputs // else sConfig.lineInputs
           val res = groups.map { cfg =>
 //              val off        = cfg.offset
               val numIn      = cfg.numChannels

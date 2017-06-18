@@ -32,16 +32,7 @@ import scala.language.implicitConversions
 /** This is my personal set of generators and filters. */
 object ScissProcs {
   trait ConfigLike {
-    //    def numLoops: Int
-    //
-    //    /** Maximum duration in seconds. */
-    //    def loopDuration: Double
-
     def audioFilesFolder: Option[File]
-
-    def lineInputs  : Vec[NamedBusConfig]
-    def micInputs   : Vec[NamedBusConfig]
-    def lineOutputs : Vec[NamedBusConfig]
 
     /** Indices are 'secondary', i.e. they index the logical master channels,
       * not physical channels.
@@ -66,40 +57,21 @@ object ScissProcs {
   sealed trait Config extends ConfigLike
 
   final class ConfigBuilder private[ScissProcs]() extends ConfigLike {
-    //    private var numLoopsVar: Int = 7
-    //
-    //    def numLoops: Int = numLoopsVar
-    //
-    //    def numLoops_=(n: Int): Unit = {
-    //      require(n >= 0)
-    //      numLoopsVar = n
-    //    }
-    //
-    //    var loopDuration: Double = 30.0
-
-    var audioFilesFolder: Option[File] = None
-
-    var lineInputs  : Vec[NamedBusConfig] = Vector.empty
-    var micInputs   : Vec[NamedBusConfig] = Vector.empty
-    var lineOutputs : Vec[NamedBusConfig] = Vector.empty
-    var masterGroups: Vec[NamedBusConfig] = Vector.empty
-
-    var recDir: File = file(sys.props("java.io.tmpdir"))
+    var audioFilesFolder: Option[File]        = None
+    var masterGroups    : Vec[NamedBusConfig] = Vector.empty
+    var recDir          : File                = file(sys.props("java.io.tmpdir"))
 
     var generatorChannels = 0
+    var highPass          = 0
 
-    var highPass = 0
-
-    def build: Config = ConfigImpl(/* numLoops = numLoops, loopDuration = loopDuration, */
-      audioFilesFolder = audioFilesFolder, lineInputs = lineInputs, micInputs = micInputs,
-      lineOutputs = lineOutputs, masterGroups = masterGroups, generatorChannels = generatorChannels,
+    def build: Config = ConfigImpl(
+      audioFilesFolder = audioFilesFolder, masterGroups = masterGroups, generatorChannels = generatorChannels,
       highPass = highPass, recDir = recDir)
   }
 
-  private case class ConfigImpl(// numLoops: Int, loopDuration: Double,
+  private case class ConfigImpl(
                                 audioFilesFolder: Option[File],
-                                lineInputs : Vec[NamedBusConfig], micInputs   : Vec[NamedBusConfig],
-                                lineOutputs: Vec[NamedBusConfig], masterGroups: Vec[NamedBusConfig],
+                                masterGroups: Vec[NamedBusConfig],
                                 generatorChannels: Int, highPass: Int,
                                 recDir: File)
     extends Config
@@ -265,7 +237,7 @@ object ScissProcs {
       // procObj.attr.put("file", artObj)
     }
 
-    sConfig.micInputs.foreach { cfg =>
+    nConfig.micInputs.foreach { cfg =>
       generator(cfg.name) {
         val pBoost    = pAudio("gain", ParamSpec(0.1, 10, ExpWarp), default(0.1))
         val pFeed0    = pAudio("feed", ParamSpec(0, 1), default(0.0))
@@ -310,7 +282,7 @@ object ScissProcs {
       }
     }
 
-    sConfig.lineInputs.foreach { cfg =>
+    nConfig.lineInputs.foreach { cfg =>
       generator(cfg.name) {
         val pBoost = pAudio("gain", ParamSpec(0.1, 10, ExpWarp), default(1.0))
 

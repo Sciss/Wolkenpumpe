@@ -28,7 +28,7 @@ lazy val scissDSPVersion            = "1.2.3"
 // ---- test ----
 
 lazy val subminVersion              = "0.2.1"
-lazy val lucreVersion               = "3.4.0"
+lazy val lucreVersion               = "3.4.1-SNAPSHOT"
 lazy val scalaTestVersion           = "3.0.3"
 lazy val scoptVersion               = "3.6.0"
 

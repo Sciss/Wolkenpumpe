@@ -22,10 +22,10 @@ import impl.{NuagesViewImpl => Impl}
 import scala.swing.Component
 
 object NuagesView {
-  def apply[S <: Sys[S]](nuages: Nuages[S], nuagesConfig: Nuages.Config, scissConfig: ScissProcs.Config)
+  def apply[S <: Sys[S]](nuages: Nuages[S], nuagesConfig: Nuages.Config)
                         (implicit tx: S#Tx, aural: AuralSystem, workspace: WorkspaceHandle[S],
                          cursor: stm.Cursor[S]): NuagesView[S] =
-    Impl(nuages, nuagesConfig, scissConfig)
+    Impl[S](nuages, nuagesConfig)
 }
 trait NuagesView[S <: Sys[S]] extends View.Cursor[S] {
   def panel: NuagesPanel[S]

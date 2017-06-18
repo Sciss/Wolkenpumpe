@@ -49,6 +49,10 @@ object Nuages extends Obj.Type {
     def soloChannels  : Option[Vec[Int]]
     def recordPath    : Option[String]
 
+    def lineInputs    : Vec[NamedBusConfig]
+    def micInputs     : Vec[NamedBusConfig]
+    def lineOutputs   : Vec[NamedBusConfig]
+
     def meters        : Boolean
     def collector     : Boolean
     def fullScreenKey : Boolean
@@ -68,6 +72,11 @@ object Nuages extends Obj.Type {
       b.masterChannels  = masterChannels
       b.soloChannels    = soloChannels
       b.recordPath      = recordPath
+
+      b.lineInputs      = lineInputs
+      b.micInputs       = micInputs
+      b.lineOutputs     = lineOutputs
+
       b.meters          = meters
       b.collector       = collector
       b.fullScreenKey   = fullScreenKey
@@ -79,6 +88,10 @@ object Nuages extends Obj.Type {
     var soloChannels  : Option[Vec[Int]]
     var recordPath    : Option[String]
 
+    var lineInputs    : Vec[NamedBusConfig]
+    var micInputs     : Vec[NamedBusConfig]
+    var lineOutputs   : Vec[NamedBusConfig]
+
     var meters        : Boolean
     var collector     : Boolean
     var fullScreenKey : Boolean
@@ -89,18 +102,27 @@ object Nuages extends Obj.Type {
   private final class ConfigBuilderImpl extends ConfigBuilder {
     override def toString = s"Nuages.ConfigBuilder@${hashCode().toHexString}"
 
-    var masterChannels: Option[Vec[Int]] = None
-    var soloChannels  : Option[Vec[Int]] = None
-    var recordPath    : Option[String]   = None
+    var masterChannels: Option[Vec[Int]]    = None
+    var soloChannels  : Option[Vec[Int]]    = None
+    var recordPath    : Option[String]      = None
 
-    var meters        : Boolean = true
-    var collector     : Boolean = false
-    var fullScreenKey : Boolean = true
+    var lineInputs    : Vec[NamedBusConfig] = Vector.empty
+    var micInputs     : Vec[NamedBusConfig] = Vector.empty
+    var lineOutputs   : Vec[NamedBusConfig] = Vector.empty
+
+    var meters        : Boolean             = true
+    var collector     : Boolean             = false
+    var fullScreenKey : Boolean             = true
 
     def build: Config = ConfigImpl(
       masterChannels  = masterChannels,
       soloChannels    = soloChannels,
       recordPath      = recordPath,
+
+      lineInputs      = lineInputs,
+      micInputs       = micInputs,
+      lineOutputs     = lineOutputs,
+
       meters          = meters,
       collector       = collector,
       fullScreenKey   = fullScreenKey
@@ -111,6 +133,11 @@ object Nuages extends Obj.Type {
     masterChannels: Option[Vec[Int]],
     soloChannels  : Option[Vec[Int]],
     recordPath    : Option[String],
+
+    lineInputs    : Vec[NamedBusConfig],
+    micInputs     : Vec[NamedBusConfig],
+    lineOutputs   : Vec[NamedBusConfig],
+
     meters        : Boolean,
     collector     : Boolean,
     fullScreenKey : Boolean

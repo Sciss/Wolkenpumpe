@@ -28,14 +28,15 @@ object Demo {
                                      aCfg: Server.ConfigBuilder): Unit = {
       super.configure(sCfg, nCfg, aCfg)
       if (DEBUG) {
-        sCfg.generatorChannels  = 2
-        sCfg.micInputs          = Vector.empty
-        sCfg.lineInputs         = Vector.empty
-        sCfg.lineOutputs        = Vector.empty
-
         nCfg.masterChannels     = Some(0 to 1)
         nCfg.soloChannels       = None
         nCfg.recordPath         = Some("/tmp")
+
+        nCfg.micInputs          = Vector.empty
+        nCfg.lineInputs         = Vector.empty
+        nCfg.lineOutputs        = Vector.empty
+
+        sCfg.generatorChannels  = 2
 
         aCfg.wireBuffers        = 512
         aCfg.audioBuffers       = 4096

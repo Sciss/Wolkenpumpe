@@ -38,7 +38,7 @@ object Wolkenpumpe {
   def mkTestProcs[S <: Sys[S]]()(implicit tx: S#Tx, nuages: Nuages[S]): Unit = {
     val dsl = DSL[S]
     import de.sciss.synth.ugen._
-    import de.sciss.synth.{Server => _, _}
+    import de.sciss.synth._
     import dsl._
 
     generator("Sprink") {
@@ -150,16 +150,17 @@ class Wolkenpumpe[S <: Sys[S]] {
     nCfg.masterChannels     = Some(0 to 7) // Vector(0, 1))
     nCfg.soloChannels       = None // Some(0 to 1)
 
-    sCfg.audioFilesFolder   = Some(userHome / "Music" / "tapes")
-    sCfg.micInputs          = Vector(
+    nCfg.micInputs          = Vector(
       NamedBusConfig("m-dpa"  , 0 until 1),
       NamedBusConfig("m-at "  , 3 until 4)
     )
-    sCfg.lineInputs         = Vector(NamedBusConfig("pirro", 2 until 3))
-    sCfg.lineOutputs        = Vector(
+    nCfg.lineInputs         = Vector(NamedBusConfig("pirro", 2 until 3))
+    nCfg.lineOutputs        = Vector(
       NamedBusConfig("sum", 5 until 6)
       // , NamedBusConfig("hp", 6, 2)  // while 'solo' doesn't work
     )
+
+    sCfg.audioFilesFolder   = Some(userHome / "Music" / "tapes")
   }
 
   /** Subclasses may want to override this. */
@@ -183,9 +184,9 @@ class Wolkenpumpe[S <: Sys[S]] {
 
     configure(sCfg, nCfg, aCfg)
 
-    val maxInputs   = ((sCfg.lineInputs ++ sCfg.micInputs).map(_.stopOffset) :+ 0).max
+    val maxInputs   = ((nCfg.lineInputs ++ nCfg.micInputs).map(_.stopOffset) :+ 0).max
     val maxOutputs  = (
-        sCfg.lineOutputs.map(_.stopOffset) :+ nCfg.soloChannels.fold(0)(_.max + 1) :+ nCfg.masterChannels.fold(0)(_.max + 1)
+      nCfg.lineOutputs.map(_.stopOffset) :+ nCfg.soloChannels.fold(0)(_.max + 1) :+ nCfg.masterChannels.fold(0)(_.max + 1)
       ).max
     println(s"numInputs = $maxInputs, numOutputs = $maxOutputs")
 
@@ -207,7 +208,7 @@ class Wolkenpumpe[S <: Sys[S]] {
       registerProcesses(sCfg, nCfg, finder)
 
       import de.sciss.synth.proc.WorkspaceHandle.Implicits._
-      _view = NuagesView(n, nCfg, sCfg)
+      _view = NuagesView(n, nCfg)
       /* val frame = */ NuagesFrame(_view, undecorated = false /* true */)
       aural.start(aCfg)
     }
