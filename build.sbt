@@ -1,7 +1,7 @@
 lazy val baseName        = "Wolkenpumpe"
 lazy val baseNameL       = baseName.toLowerCase
-lazy val projectVersion  = "2.17.0-SNAPSHOT"
-lazy val mimaVersion     = "2.16.0"
+lazy val projectVersion  = "2.17.0"
+lazy val mimaVersion     = "2.17.0"
 
 name                 := baseName
 version              := projectVersion
@@ -15,11 +15,11 @@ crossScalaVersions   := Seq("2.12.2", "2.11.11")
  
 resolvers            += "Oracle Repository" at "http://download.oracle.com/maven"  // required for sleepycat
 
-lazy val soundProcessesVersion      = "3.13.0-SNAPSHOT"
+lazy val soundProcessesVersion      = "3.13.0"
 lazy val scalaColliderVersion       = "1.22.4"
-lazy val scalaColliderSwingVersion  = "1.34.0-SNAPSHOT"
+lazy val scalaColliderSwingVersion  = "1.34.0"
 lazy val prefuseVersion             = "1.0.1"
-lazy val lucreSwingVersion          = "1.6.0-SNAPSHOT"
+lazy val lucreSwingVersion          = "1.6.0"
 lazy val swingPlusVersion           = "0.2.3"
 lazy val intensityVersion           = "1.0.0"
 lazy val fileUtilVersion            = "1.1.2"
