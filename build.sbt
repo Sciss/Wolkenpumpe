@@ -17,9 +17,9 @@ resolvers            += "Oracle Repository" at "http://download.oracle.com/maven
 
 lazy val soundProcessesVersion      = "3.13.0-SNAPSHOT"
 lazy val scalaColliderVersion       = "1.22.4"
-lazy val scalaColliderSwingVersion  = "1.33.1"
+lazy val scalaColliderSwingVersion  = "1.34.0-SNAPSHOT"
 lazy val prefuseVersion             = "1.0.1"
-lazy val lucreSwingVersion          = "1.5.1"
+lazy val lucreSwingVersion          = "1.6.0-SNAPSHOT"
 lazy val swingPlusVersion           = "0.2.3"
 lazy val intensityVersion           = "1.0.0"
 lazy val fileUtilVersion            = "1.1.2"
