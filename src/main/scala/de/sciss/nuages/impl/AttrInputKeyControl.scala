@@ -124,8 +124,7 @@ trait AttrInputKeyControl[S <: Sys[S]] extends ClipboardOwner {
   private[this] def showParamInput(vi: VisualItem): Unit = {
     val spec    = attribute.spec
     val ggValue = new TextField(f"${spec.map(numericValue.head)}%1.3f", 12)
-    ggValue.background = Color.black
-    ggValue.foreground = Color.white
+    Wolkenpumpe.mkBlackWhite(ggValue)
     ggValue.peer.addAncestorListener(new AncestorListener {
       def ancestorRemoved(e: AncestorEvent): Unit = ()
       def ancestorMoved  (e: AncestorEvent): Unit = ()

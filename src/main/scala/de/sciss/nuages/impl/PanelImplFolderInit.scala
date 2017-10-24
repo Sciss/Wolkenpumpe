@@ -94,7 +94,7 @@ trait PanelImplFolderInit[S <: Sys[S]] {
   private def addNode(obj: Obj[S])(implicit tx: S#Tx): Unit = {
     val config  = main.config
     val locO    = removeLocationHint(obj)
-    implicit val context = main.context
+    implicit val context: NuagesContext[S] = main.context
     val vp      = NuagesObj[S](main, locOption = locO, id = obj.id, obj = obj,
       spanValue = Span.All, spanOption = None,
       hasMeter = config.meters, hasSolo = config.soloChannels.isDefined)

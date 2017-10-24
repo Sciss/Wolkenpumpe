@@ -13,7 +13,7 @@
 
 package de.sciss.nuages
 
-import java.awt.Font
+import java.awt.{Color, Font}
 
 import de.sciss.file._
 import de.sciss.lucre.stm
@@ -23,6 +23,7 @@ import de.sciss.synth.proc.{AuralSystem, Code, Compiler, SoundProcesses}
 import de.sciss.synth.{Server => SServer}
 
 import scala.concurrent.Future
+import scala.swing.Component
 import scala.util.{Failure, Success}
 
 object Wolkenpumpe {
@@ -30,7 +31,7 @@ object Wolkenpumpe {
 
   def main(args: Array[String]): Unit = {
     type S = InMemory
-    implicit val system = InMemory()
+    implicit val system: S = InMemory()
     val w = new Wolkenpumpe[S]
     val nuagesH = system.step { implicit tx => tx.newHandle(Nuages.timeline[S]) }
     w.run(nuagesH)
@@ -124,6 +125,16 @@ object Wolkenpumpe {
   def condensedFont_=(value: Font): Unit =
     _condensedFont = value
 
+  private[this] lazy val _isSubmin = javax.swing.UIManager.getLookAndFeel.getID == "submin"
+
+//  def isSubmin: Boolean = _isSubmin
+
+  def mkBlackWhite(c: Component): Unit =
+    if (!_isSubmin) {
+        c.background = Color.black
+        c.foreground = Color.white
+      }
+
   def init(): Unit = {
     SoundProcesses.init()
     ParamSpec     .init()
@@ -210,7 +221,7 @@ class Wolkenpumpe[S <: Sys[S]] {
         cursor.step { implicit tx =>
           val n = nuagesH()
           import de.sciss.synth.proc.WorkspaceHandle.Implicits._
-          implicit val aural = _aural
+          implicit val aural: AuralSystem = _aural
             _view = NuagesView(n, nCfg)
           /* val frame = */ NuagesFrame(_view, undecorated = false /* true */)
           aural.start(aCfg)

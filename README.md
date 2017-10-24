@@ -22,7 +22,7 @@ Builds with sbt 0.13 against Scala 2.12, 2.11. The last version to support Scala
 
     "de.sciss" %% "wolkenpumpe" % v
 
-The current version `v` is `"2.18.0"`.
+The current version `v` is `"2.18.1"`.
 
 ## contributing
 
@@ -58,7 +58,8 @@ Dialogs:
 
 Scan-out:
 
-- custom filter insertion short-cuts via object attribute `Nuages.KeyShortcut`
+- custom filter insertion short-cuts via object attribute with key `Nuages.attrShortcut` or `"nuages-shortcut"`
+  and value being a string object such as `"X"` or `"shift P"`.
 - <tt>Enter</tt> new-filter append prompt
 - <tt>Shift</tt>-<tt>Enter</tt> new-collector append prompt
 

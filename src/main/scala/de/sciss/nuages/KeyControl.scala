@@ -26,12 +26,12 @@ import de.sciss.lucre.stm.{Disposable, IdentifierMap, Obj}
 import de.sciss.lucre.synth.Sys
 import de.sciss.nuages.NuagesPanel._
 import de.sciss.swingplus.ListView
-import de.sciss.synth.proc.{Proc, Folder, ObjKeys}
+import de.sciss.synth.proc.{Folder, ObjKeys, Proc}
 import prefuse.controls.{Control, ControlAdapter}
 import prefuse.visual.{EdgeItem, NodeItem, VisualItem}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
-import scala.concurrent.stm.TMap
+import scala.concurrent.stm.{InTxn, TMap}
 import scala.swing.event.Key
 import scala.swing.{Orientation, ScrollPane, TextField}
 
@@ -85,7 +85,7 @@ object KeyControl {
     def names: Iterator[String] = nameMap.single.keysIterator
 
     protected final def elemAdded(elem: Obj[S])(implicit tx: S#Tx): Unit = {
-      implicit val itx = tx.peer
+      implicit val itx: InTxn = tx.peer
       val attr    = elem.attr
       val source  = tx.newHandle(elem)  // eagerly because we expect `name` to be present
       attr.$[StringObj](Nuages.attrShortcut).foreach { expr =>
@@ -99,7 +99,7 @@ object KeyControl {
     }
 
     protected final def elemRemoved(elem: Obj[S])(implicit tx: S#Tx): Unit = {
-      implicit val itx = tx.peer
+      implicit val itx: InTxn = tx.peer
       idMap.get(elem.id).foreach { ks =>
         idMap.remove(elem.id)
         keyMap.remove(ks)(tx.peer)
@@ -291,8 +291,7 @@ object KeyControl {
       val lpy = lastPt.y
       val p = new OverlayPanel(Orientation.Horizontal) { panel =>
         val ggName = new TextField(12)
-        ggName.background = Color.black
-        ggName.foreground = Color.white
+        Wolkenpumpe.mkBlackWhite(ggName)
         ggName.peer.addAncestorListener(new AncestorListener {
           def ancestorRemoved(e: AncestorEvent): Unit = ()
           def ancestorMoved  (e: AncestorEvent): Unit = ()

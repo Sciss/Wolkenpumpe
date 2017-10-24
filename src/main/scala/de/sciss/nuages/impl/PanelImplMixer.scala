@@ -16,14 +16,14 @@ package impl
 
 import de.sciss.lucre.stm
 import de.sciss.lucre.swing.{defer, deferTx, requireEDT}
-import de.sciss.lucre.synth.{AudioBus, Node => SNode, Synth, Sys, Txn}
+import de.sciss.lucre.synth.{AudioBus, Synth, Sys, Txn, Node => SNode}
 import de.sciss.nuages.impl.PanelImpl.LAYOUT_TIME
 import de.sciss.osc
 import de.sciss.synth.{SynthGraph, addToTail, message}
 
 import scala.collection.breakOut
 import scala.collection.immutable.{IndexedSeq => Vec}
-import scala.concurrent.stm.Ref
+import scala.concurrent.stm.{InTxn, Ref}
 
 trait PanelImplMixer[S <: Sys[S]] {
   // ---- abstract ----
@@ -209,7 +209,7 @@ trait PanelImplMixer[S <: Sys[S]] {
   //    }
 
   def setSoloVolume(v: Double)(implicit tx: S#Tx): Unit = {
-    implicit val itx = tx.peer
+    implicit val itx: InTxn = tx.peer
     val oldV = soloVolume.swap(v)
     if (v == oldV) return
     soloInfo().foreach(_._2.set("amp" -> v))

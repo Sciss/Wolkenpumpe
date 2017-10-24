@@ -53,7 +53,7 @@ object NuagesObjImpl {
   private val fastLog = FastLog(base = 10, q = 11)
 
 //  private[this] val specSuffix  = s"-${ParamSpec.Key}"
-  private[this] val ignoredKeys = Set(ObjKeys.attrName, Nuages.attrShortcut)
+  private[this] val ignoredKeys = Set(ObjKeys.attrName, Nuages.attrShortcut, "track-index", "track-height")
 
 //  private def mkParam[S <: Sys[S]](parent: NuagesObj[S], key: String, obj: Obj[S])
 //                                  (implicit tx: S#Tx, context: NuagesContext[S]): Unit =

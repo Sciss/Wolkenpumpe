@@ -95,7 +95,7 @@ trait PanelImplTimelineInit[S <: Sys[S]] extends NuagesTimelineBase[S] {
     val obj     = timed.value
     val config  = main.config
     val locO    = removeLocationHint(obj)
-    implicit val context = main.context
+    implicit val context: NuagesContext[S] = main.context
     val vp      = NuagesObj[S](main, locOption = locO, id = timed.id, obj = obj,
       spanValue = span, spanOption = Some(timed.span),
       hasMeter = config.meters, hasSolo = config.soloChannels.isDefined)

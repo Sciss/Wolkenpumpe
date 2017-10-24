@@ -68,7 +68,7 @@ object Demo {
         } else {
           BerkeleyDB.factory(f)
         }
-        implicit val system = Durable(factory)
+        implicit val system: S = Durable(factory)
         val nuagesH = system.root { implicit tx =>
           if (config.timeline) Nuages.timeline[S] else Nuages.folder[S]
         }
@@ -76,7 +76,7 @@ object Demo {
 
     case None =>
       type S = InMemory
-      implicit val system = InMemory()
+      implicit val system: S = InMemory()
 
       val nuagesH = system.step { implicit tx =>
         val nuages = if (config.timeline) Nuages.timeline[S] else Nuages.folder[S]

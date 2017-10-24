@@ -23,6 +23,7 @@ import de.sciss.lucre.stm.{Disposable, Obj, Sys, TxnLike}
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.lucre.{expr, stm}
 import de.sciss.nuages.NuagesAttribute.{Input, Parent}
+import de.sciss.serial.Serializer
 import prefuse.data.{Node => PNode}
 import prefuse.visual.VisualItem
 
@@ -143,7 +144,7 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
   }
 
   private[this] def setObject(obj: Ex[S])(implicit tx: S#Tx): (stm.Source[S#Tx, Ex[S]], Disposable[S#Tx]) = {
-    implicit val ser = tpe.serializer[S]
+    implicit val ser: Serializer[S#Tx, S#Acc, Ex[S]] = tpe.serializer[S]
     val h         = tx.newHandle(obj)
     val observer  = obj.changed.react { implicit tx => upd =>
       updateValueAndRefresh(upd.now)
