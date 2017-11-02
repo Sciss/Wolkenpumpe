@@ -77,6 +77,9 @@ object ScissProcs {
   }
 
   def mkLoop[S <: stm.Sys[S]](n: Nuages[S], art: Artifact[S], generatorChannels: Int)(implicit tx: S#Tx): Unit = {
+    import synth._
+    import ugen._
+
     val dsl = DSL[S]
     import dsl._
     val f       = art.value
@@ -94,7 +97,6 @@ object ScissProcs {
     }
 
     val procObj = generator(f.base) {
-      import ugen._
       val pSpeed      = pAudio  ("speed", ParamSpec(0.125, 2.3511, ExpWarp), default(1.0))
       val pStart      = pControl("start", ParamSpec(0, 1), default(0.0))
       val pDur        = pControl("dur"  , ParamSpec(0, 1), default(1.0))

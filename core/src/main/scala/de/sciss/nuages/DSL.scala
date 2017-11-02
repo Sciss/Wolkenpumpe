@@ -22,6 +22,7 @@ import de.sciss.synth.ugen.ControlValues
 import de.sciss.synth.{GE, Rate, SynthGraph, audio, control, proc, scalar}
 
 import scala.concurrent.stm.TxnLocal
+import scala.language.experimental.macros
 
 object DSL {
   def apply[S <: stm.Sys[S]]: DSL[S] = new DSL[S]
@@ -32,7 +33,7 @@ class DSL[S <: stm.Sys[S]] private() {
   // val imp = ExprImplicits[S]
   import proc.Implicits._
 
-  private val current = TxnLocal[Proc[S]]()
+  private[nuages] val current = TxnLocal[Proc[S]]()
 
   /** Creates a `Proc.Obj` with a synth-graph whose function
     * is determined by the `fun` argument.
@@ -131,6 +132,9 @@ class DSL[S <: stm.Sys[S]] private() {
     val idx   = if (idx0 >= 0) idx0 else folder.size
     folder.insert(idx, elem)
   }
+
+//  def generator(name: String)(body: GE)(implicit tx: S#Tx, n: Nuages[S]): Proc[S] =
+//    macro DSLMacros.generator[S]
 
   def generator(name: String)(fun: => GE)(implicit tx: S#Tx, n: Nuages[S]): Proc[S] = {
     val obj = mkProcObj(name) {
