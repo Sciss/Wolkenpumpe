@@ -1,7 +1,7 @@
 lazy val baseName        = "Wolkenpumpe"
 lazy val baseNameL       = baseName.toLowerCase
-lazy val projectVersion  = "2.19.0"
-lazy val mimaVersion     = "2.19.0"
+lazy val projectVersion  = "2.20.0-SNAPSHOT"
+lazy val mimaVersion     = "2.10.0"
 
 lazy val commonSettings = Seq(
   version              := projectVersion,
@@ -15,13 +15,14 @@ lazy val commonSettings = Seq(
   scalacOptions ++= Seq("-deprecation", "-unchecked", "-feature", "-encoding", "utf8", "-Xfuture", "-Xlint:-stars-align,_")
 ) ++ publishSettings
 
-lazy val soundProcessesVersion      = "3.15.0"
-lazy val scalaColliderVersion       = "1.22.4"
-lazy val scalaColliderSwingVersion  = "1.34.1"
+lazy val soundProcessesVersion      = "3.16.0-SNAPSHOT"
+lazy val scalaColliderVersion       = "1.23.0"
+lazy val scalaColliderSwingVersion  = "1.35.0"
 lazy val prefuseVersion             = "1.0.1"
 lazy val lucreSwingVersion          = "1.7.0"
 lazy val swingPlusVersion           = "0.2.4"
 lazy val intensityVersion           = "1.0.0"
+lazy val modelVersion               = "0.3.4"
 lazy val fileUtilVersion            = "1.1.3"
 lazy val scissDSPVersion            = "1.2.3"
 
@@ -59,6 +60,7 @@ lazy val core = Project(id = s"$baseNameL-core", base = file("core"))
       "de.sciss"          %% "swingplus"               % swingPlusVersion,
       "de.sciss"          %% "scissdsp"                % scissDSPVersion,
       "de.sciss"          %  "intensitypalette"        % intensityVersion,
+      "de.sciss"          %% "model"                   % modelVersion,    // bloody sbt buf
       "de.sciss"          %% "lucre-bdb"               % lucreVersion     % "test",
       "org.scalatest"     %% "scalatest"               % scalaTestVersion % "test"
     ),

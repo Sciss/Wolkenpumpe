@@ -9,6 +9,18 @@ import de.sciss.synth.Server
 import de.sciss.synth.proc.Durable
 
 object Demo {
+
+  case class Config(durable: Option[File] = None, timeline: Boolean = false, dumpOSC: Boolean = false)
+
+  def main(args: Array[String]): Unit = {
+    val p = new scopt.OptionParser[Config]("Demo") {
+      opt[File]('d', "durable")  text "Durable database"         action { case (f, c) => c.copy(durable  = Some(f)) }
+      opt[Unit]('t', "timeline") text "Use performance timeline" action { case (_, c) => c.copy(timeline = true) }
+      opt[Unit]("dump-osc")      text "Dump OSC messages"        action { case (_, c) => c.copy(dumpOSC  = true) }
+    }
+    p.parse(args, Config()).fold(sys.exit(1))(run)
+  }
+
   def mkTestProcs[S <: Sys[S]]()(implicit tx: S#Tx, nuages: Nuages[S]): Unit = {
     val dsl = DSL[S]
     import de.sciss.synth._
@@ -70,18 +82,7 @@ object Demo {
     }
   }
 
-  case class Config(durable: Option[File] = None, timeline: Boolean = false, dumpOSC: Boolean = false)
-
   val DEBUG = true
-
-  def main(args: Array[String]): Unit = {
-    val p = new scopt.OptionParser[Config]("Demo") {
-      opt[File]('d', "durable")  text "Durable database"         action { case (f, c) => c.copy(durable  = Some(f)) }
-      opt[Unit]('t', "timeline") text "Use performance timeline" action { case (_, c) => c.copy(timeline = true) }
-      opt[Unit]("dump-osc")      text "Dump OSC messages"        action { case (_, c) => c.copy(dumpOSC  = true) }
-    }
-    p.parse(args, Config()).fold(sys.exit(1))(run)
-  }
 
   private class DemoNuages[S <: Sys[S]] extends WolkenpumpeMain[S] {
     /** Subclasses may want to override this. */

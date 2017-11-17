@@ -187,6 +187,10 @@ object NuagesAttributeImpl {
       }
     }
 
+    final def updateChildDelay(child: Obj[S], dt: Long)(implicit tx: S#Tx): Unit = {
+      ???!
+    }
+
     final def updateChild(before: Obj[S], now: Obj[S])(implicit tx: S#Tx): Unit = {
       inputView match {
         case inP: Parent[S] =>

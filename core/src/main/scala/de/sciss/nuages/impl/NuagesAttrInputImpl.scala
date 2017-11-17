@@ -24,6 +24,8 @@ import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.lucre.{expr, stm}
 import de.sciss.nuages.NuagesAttribute.{Input, Parent}
 import de.sciss.serial.Serializer
+import de.sciss.synth.Curve
+import de.sciss.synth.proc.{EnvSegment, TimeRef}
 import prefuse.data.{Node => PNode}
 import prefuse.visual.VisualItem
 
@@ -41,7 +43,7 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
   extends RenderAttrValue     [S]
   with AttrInputKeyControl    [S]
   with NuagesAttrInputBase    [S]
-  with NuagesAttribute.Numeric {
+  with NuagesAttribute.Numeric { self =>
 
   import NuagesAttrInputImpl.Drag
   import NuagesDataImpl._
@@ -54,6 +56,8 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
   protected def tpe: Type.Expr[A, Ex]
 
   protected def mkConst(v: Vec[Double])(implicit tx: S#Tx): Ex[S] with Expr.Const[S, A]
+
+  protected def mkEnvSeg(start: Ex[S], curve: Curve)(implicit tx: S#Tx): EnvSegment.Obj[S]
 
   protected def valueText(v: Vec[Double]): String
 
@@ -84,14 +88,23 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
   final def collect[B](pf: PartialFunction[Input[S], B])(implicit tx: S#Tx): Iterator[B] =
     if (pf.isDefinedAt(this)) Iterator.single(pf(this)) else Iterator.empty
 
-  private[this] def setControlTxn(v: Vec[Double])(implicit tx: S#Tx): Unit = {
+  private[this] def setControlTxn(v: Vec[Double], durFrames: Long)(implicit tx: S#Tx): Unit = {
     val nowConst: Ex[S] = mkConst(v) // IntelliJ highlight error SCL-9713
-    val before = objH()._1()
+    val before  : Ex[S] = objH()._1()
 
     // XXX TODO --- if we overwrite a time value, we should nevertheless update the tpe.Var instead
     if (!editable || isTimeline) {
-      inputParent.updateChild(before = before, now = tpe.newVar[S](nowConst))
+      val nowVar = tpe.newVar[S](nowConst)
+      if (durFrames == 0L)
+        inputParent.updateChild(before = before, now = nowVar)
+      else {
+        val seg = mkEnvSeg(before, Curve.lin) // EnvSegment.Obj.ApplySingle()
+        inputParent.updateChildDelay(child  = nowVar, dt  = durFrames)
+        inputParent.updateChild     (before = before, now = seg)
+      }
+
     } else {
+      if (durFrames > 0) println("Warning: setControlTxn drops `durFrames` when not a timeline")
       val Var = tpe.Var
       val Var(vr) = before
       vr() = nowConst
@@ -193,7 +206,7 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
 
   protected final def setControl(v: Vec[Double], instant: Boolean): Unit =
     atomic { implicit tx =>
-      setControlTxn(v)
+      setControlTxn(v, if (instant) 0L else (TimeRef.SampleRate * 10).toLong)
     }
 
   final override def itemDragged(vi: VisualItem, e: MouseEvent, pt: Point2D): Unit =

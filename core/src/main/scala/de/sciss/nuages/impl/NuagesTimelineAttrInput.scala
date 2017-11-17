@@ -112,6 +112,8 @@ final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesA
     addChild(now)
   }
 
+  def updateChildDelay(child: Obj[S], dt: Long)(implicit tx: S#Tx): Unit = ???!
+
   def addChild(child: Obj[S])(implicit tx: S#Tx): Unit = {
     val tl = timelineH()
 

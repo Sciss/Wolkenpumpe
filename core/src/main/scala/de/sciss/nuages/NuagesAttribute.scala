@@ -110,6 +110,11 @@ object NuagesAttribute {
       */
     def updateChild(before: Obj[S], now: Obj[S])(implicit tx: S#Tx): Unit
 
+    /** Updates with a given time offset `dt` in sample frames
+      * (may be negative)
+      */
+    def updateChildDelay(child: Obj[S], dt: Long)(implicit tx: S#Tx): Unit
+
     /** Removes a child, possibly moving it into a timeline if
       * the underlying nuages surface is a timeline.
       */

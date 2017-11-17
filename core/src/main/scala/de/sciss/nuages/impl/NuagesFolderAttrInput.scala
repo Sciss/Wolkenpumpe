@@ -87,6 +87,8 @@ final class NuagesFolderAttrInput[S <: SSys[S]] private(val attribute: NuagesAtt
     }}
   }
 
+  def updateChildDelay(child: Obj[S], dt: Long)(implicit tx: S#Tx): Unit = ???!
+
   def updateChild(before: Obj[S], now: Obj[S])(implicit tx: S#Tx): Unit = {
     ???!
     val folder = objH()

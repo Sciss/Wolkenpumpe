@@ -18,6 +18,8 @@ import java.awt.Graphics2D
 
 import de.sciss.lucre.expr.Expr
 import de.sciss.lucre.synth.Sys
+import de.sciss.synth.Curve
+import de.sciss.synth.proc.EnvSegment
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
@@ -36,7 +38,10 @@ trait NuagesScalarAttrInput[S <: Sys[S]] extends NuagesAttrInputImpl[S] {
     tpe.newConst(fromDouble(v(0)))
   }
 
-  // def tryMigrate(to: Obj[S])(implicit tx: S#Tx): Boolean = ...
+  protected final def mkEnvSeg(start: Ex[S], curve: Curve)(implicit tx: S#Tx): EnvSegment.Obj[S] = {
+    val lvl = toDouble(start.value)
+    EnvSegment.Obj.newVar[S](EnvSegment.Single(lvl, curve))
+  }
 
   final def numChannels = 1
 

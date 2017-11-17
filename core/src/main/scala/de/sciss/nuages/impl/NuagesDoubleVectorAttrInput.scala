@@ -19,6 +19,8 @@ import de.sciss.lucre.expr.{DoubleVector, Type}
 import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.nuages.NuagesAttribute.{Input, Parent}
+import de.sciss.synth.Curve
+import de.sciss.synth.proc.EnvSegment
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
@@ -40,6 +42,11 @@ final class NuagesDoubleVectorAttrInput[S <: SSys[S]](val attribute: NuagesAttri
 
   protected def mkConst(v: Vec[Double])(implicit tx: S#Tx): DoubleVector[S] with Const[S, Vec[Double]] =
     tpe.newConst(v)
+
+  protected def mkEnvSeg(start: Ex[S], curve: Curve)(implicit tx: S#Tx): EnvSegment.Obj[S] = {
+    val lvl = start.value
+    EnvSegment.Obj.newVar[S](EnvSegment.Multi(lvl, curve))
+  }
 
   def numChannels: Int = valueA.size
 
