@@ -181,29 +181,13 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
 //    ...
 //  }
 
-  def updateChildDelay(child: Obj[S], dt: Long)(implicit tx: S#Tx): Unit = {
+  def updateChild(before: Obj[S], now: Obj[S], dt: Long)(implicit tx: S#Tx): Unit = {
     val gr = graphemeH()
-    val grm = gr.modifiableOption.getOrElse(throw new IllegalStateException("Grapheme not modifiable"))
-    val curr = currentView()
-    require(curr.isDefined)
-    val beforeStart = curr.start
-    val nowStart    = currentOffset() + dt
-    log(s"$this updateChildDelay($child - $nowStart / ${TimeRef.framesToSecs(nowStart)}, dt = ${TimeRef.framesToSecs(dt)})")
-    if (beforeStart != nowStart && isTimeline) {
-      val nowStartObj = LongObj.newVar[S](nowStart)
-      grm.add(nowStartObj, child)
-    } else {
-      ???!
-    }
-  }
-
-  def updateChild(before: Obj[S], now: Obj[S])(implicit tx: S#Tx): Unit = {
-    val gr = graphemeH()
-    gr.modifiableOption.fold(updateParent(before, now)) { grm =>
+    gr.modifiableOption.fold(updateParent(before, now, dt = dt)) { grm =>
       val curr = currentView()
       require(curr.isDefined)
       val beforeStart = curr.start
-      val nowStart    = currentOffset()
+      val nowStart    = currentOffset() + dt
       log(s"$this updateChild($before - $beforeStart / ${TimeRef.framesToSecs(beforeStart)}, $now - $nowStart / ${TimeRef.framesToSecs(nowStart)})")
       if (beforeStart != nowStart && isTimeline) {
         val nowStartObj = LongObj.newVar[S](nowStart)
@@ -241,8 +225,8 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
   }
 
   // bubble up if grapheme is not modifiable
-  private[this] def updateParent(childBefore: Obj[S], childNow: Obj[S])(implicit tx: S#Tx): Unit = {
-    inputParent.updateChild(before = ???!, now = ???!)
+  private[this] def updateParent(childBefore: Obj[S], childNow: Obj[S], dt: Long)(implicit tx: S#Tx): Unit = {
+    inputParent.updateChild(before = ???!, now = ???!, dt = dt)
   }
 
 //  def value: Vec[Double] = ...

@@ -44,8 +44,11 @@ trait RenderAttrValue[S <: Sys[S]] extends NuagesDataImpl[S] {
 
   protected def valueColor: Color
 
+//  @volatile
+//  protected final var valueA: A = _
+
   @volatile
-  protected final var valueA: A = _
+  protected def valueA: A
 
   // ---- impl ----
 

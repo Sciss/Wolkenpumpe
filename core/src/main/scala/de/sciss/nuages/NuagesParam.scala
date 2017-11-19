@@ -16,6 +16,9 @@ package de.sciss.nuages
 import de.sciss.lucre.stm.Sys
 import de.sciss.synth.proc.AuralObj
 
+/** A common super-trait for both input views (`NuagesAttribute`)
+  * and output views (`NuagesOutput`).
+  */
 trait NuagesParam[S <: Sys[S]] extends NuagesData[S] {
   // ---- methods to be called on the EDT ----
 

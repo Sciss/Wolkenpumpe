@@ -22,7 +22,6 @@ import de.sciss.synth.ugen.ControlValues
 import de.sciss.synth.{GE, Rate, SynthGraph, audio, control, proc, scalar}
 
 import scala.concurrent.stm.TxnLocal
-import scala.language.experimental.macros
 
 object DSL {
   def apply[S <: stm.Sys[S]]: DSL[S] = new DSL[S]

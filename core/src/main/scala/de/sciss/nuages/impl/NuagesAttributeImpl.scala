@@ -24,7 +24,7 @@ import de.sciss.nuages.NuagesAttribute.{Factory, Input, Parent}
 import de.sciss.nuages.NuagesPanel.GROUP_GRAPH
 import de.sciss.span.Span
 import de.sciss.synth.proc.AuralObj.Proc
-import de.sciss.synth.proc.{AuralAttribute, AuralObj, AuralView, Folder, Grapheme, Output, TimeRef, Timeline}
+import de.sciss.synth.proc.{AuralAttribute, AuralObj, AuralView, EnvSegment, Folder, Grapheme, Output, TimeRef, Timeline}
 import prefuse.data.{Edge => PEdge, Node => PNode}
 import prefuse.visual.VisualItem
 
@@ -78,7 +78,8 @@ object NuagesAttributeImpl {
     Grapheme    .typeID -> NuagesGraphemeAttrInput,
     Output      .typeID -> NuagesOutputAttrInput,
     Folder      .typeID -> NuagesFolderAttrInput,
-    Timeline    .typeID -> NuagesTimelineAttrInput
+    Timeline    .typeID -> NuagesTimelineAttrInput,
+    EnvSegment  .typeID -> NuagesEnvSegmentAttrInput
   )
   
   // ----
@@ -127,6 +128,9 @@ object NuagesAttributeImpl {
     private[this] val auralTgtObs   = Ref(Disposable.empty[S#Tx])
     private[this] val valueSynthRef = Ref(Disposable.empty[S#Tx])
 
+    @volatile
+    protected var valueA: A = _
+
     // ... methods ...
 
 //    final val isControl: Boolean = key != "in"  // XXX TODO --- not cool
@@ -154,9 +158,9 @@ object NuagesAttributeImpl {
 
     override def toString = s"NuagesAttribute($parent, $key)"
 
-    private[this] def nodeSize = if (isControl) 1f else 0.333333f
+    private def nodeSize = if (isControl) 1f else 0.333333f
 
-    private[this] def currentOffset()(implicit tx: S#Tx): Long = {
+    private def currentOffset()(implicit tx: S#Tx): Long = {
       val fr = parent.frameOffset
       if (fr == Long.MaxValue) throw new UnsupportedOperationException(s"$this.currentOffset()")
       main.transport.position - fr
@@ -187,39 +191,39 @@ object NuagesAttributeImpl {
       }
     }
 
-    final def updateChildDelay(child: Obj[S], dt: Long)(implicit tx: S#Tx): Unit = {
-      ???!
-    }
-
-    final def updateChild(before: Obj[S], now: Obj[S])(implicit tx: S#Tx): Unit = {
+    final def updateChild(before: Obj[S], now: Obj[S], dt: Long)(implicit tx: S#Tx): Unit =
       inputView match {
         case inP: Parent[S] =>
-          inP.updateChild(before, now)
+          inP.updateChild(before = before, now = now, dt = dt)
+
         case _ =>
-        val objAttr = parent.obj.attr
-        val value = if (main.isTimeline) {
-          val gr          = Grapheme[S]
-          val start       = currentOffset()
-
-          log(s"$this updateChild($before, $now - $start / ${TimeRef.framesToSecs(start)}s)")
-
-          if (start != 0L) {
-            val timeBefore  = LongObj.newVar[S](0L) // XXX TODO ?
-            gr.add(timeBefore, before)
-          }
-          val timeNow     = LongObj.newVar[S](start)
-          ParamSpec.copyAttr(source = before, target = gr)
-          gr.add(timeNow, now)
-          gr
-        } else {
-          now
-        }
-        val found = objAttr.get(key)
-        if (found != Some(before))   // Option.contains not available in Scala 2.10
-          sys.error(s"updateChild($before, $now) -- found $found")
-
-        objAttr.put(key, value)
+          updateChildHere(before = before, now = now, dt = dt)
       }
+
+    private def updateChildHere(before: Obj[S], now: Obj[S], dt: Long)(implicit tx: S#Tx): Unit = {
+      val objAttr = parent.obj.attr
+      val value   = if (main.isTimeline) {
+        val gr      = Grapheme[S]
+        val start   = currentOffset() + dt
+
+        log(s"$this updateChild($before, $now - $start / ${TimeRef.framesToSecs(start)}s)")
+
+        if (start != 0L) {
+          val timeBefore = LongObj.newVar[S](0L) // XXX TODO ?
+          gr.add(timeBefore, before)
+        }
+        val timeNow = LongObj.newVar[S](start)
+        ParamSpec.copyAttr(source = before, target = gr)
+        gr.add(timeNow, now)
+        gr
+      } else {
+        now
+      }
+      val found = objAttr.get(key)
+      if (!found.contains(before))   // Option.contains not available in Scala 2.10
+        sys.error(s"updateChild($before, $now) -- found $found")
+
+      objAttr.put(key, value)
     }
 
     def addChild(child: Obj[S])(implicit tx: S#Tx): Unit =
@@ -465,6 +469,7 @@ object NuagesAttributeImpl {
 
     private[this] def setAuralScalarValue(v: Vec[Double])(implicit tx: S#Tx): Unit = {
       disposeValueSynth()
+//      println(s"setAuralScalarValue $key")
       valueA = v
     }
 
@@ -473,6 +478,7 @@ object NuagesAttributeImpl {
         case AuralAttribute.ScalarValue (f )  => setAuralScalarValue(Vector(f.toDouble))
         case AuralAttribute.ScalarVector(xs)  => setAuralScalarValue(xs.map(_.toDouble))
         case AuralAttribute.Stream(nodeRef, bus) =>
+//          println(s"setAuralStream $key")
           val syn = main.mkValueMeter(bus, nodeRef.node) { xs =>
             valueA = xs // setAuralScalarValue(xs)
           }

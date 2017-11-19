@@ -18,20 +18,20 @@ import java.awt.Point
 import java.awt.geom.Point2D
 import javax.swing.event.{AncestorEvent, AncestorListener}
 
-import de.sciss.lucre.stm
 import de.sciss.lucre.stm.Obj
 import de.sciss.lucre.swing.{ListView, requireEDT}
 import de.sciss.lucre.synth.Sys
-import de.sciss.synth.proc.{Output, Folder, Proc}
-import prefuse.Display
+import de.sciss.synth.proc.{Folder, Proc}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.swing.{Component, Swing}
 
 trait PanelImplDialogs[S <: Sys[S]] {
-  private var fltPred: NuagesOutput   [S] = _
-  private var fltSucc: NuagesAttribute[S] = _
-  private var overlay = Option.empty[Component]
+  _: NuagesPanel[S] =>
+
+  private[this] var fltPred: NuagesOutput   [S] = _
+  private[this] var fltSucc: NuagesAttribute[S] = _
+  private[this] var overlay = Option.empty[Component]
 
   protected def listGen  : ListView[S, Obj[S], Unit]
   protected def listFlt1 : ListView[S, Obj[S], Unit]
@@ -39,20 +39,6 @@ trait PanelImplDialogs[S <: Sys[S]] {
   protected def listFlt2 : ListView[S, Obj[S], Unit]
   protected def listCol2 : ListView[S, Obj[S], Unit]
   protected def listMacro: ListView[S, Obj[S], Unit]
-
-  protected def display: Display
-
-  protected def cursor: stm.Cursor[S]
-
-  protected def component: Component
-
-  protected def insertFilter(pred: Output[S], succ: NuagesAttribute[S], fltSrc: Obj[S], fltPt: Point2D)
-                            (implicit tx: S#Tx): Unit
-
-  protected def createGenerator(genSrc: Obj[S], colSrcOpt: Option[Obj[S]], pt: Point2D)(implicit tx: S#Tx): Unit
-
-  protected def appendFilter(pred: Output[S], fltSrc: Obj[S], colSrcOpt: Option[Obj[S]], fltPt: Point2D)
-                            (implicit tx: S#Tx): Unit
 
   protected def insertMacro(macroF: Folder[S], pt: Point2D)(implicit tx: S#Tx): Unit
 
@@ -88,7 +74,7 @@ trait PanelImplDialogs[S <: Sys[S]] {
     }
   }
 
-  private lazy val createGenDialog: OverlayPanel = {
+  private[this] lazy val createGenDialog: OverlayPanel = {
     val p = new OverlayPanel()
     p.contents += listGen.component
     p.contents += Swing.VStrut(4)
@@ -141,7 +127,7 @@ trait PanelImplDialogs[S <: Sys[S]] {
     }
   }
 
-  private lazy val createFilterAppendDialog: OverlayPanel= {
+  private[this] lazy val createFilterAppendDialog: OverlayPanel= {
     val p = new OverlayPanel()
     p.contents += listFlt2.component
     p.contents += Swing.VStrut(4)
@@ -199,7 +185,7 @@ trait PanelImplDialogs[S <: Sys[S]] {
     }
   }
 
-  private[this] def dialogPoint(p: OverlayPanel): Point2D = {
+  private def dialogPoint(p: OverlayPanel): Point2D = {
     val pt        = p.locationHint.getOrElse(p.location)
     val displayPt = display.getAbsoluteCoordinate(pt, null)
     displayPt
@@ -251,7 +237,7 @@ trait PanelImplDialogs[S <: Sys[S]] {
 
       def ancestorRemoved(e: AncestorEvent): Unit = {
         pp.removeAncestorListener(this)
-        if (overlay == Some(p)) {
+        if (overlay.contains(p)) {
           overlay = None
           display.requestFocus()
         }

@@ -34,7 +34,7 @@ object NuagesDoubleVectorAttrInput extends NuagesAttributeSingleFactory {
     new NuagesDoubleVectorAttrInput[S](attr).init(obj, parent)
 }
 final class NuagesDoubleVectorAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S])
-  extends RenderAttrDoubleVec[S] with NuagesAttrInputImpl[S] {
+  extends RenderAttrDoubleVec[S] with NuagesAttrInputVarImpl[S] {
 
   type Ex[~ <: Sys[~]]  = DoubleVector[~]
 
@@ -49,6 +49,4 @@ final class NuagesDoubleVectorAttrInput[S <: SSys[S]](val attribute: NuagesAttri
   }
 
   def numChannels: Int = valueA.size
-
-  def numChildren(implicit tx: S#Tx): Int = 1
 }

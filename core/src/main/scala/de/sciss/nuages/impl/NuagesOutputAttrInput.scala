@@ -35,7 +35,7 @@ object NuagesOutputAttrInput extends NuagesAttributeSingleFactory {
 final class NuagesOutputAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S],
                                                objH: stm.Source[S#Tx, Output[S]])
                                                (implicit context: NuagesContext[S])
-  extends NuagesAttrInputBase[S] with NuagesOutput.Input[S] {
+  extends NuagesAttrSingleInput[S] with NuagesOutput.Input[S] {
 
   import TxnLike.peer
 
@@ -58,9 +58,6 @@ final class NuagesOutputAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S
     _observer.dispose()
     unsetView()
   }
-
-  def collect[A](pf: PartialFunction[Input[S], A])(implicit tx: S#Tx): Iterator[A] =
-    if (pf.isDefinedAt(this)) Iterator.single(pf(this)) else Iterator.empty
 
   private def init(obj: Output[S], parent: Parent[S])(implicit tx: S#Tx): this.type = {
     inputParent = parent
@@ -94,10 +91,4 @@ final class NuagesOutputAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S
       }
     }
   }
-
-//  def value: Vec[Double] = ...
-//
-//  def numChannels: Int = ...
-
-  def numChildren(implicit tx: S#Tx): Int = 1
 }

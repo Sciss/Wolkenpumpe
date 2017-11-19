@@ -17,6 +17,10 @@ package impl
 import de.sciss.lucre.synth.Sys
 import de.sciss.nuages.NuagesAttribute.Input
 
+/** This includes all scalar views, such as `NuagesIntAttrInput`.
+  * For simplicity, they don't consume. In a performance, we will
+  * only ever "upgrade", e.g. from scalar to grapheme.
+  */
 trait NuagesAttributeSingleFactory extends NuagesAttribute.Factory {
   final def tryConsume[S <: Sys[S]](oldInput: Input[S], /* newOffset: Long, */ newValue: Repr[S])
                                    (implicit tx: S#Tx, context: NuagesContext[S]): Option[Input[S]] = None

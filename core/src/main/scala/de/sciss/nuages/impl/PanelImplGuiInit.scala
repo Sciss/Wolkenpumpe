@@ -47,12 +47,12 @@ trait PanelImplGuiInit[S <: Sys[S]] extends ComponentHolder[Component] {
 
   // ---- impl ----
 
-  private var _vis: Visualization = _
-  private var _dsp: Display       = _
-  private var _g  : Graph         = _
-  private var _vg : VisualGraph   = _
+  private[this] var _vis: Visualization = _
+  private[this] var _dsp: Display       = _
+  private[this] var _g  : Graph         = _
+  private[this] var _vg : VisualGraph   = _
 
-  private var _aggrTable: AggregateTable = _
+  private[this] var _aggrTable: AggregateTable = _
 
   def display      : Display        = _dsp
   def visualization: Visualization  = _vis

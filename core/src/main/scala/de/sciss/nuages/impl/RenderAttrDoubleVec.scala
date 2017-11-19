@@ -21,17 +21,14 @@ import de.sciss.lucre.synth.Sys
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.swing.Graphics2D
 
-trait RenderAttrDoubleVec[S <: Sys[S]] extends RenderAttrValue[S] with NuagesAttribute.Numeric {
-  type A = Vec[Double]
+trait RenderNumericAttr[S <: Sys[S]] extends RenderAttrValue[S] with NuagesAttribute.Numeric {
 
   private[this] var allValuesEqual = false
 
   import NuagesDataImpl.{gArc, gEllipse, gLine, margin, setSpine}
 
-  final def numericValue: Vec[Double] = valueA
-
   protected final def renderValueUpdated(): Unit = {
-    val rv: Vec[Double] = renderedValue // why IntelliJ !?
+    val rv = numericValue // renderedValue
     val sz = rv.size
     val eq = sz == 1 || (sz > 1 && {
       val v0  = rv.head
@@ -89,4 +86,10 @@ trait RenderAttrDoubleVec[S <: Sys[S]] extends RenderAttrValue[S] with NuagesAtt
       //    setSpine(v.head)
       //    g.draw(gLine)
     }
+}
+
+trait RenderAttrDoubleVec[S <: Sys[S]] extends RenderNumericAttr[S] {
+  type A = Vec[Double]
+
+  final def numericValue: Vec[Double] = valueA
 }

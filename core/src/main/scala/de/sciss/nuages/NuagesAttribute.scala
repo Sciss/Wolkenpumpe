@@ -23,6 +23,9 @@ import scala.concurrent.stm.Ref
 import scala.language.higherKinds
 
 object NuagesAttribute {
+  /** Creates a new attribute view for a given `parent` object and an `attribute` key.
+    * This then set's the attribute view's input to an `Input` instance created from `value`.react
+    */
   def apply[S <: SSys[S]](key: String, value: Obj[S], parent: NuagesObj[S])
                         (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute[S] =
     Impl(key = key, _value = value, parent = parent)
@@ -33,6 +36,9 @@ object NuagesAttribute {
 
   // ---- Factory ----
 
+  /** Factory for creating instances of `Input`, i.e. for a specific type of object
+    * plugged into an attribute map.
+    */
   trait Factory {
     def typeID: Int
 
@@ -60,14 +66,10 @@ object NuagesAttribute {
     var source: Option[NuagesOutput[S]]
   }
 
+  /** Representation of an input that is plugged into an attribute. */
   trait Input[S <: Sys[S]] extends Disposable[S#Tx] {
-    def attribute   : NuagesAttribute[S]
-
-    // ---- edt ----
-
-//    def value: Vec[Double]
-//
-//    def numChannels: Int
+    /** The attribute's view. */
+    def attribute: NuagesAttribute[S]
 
     // ---- transactional ----
 
@@ -82,6 +84,7 @@ object NuagesAttribute {
     def inputParent(implicit tx: S#Tx): Parent[S]
     def inputParent_=(p: Parent[S])(implicit tx: S#Tx): Unit
 
+    /** The model object of this view. */
     def input(implicit tx: S#Tx): Obj[S]
 
     def numChildren(implicit tx: S#Tx): Int
@@ -104,16 +107,30 @@ object NuagesAttribute {
     def numericValue: Vec[Double]
   }
 
+  /** A logical structure that specifies the parent container
+    * of an attribute input. For example, if a scalar input is
+    * directly plugged into an attribute, it's parent will be
+    * an instance of `NuagesAttribute` itself. If the input is
+    * active by being a child within a grapheme, the parent will
+    * point to an instance of `NuagesGraphemeAttrInput`.
+    */
   trait Parent[S <: Sys[S]] {
     /** Updates a child, possibly moving it into a grapheme if
       * the underlying nuages surface is a timeline.
+      *
+      * @param  before  reference to the currently active value
+      * @param  now     new value to insert or replace
+      * @param  dt      delay with respect to current position (zero for no delay)
       */
-    def updateChild(before: Obj[S], now: Obj[S])(implicit tx: S#Tx): Unit
+    def updateChild(before: Obj[S], now: Obj[S], dt: Long = 0L)(implicit tx: S#Tx): Unit
 
-    /** Updates with a given time offset `dt` in sample frames
-      * (may be negative)
-      */
-    def updateChildDelay(child: Obj[S], dt: Long)(implicit tx: S#Tx): Unit
+//    /** Updates with a given time offset `dt` in sample frames
+//      * (may be negative)
+//      *
+//      * @param  before  a purely referential parameter used
+//      *                 for copying param-spec to the `now` value
+//      */
+//    def updateChildDelay(before: Obj[S], now: Obj[S], dt: Long)(implicit tx: S#Tx): Unit
 
     /** Removes a child, possibly moving it into a timeline if
       * the underlying nuages surface is a timeline.
@@ -134,6 +151,16 @@ trait NuagesAttribute[S <: Sys[S]]
     with NuagesAttribute.Parent[S]
     with NuagesParam[S] {
 
+  /** Connects a node with the attribute view.
+    *
+    * @param in       the input associated with the node
+    * @param n        the node; the view will add an edge from this node to itself
+    *                 (either its center, or if there is a 'summary' node, to that node)
+    * @param isFree   if `true`, the node has "free movement", i.e. should be integrated
+    *                 in the overall aggregate view of this attribute; if `false`, the
+    *                 node is part of another structure, e.g. corresponds with the output
+    *                 of another proc, and thus should not be added to the attribute's aggregate.
+    */
   def addPNode   (in: NuagesAttribute.Input[S], n: PNode, isFree: Boolean): Unit
   def removePNode(in: NuagesAttribute.Input[S], n: PNode                 ): Unit
 
@@ -144,7 +171,7 @@ trait NuagesAttribute[S <: Sys[S]]
   /** Attempts to replace the contents of the view.
     *
     * @param newValue   the new value to attempt to associate with the view
-    * @return `Some` if the either the old view accepted the new value or if
+    * @return `Some` if either the old view accepted the new value or if
     *         a new view was created that could "consume" the old view. This may
     *         happen for example if the new value is a container with a single
     *         element and the old view can replace its own single element.
@@ -152,4 +179,6 @@ trait NuagesAttribute[S <: Sys[S]]
     *         accordingly (dispose the old view, create a fresh new view).
     */
   def tryReplace(newValue: Obj[S])(implicit tx: S#Tx, context: NuagesContext[S]): Option[NuagesAttribute[S]]
+
+  def numericValue: Vec[Double]
 }

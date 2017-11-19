@@ -16,14 +16,14 @@ package impl
 
 import java.awt.Color
 
-import de.sciss.lucre.{expr, stm}
 import de.sciss.lucre.stm.{Disposable, Obj, TxnLike}
 import de.sciss.lucre.swing.{ListView, defer, deferTx, requireEDT}
-import de.sciss.lucre.synth.{AudioBus, Node, Sys}
+import de.sciss.lucre.synth.Sys
+import de.sciss.lucre.{expr, stm}
 import de.sciss.nuages.Nuages.Surface
 import de.sciss.serial.Serializer
 import de.sciss.synth.proc
-import de.sciss.synth.proc.{AuralObj, AuralSystem, Folder, Proc, Timeline, Transport, WorkspaceHandle}
+import de.sciss.synth.proc.{AuralObj, AuralSystem, Folder, Timeline, Transport, WorkspaceHandle}
 import prefuse.controls.Control
 import prefuse.visual.NodeItem
 
@@ -170,9 +170,6 @@ trait PanelImpl[S <: Sys[S], Repr <: Obj[S], AuralRepr <: AuralObj[S]]
   protected final var observers: List[Disposable[S#Tx]] = Nil
   protected final val auralObserver                     = Ref(Option.empty[Disposable[S#Tx]])
 
-  //  protected final val auralToViewMap  = TMap.empty[AuralObj [S], NuagesObj[S]]
-  //  protected final val viewToAuralMap  = TMap.empty[NuagesObj[S], AuralObj [S]]
-
   final def nuages(implicit tx: S#Tx): Nuages[S] = nuagesH()
 
   private[this] var  _keyControl: Control with Disposable[S#Tx] = _
@@ -192,16 +189,8 @@ trait PanelImpl[S <: Sys[S], Repr <: Obj[S], AuralRepr <: AuralObj[S]]
     clearSolo()
     observers.foreach(_.dispose())
     disposeAuralObserver()
-    transport.dispose()
-    //    auralToViewMap.foreach { case (_, vp) =>
-    //      vp.dispose()
-    //    }
-//    viewToAuralMap.clear()
-//    auralToViewMap.clear()
-    // scanMap       .dispose()
-//    missingScans  .dispose()
-
-    keyControl    .dispose()
+    transport .dispose()
+    keyControl.dispose()
   }
 
   protected final def disposeAuralObserver()(implicit tx: S#Tx): Unit = {
@@ -253,24 +242,6 @@ trait PanelImpl[S <: Sys[S], Repr <: Obj[S], AuralRepr <: AuralObj[S]]
 
   @inline private[this] def startAnimation(): Unit =
     visualization.run(ACTION_COLOR)
-
-  protected final def getAuralScanData(aural: AuralObj[S], key: String = Proc.mainOut)
-                                      (implicit tx: S#Tx): Option[(AudioBus, Node)] = aural match {
-    case _: AuralObj.Proc[S] =>
-      None // SCAN
-//      val d = ap.data
-//      for {
-//        either  <- d.getScanOut(key)
-//        nodeRef <- d.nodeOption
-//      } yield {
-//        val bus   = either.fold(identity, _.bus)
-//        val node  = nodeRef.node
-//        (bus, node)
-//      }
-    case _ => None
-  }
-
-  // private def close(p: Container): Unit = p.peer.getParent.remove(p.peer)
 
   final def saveMacro(name: String, sel: Set[NuagesObj[S]]): Unit =
     cursor.step { implicit tx =>

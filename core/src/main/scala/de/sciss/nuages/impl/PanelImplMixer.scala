@@ -14,7 +14,6 @@
 package de.sciss.nuages
 package impl
 
-import de.sciss.lucre.stm
 import de.sciss.lucre.swing.{defer, deferTx, requireEDT}
 import de.sciss.lucre.synth.{AudioBus, Synth, Sys, Txn, Node => SNode}
 import de.sciss.nuages.impl.PanelImpl.LAYOUT_TIME
@@ -26,17 +25,11 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm.{InTxn, Ref}
 
 trait PanelImplMixer[S <: Sys[S]] {
+  _: NuagesPanel[S] =>
+
   // ---- abstract ----
 
   protected def main: NuagesPanel[S]
-
-  def cursor: stm.Cursor[S]
-
-  //  protected def auralToViewMap: TMap[AuralObj[S], NuagesObj[S]]
-  //  protected def viewToAuralMap: TMap[NuagesObj[S], AuralObj[S]]
-  //
-  //  protected def getAuralScanData(aural: AuralObj[S], key: String = Proc.mainOut)
-  //                                (implicit tx: S#Tx): Option[(AudioBus, Node)]
 
   // ---- impl ----
 
@@ -54,8 +47,8 @@ trait PanelImplMixer[S <: Sys[S]] {
     val graph  = peakMeterGraphMap.getOrElse(numCh, {
       val res = SynthGraph {
         import de.sciss.synth._
-        import ugen._
         import Ops._
+        import ugen._
         val meterTr = Impulse.kr(1000.0 / LAYOUT_TIME)
         val sig     = In.ar("in".kr, numCh)
         val peak    = Peak.kr(sig, meterTr) // .outputs
@@ -89,8 +82,8 @@ trait PanelImplMixer[S <: Sys[S]] {
     val graph = valueMeterGraphMap.getOrElse(numCh, {
       val res = SynthGraph {
         import de.sciss.synth._
-        import ugen._
         import Ops._
+        import ugen._
         val meterTr = Impulse.kr(1000.0 / LAYOUT_TIME)
         val busGE   = "in".kr
         val sig     = In.ar(busGE, numCh)
@@ -128,8 +121,8 @@ trait PanelImplMixer[S <: Sys[S]] {
     val graph  = monitorGraphMap.getOrElse(numCh, {
       val res = SynthGraph {
         import de.sciss.synth._
-        import ugen._
         import Ops._
+        import ugen._
         val meterTr = Impulse.kr(1000.0 / LAYOUT_TIME)
         val sig     = In.ar("in".kr, numCh)
         SendReply.kr(meterTr, sig)
@@ -203,10 +196,6 @@ trait PanelImplMixer[S <: Sys[S]] {
 
   def setMasterVolume(v: Double)(implicit tx: S#Tx): Unit =
     _masterSynth.get(tx.peer).foreach(_.set("amp" -> v))
-
-  //    masterProc.foreach { pMaster =>
-  //      // pMaster.control("amp").v = v
-  //    }
 
   def setSoloVolume(v: Double)(implicit tx: S#Tx): Unit = {
     implicit val itx: InTxn = tx.peer

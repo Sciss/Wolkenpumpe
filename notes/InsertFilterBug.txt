@@ -1,0 +1,9 @@
+Exception in thread "AWT-EventQueue-1" java.lang.RuntimeException: updateChild(Output(<34232>, Proc<34224>, out), Output(<49496>, Proc<49488>, out)) -- found Some(Grapheme<32714>)
+	at scala.sys.package$.error(package.scala:27)
+	at de.sciss.nuages.impl.NuagesAttributeImpl$Impl.updateChild(NuagesAttributeImpl.scala:215)
+	at de.sciss.nuages.impl.NuagesAttributeImpl$Impl.updateChild(NuagesAttributeImpl.scala:106)
+	at de.sciss.nuages.impl.PanelImplTxnFuns.$anonfun$insertFilter$1(PanelImplTxnFuns.scala:135)
+	at de.sciss.nuages.impl.PanelImplTxnFuns.$anonfun$insertFilter$1$adapted(PanelImplTxnFuns.scala:132)
+
+trying to insert filter process in a mapping (a~sin --> (above) --> a~sin-hi)
+ 

@@ -42,7 +42,7 @@ object NuagesAttrInputImpl {
 trait NuagesAttrInputImpl[S <: SSys[S]]
   extends RenderAttrValue     [S]
   with AttrInputKeyControl    [S]
-  with NuagesAttrInputBase    [S]
+  with NuagesAttrSingleInput  [S]
   with NuagesAttribute.Numeric { self =>
 
   import NuagesAttrInputImpl.Drag
@@ -51,11 +51,13 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
 
   // ---- abstract ----
 
-  type Ex[~ <: Sys[~]] <: expr.Expr[~, A]
+  type B
 
-  protected def tpe: Type.Expr[A, Ex]
+  type Ex[~ <: Sys[~]] <: expr.Expr[~, B]
 
-  protected def mkConst(v: Vec[Double])(implicit tx: S#Tx): Ex[S] with Expr.Const[S, A]
+  protected def tpe: Type.Expr[B, Ex]
+
+  protected def mkConst(v: Vec[Double])(implicit tx: S#Tx): Ex[S] with Expr.Const[S, B]
 
   protected def mkEnvSeg(start: Ex[S], curve: Curve)(implicit tx: S#Tx): EnvSegment.Obj[S]
 
@@ -75,20 +77,15 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
 
   final def main: NuagesPanel[S]  = attribute.parent.main
 
-  private[this] def atomic[B](fun: S#Tx => B): B = main.transport.scheduler.cursor.step(fun)
+  private def atomic[B](fun: S#Tx => B): B = main.transport.scheduler.cursor.step(fun)
 
   def name: String = attribute.name
-
-  private[this] def isTimeline: Boolean = attribute.parent.main.isTimeline
 
   protected final def valueColor: Color = if (editable) colrManual else colrMapped
 
   final def input(implicit tx: S#Tx): Obj[S] = objH()._1()
 
-  final def collect[B](pf: PartialFunction[Input[S], B])(implicit tx: S#Tx): Iterator[B] =
-    if (pf.isDefinedAt(this)) Iterator.single(pf(this)) else Iterator.empty
-
-  private[this] def setControlTxn(v: Vec[Double], durFrames: Long)(implicit tx: S#Tx): Unit = {
+  private def setControlTxn(v: Vec[Double], durFrames: Long)(implicit tx: S#Tx): Unit = {
     val nowConst: Ex[S] = mkConst(v) // IntelliJ highlight error SCL-9713
     val before  : Ex[S] = objH()._1()
 
@@ -96,11 +93,11 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
     if (!editable || isTimeline) {
       val nowVar = tpe.newVar[S](nowConst)
       if (durFrames == 0L)
-        inputParent.updateChild(before = before, now = nowVar)
+        inputParent.updateChild(before = before, now = nowVar, dt = 0L)
       else {
         val seg = mkEnvSeg(before, Curve.lin) // EnvSegment.Obj.ApplySingle()
-        inputParent.updateChildDelay(child  = nowVar, dt  = durFrames)
-        inputParent.updateChild     (before = before, now = seg)
+        inputParent.updateChild(before = before, now = nowVar, dt = durFrames )
+        inputParent.updateChild(before = before, now = seg   , dt = 0L        )
       }
 
     } else {
@@ -112,7 +109,7 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
   }
 
   // use only on the EDT
-  protected final var editable: Boolean = _
+  private[this] var editable: Boolean = _
 
   def dispose()(implicit tx: S#Tx): Unit = {
     objH()._2.dispose()
@@ -122,7 +119,7 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
     main.deferVisTx(disposeGUI())
   }
 
-  private[this] def disposeGUI(): Unit = {
+  private def disposeGUI(): Unit = {
     log(s"disposeGUI($name)")
     attribute.removePNode(this, _pNode)
     main.graph.removeNode(_pNode)
@@ -131,11 +128,7 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
     // assert(!aggr.containsItem(vi), s"still in aggr $aggr@${aggr.hashCode.toHexString}: $vi@${vi.hashCode.toHexString}")
   }
 
-  private[this] def updateValueAndRefresh(v: A)(implicit tx: S#Tx): Unit =
-    main.deferVisTx {
-      valueA = v
-      damageReport(pNode)
-    }
+  protected def updateValueAndRefresh(v: B)(implicit tx: S#Tx): Unit
 
   def tryConsume(newOffset: Long, to: Obj[S])(implicit tx: S#Tx): Boolean = to.tpe == this.tpe && {
     val newObj = to.asInstanceOf[Ex[S]]
@@ -147,16 +140,16 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
     true
   }
 
-  final def init(obj: Ex[S], parent: Parent[S])(implicit tx: S#Tx): this.type = {
-    editable          = tpe.Var.unapply(obj).isDefined
-    valueA            = obj.value
-    objH()            = setObject(obj)
-    inputParent       = parent
+  def init(obj: Ex[S], parent: Parent[S])(implicit tx: S#Tx): this.type = {
+    editable    = tpe.Var.unapply(obj).isDefined
+//    valueA      = obj.value
+    objH()      = setObject(obj)
+    inputParent = parent
     main.deferVisTx(initGUI())
     this
   }
 
-  private[this] def setObject(obj: Ex[S])(implicit tx: S#Tx): (stm.Source[S#Tx, Ex[S]], Disposable[S#Tx]) = {
+  private def setObject(obj: Ex[S])(implicit tx: S#Tx): (stm.Source[S#Tx, Ex[S]], Disposable[S#Tx]) = {
     implicit val ser: Serializer[S#Tx, S#Acc, Ex[S]] = tpe.serializer[S]
     val h         = tx.newHandle(obj)
     val observer  = obj.changed.react { implicit tx => upd =>
@@ -172,9 +165,9 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
     _pNode
   }
 
-  private[this] def initGUI(): Unit = mkPNode()
+  private def initGUI(): Unit = mkPNode()
 
-  private[this] def mkPNode(): Unit = {
+  private def mkPNode(): Unit = {
     if (_pNode != null) throw new IllegalStateException(s"Component $this has already been initialized")
     log(s"mkPNode($name)")
     _pNode  = main.graph.addNode()
@@ -254,5 +247,23 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
     renderValueDetail(g, vi)
     val isDrag = drag != null
     drawLabel(g, vi, diam * vi.getSize.toFloat * 0.33333f, if (isDrag) valueText(drag.dragValue) else name)
+  }
+}
+
+trait NuagesAttrInputVarImpl[S <: SSys[S]] extends NuagesAttrInputImpl[S] {
+  type B = A
+
+  @volatile
+  final protected var valueA: A = _
+
+  protected final def updateValueAndRefresh(v: A)(implicit tx: S#Tx): Unit =
+    main.deferVisTx {
+      valueA = v
+      damageReport(pNode)
+    }
+
+  override def init(obj: Ex[S], parent: Parent[S])(implicit tx: S#Tx): this.type = {
+    valueA = obj.value
+    super.init(obj, parent)
   }
 }

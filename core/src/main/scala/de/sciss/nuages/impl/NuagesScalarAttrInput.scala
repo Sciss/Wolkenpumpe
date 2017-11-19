@@ -23,7 +23,7 @@ import de.sciss.synth.proc.EnvSegment
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-trait NuagesScalarAttrInput[S <: Sys[S]] extends NuagesAttrInputImpl[S] {
+trait NuagesScalarAttrInput[S <: Sys[S]] extends NuagesAttrInputVarImpl[S] {
   // ---- abstract ----
 
   protected def toDouble  (in: A     ): Double
@@ -44,8 +44,6 @@ trait NuagesScalarAttrInput[S <: Sys[S]] extends NuagesAttrInputImpl[S] {
   }
 
   final def numChannels = 1
-
-  final def numChildren(implicit tx: S#Tx): Int = 1
 
   import NuagesDataImpl.{gLine, setSpine}
 
