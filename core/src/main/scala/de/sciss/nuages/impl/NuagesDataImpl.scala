@@ -140,15 +140,15 @@ trait NuagesDataImpl[S <: Sys[S]] extends NuagesData[S] {
     g.setTransform(atOrig)
   }
 
-  def itemEntered (vi: VisualItem, e: MouseEvent, pt: Point2D): Unit    = ()
-  def itemExited  (vi: VisualItem, e: MouseEvent, pt: Point2D): Unit    = ()
-  def itemPressed (vi: VisualItem, e: MouseEvent, pt: Point2D): Boolean = false
-  def itemReleased(vi: VisualItem, e: MouseEvent, pt: Point2D): Unit    = ()
-  def itemDragged (vi: VisualItem, e: MouseEvent, pt: Point2D): Unit    = ()
+  override def itemEntered (vi: VisualItem, e: MouseEvent, pt: Point2D): Unit    = ()
+  override def itemExited  (vi: VisualItem, e: MouseEvent, pt: Point2D): Unit    = ()
+  override def itemPressed (vi: VisualItem, e: MouseEvent, pt: Point2D): Boolean = false
+  override def itemReleased(vi: VisualItem, e: MouseEvent, pt: Point2D): Unit    = ()
+  override def itemDragged (vi: VisualItem, e: MouseEvent, pt: Point2D): Unit    = ()
 
-  def itemKeyPressed (vi: VisualItem, e: KeyControl.Pressed): Unit = ()
-  def itemKeyReleased(vi: VisualItem, e: KeyControl.Pressed): Unit = ()
-  def itemKeyTyped   (vi: VisualItem, e: KeyControl.Typed  ): Unit = ()
+  override def itemKeyPressed (vi: VisualItem, e: KeyControl.Pressed): Boolean  = false
+  override def itemKeyReleased(vi: VisualItem, e: KeyControl.Pressed): Unit     = ()
+  override def itemKeyTyped   (vi: VisualItem, e: KeyControl.Typed  ): Unit     = ()
 
   protected def drawName(g: Graphics2D, vi: VisualItem, fontSize: Float): Unit =
     drawLabel(g, vi, fontSize, name)

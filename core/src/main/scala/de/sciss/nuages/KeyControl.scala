@@ -30,8 +30,9 @@ import de.sciss.synth.proc.{Folder, ObjKeys, Proc}
 import prefuse.controls.{Control, ControlAdapter}
 import prefuse.visual.{EdgeItem, NodeItem, VisualItem}
 
+import scala.annotation.switch
 import scala.collection.immutable.{IndexedSeq => Vec}
-import scala.concurrent.stm.{InTxn, TMap}
+import scala.concurrent.stm.{InTxn, TMap, TxnExecutor}
 import scala.swing.event.Key
 import scala.swing.{Orientation, ScrollPane, TextField}
 
@@ -128,6 +129,8 @@ object KeyControl {
     private[this] var lastTyped   : Long        = _
     private[this] var typedCount  : Int         = 0
 
+    private[this] var lastCollector = null : NodeItem
+
     // we track the mouse cursor position
     override def mousePressed(e: MouseEvent): Unit = main.display.requestFocus()
     override def mouseDragged(e: MouseEvent): Unit = lastPt.setLocation(e.getX, e.getY)
@@ -170,25 +173,31 @@ object KeyControl {
     }
 
     override def keyPressed(e: KeyEvent): Unit = {
-      if (e.getKeyCode == KeyEvent.VK_ENTER) {
+      val handled: Boolean = if (e.getKeyCode == KeyEvent.VK_ENTER) {
         showCategoryInput(generators) { implicit tx => (gen, pt) =>
           main.createGenerator(gen, None, pt)
         }
+        true
+
       } else {
         val ks = KeyStroke.getKeyStroke(e.getKeyCode, e.getModifiers)
-        generators.get(ks).foreach { objH =>
+        val genOpt = generators.get(ks)
+        genOpt.foreach { objH =>
           val display = main.display
           display.getAbsoluteCoordinate(lastPt, p2d)
           main.cursor.step { implicit tx =>
             main.createGenerator(objH(), colOpt = None, pt = p2d)
           }
         }
+        genOpt.isDefined
       }
+
+      if (!handled) globalKeyPressed(e)
     }
 
     override def itemKeyPressed(vi: VisualItem, e: KeyEvent): Unit = {
       // println(s"itemKeyPressed '${e.getKeyChar}'")
-      vi match {
+      val handled: Boolean = vi match {
         case ei: EdgeItem =>
           def perform[A](fun: (NuagesOutput[S], NuagesAttribute.Input[S], Point2D) => A): Option[A] = {
             val nSrc  = ei.getSourceItem
@@ -223,10 +232,12 @@ object KeyControl {
                 main.insertFilter(pred = pred, succ = inAttr, fltSrc = obj, fltPt = pt0)
               }
             }
+            true
 
           } else {
             val ks = KeyStroke.getKeyStroke(e.getKeyCode, e.getModifiers)
-            filters.get(ks).foreach { objH =>
+            val filtOpt = filters.get(ks)
+            filtOpt.foreach { objH =>
               perform { (vOut, vIn, pt) =>
                 main.cursor.step { implicit tx =>
                   val pred    = vOut.output
@@ -237,14 +248,15 @@ object KeyControl {
                 }
               }
             }
+            filtOpt.isDefined
           }
 
         case ni: NodeItem =>
           ni.get(COL_NUAGES) match {
             case d: NuagesData[S] =>
               val e1 = Pressed(code = Key(e.getKeyCode), modifiers = e.getModifiers)
-              d.itemKeyPressed(vi, e1)
-              d match {
+              val _handled = d.itemKeyPressed(vi, e1)
+              _handled || (d match {
                 case vOut: NuagesOutput[S] if vOut.name == Proc.mainOut =>
                   def perform[A](fun: Point2D => A): A = {
                     val vis   = main.visualization
@@ -262,10 +274,12 @@ object KeyControl {
                         main.appendFilter(pred = pred, fltSrc = obj, colSrcOpt = None, fltPt = pt0)
                       }
                     }
+                    true
 
                   } else {
                     val ks = KeyStroke.getKeyStroke(e.getKeyCode, e.getModifiers)
-                    filters.get(ks).foreach { objH =>
+                    val filtOpt = filters.get(ks)
+                    filtOpt.foreach { objH =>
                       perform { pt =>
                         main.cursor.step { implicit tx =>
                           val pred = vOut.output
@@ -273,18 +287,79 @@ object KeyControl {
                         }
                       }
                     }
+                    filtOpt.isDefined
                   }
-                case _ =>
-              }
+                case _ => false
+              })
 
-            case _ =>
+            case _ => false
           }
 
-        case _ =>
+        case _ => false
+      }
+
+      if (!handled) globalKeyPressed(e)
+    }
+
+    private def globalKeyPressed(e: KeyEvent): Unit =
+      (e.getKeyCode: @switch) match {
+        case KeyEvent.VK_1 =>
+          zoom(1.0)
+        case KeyEvent.VK_2 =>
+          zoom(2.0)
+        case KeyEvent.VK_O =>
+          panToNextCollector()
+        case _   =>
+      }
+
+    private def panToNextCollector(): Unit = {
+      val display = main.display
+      if (display.isTranformInProgress) return
+
+      // yes, this code is ugly, but so is
+      // chasing a successor on a non-cyclic iterator...
+      lastCollector = TxnExecutor.defaultAtomic { implicit tx =>
+        val it = main.visualGraph.nodes()
+        var first = null : NodeItem
+        var last  = null : NodeItem
+        var pred  = null : NodeItem
+        var stop  = false
+        while (it.hasNext && !stop) {
+          val ni = it.next().asInstanceOf[NodeItem]
+          import de.sciss.lucre.stm.TxnLike.wrap
+          val ok = ni.get(NuagesPanel.COL_NUAGES) match {
+            case vo: NuagesObj[_] => vo.isCollector
+            case _ => false
+          }
+          if (ok) {
+            if (first == null) first = ni
+            pred = last
+            last = ni
+            if (pred == lastCollector) stop = true
+          }
+        }
+        if (stop) last else first
+      }
+      if (lastCollector != null) {
+        val vi = main.visualization.getVisualItem(NuagesPanel.GROUP_GRAPH, lastCollector)
+        if (vi != null) {
+          // println(s"Index = $i")
+          val b = vi.getBounds
+          p2d.setLocation(b.getCenterX, b.getCenterY) // vi.getX + b.getWidth/2, vi.getY + b.getHeight/2)
+          display.animatePanToAbs(p2d, 500 /* 200 */)
+        }
       }
     }
 
-    // private val mCategList = ListView.Model.empty[String]
+    private def zoom(v: Double): Unit = {
+      val display = main.display
+      if (display.isTranformInProgress) return
+
+      display.getAbsoluteCoordinate(lastPt, p2d)
+      val scale = display.getScale
+      // display.zoomAbs(p2d, v / scale)
+      display.animateZoomAbs(p2d, v / scale, 500 /* 200 */)
+    }
 
     private def showCategoryInput(c: Category[S])(complete: S#Tx => (Obj[S], Point2D) => Unit): Unit = {
       val lpx = lastPt.x

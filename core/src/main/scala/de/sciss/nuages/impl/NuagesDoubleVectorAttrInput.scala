@@ -18,7 +18,7 @@ import de.sciss.lucre.expr.{DoubleVector, Type}
 import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.synth.Curve
-import de.sciss.synth.proc.{EnvSegment, TimeRef}
+import de.sciss.synth.proc.EnvSegment
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 

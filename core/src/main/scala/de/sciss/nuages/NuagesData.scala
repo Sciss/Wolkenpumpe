@@ -62,8 +62,12 @@ trait NuagesData[S <: Sys[S]] extends Disposable[S#Tx] {
   /** Called when the pointer device has dragged the item. */
   def itemDragged (vi: VisualItem, e: MouseEvent, pt: Point2D): Unit
 
-  /** Called when a key is pressed over the item. */
-  def itemKeyPressed(vi: VisualItem, e: KeyControl.Pressed): Unit
+  /** Called when a key is pressed over the item.
+    *
+    * @return `true` if the event was handled, `false` if it was ignored and
+    *         should bubble up to the parent container
+    */
+  def itemKeyPressed(vi: VisualItem, e: KeyControl.Pressed): Boolean
 
   /** Called when a key is released over the item. */
   def itemKeyReleased(vi: VisualItem, e: KeyControl.Pressed): Unit

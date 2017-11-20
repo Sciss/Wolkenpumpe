@@ -42,22 +42,31 @@ trait AttrInputKeyControl[S <: Sys[S]] extends ClipboardOwner {
 
   // ---- impl ----
 
-  override def itemKeyPressed(vi: VisualItem, e: KeyControl.Pressed): Unit =
+  override def itemKeyPressed(vi: VisualItem, e: KeyControl.Pressed): Boolean =
     if ((e.modifiers & KeyStrokes.menu1.mask) == KeyStrokes.menu1.mask) {
       if (e.code == Key.C) {        // copy
         val clip = Toolkit.getDefaultToolkit.getSystemClipboard
         val data = new KeyControl.ControlDrag(numericValue, attribute.spec)
         clip.setContents(data, this)
-      } else  if (e.code == Key.V) {  // paste clipboard
+        true
+      } else if (e.code == Key.V) {  // paste clipboard
         val clip = Toolkit.getDefaultToolkit.getSystemClipboard
         if ( /* vc.editable && */ clip.isDataFlavorAvailable(KeyControl.ControlFlavor)) {
           val data = clip.getData(KeyControl.ControlFlavor).asInstanceOf[ControlDrag]
           setControl(data.values, instant = true) // XXX TODO -- which want to rescale
         }
+        true
+      } else {
+        false
       }
 
     } else {
-      if (e.code == Key.Enter) showParamInput(vi)
+      if (e.code == Key.Enter) {
+        showParamInput(vi)
+        true
+      } else {
+        false
+      }
     }
 
   override def itemKeyTyped(vi: VisualItem, e: KeyControl.Typed): Unit = {
