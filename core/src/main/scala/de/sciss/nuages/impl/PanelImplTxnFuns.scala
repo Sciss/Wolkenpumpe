@@ -128,7 +128,7 @@ trait PanelImplTxnFuns[S <: Sys[S]] {
           fltOut <- fltP.outputs.get(Proc.mainOut)
         } {
           if (succ.isControl) {
-            succ.updateChild(pred, fltOut)
+            succ.updateChild(pred, fltOut, dt = 0L, clearRight = true)
           } else {
             succ.removeChild(pred)
             succ.addChild(fltOut)

@@ -107,7 +107,7 @@ final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesA
   def collect[A](pf: PartialFunction[Input[S], A])(implicit tx: S#Tx): Iterator[A] =
     viewSet.iterator.flatMap(_.collect(pf))
 
-  def updateChild(before: Obj[S], now: Obj[S], dt: Long)(implicit tx: S#Tx): Unit = {
+  def updateChild(before: Obj[S], now: Obj[S], dt: Long, clearRight: Boolean)(implicit tx: S#Tx): Unit = {
     if (dt != 0L) ???!
     removeChild(before)
     addChild(now)

@@ -117,12 +117,13 @@ object NuagesAttribute {
   trait Parent[S <: Sys[S]] {
     /** Updates a child, possibly moving it into a grapheme if
       * the underlying nuages surface is a timeline.
+      * If there are future events, they should be removed by this action.
       *
       * @param  before  reference to the currently active value
       * @param  now     new value to insert or replace
       * @param  dt      delay with respect to current position (zero for no delay)
       */
-    def updateChild(before: Obj[S], now: Obj[S], dt: Long = 0L)(implicit tx: S#Tx): Unit
+    def updateChild(before: Obj[S], now: Obj[S], dt: Long, clearRight: Boolean)(implicit tx: S#Tx): Unit
 
 //    /** Updates with a given time offset `dt` in sample frames
 //      * (may be negative)

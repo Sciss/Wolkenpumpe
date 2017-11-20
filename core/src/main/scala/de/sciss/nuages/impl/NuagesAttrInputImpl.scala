@@ -256,12 +256,12 @@ trait NuagesAttrInputExprImpl[S <: SSys[S]] extends NuagesAttrInputImpl[S] {
       before match {
         case tpe.Var(beforeV) => beforeV() = nowConst
         case _ =>
-          inputParent.updateChild(before = before, now = nowVar, dt = 0L)
+          inputParent.updateChild(before = before, now = nowVar, dt = 0L, clearRight = true)
       }
     } else {
       val seg = mkEnvSeg(before, Curve.lin) // EnvSegment.Obj.ApplySingle()
-      inputParent.updateChild(before = before, now = nowVar, dt = durFrames )
-      inputParent.updateChild(before = before, now = seg   , dt = 0L        )
+      inputParent.updateChild(before = before, now = nowVar, dt = durFrames, clearRight = true )
+      inputParent.updateChild(before = before, now = seg   , dt = 0L       , clearRight = false)
     }
   }
 }

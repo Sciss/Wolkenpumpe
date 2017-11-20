@@ -18,10 +18,11 @@ import de.sciss.lucre.expr.LongObj
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Disposable, Obj, Sys, TxnLike}
 import de.sciss.lucre.synth.{Sys => SSys}
-import de.sciss.nuages.NuagesAttribute.{Parent, Input}
+import de.sciss.nuages.NuagesAttribute.{Input, Parent}
 import de.sciss.span.Span
-import de.sciss.synth.proc.{TimeRef, Grapheme, Transport}
+import de.sciss.synth.proc.{Grapheme, TimeRef, Transport}
 
+import scala.annotation.tailrec
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm.Ref
 
@@ -181,9 +182,9 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
 //    ...
 //  }
 
-  def updateChild(before: Obj[S], now: Obj[S], dt: Long)(implicit tx: S#Tx): Unit = {
+  def updateChild(before: Obj[S], now: Obj[S], dt: Long, clearRight: Boolean)(implicit tx: S#Tx): Unit = {
     val gr = graphemeH()
-    gr.modifiableOption.fold(updateParent(before, now, dt = dt)) { grm =>
+    gr.modifiableOption.fold(updateParent(now, dt = dt, clearRight = clearRight)) { grm =>
       val curr = currentView()
       require(curr.isDefined)
       val beforeStart = curr.start
@@ -197,6 +198,20 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
         require(entry.value == before)
         grm.remove(entry.key, entry.value)
         grm.add   (entry.key, now)
+      }
+
+      if (clearRight && nowStart >= beforeStart && nowStart < Long.MaxValue) {
+        @tailrec
+        def testRemove(): Unit =
+          grm.ceil(nowStart + 1) match {
+            case Some(entry) =>
+              grm.remove(entry.key, entry.value)
+              testRemove()
+
+            case None =>
+          }
+
+        testRemove()
       }
     }
   }
@@ -225,13 +240,8 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
   }
 
   // bubble up if grapheme is not modifiable
-  private[this] def updateParent(childBefore: Obj[S], childNow: Obj[S], dt: Long)(implicit tx: S#Tx): Unit = {
-    inputParent.updateChild(before = ???!, now = ???!, dt = dt)
-  }
-
-//  def value: Vec[Double] = ...
-//
-//  def numChannels: Int = ...
+  private[this] def updateParent(childNow: Obj[S], dt: Long, clearRight: Boolean)(implicit tx: S#Tx): Unit =
+    inputParent.updateChild(before = graphemeH(), now = childNow, dt = dt, clearRight = clearRight)
 
   def dispose()(implicit tx: S#Tx): Unit = {
     log(s"$this dispose")

@@ -191,10 +191,10 @@ object NuagesAttributeImpl {
       }
     }
 
-    final def updateChild(before: Obj[S], now: Obj[S], dt: Long)(implicit tx: S#Tx): Unit =
+    final def updateChild(before: Obj[S], now: Obj[S], dt: Long, clearRight: Boolean)(implicit tx: S#Tx): Unit =
       inputView match {
         case inP: Parent[S] =>
-          inP.updateChild(before = before, now = now, dt = dt)
+          inP.updateChild(before = before, now = now, dt = dt, clearRight = clearRight)
 
         case _ =>
           updateChildHere(before = before, now = now, dt = dt)

@@ -294,7 +294,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
       val child  = sourceView.output
       if (sinkView.attribute.isControl) {
         val before = obj
-        parent.updateChild(before, child)
+        parent.updateChild(before, child, dt = 0L, clearRight = true)
         updatedMain = true
       } else {
         parent.addChild(child)
@@ -334,7 +334,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
                 val numCh = 2   // XXX TODO
                 DoubleVector.newVar[S](Vector.fill(numCh)(0.0))
             }
-            outAttrIn.inputParent.updateChild(output, now)
+            outAttrIn.inputParent.updateChild(output, now, dt = 0L, clearRight = true)
           }
         } else {
           outAttrIn.inputParent.removeChild(output)
