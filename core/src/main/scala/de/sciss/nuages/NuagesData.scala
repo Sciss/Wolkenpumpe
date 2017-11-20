@@ -73,4 +73,6 @@ trait NuagesData[S <: Sys[S]] extends Disposable[S#Tx] {
 
   /** GUI property: name displayed. */
   def name: String
+
+  def outline: Shape
 }

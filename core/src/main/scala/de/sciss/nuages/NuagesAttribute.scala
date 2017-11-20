@@ -49,7 +49,7 @@ object NuagesAttribute {
     def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: Parent[S], frameOffset: Long, value: Repr[S])
                            (implicit tx: S#Tx, context: NuagesContext[S]): Input[S]
 
-    def tryConsume[S <: SSys[S]](oldInput: Input[S], /* newOffset: Long, */ newValue: Repr[S])
+    def tryConsume[S <: SSys[S]](oldInput: Input[S], newOffset: Long, newValue: Repr[S])
                                 (implicit tx: S#Tx, context: NuagesContext[S]): Option[Input[S]]
   }
 
@@ -153,7 +153,6 @@ trait NuagesAttribute[S <: Sys[S]]
 
   /** Connects a node with the attribute view.
     *
-    * @param in       the input associated with the node
     * @param n        the node; the view will add an edge from this node to itself
     *                 (either its center, or if there is a 'summary' node, to that node)
     * @param isFree   if `true`, the node has "free movement", i.e. should be integrated
@@ -161,8 +160,8 @@ trait NuagesAttribute[S <: Sys[S]]
     *                 node is part of another structure, e.g. corresponds with the output
     *                 of another proc, and thus should not be added to the attribute's aggregate.
     */
-  def addPNode   (in: NuagesAttribute.Input[S], n: PNode, isFree: Boolean): Unit
-  def removePNode(in: NuagesAttribute.Input[S], n: PNode                 ): Unit
+  def addPNode   (n: PNode, isFree: Boolean): Unit
+  def removePNode(n: PNode                 ): Unit
 
   def spec: ParamSpec
 

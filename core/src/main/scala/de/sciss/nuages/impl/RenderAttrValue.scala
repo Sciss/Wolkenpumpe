@@ -108,7 +108,7 @@ trait RenderAttrValue[S <: Sys[S]] extends NuagesDataImpl[S] {
     gArc.setArc(0, 0, r.getWidth, r.getHeight, angStart, angExtent, Arc2D.PIE)
     valueArea.reset()
     valueArea.add(new Area(gArc))
-    valueArea.subtract(new Area(innerE))
+    valueArea.subtract(new Area(innerShape))
   }
 
   final protected def valueText1(v: Double): String = {
@@ -127,7 +127,7 @@ trait RenderAttrValue[S <: Sys[S]] extends NuagesDataImpl[S] {
     gArc.setArc(0, 0, r.getWidth, r.getHeight, -45, 270, Arc2D.PIE)
     containerArea.reset()
     containerArea.add(new Area(gArc))
-    containerArea.subtract(new Area(innerE))
+    containerArea.subtract(new Area(innerShape))
     gp.append(containerArea, false)
     // renderedValue = invalidRenderedValue // Vector.empty // Double.NaN // triggers updateRenderValue
     renderedValid = false

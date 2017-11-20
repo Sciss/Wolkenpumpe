@@ -15,13 +15,15 @@ package de.sciss.nuages
 package impl
 
 import java.awt.event.MouseEvent
-import java.awt.geom.{AffineTransform, Point2D, GeneralPath, Ellipse2D, Rectangle2D, Line2D, Arc2D}
-import java.awt.{Graphics2D, Font, Shape, BasicStroke, Color}
-import java.math.{RoundingMode, MathContext}
+import java.awt.geom.{AffineTransform, Arc2D, Ellipse2D, GeneralPath, Line2D, Point2D, Rectangle2D}
+import java.awt.{BasicStroke, Color, Font, Graphics2D, Shape}
+import java.math.{MathContext, RoundingMode}
 
 import de.sciss.lucre.synth.Sys
 import prefuse.util.ColorLib
 import prefuse.visual.VisualItem
+
+import scala.concurrent.stm.Txn
 
 object NuagesDataImpl {
   final val diam    = 50
@@ -74,15 +76,33 @@ trait NuagesDataImpl[S <: Sys[S]] extends NuagesData[S] {
 
   protected def renderDetail(g: Graphics2D, vi: VisualItem): Unit
 
-  // ---- implementation ----
+  // ---- impl: state ----
 
-  protected val r: Rectangle2D = new Rectangle2D.Double()
-  protected var outline: Shape = r
-  protected val outerE  = new Ellipse2D.Double()
-  protected val innerE  = new Ellipse2D.Double()
-  protected val gp      = new GeneralPath()
+  protected final val r: Rectangle2D = new Rectangle2D.Double()
+  protected final val gp        = new GeneralPath()
 
-  var fixed = false
+  private[this] var lastFontT : AffineTransform = _
+  private[this] var lastLabel : String          = _
+  private[this] var labelShape: Shape           = _
+  private[this] var _fontSize : Float           = 0f
+  private[this] var _font     : Font            = _
+  private[this] val _outerE   : Ellipse2D       = new Ellipse2D.Double()
+  private[this] val _innerE   : Ellipse2D       = new Ellipse2D.Double()
+  private[this] var _outline  : Shape           = r
+
+  final var fixed = false
+
+  // ---- impl: methods ----
+  
+  protected final def innerShape: Shape = _innerE
+  protected final def outerShape: Shape = _outerE
+  final def outline             : Shape = _outline
+  
+  def copyFrom(that: NuagesData[S]): Unit = {
+    require(Txn.findCurrent.isEmpty)
+    update(that.outline)
+    fixed = that.fixed
+  }
 
   def update(shp: Shape): Unit = {
     val newR = shp.getBounds2D
@@ -93,29 +113,26 @@ trait NuagesDataImpl[S <: Sys[S]] extends NuagesData[S] {
       return
     }
     r.setFrame(newR)
-    outline = shp
+    _outline = shp
 
-    outerE.setFrame(     0,      0, r.getWidth          , r.getHeight          )
-    innerE.setFrame(margin, margin, r.getWidth - margin2, r.getHeight - margin2)
+    _outerE.setFrame(     0,      0, r.getWidth          , r.getHeight          )
+    _innerE.setFrame(margin, margin, r.getWidth - margin2, r.getHeight - margin2)
     gp.reset()
-    gp.append(outerE, false)
+    gp.append(_outerE, false)
     boundsResized()
   }
 
-  private var _fontSize = 0f
-  private var _font: Font = _
-
   def render(g: Graphics2D, vi: VisualItem): Unit = {
-    // fixed nodes are indicated by a think white outline
+    // fixed nodes are indicated by a think white _outline
     if (fixed) {
       val strkOrig = g.getStroke
       g.setStroke(strkVeryThick)
       g.setColor(ColorLib.getColor(vi.getStrokeColor))
-      g.draw(outline)
+      g.draw(_outline)
       g.setStroke(strkOrig)
     }
     g.setColor(ColorLib.getColor(vi.getFillColor))
-    g.fill(outline)
+    g.fill(_outline)
     val atOrig = g.getTransform
     g.translate(r.getX, r.getY)
     //         g.setRenderingHint( RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON )
@@ -132,10 +149,6 @@ trait NuagesDataImpl[S <: Sys[S]] extends NuagesData[S] {
   def itemKeyPressed (vi: VisualItem, e: KeyControl.Pressed): Unit = ()
   def itemKeyReleased(vi: VisualItem, e: KeyControl.Pressed): Unit = ()
   def itemKeyTyped   (vi: VisualItem, e: KeyControl.Typed  ): Unit = ()
-
-  private[this] var lastFontT: AffineTransform = _
-  private[this] var lastLabel: String = _
-  private[this] var labelShape: Shape = _
 
   protected def drawName(g: Graphics2D, vi: VisualItem, fontSize: Float): Unit =
     drawLabel(g, vi, fontSize, name)

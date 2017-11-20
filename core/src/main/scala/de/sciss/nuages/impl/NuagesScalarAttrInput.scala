@@ -16,7 +16,6 @@ package impl
 
 import java.awt.Graphics2D
 
-import de.sciss.lucre.expr.Expr
 import de.sciss.lucre.synth.Sys
 import de.sciss.synth.Curve
 import de.sciss.synth.proc.EnvSegment

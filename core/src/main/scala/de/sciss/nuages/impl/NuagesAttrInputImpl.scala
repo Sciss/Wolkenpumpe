@@ -36,18 +36,13 @@ import scala.concurrent.stm.Ref
 import scala.language.higherKinds
 import scala.swing.Color
 
-object NuagesAttrInputImpl {
-  private final class Drag(val angStart: Double, val valueStart: Vec[Double], val instant: Boolean) {
-    var dragValue: Vec[Double] = valueStart
-  }
-}
 trait NuagesAttrInputImpl[S <: SSys[S]]
   extends RenderAttrValue     [S]
   with AttrInputKeyControl    [S]
   with NuagesAttrSingleInput  [S]
+  with PassAttrInput          [S]
   with NuagesAttribute.Numeric { self =>
 
-  import NuagesAttrInputImpl.Drag
   import NuagesDataImpl._
 
   // ---- abstract ----
@@ -68,39 +63,51 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
 
   protected def setControlTxn(v: Vec[Double], durFrames: Long)(implicit tx: S#Tx): Unit
 
-  // ---- impl ----
+  // ---- impl: state ----
 
-  final protected def nodeSize = 1f
-
-  private[this] var drag: Drag = _
+  private[this] var _pNode  : PNode = _
+  private[this] var _drag   : NumericAdjustment = _
 
   protected final val objH = Ref.make[(stm.Source[S#Tx, Repr[S]], Disposable[S#Tx])]()  // object and its observer
+
+  // ---- impl: methods ----
+
+  final def dragOption: Option[NumericAdjustment] = Option(_drag)
+
+  final protected def nodeSize = 1f
 
   protected final def spec: ParamSpec = attribute.spec
 
   final def main: NuagesPanel[S]  = attribute.parent.main
 
-  private def atomic[B](fun: S#Tx => B): B = main.transport.scheduler.cursor.step(fun)
+  private def atomic[C](fun: S#Tx => C): C = main.transport.scheduler.cursor.step(fun)
 
   def name: String = attribute.name
 
   final def input(implicit tx: S#Tx): Obj[S] = objH()._1()
 
+  final def passFrom(that: PassAttrInput[S])(implicit tx: S#Tx): Unit = {
+    copyFrom(that)
+    main.deferVisTx {
+      _drag = that.dragOption.orNull
+    }
+    that.passedTo(this)
+  }
+
+  final def passedTo(that: PassAttrInput[S])(implicit tx: S#Tx): Unit = {
+    main.deferVisTx { _pNode = null }
+    dispose()
+  }
+
   def dispose()(implicit tx: S#Tx): Unit = {
     objH()._2.dispose()
-    //    mapping.foreach { m =>
-    //      m.synth.swap(None)(tx.peer).foreach(_.dispose())
-    //    }
     main.deferVisTx(disposeGUI())
   }
 
-  private def disposeGUI(): Unit = {
+  private def disposeGUI(): Unit = if (_pNode != null) {
     log(s"disposeGUI($name)")
-    attribute.removePNode(this, _pNode)
+    attribute.removePNode(_pNode)
     main.graph.removeNode(_pNode)
-    // val vi = main.visualization.getVisualItem(NuagesPanel.GROUP_GRAPH, _pNode)
-    // val aggr = attribute.parent.aggr
-    // assert(!aggr.containsItem(vi), s"still in aggr $aggr@${aggr.hashCode.toHexString}: $vi@${vi.hashCode.toHexString}")
   }
 
   def tryConsume(newOffset: Long, to: Obj[S])(implicit tx: S#Tx): Boolean = to.tpe == this.tpe && {
@@ -113,12 +120,11 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
     true
   }
 
-  def init(obj: Repr[S], parent: Parent[S])(implicit tx: S#Tx): this.type = {
+  def init(obj: Repr[S], parent: Parent[S])(implicit tx: S#Tx): Unit = {
     // editable    = mainType.Var.unapply(obj).isDefined
     objH()      = setObject(obj)
     inputParent = parent
     main.deferVisTx(initGUI())
-    this
   }
 
   private def setObject(obj: Repr[S])(implicit tx: S#Tx): (stm.Source[S#Tx, Repr[S]], Disposable[S#Tx]) = {
@@ -130,23 +136,21 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
     (h, observer)
   }
 
-  private[this] var _pNode: PNode = _
-
   final def pNode: PNode = {
     if (_pNode == null) throw new IllegalStateException(s"Component $this has no initialized GUI")
     _pNode
   }
 
-  private def initGUI(): Unit = mkPNode()
-
-  private def mkPNode(): Unit = {
-    if (_pNode != null) throw new IllegalStateException(s"Component $this has already been initialized")
-    log(s"mkPNode($name)")
-    _pNode  = main.graph.addNode()
+  private def initGUI(): Unit = {
+    val mkNode = _pNode == null
+    if (mkNode) {
+      log(s"mkPNode($name)")
+      _pNode = main.graph.addNode()
+    }
     val vis = main.visualization
     val vi  = vis.getVisualItem(NuagesPanel.GROUP_GRAPH, _pNode)
     vi.set(NuagesPanel.COL_NUAGES, this)
-    attribute.addPNode(this, _pNode, isFree = true)
+    if (mkNode) attribute.addPNode(_pNode, isFree = true)
   }
 
   final override def itemPressed(vi: VisualItem, e: MouseEvent, pt: Point2D): Boolean = {
@@ -164,7 +168,7 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
         if (instant) setControl(angV, instant = true)
         angV
       } else numericValue
-      drag = new Drag(ang, vStart, instant = instant)
+      _drag = new NumericAdjustment(ang, vStart, instant = instant)
       true
     } else false
   }
@@ -175,38 +179,38 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
     }
 
   final override def itemDragged(vi: VisualItem, e: MouseEvent, pt: Point2D): Unit =
-    if (drag != null) {
+    if (_drag != null) {
       val dy = r.getCenterY - pt.getY
       val dx = pt.getX - r.getCenterX
       val ang   = (((-math.atan2(dy, dx) / math.Pi + 3.5) % 2.0) - 0.25) / 1.5
-      val vEff0 = drag.valueStart.map { vs =>
-        math.max(0.0, math.min(1.0, vs + (ang - drag.angStart)))
+      val vEff0 = _drag.valueStart.map { vs =>
+        math.max(0.0, math.min(1.0, vs + (ang - _drag.angStart)))
       }
       val vEff  = if (spec.warp == IntWarp) vEff0.map { ve => spec.inverseMap(spec.map(ve)) } else vEff0
-      if (drag.instant) {
+      if (_drag.instant) {
         setControl(vEff, instant = true)
       }
-      drag.dragValue = vEff
+      _drag.dragValue = vEff
     }
 
   final override def itemReleased(vi: VisualItem, e: MouseEvent, pt: Point2D): Unit =
-    if (drag != null) {
-      if (!drag.instant) {
-        setControl(drag.dragValue, instant = false)
+    if (_drag != null) {
+      if (!_drag.instant) {
+        setControl(_drag.dragValue, instant = false)
       }
-      drag = null
+      _drag = null
     }
 
   final protected def boundsResized(): Unit = updateContainerArea()
 
   protected def renderDrag(g: Graphics2D): Unit = {
-    val isDrag = drag != null
+    val isDrag = _drag != null
     if (isDrag) {
-      if (!drag.instant) {
+      if (!_drag.instant) {
         g.setColor(colrAdjust)
         val strokeOrig = g.getStroke
         g.setStroke(strkThick)
-        drawAdjust(g, drag.dragValue)
+        drawAdjust(g, _drag.dragValue)
         g.setStroke(strokeOrig)
       }
     }
@@ -214,8 +218,8 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
 
   final protected def renderDetail(g: Graphics2D, vi: VisualItem): Unit = {
     renderValueDetail(g, vi)
-    val isDrag = drag != null
-    drawLabel(g, vi, diam * vi.getSize.toFloat * 0.33333f, if (isDrag) valueText(drag.dragValue) else name)
+    val isDrag = _drag != null
+    drawLabel(g, vi, diam * vi.getSize.toFloat * 0.33333f, if (isDrag) valueText(_drag.dragValue) else name)
   }
 }
 
@@ -232,7 +236,7 @@ trait NuagesAttrInputExprImpl[S <: SSys[S]] extends NuagesAttrInputImpl[S] {
       damageReport(pNode)
     }
 
-  override def init(obj: Repr[S], parent: Parent[S])(implicit tx: S#Tx): this.type = {
+  override def init(obj: Repr[S], parent: Parent[S])(implicit tx: S#Tx): Unit = {
     valueA = obj.value
     super.init(obj, parent)
   }

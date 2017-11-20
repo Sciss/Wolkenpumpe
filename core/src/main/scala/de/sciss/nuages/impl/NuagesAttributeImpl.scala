@@ -177,7 +177,7 @@ object NuagesAttributeImpl {
                         (implicit tx: S#Tx, context: NuagesContext[S]): Option[NuagesAttribute[S]] = {
       val opt = getFactory(newValue)
       opt.flatMap { factory =>
-        factory.tryConsume(oldInput = inputView, // newOffset = parent.frameOffset,
+        factory.tryConsume(oldInput = inputView, newOffset = parent.frameOffset,
                            newValue = newValue.asInstanceOf[factory.Repr[S]])
           .map { newInput =>
             val res = new Impl[S](parent = parent, key = key, spec = spec) {
@@ -317,7 +317,7 @@ object NuagesAttributeImpl {
           }
       }
 
-    final def addPNode(in: Input[S], n: PNode, isFree: Boolean): Unit = {
+    final def addPNode(n: PNode, isFree: Boolean): Unit = {
       requireEDT()
       val g = main.graph
 
@@ -399,7 +399,7 @@ object NuagesAttributeImpl {
       parent.aggr.addItem(vi)
     }
 
-    final def removePNode(in: Input[S], n: PNode): Unit = {
+    final def removePNode(n: PNode): Unit = {
       requireEDT()
       val g = main.graph
 

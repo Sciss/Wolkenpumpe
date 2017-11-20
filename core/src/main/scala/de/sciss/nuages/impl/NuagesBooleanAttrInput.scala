@@ -17,17 +17,15 @@ package impl
 import de.sciss.lucre.expr.{BooleanObj, Type}
 import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.synth.{Sys => SSys}
-import de.sciss.nuages.NuagesAttribute.{Input, Parent}
 
-object NuagesBooleanAttrInput extends NuagesAttributeSingleFactory {
+object NuagesBooleanAttrInput extends PassAttrInputFactory {
   def typeID: Int = BooleanObj.typeID
 
   type Repr[~ <: Sys[~]] = BooleanObj[~]
 
-  def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: Parent[S], frameOffset: Long, obj: BooleanObj[S])
-                        (implicit tx: S#Tx, context: NuagesContext[S]): Input[S] = {
-    // val spec  = NuagesAttributeImpl.getSpec(attr.parent, key)
-    new NuagesBooleanAttrInput[S](attr).init(obj, parent)
+  protected def mkNoInit[S <: SSys[S]](attr: NuagesAttribute[S])
+                                     (implicit tx: S#Tx, context: NuagesContext[S]): View[S] = {
+    new NuagesBooleanAttrInput[S](attr)
   }
 }
 final class NuagesBooleanAttrInput[S <: SSys[S]] private (val attribute: NuagesAttribute[S])

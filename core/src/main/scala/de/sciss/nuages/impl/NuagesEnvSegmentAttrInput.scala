@@ -17,21 +17,20 @@ package impl
 import de.sciss.lucre.expr.Type
 import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.synth.{Sys => SSys}
-import de.sciss.nuages.NuagesAttribute.{Input, Parent}
 import de.sciss.synth.Curve
 import de.sciss.synth.proc.EnvSegment
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.swing.Color
 
-object NuagesEnvSegmentAttrInput extends NuagesAttributeSingleFactory {
+object NuagesEnvSegmentAttrInput extends PassAttrInputFactory {
   def typeID: Int = EnvSegment.typeID
 
   type Repr[~ <: Sys[~]] = EnvSegment.Obj[~]
 
-  def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: Parent[S], frameOffset: Long, obj: Repr[S])
-                         (implicit tx: S#Tx, context: NuagesContext[S]): Input[S] =
-    new NuagesEnvSegmentAttrInput[S](attr).init(obj, parent)
+  protected def mkNoInit[S <: SSys[S]](attr: NuagesAttribute[S])
+                                     (implicit tx: S#Tx, context: NuagesContext[S]): View[S] =
+    new NuagesEnvSegmentAttrInput[S](attr)
 }
 final class NuagesEnvSegmentAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S])
   extends RenderNumericAttr[S] with NuagesAttrInputImpl[S] {

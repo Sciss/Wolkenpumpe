@@ -37,7 +37,7 @@ object NuagesTimelineAttrInput extends NuagesAttribute.Factory {
     new NuagesTimelineAttrInput(attr, frameOffset = frameOffset, map = map).init(value, parent)
   }
 
-  def tryConsume[S <: SSys[S]](oldInput: Input[S], /* newOffset: Long, */ newValue: Timeline[S])
+  def tryConsume[S <: SSys[S]](oldInput: Input[S], newOffset0: Long, newValue: Timeline[S])
                               (implicit tx: S#Tx, context: NuagesContext[S]): Option[Input[S]] = {
     val attr          = oldInput.attribute
     val parent        = attr.parent

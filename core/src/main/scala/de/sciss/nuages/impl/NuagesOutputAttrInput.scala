@@ -23,7 +23,7 @@ import prefuse.data.{Node => PNode}
 
 import scala.concurrent.stm.Ref
 
-object NuagesOutputAttrInput extends NuagesAttributeSingleFactory {
+object NuagesOutputAttrInput extends NuagesAttribute.Factory {
   def typeID: Int = Output.typeID
 
   type Repr[~ <: Sys[~]] = Output[~]
@@ -31,6 +31,9 @@ object NuagesOutputAttrInput extends NuagesAttributeSingleFactory {
   def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: Parent[S], frameOffset: Long, obj: Output[S])
                          (implicit tx: S#Tx, context: NuagesContext[S]): Input[S] =
     new NuagesOutputAttrInput[S](attr, tx.newHandle(obj)).init(obj, parent)
+
+  def tryConsume[S <: SSys[S]](oldInput: Input[S], newOffset: Long, newValue: Output[S])
+                              (implicit tx: S#Tx, context: NuagesContext[S]): Option[Input[S]] = None
 }
 final class NuagesOutputAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S],
                                                objH: stm.Source[S#Tx, Output[S]])
@@ -76,7 +79,7 @@ final class NuagesOutputAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S
     deferVisTx {
       require(_pNode.isEmpty)
       _pNode = Some(view.pNode)
-      attribute.addPNode(this, view.pNode, isFree = false)
+      attribute.addPNode(view.pNode, isFree = false)
       log(s"NuagesOutput ADDED   for AttrInput: $view / $attribute")
     }
   }
@@ -85,7 +88,7 @@ final class NuagesOutputAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S
     outputViewRef.swap(None).foreach(_.removeMapping(this))
     deferVisTx {
       _pNode.foreach { n =>
-        attribute.removePNode(this, n)
+        attribute.removePNode(n)
         _pNode = None
         log(s"NuagesOutput REMOVED for AttrInput $attribute")
       }

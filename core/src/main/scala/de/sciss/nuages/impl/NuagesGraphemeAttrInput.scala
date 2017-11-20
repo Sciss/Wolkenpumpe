@@ -36,7 +36,7 @@ object NuagesGraphemeAttrInput extends NuagesAttribute.Factory {
     new NuagesGraphemeAttrInput(attr, frameOffset = frameOffset).init(value, parent)
   }
 
-  def tryConsume[S <: SSys[S]](oldInput: Input[S], /* _newOffset: Long, */ newValue: Grapheme[S])
+  def tryConsume[S <: SSys[S]](oldInput: Input[S], _newOffset0: Long, newValue: Grapheme[S])
                               (implicit tx: S#Tx, context: NuagesContext[S]): Option[Input[S]] = {
     val attr          = oldInput.attribute
     val parent        = attr.parent

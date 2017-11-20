@@ -32,7 +32,7 @@ object NuagesFolderAttrInput extends NuagesAttribute.Factory {
     new NuagesFolderAttrInput(attr, frameOffset = frameOffset).init(value, parent)
   }
 
-  def tryConsume[S <: SSys[S]](oldInput: Input[S], /* newOffset: Long, */ newValue: Folder[S])
+  def tryConsume[S <: SSys[S]](oldInput: Input[S], newOffset: Long, newValue: Folder[S])
                               (implicit tx: S#Tx, context: NuagesContext[S]): Option[Input[S]] =
     if (newValue.size == 1) {
       val head = newValue.head

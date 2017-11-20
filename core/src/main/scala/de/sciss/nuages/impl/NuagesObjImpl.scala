@@ -391,7 +391,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
       main.setSolo(this, !soloed)
       true
 
-    } else if (outerE.contains(xt, yt) & e.isAltDown) {
+    } else if (outerShape.contains(xt, yt) & e.isAltDown) {
       // val instant = !stateVar.playing || stateVar.bypassed || (main.transition(0) == Instant)
       atomic { implicit tx =>
         removeSelf()
@@ -406,21 +406,21 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
     gArc.setArc(0, 0, r.getWidth, r.getHeight, 135, 90, Arc2D.PIE)
     playArea.reset()
     playArea.add(new Area(gArc))
-    playArea.subtract(new Area(innerE))
+    playArea.subtract(new Area(innerShape))
     gp.append(playArea, false)
 
     if (hasSolo) {
       gArc.setAngleStart(45)
       soloArea.reset()
       soloArea.add(new Area(gArc))
-      soloArea.subtract(new Area(innerE))
+      soloArea.subtract(new Area(innerShape))
       gp.append(soloArea, false)
     }
 
     if (hasMeter) {
       gArc.setAngleStart(-45)
       val meterArea = new Area(gArc)
-      meterArea.subtract(new Area(innerE))
+      meterArea.subtract(new Area(innerShape))
       gp.append(meterArea, false)
     }
   }
@@ -438,7 +438,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
       val angExtent = (math.max(0f, peakNorm) * 90).toInt
       gArc.setArc(0, 0, r.getWidth, r.getHeight, -45, angExtent, Arc2D.PIE)
       val peakArea  = new Area(gArc)
-      peakArea.subtract(new Area(innerE))
+      peakArea.subtract(new Area(innerShape))
 
       g.setColor(colrPeak(angExtent))
       g.fill(peakArea)

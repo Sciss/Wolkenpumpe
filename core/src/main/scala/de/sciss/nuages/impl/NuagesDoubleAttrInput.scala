@@ -17,18 +17,15 @@ package impl
 import de.sciss.lucre.expr.{DoubleObj, Type}
 import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.synth.{Sys => SSys}
-import de.sciss.nuages.NuagesAttribute.{Input, Parent}
 
-object NuagesDoubleAttrInput extends NuagesAttributeSingleFactory {
+object NuagesDoubleAttrInput extends PassAttrInputFactory {
   def typeID: Int = DoubleObj.typeID
 
   type Repr[~ <: Sys[~]] = DoubleObj[~]
 
-  def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: Parent[S], frameOffset: Long, obj: DoubleObj[S])
-                        (implicit tx: S#Tx, context: NuagesContext[S]): Input[S] = {
-//    val spec  = NuagesAttributeImpl.getSpec(parent, key)
-    new NuagesDoubleAttrInput[S](attr).init(obj, parent)
-  }
+  protected def mkNoInit[S <: SSys[S]](attr: NuagesAttribute[S])
+                                     (implicit tx: S#Tx, context: NuagesContext[S]): View[S] =
+    new NuagesDoubleAttrInput[S](attr)
 }
 final class NuagesDoubleAttrInput[S <: SSys[S]] private (val attribute: NuagesAttribute[S])
   extends NuagesScalarAttrInput[S] {

@@ -17,20 +17,19 @@ package impl
 import de.sciss.lucre.expr.{DoubleVector, Type}
 import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.synth.{Sys => SSys}
-import de.sciss.nuages.NuagesAttribute.{Input, Parent}
 import de.sciss.synth.Curve
 import de.sciss.synth.proc.EnvSegment
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-object NuagesDoubleVectorAttrInput extends NuagesAttributeSingleFactory {
+object NuagesDoubleVectorAttrInput extends PassAttrInputFactory {
   def typeID: Int = DoubleVector.typeID
 
   type Repr[~ <: Sys[~]] = DoubleVector[~]
 
-  def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: Parent[S], frameOffset: Long, obj: DoubleVector[S])
-                        (implicit tx: S#Tx, context: NuagesContext[S]): Input[S] =
-    new NuagesDoubleVectorAttrInput[S](attr).init(obj, parent)
+  protected def mkNoInit[S <: SSys[S]](attr: NuagesAttribute[S])
+                                     (implicit tx: S#Tx, context: NuagesContext[S]): View[S] =
+    new NuagesDoubleVectorAttrInput[S](attr)
 }
 final class NuagesDoubleVectorAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S])
   extends RenderAttrDoubleVec[S] with NuagesAttrInputExprImpl[S] {
