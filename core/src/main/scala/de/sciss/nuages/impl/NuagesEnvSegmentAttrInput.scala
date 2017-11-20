@@ -14,18 +14,15 @@
 package de.sciss.nuages
 package impl
 
-import java.awt.Graphics2D
-
-import de.sciss.lucre.expr.Expr.Const
-import de.sciss.lucre.expr.{Expr, Type}
+import de.sciss.lucre.expr.Type
 import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.nuages.NuagesAttribute.{Input, Parent}
 import de.sciss.synth.Curve
 import de.sciss.synth.proc.EnvSegment
-import prefuse.visual.VisualItem
 
 import scala.collection.immutable.{IndexedSeq => Vec}
+import scala.swing.Color
 
 object NuagesEnvSegmentAttrInput extends NuagesAttributeSingleFactory {
   def typeID: Int = EnvSegment.typeID
@@ -39,19 +36,19 @@ object NuagesEnvSegmentAttrInput extends NuagesAttributeSingleFactory {
 final class NuagesEnvSegmentAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S])
   extends RenderNumericAttr[S] with NuagesAttrInputImpl[S] {
 
-  type A                = Vec[Double]
-  type B                = EnvSegment
-  type Ex[~ <: Sys[~]]  = EnvSegment.Obj[~]
+  type A                  = Vec[Double]
+  type B                  = EnvSegment
+  type Repr [~ <: Sys[~]] = EnvSegment.Obj[~]
 
-  def tpe: Type.Expr[B, Ex] = EnvSegment.Obj
+  val tpe: Type.Expr[B, Repr] = EnvSegment.Obj
 
-//  private[this] var valueSetTime = System.currentTimeMillis()
+  protected def valueColor: Color = NuagesDataImpl.colrMapped
 
   protected def updateValueAndRefresh(v: EnvSegment)(implicit tx: S#Tx): Unit = ???
 
   protected def valueA: Vec[Double] = attribute.numericValue
 
-  protected def mkConst(v: Vec[Double])(implicit tx: S#Tx): Ex[S] with Const[S, B] =
+  private def mkConst(v: Vec[Double])(implicit tx: S#Tx): Repr[S] =
     ???! // tpe.newConst(v)
 
   /** On the EDT! */
@@ -75,11 +72,25 @@ final class NuagesEnvSegmentAttrInput[S <: SSys[S]](val attribute: NuagesAttribu
 //      damageReport(pNode)
 //    }
 
-  protected def mkEnvSeg(start: Ex[S], curve: Curve)(implicit tx: S#Tx): EnvSegment.Obj[S] = {
+  private def mkEnvSeg(start: Repr[S], curve: Curve)(implicit tx: S#Tx): EnvSegment.Obj[S] = {
     ???!
 //    val lvl = start.value
 //    EnvSegment.Obj.newVar[S](EnvSegment.Multi(lvl, curve))
   }
 
   def numChannels: Int = 1 // XXX TODO valueA.numChannels
+
+  protected def setControlTxn(v: Vec[Double], durFrames: Long)(implicit tx: S#Tx): Unit = {
+    val nowConst: Repr[S]  = mkConst(v)
+    val before  : Repr[S]  = ???! // objH()._1()
+
+    val nowVar = tpe.newVar[S](nowConst)
+    if (durFrames == 0L)
+      inputParent.updateChild(before = before, now = nowVar, dt = 0L)
+    else {
+      val seg = mkEnvSeg(before, Curve.lin) // EnvSegment.Obj.ApplySingle()
+      inputParent.updateChild(before = before, now = nowVar, dt = durFrames )
+      inputParent.updateChild(before = before, now = seg   , dt = 0L        )
+    }
+  }
 }

@@ -18,11 +18,13 @@ import java.awt.Graphics2D
 import java.awt.event.MouseEvent
 import java.awt.geom.Point2D
 
-import de.sciss.lucre.expr.{Expr, Type}
-import de.sciss.lucre.stm.{Disposable, Obj, Sys, TxnLike}
+import de.sciss.lucre.expr.Type
+import de.sciss.lucre.stm.TxnLike.peer
+import de.sciss.lucre.stm.{Disposable, Obj, Sys}
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.lucre.{expr, stm}
-import de.sciss.nuages.NuagesAttribute.{Input, Parent}
+import de.sciss.nuages.NuagesAttribute.Parent
+import de.sciss.nuages.impl.NuagesDataImpl.colrManual
 import de.sciss.serial.Serializer
 import de.sciss.synth.Curve
 import de.sciss.synth.proc.{EnvSegment, TimeRef}
@@ -47,23 +49,24 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
 
   import NuagesAttrInputImpl.Drag
   import NuagesDataImpl._
-  import TxnLike.peer
 
   // ---- abstract ----
 
   type B
 
-  type Ex[~ <: Sys[~]] <: expr.Expr[~, B]
+  type Repr[~ <: Sys[~]] <: expr.Expr[~, B]
 
-  protected def tpe: Type.Expr[B, Ex]
-
-  protected def mkConst(v: Vec[Double])(implicit tx: S#Tx): Ex[S] with Expr.Const[S, B]
-
-  protected def mkEnvSeg(start: Ex[S], curve: Curve)(implicit tx: S#Tx): EnvSegment.Obj[S]
+  protected val tpe: Type.Expr[B, Repr ]
 
   protected def valueText(v: Vec[Double]): String
 
   protected def drawAdjust(g: Graphics2D, v: Vec[Double]): Unit
+
+  protected def valueColor: Color
+
+  protected def updateValueAndRefresh(v: B)(implicit tx: S#Tx): Unit
+
+  protected def setControlTxn(v: Vec[Double], durFrames: Long)(implicit tx: S#Tx): Unit
 
   // ---- impl ----
 
@@ -71,7 +74,7 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
 
   private[this] var drag: Drag = _
 
-  private[this] val objH = Ref.make[(stm.Source[S#Tx, Ex[S]], Disposable[S#Tx])]()  // object and its observer
+  protected final val objH = Ref.make[(stm.Source[S#Tx, Repr[S]], Disposable[S#Tx])]()  // object and its observer
 
   protected final def spec: ParamSpec = attribute.spec
 
@@ -81,35 +84,7 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
 
   def name: String = attribute.name
 
-  protected final def valueColor: Color = if (editable) colrManual else colrMapped
-
   final def input(implicit tx: S#Tx): Obj[S] = objH()._1()
-
-  private def setControlTxn(v: Vec[Double], durFrames: Long)(implicit tx: S#Tx): Unit = {
-    val nowConst: Ex[S] = mkConst(v) // IntelliJ highlight error SCL-9713
-    val before  : Ex[S] = objH()._1()
-
-    // XXX TODO --- if we overwrite a time value, we should nevertheless update the tpe.Var instead
-    if (!editable || isTimeline) {
-      val nowVar = tpe.newVar[S](nowConst)
-      if (durFrames == 0L)
-        inputParent.updateChild(before = before, now = nowVar, dt = 0L)
-      else {
-        val seg = mkEnvSeg(before, Curve.lin) // EnvSegment.Obj.ApplySingle()
-        inputParent.updateChild(before = before, now = nowVar, dt = durFrames )
-        inputParent.updateChild(before = before, now = seg   , dt = 0L        )
-      }
-
-    } else {
-      if (durFrames > 0) println("Warning: setControlTxn drops `durFrames` when not a timeline")
-      val Var = tpe.Var
-      val Var(vr) = before
-      vr() = nowConst
-    }
-  }
-
-  // use only on the EDT
-  private[this] var editable: Boolean = _
 
   def dispose()(implicit tx: S#Tx): Unit = {
     objH()._2.dispose()
@@ -128,29 +103,26 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
     // assert(!aggr.containsItem(vi), s"still in aggr $aggr@${aggr.hashCode.toHexString}: $vi@${vi.hashCode.toHexString}")
   }
 
-  protected def updateValueAndRefresh(v: B)(implicit tx: S#Tx): Unit
-
   def tryConsume(newOffset: Long, to: Obj[S])(implicit tx: S#Tx): Boolean = to.tpe == this.tpe && {
-    val newObj = to.asInstanceOf[Ex[S]]
+    val newObj = to.asInstanceOf[Repr[S]]
     objH.swap(setObject(newObj))._2.dispose()
-    val newEditable = tpe.Var.unapply(newObj).isDefined
+    // val newEditable = mainType.Var.unapply(newObj).isDefined
     val newValue    = newObj.value
-    main.deferVisTx { editable = newEditable }
+    // main.deferVisTx { editable = newEditable }
     updateValueAndRefresh(newValue)
     true
   }
 
-  def init(obj: Ex[S], parent: Parent[S])(implicit tx: S#Tx): this.type = {
-    editable    = tpe.Var.unapply(obj).isDefined
-//    valueA      = obj.value
+  def init(obj: Repr[S], parent: Parent[S])(implicit tx: S#Tx): this.type = {
+    // editable    = mainType.Var.unapply(obj).isDefined
     objH()      = setObject(obj)
     inputParent = parent
     main.deferVisTx(initGUI())
     this
   }
 
-  private def setObject(obj: Ex[S])(implicit tx: S#Tx): (stm.Source[S#Tx, Ex[S]], Disposable[S#Tx]) = {
-    implicit val ser: Serializer[S#Tx, S#Acc, Ex[S]] = tpe.serializer[S]
+  private def setObject(obj: Repr[S])(implicit tx: S#Tx): (stm.Source[S#Tx, Repr[S]], Disposable[S#Tx]) = {
+    implicit val ser: Serializer[S#Tx, S#Acc, Repr[S]] = tpe.serializer[S]
     val h         = tx.newHandle(obj)
     val observer  = obj.changed.react { implicit tx => upd =>
       updateValueAndRefresh(upd.now)
@@ -179,7 +151,7 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
 
   final override def itemPressed(vi: VisualItem, e: MouseEvent, pt: Point2D): Boolean = {
     // if (!vProc.isAlive) return false
-    if (!editable) return true
+    // if (!editable) return true
 
     if (containerArea.contains(pt.getX - r.getX, pt.getY - r.getY)) {
       val dy      = r.getCenterY - pt.getY
@@ -206,24 +178,21 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
     if (drag != null) {
       val dy = r.getCenterY - pt.getY
       val dx = pt.getX - r.getCenterX
-      //            val ang  = -math.atan2( dy, dx )
       val ang   = (((-math.atan2(dy, dx) / math.Pi + 3.5) % 2.0) - 0.25) / 1.5
       val vEff0 = drag.valueStart.map { vs =>
         math.max(0.0, math.min(1.0, vs + (ang - drag.angStart)))
       }
       val vEff  = if (spec.warp == IntWarp) vEff0.map { ve => spec.inverseMap(spec.map(ve)) } else vEff0
-      //            if( vEff != value ) {
-      // val m = /* control. */ spec.map(vEff)
       if (drag.instant) {
-        setControl(/* control, */ vEff /* m */, instant = true)
+        setControl(vEff, instant = true)
       }
-      drag.dragValue = vEff // m
+      drag.dragValue = vEff
     }
 
   final override def itemReleased(vi: VisualItem, e: MouseEvent, pt: Point2D): Unit =
     if (drag != null) {
       if (!drag.instant) {
-        setControl(/* control, */ drag.dragValue, instant = false)
+        setControl(drag.dragValue, instant = false)
       }
       drag = null
     }
@@ -235,10 +204,10 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
     if (isDrag) {
       if (!drag.instant) {
         g.setColor(colrAdjust)
-        val strkOrig = g.getStroke
+        val strokeOrig = g.getStroke
         g.setStroke(strkThick)
         drawAdjust(g, drag.dragValue)
-        g.setStroke(strkOrig)
+        g.setStroke(strokeOrig)
       }
     }
   }
@@ -250,7 +219,8 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
   }
 }
 
-trait NuagesAttrInputVarImpl[S <: SSys[S]] extends NuagesAttrInputImpl[S] {
+trait NuagesAttrInputExprImpl[S <: SSys[S]] extends NuagesAttrInputImpl[S] {
+
   type B = A
 
   @volatile
@@ -262,8 +232,32 @@ trait NuagesAttrInputVarImpl[S <: SSys[S]] extends NuagesAttrInputImpl[S] {
       damageReport(pNode)
     }
 
-  override def init(obj: Ex[S], parent: Parent[S])(implicit tx: S#Tx): this.type = {
+  override def init(obj: Repr[S], parent: Parent[S])(implicit tx: S#Tx): this.type = {
     valueA = obj.value
     super.init(obj, parent)
+  }
+
+  protected final def valueColor: Color = colrManual // if (editable) colrManual else colrMapped
+
+  protected def mkConst(v: Vec[Double])(implicit tx: S#Tx): Repr[S] // with Expr.Const[S, B]
+
+  protected def mkEnvSeg(start: Repr[S], curve: Curve)(implicit tx: S#Tx): EnvSegment.Obj[S]
+
+  protected final def setControlTxn(v: Vec[Double], durFrames: Long)(implicit tx: S#Tx): Unit = {
+    val nowConst: Repr[S]  = mkConst(v)
+    val before  : Repr[S]  = objH()._1()
+
+    lazy val nowVar = tpe.newVar[S](nowConst)
+    if (durFrames == 0L) {
+      before match {
+        case tpe.Var(beforeV) => beforeV() = nowConst
+        case _ =>
+          inputParent.updateChild(before = before, now = nowVar, dt = 0L)
+      }
+    } else {
+      val seg = mkEnvSeg(before, Curve.lin) // EnvSegment.Obj.ApplySingle()
+      inputParent.updateChild(before = before, now = nowVar, dt = durFrames )
+      inputParent.updateChild(before = before, now = seg   , dt = 0L        )
+    }
   }
 }

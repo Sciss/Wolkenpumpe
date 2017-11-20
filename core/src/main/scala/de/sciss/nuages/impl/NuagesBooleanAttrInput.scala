@@ -33,10 +33,10 @@ object NuagesBooleanAttrInput extends NuagesAttributeSingleFactory {
 final class NuagesBooleanAttrInput[S <: SSys[S]] private (val attribute: NuagesAttribute[S])
   extends NuagesScalarAttrInput[S] {
 
-  type A                = Boolean
-  type Ex[~ <: Sys[~]]  = BooleanObj[~]
+  type A                  = Boolean
+  type Repr[~ <: Sys[~]]  = BooleanObj[~]
 
-  def tpe: Type.Expr[A, Ex] = BooleanObj
+  val tpe: Type.Expr[A, Repr] = BooleanObj
 
   protected def toDouble  (in: Boolean): Double   = if (in) 1.0 else 0.0
   protected def fromDouble(in: Double ): Boolean  = in == 0.0

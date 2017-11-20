@@ -33,10 +33,10 @@ object NuagesDoubleAttrInput extends NuagesAttributeSingleFactory {
 final class NuagesDoubleAttrInput[S <: SSys[S]] private (val attribute: NuagesAttribute[S])
   extends NuagesScalarAttrInput[S] {
 
-  type A                = Double
-  type Ex[~ <: Sys[~]]  = DoubleObj[~]
+  type A                  = Double
+  type Repr[~ <: Sys[~]]  = DoubleObj[~]
 
-  def tpe: Type.Expr[A, Ex] = DoubleObj
+  val tpe: Type.Expr[A, Repr] = DoubleObj
 
   protected def toDouble  (in: Double): Double = in
   protected def fromDouble(in: Double): Double = in

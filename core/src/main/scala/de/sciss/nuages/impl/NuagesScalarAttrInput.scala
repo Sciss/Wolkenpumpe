@@ -23,7 +23,7 @@ import de.sciss.synth.proc.EnvSegment
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-trait NuagesScalarAttrInput[S <: Sys[S]] extends NuagesAttrInputVarImpl[S] {
+trait NuagesScalarAttrInput[S <: Sys[S]] extends NuagesAttrInputExprImpl[S] {
   // ---- abstract ----
 
   protected def toDouble  (in: A     ): Double
@@ -33,12 +33,12 @@ trait NuagesScalarAttrInput[S <: Sys[S]] extends NuagesAttrInputVarImpl[S] {
 
   final def numericValue: Vec[Double] = Vector(toDouble(valueA))
 
-  protected final def mkConst(v: Vec[Double])(implicit tx: S#Tx): Ex[S] with Expr.Const[S, A] = {
+  protected final def mkConst(v: Vec[Double])(implicit tx: S#Tx): Repr[S] = {
     require(v.size == 1)
     tpe.newConst(fromDouble(v(0)))
   }
 
-  protected final def mkEnvSeg(start: Ex[S], curve: Curve)(implicit tx: S#Tx): EnvSegment.Obj[S] = {
+  protected final def mkEnvSeg(start: Repr[S], curve: Curve)(implicit tx: S#Tx): EnvSegment.Obj[S] = {
     val lvl = toDouble(start.value)
     EnvSegment.Obj.newVar[S](EnvSegment.Single(lvl, curve))
   }

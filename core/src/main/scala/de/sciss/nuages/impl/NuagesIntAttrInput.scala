@@ -31,10 +31,10 @@ object NuagesIntAttrInput extends NuagesAttributeSingleFactory {
 final class NuagesIntAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S])
   extends NuagesScalarAttrInput[S] {
 
-  type A                = Int
-  type Ex[~ <: Sys[~]]  = IntObj[~]
+  type A                  = Int
+  type Repr[~ <: Sys[~]]  = IntObj[~]
 
-  def tpe: Type.Expr[A, Ex] = IntObj
+  val tpe: Type.Expr[A, Repr] = IntObj
 
   protected def toDouble  (in: Int   ): Double = in.toDouble
   protected def fromDouble(in: Double): Int    = in.toInt

@@ -14,7 +14,6 @@
 package de.sciss.nuages
 package impl
 
-import de.sciss.lucre.expr.Expr.Const
 import de.sciss.lucre.expr.{DoubleVector, Type}
 import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.synth.{Sys => SSys}
@@ -34,16 +33,16 @@ object NuagesDoubleVectorAttrInput extends NuagesAttributeSingleFactory {
     new NuagesDoubleVectorAttrInput[S](attr).init(obj, parent)
 }
 final class NuagesDoubleVectorAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S])
-  extends RenderAttrDoubleVec[S] with NuagesAttrInputVarImpl[S] {
+  extends RenderAttrDoubleVec[S] with NuagesAttrInputExprImpl[S] {
 
-  type Ex[~ <: Sys[~]]  = DoubleVector[~]
+  type Repr[~ <: Sys[~]]  = DoubleVector[~]
 
-  def tpe: Type.Expr[A, Ex] = DoubleVector
+  val tpe: Type.Expr[A, Repr] = DoubleVector
 
-  protected def mkConst(v: Vec[Double])(implicit tx: S#Tx): DoubleVector[S] with Const[S, Vec[Double]] =
+  protected def mkConst(v: Vec[Double])(implicit tx: S#Tx): DoubleVector[S] =
     tpe.newConst(v)
 
-  protected def mkEnvSeg(start: Ex[S], curve: Curve)(implicit tx: S#Tx): EnvSegment.Obj[S] = {
+  protected def mkEnvSeg(start: Repr[S], curve: Curve)(implicit tx: S#Tx): EnvSegment.Obj[S] = {
     val lvl = start.value
     EnvSegment.Obj.newVar[S](EnvSegment.Multi(lvl, curve))
   }
