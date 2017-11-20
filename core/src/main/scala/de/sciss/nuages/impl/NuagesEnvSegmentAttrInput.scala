@@ -14,8 +14,9 @@
 package de.sciss.nuages
 package impl
 
-import de.sciss.lucre.expr.Type
+import de.sciss.lucre.expr.{DoubleObj, DoubleVector, Type}
 import de.sciss.lucre.stm.Sys
+import de.sciss.lucre.stm.TxnLike.peer
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.synth.Curve
 import de.sciss.synth.proc.EnvSegment
@@ -45,12 +46,17 @@ final class NuagesEnvSegmentAttrInput[S <: SSys[S]](val attribute: NuagesAttribu
 
   protected def valueColor: Color = NuagesDataImpl.colrMapped
 
-  protected def updateValueAndRefresh(v: EnvSegment)(implicit tx: S#Tx): Unit = ???
+  protected def updateValueAndRefresh(v: EnvSegment)(implicit tx: S#Tx): Unit = {
+    main.deferVisTx {
+      _numChannels = v.numChannels
+      damageReport(pNode)
+    }
+  }
 
   protected def valueA: Vec[Double] = attribute.numericValue
 
-  private def mkConst(v: Vec[Double])(implicit tx: S#Tx): Repr[S] =
-    ???! // tpe.newConst(v)
+  @volatile
+  private[this] var _numChannels: Int = _
 
   /** On the EDT! */
   def numericValue: Vec[Double] = {
@@ -58,7 +64,7 @@ final class NuagesEnvSegmentAttrInput[S <: SSys[S]](val attribute: NuagesAttribu
 //////    val t         = System.currentTimeMillis()
 //////    val dtMillis  = 10000.0 // XXX TODO
 //////    val pos       = math.min(1.0f, ((t - valueSetTime) / dtMillis).toFloat)
-////    // v.curve.levelAt(pos = pos, y1 = ???, y2 = ???)
+////    // v.curve.levelAt(pos = pos, y1 = ..., y2 = ...)
 //    val lvl = v.startLevels
 //////    lvl.map(x => math.min(1.0, x + math.random() * 0.1))
 //    lvl
@@ -73,23 +79,25 @@ final class NuagesEnvSegmentAttrInput[S <: SSys[S]](val attribute: NuagesAttribu
 //      damageReport(pNode)
 //    }
 
-  private def mkEnvSeg(start: Repr[S], curve: Curve)(implicit tx: S#Tx): EnvSegment.Obj[S] = {
-    ???!
-//    val lvl = start.value
-//    EnvSegment.Obj.newVar[S](EnvSegment.Multi(lvl, curve))
+  def numChannels: Int = _numChannels
+
+  override def init(obj: EnvSegment.Obj[S], parent: NuagesAttribute.Parent[S])(implicit tx: S#Tx): Unit = {
+    _numChannels = obj.value.numChannels
+    super.init(obj, parent)
   }
 
-  def numChannels: Int = 1 // XXX TODO valueA.numChannels
-
   protected def setControlTxn(v: Vec[Double], durFrames: Long)(implicit tx: S#Tx): Unit = {
-    val nowConst: Repr[S]  = mkConst(v)
-    val before  : Repr[S]  = ???! // objH()._1()
+    val before = objH()._1()
 
-    val nowVar = tpe.newVar[S](nowConst)
+    val nowVar = if (v.size == 1) DoubleObj.newVar(v.head) else DoubleVector.newVar(v)
     if (durFrames == 0L)
       inputParent.updateChild(before = before, now = nowVar, dt = 0L, clearRight = true)
     else {
-      val seg = mkEnvSeg(before, Curve.lin) // EnvSegment.Obj.ApplySingle()
+      val seg = if (v.size == 1) {
+        EnvSegment.Obj.newVar[S](EnvSegment.Single(v.head, Curve.lin))
+      } else {
+        EnvSegment.Obj.newVar[S](EnvSegment.Multi(v, Curve.lin))
+      }
       inputParent.updateChild(before = before, now = nowVar, dt = durFrames, clearRight = true )
       inputParent.updateChild(before = before, now = seg   , dt = 0L       , clearRight = false)
     }

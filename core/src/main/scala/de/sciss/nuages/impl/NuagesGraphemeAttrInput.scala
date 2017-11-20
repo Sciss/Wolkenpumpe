@@ -14,6 +14,7 @@
 package de.sciss.nuages
 package impl
 
+import de.sciss.equal.Implicits._
 import de.sciss.lucre.expr.LongObj
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Disposable, Obj, Sys, TxnLike}
@@ -44,7 +45,7 @@ object NuagesGraphemeAttrInput extends NuagesAttribute.Factory {
     val parent        = attr.parent
     val main          = parent.main
     val _frameOffset  = parent.frameOffset
-    if (_frameOffset == Long.MaxValue) return None  // what should we do?
+    if (_frameOffset === Long.MaxValue) return None  // what should we do?
     val transportPos  = main.transport.position
     val currentOffset = transportPos - _frameOffset
 
@@ -152,7 +153,7 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
     }
 
   private[this] final class View(val start: Long, val input: NuagesAttribute.Input[S]) {
-    def isEmpty  : Boolean = start == Long.MaxValue
+    def isEmpty  : Boolean = start === Long.MaxValue
     def isDefined: Boolean = !isEmpty
 
     def dispose()(implicit tx: S#Tx): Unit = if (isDefined) input.dispose()
@@ -181,13 +182,10 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
   }
 
   private[this] def elemRemoved(start: Long, child: Obj[S])(implicit tx: S#Tx): Unit = {
-    ???!
-//    views.find(_.obj() == child).foreach { view =>
-//      // finding the object in the view-map implies that it
-//      // is currently preparing or playing
-//      logA(s"timeline - elemRemoved($start, $child)")
-//      elemRemoved1(start, child, view)
-//    }
+    val curr = currentView()
+    if (curr.start === start && curr.input.input === child) {
+      currentView.swap(emptyView).dispose()
+    }
   }
 
 //  private[this] def elemRemoved1(start: Long, child: Obj[S], childView: Elem)
@@ -204,17 +202,19 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
       val beforeStart = curr.start
       val nowStart    = currentOffset() + dt
       log(s"$this updateChild($before - $beforeStart / ${TimeRef.framesToSecs(beforeStart)}, $now - $nowStart / ${TimeRef.framesToSecs(nowStart)})")
-      if (beforeStart != nowStart && isTimeline) {
+      if ((beforeStart !== nowStart) && isTimeline) {
         val nowStartObj = LongObj.newVar[S](nowStart)
         grm.add(nowStartObj, now)
       } else {
         val entry = grm.at(beforeStart).getOrElse(throw new IllegalStateException(s"No element at $beforeStart"))
-        require(entry.value == before)
+        require(entry.value === before)
         grm.remove(entry.key, entry.value)
         grm.add   (entry.key, now)
       }
 
       if (clearRight && nowStart >= beforeStart && nowStart < Long.MaxValue) {
+        // XXX TODO --- is there a situation where we need to ask parent to clearRight as well?
+
         @tailrec
         def testRemove(): Unit =
           grm.ceil(nowStart + 1) match {
@@ -239,7 +239,7 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
     ???!
     if (isTimeline) {
       val stop    = currentOffset()
-      val entries = gr.intersect(stop).filter(_.value == child)
+      val entries = gr.intersect(stop).filter(_.value === child)
       // AAA
       if (entries.nonEmpty) {
         val grm = gr.modifiableOption.getOrElse(???!)
@@ -274,7 +274,7 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
       }
     } { entry =>
       val time0 = entry.key.value
-      if (oldView.isEmpty || oldView.start != time0) {
+      if (oldView.isEmpty || (oldView.start !== time0)) {
         elemAdded(time0, entry.value)
       }
     }
@@ -293,7 +293,7 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
   private[this] def setChild(start: Long, child: Obj[S])(implicit tx: S#Tx): Unit = {
     log(s"$this setChild($start / ${TimeRef.framesToSecs(start)}, $child")
     val curr        = currentView()
-    val childOffset = if (frameOffset == Long.MaxValue) Long.MaxValue else frameOffset + start
+    val childOffset = if (frameOffset === Long.MaxValue) Long.MaxValue else frameOffset + start
 
     def mkNew(): Unit = {
       log("-> mkNew")
