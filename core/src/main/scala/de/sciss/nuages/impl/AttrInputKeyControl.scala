@@ -38,7 +38,7 @@ trait AttrInputKeyControl[S <: Sys[S]] extends ClipboardOwner {
 
   protected def numChannels: Int
 
-  protected def setControl(v: Vec[Double], instant: Boolean): Unit
+  protected def setControl(v: Vec[Double], dur: Float): Unit
 
   // ---- impl ----
 
@@ -53,7 +53,7 @@ trait AttrInputKeyControl[S <: Sys[S]] extends ClipboardOwner {
         val clip = Toolkit.getDefaultToolkit.getSystemClipboard
         if ( /* vc.editable && */ clip.isDataFlavorAvailable(KeyControl.ControlFlavor)) {
           val data = clip.getData(KeyControl.ControlFlavor).asInstanceOf[ControlDrag]
-          setControl(data.values, instant = true) // XXX TODO -- which want to rescale
+          setControl(data.values, dur = 0f) // XXX TODO -- which want to rescale
         }
         true
       } else {
@@ -63,6 +63,10 @@ trait AttrInputKeyControl[S <: Sys[S]] extends ClipboardOwner {
     } else {
       if (e.code == Key.Enter) {
         showParamInput(vi)
+        true
+      } else if (e.code >= Key.Key0 && e.code <= Key.Key9 && main.acceptGlideTime) {
+        import numbers.Implicits._
+        main.glideTime = e.code.id.linlin(Key.Key0.id, Key.Key9.id, 0f, 1f)
         true
       } else {
         false
@@ -127,7 +131,7 @@ trait AttrInputKeyControl[S <: Sys[S]] extends ClipboardOwner {
 
       case _ => Vector.empty
     }
-    if (v.nonEmpty) setControl(v, instant = true)
+    if (v.nonEmpty) setControl(v, dur = 0f)
   }
 
   private[this] def showParamInput(vi: VisualItem): Unit = {
@@ -154,7 +158,7 @@ trait AttrInputKeyControl[S <: Sys[S]] extends ClipboardOwner {
         Try(ggValue.text.toDouble).toOption.foreach { newValue =>
           val v   = spec.inverseMap(spec.clip(newValue))
           val vs  = Vector.fill(numChannels)(v)
-          setControl(vs, instant = true)
+          setControl(vs, dur = 0f)
         }
       }
     }

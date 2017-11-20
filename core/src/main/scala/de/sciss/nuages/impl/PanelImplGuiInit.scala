@@ -15,20 +15,21 @@ package de.sciss.nuages
 package impl
 
 import java.awt.geom.Point2D
-import java.awt.{Color, RenderingHints, Graphics2D}
-import javax.swing.JPanel
+import java.awt.{Color, Graphics2D, RenderingHints}
+import javax.swing.{BoundedRangeModel, DefaultBoundedRangeModel, JPanel}
 
 import de.sciss.lucre.swing.impl.ComponentHolder
 import de.sciss.lucre.synth.Sys
-import prefuse.action.{RepaintAction, ActionList}
+import de.sciss.numbers
+import prefuse.action.{ActionList, RepaintAction}
 import prefuse.action.assignment.ColorAction
 import prefuse.action.layout.graph.ForceDirectedLayout
 import prefuse.activity.Activity
 import prefuse.controls.{Control, WheelZoomControl, ZoomControl}
-import prefuse.data.{Table, Tuple, Graph}
+import prefuse.data.{Graph, Table, Tuple}
 import prefuse.data.event.TupleSetListener
-import prefuse.data.tuple.{TupleSet, DefaultTupleSet}
-import prefuse.render.{DefaultRendererFactory, PolygonRenderer, EdgeRenderer}
+import prefuse.data.tuple.{DefaultTupleSet, TupleSet}
+import prefuse.render.{DefaultRendererFactory, EdgeRenderer, PolygonRenderer}
 import prefuse.util.ColorLib
 import prefuse.visual.{AggregateTable, VisualGraph, VisualItem}
 import prefuse.visual.expression.InGroupPredicate
@@ -59,6 +60,24 @@ trait PanelImplGuiInit[S <: Sys[S]] extends ComponentHolder[Component] {
   def graph        : Graph          = _g
   def visualGraph  : VisualGraph    = _vg
   def aggrTable    : AggregateTable = _aggrTable
+
+  private[this] var _mGlideTime : BoundedRangeModel   = _
+
+  def glideTime: Float = {
+    import numbers.Implicits._
+    val view = _mGlideTime.getValue
+    view.linlin(_mGlideTime.getMinimum, _mGlideTime.getMaximum, 0f, 1f)
+  }
+
+  def glideTime_=(value: Float): Unit = {
+    import numbers.Implicits._
+    val view = math.round(value.linlin(0f, 1f, _mGlideTime.getMinimum, _mGlideTime.getMaximum))
+    _mGlideTime.setValue(view)
+  }
+
+  var acceptGlideTime: Boolean = false
+
+  def glideTimeModel: BoundedRangeModel = _mGlideTime
 
   protected def guiInit(): Unit = {
     _vis = new Visualization
@@ -191,7 +210,9 @@ trait PanelImplGuiInit[S <: Sys[S]] extends ComponentHolder[Component] {
 
     _vis.run(ACTION_COLOR)
 
-    component = Component.wrap(p)
+    _mGlideTime = new DefaultBoundedRangeModel(0, 1, 0, 100)
+
+    component   = Component.wrap(p)
   }
 
   private def mkRubberBand(rf: DefaultRendererFactory): Unit = {

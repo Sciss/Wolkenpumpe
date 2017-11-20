@@ -18,23 +18,21 @@ import java.awt.event.{ActionEvent, InputEvent, KeyEvent}
 import java.awt.{Color, Toolkit}
 import javax.swing.{AbstractAction, JComponent, KeyStroke}
 
-import de.sciss.audiowidgets.TimelineModel
+import de.sciss.audiowidgets.{RotaryKnob, TimelineModel}
 import de.sciss.lucre.stm
 import de.sciss.lucre.swing.impl.ComponentHolder
 import de.sciss.lucre.swing.{View, defer, deferTx, requireEDT}
 import de.sciss.lucre.synth.{Server, Synth, Sys, Txn}
 import de.sciss.osc
 import de.sciss.span.Span
-import de.sciss.swingplus.PopupMenu
 import de.sciss.synth.proc.gui.TransportView
-import de.sciss.synth.proc.{TimeRef, AuralSystem, WorkspaceHandle}
+import de.sciss.synth.proc.{AuralSystem, TimeRef, WorkspaceHandle}
 import de.sciss.synth.swing.j.JServerStatusPanel
 import de.sciss.synth.{SynthGraph, addAfter, message}
 
 import scala.collection.breakOut
 import scala.swing.Swing._
-import scala.swing.event.ButtonClicked
-import scala.swing.{BoxPanel, Action, BorderPanel, Button, Component, GridBagPanel, Label, MenuItem, Orientation, TextField}
+import scala.swing.{BorderPanel, BoxPanel, Component, GridBagPanel, Orientation}
 
 object NuagesViewImpl {
   def apply[S <: Sys[S]](nuages: Nuages[S], nuagesConfig: Nuages.Config)
@@ -55,7 +53,9 @@ object NuagesViewImpl {
 
     import panel.{config => nConfig}
 
-    private var _southBox: BoxPanel = _
+    private[this] var _southBox     : BoxPanel            = _
+    private[this] var _controlPanel : ControlPanel        = _
+    private[this] var _serverPanel  : JServerStatusPanel  = _
 
     def init()(implicit tx: S#Tx): this.type = {
       deferTx(guiInit())
@@ -64,8 +64,6 @@ object NuagesViewImpl {
       this
     }
 
-    private var _controlPanel: ControlPanel       = _
-    private var _serverPanel : JServerStatusPanel = _
 
     def controlPanel: ControlPanel = _controlPanel
 
@@ -130,16 +128,23 @@ object NuagesViewImpl {
       //  de.sciss.synth.Server.default ! osc.Message("/n_trace", 1003)
       //}
 
-      ggSouthBox.contents += HStrut(4)
-      val ggMenu = new Button("#")
-      ggMenu.listenTo(ggMenu)
-      ggMenu.reactions += {
-        case ButtonClicked(_) => showMenu(ggMenu)
-      }
-      ggMenu.focusable = false
-      ggSouthBox.contents += ggMenu
+//      ggSouthBox.contents += HStrut(4)
+//
+      // XXX TODO --- macros are half broken now?
+//      val ggMenu = new Button("#")
+//      ggMenu.listenTo(ggMenu)
+//      ggMenu.reactions += {
+//        case ButtonClicked(_) => showMenu(ggMenu)
+//      }
+//      ggMenu.focusable = false
+//      ggSouthBox.contents += ggMenu
 
+      val ggGlideTime = new RotaryKnob(panel.glideTimeModel)
+      ggGlideTime.maximumSize = ggGlideTime.preferredSize
       ggSouthBox.contents += HGlue
+      ggSouthBox.contents += ggGlideTime
+
+//      ggSouthBox.contents += HGlue
       // currently not working:
       // ggSouthBox.contents += transition
 
@@ -186,37 +191,37 @@ object NuagesViewImpl {
       _southBox.contents += c
     }
 
-    private def showMenu(parent: Component): Unit = {
-      val selectedObjects = panel.selection.collect {
-        case v: NuagesObj[S] => v
-      }
-      val pop = new PopupMenu {
-        contents += new MenuItem(new Action("Save Macro...") {
-          enabled = selectedObjects.nonEmpty
-          def apply(): Unit = {
-            val p = new OverlayPanel {
-              val ggName = new TextField("Macro", 12)
-              contents += new BasicPanel(Orientation.Horizontal) {
-                contents += new Label("Name:") {
-                  foreground = Color.white
-                }
-                contents += HStrut(4)
-                contents += ggName
-              }
-              onComplete {
-                close()
-                panel.saveMacro(ggName.text, selectedObjects)
-              }
-            }
-            panel.showOverlayPanel(p)
-          }
-        })
-        contents += new MenuItem(new Action("Paste Macro...") {
-          def apply(): Unit = panel.showInsertMacroDialog()
-        })
-      }
-      pop.show(parent, 0, 0)
-    }
+//    private def showMenu(parent: Component): Unit = {
+//      val selectedObjects = panel.selection.collect {
+//        case v: NuagesObj[S] => v
+//      }
+//      val pop = new PopupMenu {
+//        contents += new MenuItem(new Action("Save Macro...") {
+//          enabled = selectedObjects.nonEmpty
+//          def apply(): Unit = {
+//            val p = new OverlayPanel {
+//              val ggName = new TextField("Macro", 12)
+//              contents += new BasicPanel(Orientation.Horizontal) {
+//                contents += new Label("Name:") {
+//                  foreground = Color.white
+//                }
+//                contents += HStrut(4)
+//                contents += ggName
+//              }
+//              onComplete {
+//                close()
+//                panel.saveMacro(ggName.text, selectedObjects)
+//              }
+//            }
+//            panel.showOverlayPanel(p)
+//          }
+//        })
+//        contents += new MenuItem(new Action("Paste Macro...") {
+//          def apply(): Unit = panel.showInsertMacroDialog()
+//        })
+//      }
+//      pop.show(parent, 0, 0)
+//    }
 
     def dispose()(implicit tx: S#Tx): Unit = {
       panel.aural.removeClient(this)

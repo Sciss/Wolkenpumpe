@@ -25,6 +25,7 @@ import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.lucre.{expr, stm}
 import de.sciss.nuages.NuagesAttribute.Parent
 import de.sciss.nuages.impl.NuagesDataImpl.colrManual
+import de.sciss.numbers
 import de.sciss.serial.Serializer
 import de.sciss.synth.Curve
 import de.sciss.synth.proc.{EnvSegment, TimeRef}
@@ -166,38 +167,65 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
       val instant = !e.isShiftDown
       val vStart  = if (e.isAltDown) {
         val angV = Vector.fill(numChannels)(ang)
-        if (instant) setControl(angV, instant = true)
+        if (instant) setControl(angV, dur = 0f)
         angV
       } else numericValue
       _drag = new NumericAdjustment(ang, vStart, instant = instant)
+      if (!instant) initGlide()
       true
     } else false
   }
 
-  protected final def setControl(v: Vec[Double], instant: Boolean): Unit =
+  private def initGlide(): Unit = {
+    val m = main
+    m.acceptGlideTime  = true
+    m.glideTime        = 0f
+  }
+
+  protected final def setControl(v: Vec[Double], dur: Float): Unit =
     atomic { implicit tx =>
-      setControlTxn(v, if (instant) 0L else (TimeRef.SampleRate * 10).toLong)
+      setControlTxn(v, (TimeRef.SampleRate * dur).toLong)
     }
 
-  final override def itemDragged(vi: VisualItem, e: MouseEvent, pt: Point2D): Unit =
-    if (_drag != null) {
+  final override def itemDragged(vi: VisualItem, e: MouseEvent, pt: Point2D): Unit = {
+    val dr = _drag
+    if (dr!= null) {
+//      if (!dr.isInit) {
+//        dr.isInit = true
+        if (e.isShiftDown && dr.instant) {
+          dr.instant = false
+          initGlide()
+        }
+//      }
+
       val dy = r.getCenterY - pt.getY
       val dx = pt.getX - r.getCenterX
-      val ang   = (((-math.atan2(dy, dx) / math.Pi + 3.5) % 2.0) - 0.25) / 1.5
-      val vEff0 = _drag.valueStart.map { vs =>
-        math.max(0.0, math.min(1.0, vs + (ang - _drag.angStart)))
+      val ang = (((-math.atan2(dy, dx) / math.Pi + 3.5) % 2.0) - 0.25) / 1.5
+      val vEff0 = dr.valueStart.map { vs =>
+        math.max(0.0, math.min(1.0, vs + (ang - dr.angStart)))
       }
-      val vEff  = if (spec.warp == IntWarp) vEff0.map { ve => spec.inverseMap(spec.map(ve)) } else vEff0
-      if (_drag.instant) {
-        setControl(vEff, instant = true)
+      val vEff = if (spec.warp == IntWarp) vEff0.map { ve => spec.inverseMap(spec.map(ve)) } else vEff0
+      if (dr.instant) {
+        setControl(vEff, dur = 0f)
       }
-      _drag.dragValue = vEff
+      dr.dragValue = vEff
     }
+  }
 
   final override def itemReleased(vi: VisualItem, e: MouseEvent, pt: Point2D): Unit =
     if (_drag != null) {
       if (!_drag.instant) {
-        setControl(_drag.dragValue, instant = false)
+        val m = main
+        m.acceptGlideTime = false
+        val dur0          = m.glideTime
+        // leave that as a visible indicator:
+//        m.glideTime       = 0f
+        val dur           = if (dur0 == 0f) 0f else {
+          import numbers.Implicits._
+          if (dur0 <= 0.1f) dur0 * 2.5f
+          else dur0.linexp(0.1f, 1f, 0.25f, 60f)   // extreme :)
+        }
+        setControl(_drag.dragValue, dur = dur)
       }
       _drag = null
     }

@@ -14,13 +14,14 @@
 package de.sciss.nuages
 
 import java.awt.geom.Point2D
+import javax.swing.BoundedRangeModel
 
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{Sys, Obj, TxnLike}
+import de.sciss.lucre.stm.{Obj, Sys, TxnLike}
 import de.sciss.lucre.swing.View
-import de.sciss.lucre.synth.{Sys => SSys, Node => SNode, AudioBus, Synth, Txn}
+import de.sciss.lucre.synth.{AudioBus, Synth, Txn, Node => SNode, Sys => SSys}
 import de.sciss.nuages.impl.{PanelImpl => Impl}
-import de.sciss.synth.proc.{Output, AuralSystem, Transport, WorkspaceHandle}
+import de.sciss.synth.proc.{AuralSystem, Output, Transport, WorkspaceHandle}
 import prefuse.data.Graph
 import prefuse.visual.{AggregateTable, VisualGraph}
 import prefuse.{Display, Visualization}
@@ -82,6 +83,18 @@ trait NuagesPanel[S <: Sys[S]] extends View[S] {
   def selection: Set[NuagesNode[S]]
 
   def saveMacro(name: String, obj: Set[NuagesObj[S]]): Unit
+
+  // -- gliding --
+
+  // XXX TODO -- cheesy hack
+
+  /** Glide time normalised to 0..1 */
+  var glideTime       : Float
+
+  def glideTimeModel  : BoundedRangeModel
+
+  /** Whether glide time should be used or set */
+  var acceptGlideTime : Boolean
 
   // ---- transactional methods ----
 
