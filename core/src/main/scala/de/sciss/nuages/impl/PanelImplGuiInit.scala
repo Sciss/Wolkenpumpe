@@ -38,6 +38,8 @@ import prefuse.{Constants, Display, Visualization}
 import scala.swing.Component
 
 trait PanelImplGuiInit[S <: Sys[S]] extends ComponentHolder[Component] {
+  _: NuagesPanel[S] =>
+
   import PanelImpl.{GROUP_NODES, GROUP_EDGES, AGGR_PROC, ACTION_COLOR, ACTION_LAYOUT, LAYOUT_TIME}
   import NuagesPanel.{GROUP_GRAPH, GROUP_SELECTION, COL_NUAGES}
 
@@ -75,6 +77,7 @@ trait PanelImplGuiInit[S <: Sys[S]] extends ComponentHolder[Component] {
     _mGlideTime.setValue(view)
   }
 
+  @volatile
   var acceptGlideTime: Boolean = false
 
   def glideTimeModel: BoundedRangeModel = _mGlideTime
