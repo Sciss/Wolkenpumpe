@@ -30,6 +30,8 @@ object NuagesDoubleAttrInput extends PassAttrInputFactory {
 final class NuagesDoubleAttrInput[S <: SSys[S]] private (val attribute: NuagesAttribute[S])
   extends NuagesScalarAttrInput[S] {
 
+  override def toString = s"Double($attribute)"
+
   type A                  = Double
   type Repr[~ <: Sys[~]]  = DoubleObj[~]
 

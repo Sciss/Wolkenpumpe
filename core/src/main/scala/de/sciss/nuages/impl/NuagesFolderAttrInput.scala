@@ -18,7 +18,7 @@ import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Disposable, Obj, Sys, TxnLike}
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.nuages.NuagesAttribute.{Input, Parent}
-import de.sciss.synth.proc.Folder
+import de.sciss.synth.proc.{Folder, TimeRef}
 
 import scala.concurrent.stm.Ref
 
@@ -50,6 +50,8 @@ final class NuagesFolderAttrInput[S <: SSys[S]] private(val attribute: NuagesAtt
   extends NuagesAttrInputBase[S] with NuagesAttribute.Parent[S] {
 
   import TxnLike.peer
+
+  override def toString = s"$attribute fl[$frameOffset / ${TimeRef.framesToSecs(frameOffset)}]"
 
   private[this] var _observer: Disposable[S#Tx] = _
 

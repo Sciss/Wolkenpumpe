@@ -110,7 +110,7 @@ trait NuagesScheduledBase[S <: Sys[S]] {
 
   private[this] def play()(implicit tx: S#Tx): Unit = {
     val offset = currentOffset()
-    log(s"$this play $offset / ${TimeRef.framesToSecs(offset)}s")
+    log(s"$this play $offset / ${TimeRef.framesToSecs(offset)}")
     schedNext(offset)
   }
 

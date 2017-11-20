@@ -10,13 +10,15 @@ import de.sciss.synth.proc.Durable
 
 object Demo {
 
-  case class Config(durable: Option[File] = None, timeline: Boolean = false, dumpOSC: Boolean = false)
+  case class Config(durable: Option[File] = None, timeline: Boolean = false, dumpOSC: Boolean = false,
+                    log: Boolean = false)
 
   def main(args: Array[String]): Unit = {
     val p = new scopt.OptionParser[Config]("Demo") {
       opt[File]('d', "durable")  text "Durable database"         action { case (f, c) => c.copy(durable  = Some(f)) }
       opt[Unit]('t', "timeline") text "Use performance timeline" action { case (_, c) => c.copy(timeline = true) }
       opt[Unit]("dump-osc")      text "Dump OSC messages"        action { case (_, c) => c.copy(dumpOSC  = true) }
+      opt[Unit]("log")           text "Enable logging"           action { case (_, c) => c.copy(log      = true) }
     }
     p.parse(args, Config()).fold(sys.exit(1))(run)
   }
@@ -121,6 +123,7 @@ object Demo {
   def run(config: Config): Unit = {
     Submin.install(true)
     Wolkenpumpe.init()
+    if (config.log) showLog = true
 
     config.durable match {
       case Some(f) =>

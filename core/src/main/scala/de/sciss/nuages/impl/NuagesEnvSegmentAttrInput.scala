@@ -35,6 +35,8 @@ object NuagesEnvSegmentAttrInput extends PassAttrInputFactory {
 final class NuagesEnvSegmentAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S])
   extends RenderNumericAttr[S] with NuagesAttrInputImpl[S] {
 
+  override def toString = s"EnvSegment($attribute)"
+
   type A                  = Vec[Double]
   type B                  = EnvSegment
   type Repr [~ <: Sys[~]] = EnvSegment.Obj[~]
@@ -85,11 +87,11 @@ final class NuagesEnvSegmentAttrInput[S <: SSys[S]](val attribute: NuagesAttribu
 
     val nowVar = tpe.newVar[S](nowConst)
     if (durFrames == 0L)
-      inputParent.updateChild(before = before, now = nowVar, dt = 0L)
+      inputParent.updateChild(before = before, now = nowVar, dt = 0L, clearRight = true)
     else {
       val seg = mkEnvSeg(before, Curve.lin) // EnvSegment.Obj.ApplySingle()
-      inputParent.updateChild(before = before, now = nowVar, dt = durFrames )
-      inputParent.updateChild(before = before, now = seg   , dt = 0L        )
+      inputParent.updateChild(before = before, now = nowVar, dt = durFrames, clearRight = true )
+      inputParent.updateChild(before = before, now = seg   , dt = 0L       , clearRight = false)
     }
   }
 }

@@ -4,6 +4,7 @@ package impl
 import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.nuages.NuagesAttribute.{Input, Parent}
+import prefuse.data.{Node => PNode}
 
 import scala.language.higherKinds
 
@@ -15,6 +16,8 @@ trait PassAttrInput[S <: Sys[S]] extends NuagesAttribute.Input[S] with NuagesDat
   type Repr[~ <: Sys[~]]
 
   def dragOption: Option[NumericAdjustment]
+
+  def pNode: PNode
 
   def passFrom(that: PassAttrInput[S])(implicit tx: S#Tx): Unit
   def passedTo(that: PassAttrInput[S])(implicit tx: S#Tx): Unit

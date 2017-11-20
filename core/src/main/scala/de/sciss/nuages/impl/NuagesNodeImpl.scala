@@ -40,7 +40,7 @@ trait NuagesNodeRootImpl[S <: Sys[S]] extends NuagesNodeImpl[S] {
 
   protected final def mkPNode(): VisualItem = {
     if (_pNode != null) throw new IllegalStateException(s"Component $this has already been initialized")
-    log(s"mkPNode($name)")
+    log(s"mkPNode($name) $this")
     _pNode  = main.graph.addNode()
     val vis = main.visualization
     val vi  = vis.getVisualItem(NuagesPanel.GROUP_GRAPH, _pNode)

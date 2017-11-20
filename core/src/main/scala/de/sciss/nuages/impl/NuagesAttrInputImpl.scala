@@ -87,9 +87,10 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
   final def input(implicit tx: S#Tx): Obj[S] = objH()._1()
 
   final def passFrom(that: PassAttrInput[S])(implicit tx: S#Tx): Unit = {
-    copyFrom(that)
     main.deferVisTx {
-      _drag = that.dragOption.orNull
+      copyFrom(that)
+      _pNode  = that.pNode
+      _drag   = that.dragOption.orNull
     }
     that.passedTo(this)
   }
@@ -144,7 +145,7 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
   private def initGUI(): Unit = {
     val mkNode = _pNode == null
     if (mkNode) {
-      log(s"mkPNode($name)")
+      log(s"mkPNode($name) this ")
       _pNode = main.graph.addNode()
     }
     val vis = main.visualization

@@ -39,6 +39,7 @@ object NuagesGraphemeAttrInput extends NuagesAttribute.Factory {
 
   def tryConsume[S <: SSys[S]](oldInput: Input[S], _newOffset0: Long, newValue: Grapheme[S])
                               (implicit tx: S#Tx, context: NuagesContext[S]): Option[Input[S]] = {
+    log(s"NuagesGraphemeAttrInput.tryConsume($oldInput, ${_newOffset0}, $newValue)")
     val attr          = oldInput.attribute
     val parent        = attr.parent
     val main          = parent.main
@@ -55,10 +56,20 @@ object NuagesGraphemeAttrInput extends NuagesAttribute.Factory {
         if (oldInput.tryConsume(newOffset = _newOffset, newValue = head)) {
           val res = new NuagesGraphemeAttrInput(attr, frameOffset = _frameOffset)
             .consume(time, head, oldInput, newValue, attr.inputParent)
+          log(s"-> $res")
           Some(res)
-        } else None
+        } else {
+          log(s"-> $head -> None")
+          val opt = NuagesAttribute.getFactory(head)
+          opt.flatMap { factory =>
+            factory.tryConsume(oldInput = oldInput, newOffset = parent.frameOffset,
+              newValue = head.asInstanceOf[factory.Repr[S]])
+          }
+        }
 
-      case _ => None
+      case _ =>
+        log("-> None")
+        None
     }
   }
 }
@@ -69,11 +80,14 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
 
   import TxnLike.peer
 
-  override def toString = s"$attribute gr[$frameOffset / ${TimeRef.framesToSecs(frameOffset)}s]"
+  override def toString = s"$attribute gr[$frameOffset / ${TimeRef.framesToSecs(frameOffset)}]"
 
   protected var graphemeH: stm.Source[S#Tx, Grapheme[S]] = _
 
-  def tryConsume(newOffset: Long, to: Obj[S])(implicit tx: S#Tx): Boolean = false
+  def tryConsume(newOffset: Long, to: Obj[S])(implicit tx: S#Tx): Boolean = {
+    log(s"$this.tryConsume($newOffset, $to) -> false")
+    false
+  }
 
   def input(implicit tx: S#Tx): Obj[S] = graphemeH()
 
@@ -94,7 +108,7 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
 
   private def consume(start: Long, child: Obj[S], childView: Input[S], gr: Grapheme[S], parent: Parent[S])
                      (implicit tx: S#Tx): this.type = {
-    log(s"$this consume ($start - ${TimeRef.framesToSecs(start)}s)")
+    log(s"$this consume ($start - ${TimeRef.framesToSecs(start)})")
     graphemeH             = tx.newHandle(gr)
     inputParent           = parent
     childView.inputParent = this
@@ -277,13 +291,31 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
   }
 
   private[this] def setChild(start: Long, child: Obj[S])(implicit tx: S#Tx): Unit = {
+    log(s"$this setChild($start / ${TimeRef.framesToSecs(start)}, $child")
     val curr        = currentView()
     val childOffset = if (frameOffset == Long.MaxValue) Long.MaxValue else frameOffset + start
-    if (curr.isEmpty || !curr.input.tryConsume(newOffset = childOffset, newValue = child)) {
-      // log(s"elemAdded($start, $child); time = $time")
+
+    def mkNew(): Unit = {
+      log("-> mkNew")
       curr.dispose()
       val newView     = NuagesAttribute.mkInput(attribute, parent = this, frameOffset = childOffset, value = child)
       currentView()   = new View(start = start, input = newView)
+    }
+
+    if (curr.isEmpty) {
+      mkNew()
+    } else {
+      val consumed = curr.input.tryConsume(newOffset = childOffset, newValue = child)
+      if (!consumed) {
+        val optFact = NuagesAttribute.getFactory(child)
+        optFact.fold(mkNew()) { factory =>
+          val optIn = factory.tryConsume(oldInput = curr.input, newOffset = childOffset,
+            newValue = child.asInstanceOf[factory.Repr[S]])
+          optIn.fold(mkNew()) { newView =>
+            currentView() = new View(start = start, input = newView)
+          }
+        }
+      }
     }
   }
 

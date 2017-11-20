@@ -30,6 +30,8 @@ object NuagesIntAttrInput extends PassAttrInputFactory {
 final class NuagesIntAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S])
   extends NuagesScalarAttrInput[S] {
 
+  override def toString = s"Int($attribute)"
+
   type A                  = Int
   type Repr[~ <: Sys[~]]  = IntObj[~]
 

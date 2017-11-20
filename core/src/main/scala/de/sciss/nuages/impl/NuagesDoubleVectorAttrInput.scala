@@ -18,7 +18,7 @@ import de.sciss.lucre.expr.{DoubleVector, Type}
 import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.synth.Curve
-import de.sciss.synth.proc.EnvSegment
+import de.sciss.synth.proc.{EnvSegment, TimeRef}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
@@ -33,6 +33,8 @@ object NuagesDoubleVectorAttrInput extends PassAttrInputFactory {
 }
 final class NuagesDoubleVectorAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S])
   extends RenderAttrDoubleVec[S] with NuagesAttrInputExprImpl[S] {
+
+  override def toString = s"DoubleVector($attribute)"
 
   type Repr[~ <: Sys[~]]  = DoubleVector[~]
 

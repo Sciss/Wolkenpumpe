@@ -49,6 +49,9 @@ object NuagesAttribute {
     def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: Parent[S], frameOffset: Long, value: Repr[S])
                            (implicit tx: S#Tx, context: NuagesContext[S]): Input[S]
 
+    /** Tries to transition an old view to a new view.
+      * If successful (`Some`), the old view will have been disposed of if necessary!
+      */
     def tryConsume[S <: SSys[S]](oldInput: Input[S], newOffset: Long, newValue: Repr[S])
                                 (implicit tx: S#Tx, context: NuagesContext[S]): Option[Input[S]]
   }
@@ -56,6 +59,8 @@ object NuagesAttribute {
   def addFactory(f: Factory): Unit = Impl.addFactory(f)
 
   def factories: Iterable[Factory] = Impl.factories
+
+  def getFactory[S <: Sys[S]](value: Obj[S]): Option[Factory] = Impl.getFactory(value)
 
   // ----
 

@@ -16,12 +16,12 @@ package impl
 
 import de.sciss.lucre.expr.SpanLikeObj
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{Obj, IdentifierMap, Sys, TxnLike}
+import de.sciss.lucre.stm.{IdentifierMap, Obj, Sys, TxnLike}
 import de.sciss.lucre.synth.{Sys => SSys}
-import de.sciss.nuages.NuagesAttribute.{Parent, Input}
-import de.sciss.span.{SpanLike, Span}
+import de.sciss.nuages.NuagesAttribute.{Input, Parent}
+import de.sciss.span.{Span, SpanLike}
 import de.sciss.synth.proc.Timeline.Timed
-import de.sciss.synth.proc.{Timeline, Transport}
+import de.sciss.synth.proc.{TimeRef, Timeline, Transport}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm.TSet
@@ -68,6 +68,8 @@ final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesA
   extends NuagesAttrInputBase[S] with NuagesTimelineBase[S] with Parent[S] {
 
   import TxnLike.peer
+
+  override def toString = s"$attribute tl[$frameOffset / ${TimeRef.framesToSecs(frameOffset)}]"
 
   private[this] val viewSet = TSet.empty[Input[S]]
 

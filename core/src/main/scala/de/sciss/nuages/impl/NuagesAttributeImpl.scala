@@ -63,7 +63,7 @@ object NuagesAttributeImpl {
     }
   }
 
-  private[this] def getFactory[S <: Sys[S]](value: Obj[S]): Option[Factory] = {
+  def getFactory[S <: Sys[S]](value: Obj[S]): Option[Factory] = {
     val tid = value.tpe.typeID
     val opt = map.get(tid)
     opt
@@ -206,7 +206,7 @@ object NuagesAttributeImpl {
         val gr      = Grapheme[S]
         val start   = currentOffset() + dt
 
-        log(s"$this updateChild($before, $now - $start / ${TimeRef.framesToSecs(start)}s)")
+        log(s"$this updateChild($before, $now - $start / ${TimeRef.framesToSecs(start)})")
 
         if (start != 0L) {
           val timeBefore = LongObj.newVar[S](0L) // XXX TODO ?

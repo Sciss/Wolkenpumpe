@@ -36,7 +36,7 @@ trait NuagesParamRootImpl[S <: Sys[S]] extends NuagesParamImpl[S] with NuagesNod
     if (_pEdge != null) throw new IllegalStateException(s"Component $this has already been initialized")
     val g   = main.graph
     _pEdge  = g.addEdge(parent.pNode, pNode)
-    log(s"mkPNodeAndEdge($name)")
+    log(s"mkPNodeAndEdge($name) $this")
     val pVi = main.visualization.getVisualItem(NuagesPanel.GROUP_GRAPH, parent.pNode)
     vi.setEndX(pVi.getEndX)
     vi.setEndY(pVi.getEndY)
