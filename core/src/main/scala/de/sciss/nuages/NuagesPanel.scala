@@ -90,8 +90,8 @@ trait NuagesPanel[S <: Sys[S]] extends View[S] {
 
   /** Glide time normalised to 0..1 */
   var glideTime       : Float
-
   def glideTimeModel  : BoundedRangeModel
+  var glideTimeSource : String
 
   /** Whether glide time should be used or set */
   var acceptGlideTime : Boolean

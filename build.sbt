@@ -1,7 +1,7 @@
 lazy val baseName        = "Wolkenpumpe"
 lazy val baseNameL       = baseName.toLowerCase
 lazy val projectVersion  = "2.20.0-SNAPSHOT"
-lazy val mimaVersion     = "2.10.0"
+lazy val mimaVersion     = "2.20.0"
 
 lazy val commonSettings = Seq(
   version              := projectVersion,
@@ -15,7 +15,7 @@ lazy val commonSettings = Seq(
   scalacOptions ++= Seq("-deprecation", "-unchecked", "-feature", "-encoding", "utf8", "-Xfuture", "-Xlint:-stars-align,_")
 ) ++ publishSettings
 
-lazy val soundProcessesVersion      = "3.16.0-SNAPSHOT"
+lazy val soundProcessesVersion      = "3.16.0"
 lazy val scalaColliderVersion       = "1.23.0"
 lazy val scalaColliderSwingVersion  = "1.35.0"
 lazy val prefuseVersion             = "1.0.1"

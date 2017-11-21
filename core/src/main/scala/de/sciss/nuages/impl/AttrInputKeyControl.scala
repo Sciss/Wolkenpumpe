@@ -14,12 +14,13 @@
 package de.sciss.nuages
 package impl
 
-import java.awt.datatransfer.{Transferable, Clipboard, ClipboardOwner}
+import java.awt.datatransfer.{Clipboard, ClipboardOwner, Transferable}
 import java.awt.geom.Point2D
 import java.awt.{Color, Point, Toolkit}
 import javax.swing.event.{AncestorEvent, AncestorListener}
 
 import de.sciss.desktop.KeyStrokes
+import de.sciss.equal.Implicits._
 import de.sciss.lucre.stm.Sys
 import de.sciss.nuages.KeyControl.ControlDrag
 import de.sciss.numbers
@@ -42,14 +43,17 @@ trait AttrInputKeyControl[S <: Sys[S]] extends ClipboardOwner {
 
   // ---- impl ----
 
-  override def itemKeyPressed(vi: VisualItem, e: KeyControl.Pressed): Boolean =
-    if ((e.modifiers & KeyStrokes.menu1.mask) == KeyStrokes.menu1.mask) {
-      if (e.code == Key.C) {        // copy
+  protected def escape(): Boolean = false
+
+  override def itemKeyPressed(vi: VisualItem, e: KeyControl.Pressed): Boolean = {
+    val code = e.code
+    if ((e.modifiers & KeyStrokes.menu1.mask) === KeyStrokes.menu1.mask) {
+      if (code === Key.C) { // copy
         val clip = Toolkit.getDefaultToolkit.getSystemClipboard
         val data = new KeyControl.ControlDrag(numericValue, attribute.spec)
         clip.setContents(data, this)
         true
-      } else if (e.code == Key.V) {  // paste clipboard
+      } else if (code === Key.V) { // paste clipboard
         val clip = Toolkit.getDefaultToolkit.getSystemClipboard
         if ( /* vc.editable && */ clip.isDataFlavorAvailable(KeyControl.ControlFlavor)) {
           val data = clip.getData(KeyControl.ControlFlavor).asInstanceOf[ControlDrag]
@@ -61,22 +65,36 @@ trait AttrInputKeyControl[S <: Sys[S]] extends ClipboardOwner {
       }
 
     } else {
-      if (e.code == Key.Enter) {
-        showParamInput(vi)
-        true
-      } else if (e.code >= Key.Key0 && e.code <= Key.Key9 && main.acceptGlideTime) {
+      def glide(k0: Key.Value): Boolean = main.acceptGlideTime && {
         import numbers.Implicits._
-        main.glideTime = e.code.id.linlin(Key.Key0.id, Key.Key9.id, 0f, 1f)
+        val time0 = code.id.linlin(k0.id, k0.id + 9, 0f, 1f)
+        // "double clicking" is to randomise
+        main.glideTime = if ((main.glideTime absdif time0) < 0.05f || (main.glideTimeSource !== "key")) time0 else {
+          (time0 + math.random.toFloat.linlin(0f, 1f, -0.1f, 0.1f)).clip(0f, 1f)
+        }
+        main.glideTimeSource = "key"
         true
-      } else {
-        false
+      }
+
+      code match {
+        case Key.Enter =>
+          showParamInput(vi)
+          true
+
+        case _ if code >= Key.Key0    && code <= Key.Key9    => glide(Key.Key0   )
+        case _ if code >= Key.Numpad0 && code <= Key.Numpad9 => glide(Key.Numpad0)
+
+        case Key.Escape => escape()
+
+        case _ => false
       }
     }
+  }
 
   override def itemKeyTyped(vi: VisualItem, e: KeyControl.Typed): Unit = {
     def checkDouble(out: Vec[Double]): Vec[Double] = {
       val name = attribute.name
-      val ok = (name != "amp" && name != "gain") || e.count > 1
+      val ok = ((name !== "amp") && (name !== "gain")) || e.count > 1
       if (ok) out else Vector.empty
     }
 
@@ -89,7 +107,7 @@ trait AttrInputKeyControl[S <: Sys[S]] extends ClipboardOwner {
       case '['  =>
         val s  = attribute.spec
         val vs = numericValue
-        val vNew = if (s.warp == IntWarp) {
+        val vNew = if (s.warp === IntWarp) {
           vs.map(v => s.inverseMap(s.map(v) - 1))
         } else vs.map(_ - 0.005)
         vNew.map(math.max(0.0, _))
@@ -97,7 +115,7 @@ trait AttrInputKeyControl[S <: Sys[S]] extends ClipboardOwner {
       case ']'  =>
         val s  = attribute.spec
         val vs = numericValue
-        val vNew = if (s.warp == IntWarp) {
+        val vNew = if (s.warp === IntWarp) {
           vs.map(v => s.inverseMap(s.map(v) + 1))
         } else vs.map(_ + 0.005)
         vNew.map(math.min(1.0, _))
@@ -109,7 +127,7 @@ trait AttrInputKeyControl[S <: Sys[S]] extends ClipboardOwner {
         val mid     = (min + max) / 2
         val newMin  = math.min(mid, min + 0.0025)
         val newMax  = math.max(mid, max - 0.0025)
-        if (newMin == min && newMax == max) Vector.empty else {
+        if (newMin === min && newMax === max) Vector.empty else {
           import numbers.Implicits._
           vs.map(_.linlin(min, max, newMin, newMax))
         }
@@ -120,9 +138,9 @@ trait AttrInputKeyControl[S <: Sys[S]] extends ClipboardOwner {
         val min     = vs.min
         val newMin  = math.max(0.0, min - 0.0025)
         val newMax  = math.min(1.0, max + 0.0025)
-        if (newMin == min && newMax == max) Vector.empty else {
+        if (newMin === min && newMax === max) Vector.empty else {
           import numbers.Implicits._
-          if (min == max) { // all equal -- use a random spread
+          if (min === max) { // all equal -- use a random spread
             vs.map(in => (in + math.random.linlin(0.0, 1.0, -0.0025, +0.0025)).clip(0.0, 1.0))
           } else {
             vs.map(_.linlin(min, max, newMin, newMax))

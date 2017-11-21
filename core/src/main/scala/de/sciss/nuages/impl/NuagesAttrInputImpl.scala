@@ -155,6 +155,13 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
     if (mkNode) attribute.addPNode(_pNode, isFree = true)
   }
 
+  override protected def escape(): Boolean = {
+    if (_drag != null) {
+      _drag = null
+      true
+    } else super.escape()
+  }
+
   final override def itemPressed(vi: VisualItem, e: MouseEvent, pt: Point2D): Boolean = {
     // if (!vProc.isAlive) return false
     // if (!editable) return true
@@ -178,8 +185,9 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
 
   private def initGlide(): Unit = {
     val m = main
-    m.acceptGlideTime  = true
-    m.glideTime        = 0f
+    m.acceptGlideTime   = true
+    m.glideTime         = 0f
+    m.glideTimeSource   = ""
   }
 
   protected final def setControl(v: Vec[Double], dur: Float): Unit =

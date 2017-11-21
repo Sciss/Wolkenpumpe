@@ -65,22 +65,25 @@ trait PanelImplGuiInit[S <: Sys[S]] extends ComponentHolder[Component] {
 
   private[this] var _mGlideTime : BoundedRangeModel   = _
 
-  def glideTime: Float = {
+  final def glideTime: Float = {
     import numbers.Implicits._
     val view = _mGlideTime.getValue
     view.linlin(_mGlideTime.getMinimum, _mGlideTime.getMaximum, 0f, 1f)
   }
 
-  def glideTime_=(value: Float): Unit = {
+  final def glideTime_=(value: Float): Unit = {
     import numbers.Implicits._
     val view = math.round(value.linlin(0f, 1f, _mGlideTime.getMinimum, _mGlideTime.getMaximum))
     _mGlideTime.setValue(view)
   }
 
   @volatile
-  var acceptGlideTime: Boolean = false
+  final var acceptGlideTime: Boolean = false
 
-  def glideTimeModel: BoundedRangeModel = _mGlideTime
+  @volatile
+  final var glideTimeSource: String = ""
+
+  final def glideTimeModel: BoundedRangeModel = _mGlideTime
 
   protected def guiInit(): Unit = {
     _vis = new Visualization
