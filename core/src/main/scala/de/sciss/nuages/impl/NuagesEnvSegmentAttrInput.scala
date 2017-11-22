@@ -58,6 +58,13 @@ final class NuagesEnvSegmentAttrInput[S <: SSys[S]](val attribute: NuagesAttribu
   @volatile
   private[this] var _numChannels: Int = _
 
+  override def passFrom(that: PassAttrInput[S])(implicit tx: S#Tx): Unit = {
+    main.deferVisTx {
+      dragOption = that.dragOption
+    }
+    super.passFrom(that)
+  }
+
   /** On the EDT! */
   def numericValue: Vec[Double] = {
 //    val v         = valueA

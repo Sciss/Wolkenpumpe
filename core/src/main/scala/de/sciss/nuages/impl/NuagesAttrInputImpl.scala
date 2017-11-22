@@ -73,7 +73,8 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
 
   // ---- impl: methods ----
 
-  final def dragOption: Option[NumericAdjustment] = Option(_drag)
+  final def dragOption        : Option[NumericAdjustment]        = Option(_drag)
+  final def dragOption_=(value: Option[NumericAdjustment]): Unit = _drag = value.orNull
 
   final protected def nodeSize = 1f
 
@@ -87,11 +88,10 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
 
   final def input(implicit tx: S#Tx): Obj[S] = objH()._1()
 
-  final def passFrom(that: PassAttrInput[S])(implicit tx: S#Tx): Unit = {
+  def passFrom(that: PassAttrInput[S])(implicit tx: S#Tx): Unit = {
     main.deferVisTx {
       copyFrom(that)
-      _pNode  = that.pNode
-      _drag   = that.dragOption.orNull
+      _pNode = that.pNode
     }
     that.passedTo(this)
   }

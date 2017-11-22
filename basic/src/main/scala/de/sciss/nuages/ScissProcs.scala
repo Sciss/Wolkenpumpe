@@ -24,12 +24,11 @@ import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Obj, Source}
 import de.sciss.lucre.synth.Sys
 import de.sciss.synth
+import de.sciss.synth.GE
 import de.sciss.synth.io.AudioFile
 import de.sciss.synth.proc.{Action, AudioCue, Code, Proc, SoundProcesses}
-import de.sciss.synth.ugen.ControlValues
-import de.sciss.synth.{Curve, GE, proc, ugen}
 
-import scala.Predef.{any2stringadd => _, _}
+import scala.Predef.{any2stringadd => _, _} // IntelliJ highlighting bug; don't change import
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.Future
 import scala.language.implicitConversions
@@ -51,6 +50,9 @@ object ScissProcs {
     def generatorChannels: Int
 
     def recDir: File
+    
+    /** Whether to create procs that require third-party UGens (sc3plugins). */
+    def plugins: Boolean
   }
 
   object Config {
@@ -70,10 +72,11 @@ object ScissProcs {
 
     var generatorChannels = 0
     var highPass          = 0
+    var plugins           = false
 
     def build: Config = ConfigImpl(
       audioFilesFolder = audioFilesFolder, masterGroups = masterGroups, generatorChannels = generatorChannels,
-      highPass = highPass, recDir = recDir)
+      highPass = highPass, recDir = recDir, plugins = plugins)
   }
 
   def mkLoop[S <: stm.Sys[S]](n: Nuages[S], art: Artifact[S], generatorChannels: Int)(implicit tx: S#Tx): Unit = {
@@ -104,7 +107,7 @@ object ScissProcs {
       val loopFrames  = BufFrames.kr(bufID)
 
       val numBufChans = spec.numChannels
-      // val numChans    = if (sConfig.generatorChannels > 0) sConfig.generatorChannels else numBufChans
+      // val numChans    = if (generatorChannels > 0) generatorChannels else numBufChans
 
       val trig1       = LocalIn.kr(Pad(0, pSpeed)) // Pad.LocalIn.kr(pSpeed)
       val gateTrig1   = PulseDivider.kr(trig = trig1, div = 2, start = 1)
@@ -174,7 +177,7 @@ object ScissProcs {
   }
 
   private case class ConfigImpl(audioFilesFolder: Option[File], masterGroups: Vec[NamedBusConfig],
-                                generatorChannels: Int, highPass: Int, recDir: File)
+                                generatorChannels: Int, highPass: Int, recDir: File, plugins: Boolean)
     extends Config
 
   private final val attrRecArtifact = "$file"
@@ -240,22 +243,36 @@ object ScissProcs {
     val dsl = DSL[S]
     import dsl._
 
+    import sConfig.generatorChannels
+
     val masterChansOption = nConfig.masterChannels
 
-    def ForceChan(in: GE): GE = if (sConfig.generatorChannels <= 0) in else {
-      WrapExtendChannels(sConfig.generatorChannels, in)
+    def ForceChan(in: GE): GE = if (generatorChannels <= 0) in else {
+      WrapExtendChannels(generatorChannels, in)
     }
 
     implicit val _nuages: Nuages[S] = nuages
 
     def filterF   (name: String)(fun: GE => GE): Proc[S] =
-      filter      (name, if (DSL.useScanFixed) sConfig.generatorChannels else -1)(fun)
+      filter      (name, if (DSL.useScanFixed) generatorChannels else -1)(fun)
 
     def sinkF     (name: String)(fun: GE => Unit): Proc[S] =
-      sink        (name, if (DSL.useScanFixed) sConfig.generatorChannels else -1)(fun)
+      sink        (name, if (DSL.useScanFixed) generatorChannels else -1)(fun)
 
     def collectorF(name: String)(fun: GE => Unit): Proc[S] =
-      collector   (name, if (DSL.useScanFixed) sConfig.generatorChannels else -1)(fun)
+      collector   (name, if (DSL.useScanFixed) generatorChannels else -1)(fun)
+
+    def mkSpread(arg: GE)(gen: GE => GE): GE = {
+      val nM = gen(arg)
+      if (generatorChannels <= 0) nM else {
+        val spread    = pAudio("spread", ParamSpec(0.0, 1.0), default(0.0f))
+        val spreadAvg = Mix.mono(spread) / generatorChannels
+        val pan       = spreadAvg.linlin(0, 1, -1, 1)
+        val argAvg    = Mix.mono(arg) / generatorChannels
+        val n0        = gen(argAvg)
+        LinXFade2.ar(n0, nM, pan)
+      }
+    }
 
     // -------------- GENERATORS --------------
     
@@ -304,10 +321,10 @@ object ScissProcs {
     }
 
     def default(in: Double): ControlValues =
-      if (sConfig.generatorChannels <= 0)
+      if (generatorChannels <= 0)
         in
       else
-        Vector.fill(sConfig.generatorChannels)(in)
+        Vector.fill(generatorChannels)(in)
 
     nConfig.micInputs.foreach { cfg =>
       generator(cfg.name) {
@@ -341,7 +358,7 @@ object ScissProcs {
         val sig   = XFade2.ar(pureIn, dly, feed)
 
         // val numOut = masterChansOption.fold(2)(_.size)
-        val numOut = if (sConfig.generatorChannels <= 0) masterChansOption.fold(2)(_.size) else sConfig.generatorChannels
+        val numOut = if (generatorChannels <= 0) masterChansOption.fold(2)(_.size) else generatorChannels
 
         val sig1: GE = if (numOut == cfg.numChannels) {
             sig
@@ -362,7 +379,7 @@ object ScissProcs {
 //        val sig     = In.ar(NumOutputBuses.ir + cfg.offset, cfg.numChannels) * boost
         val sig     = PhysicalIn.ar(cfg.indices) * boost
         // val numOut  = masterChansOption.fold(2)(_.size)
-        val numOut  = if (sConfig.generatorChannels <= 0) masterChansOption.fold(2)(_.size) else sConfig.generatorChannels
+        val numOut  = if (generatorChannels <= 0) masterChansOption.fold(2)(_.size) else generatorChannels
 
         val sig1: GE = if (numOut == cfg.numChannels) {
             sig
@@ -419,6 +436,30 @@ object ScissProcs {
       sig
     }
 
+    generator("a~noise0") {
+      val freq  = pAudio("freq", ParamSpec(0.01, 1000.0, ExpWarp, unit = "Hz"), default(1.0f))
+      val lo    = pAudio("lo"  , ParamSpec(0.0, 1.0), default(0.0f))
+      val hi    = pAudio("hi"  , ParamSpec(0.0, 1.0), default(1.0f))
+      //      val pow   = pAudio("pow" , ParamSpec(0.125, 8, ExpWarp), default(1.0))
+      mkSpread(freq)(LFDNoise0.ar).linlin(-1, 1, lo, hi) // .pow(pow)
+    }
+
+    generator("a~noise1") {
+      val freq  = pAudio("freq", ParamSpec(0.01, 1000.0, ExpWarp, unit = "Hz"), default(1.0f))
+      val lo    = pAudio("lo"  , ParamSpec(0.0, 1.0), default(0.0f))
+      val hi    = pAudio("hi"  , ParamSpec(0.0, 1.0), default(1.0f))
+      //      val pow   = pAudio("pow" , ParamSpec(0.125, 8, ExpWarp), default(1.0))
+      mkSpread(freq)(LFDNoise1.ar).linlin(-1, 1, lo, hi) // .pow(pow)
+    }
+
+    generator("a~brown") {
+      val up      = pAudio("up"  , ParamSpec(0.1, 10000.0, ExpWarp), default(1.0f))
+      val down    = pAudio("down", ParamSpec(0.1, 10000.0, ExpWarp), default(1.0f))
+      val n       = mkSpread(default(1f).seq)(BrownNoise.ar)
+      val range   = n.linlin(-1, 1, 0, 1)
+      Slew.ar(range, up = up, down = down)
+    }
+    
     // -------------- FILTERS --------------
 
     def mix(in: GE, flt: GE, mix: GE): GE = LinXFade2.ar(in, flt, mix * 2 - 1)
@@ -579,18 +620,18 @@ object ScissProcs {
 
     filterF("filt") { in =>
       shortcut = "F"
-      val pFreq = pAudio("freq", ParamSpec(-1, 1), default(0.54))
-      val pMix  = mkMix()
+      val pFreq = pAudio("freq", ParamSpec(-1, 1), default(0.5))
+      val pMix  = mkMix(1.0)
 
       val normFreq  = pFreq
       val lowFreqN  = Lag.ar(Clip.ar(normFreq, -1, 0))
-      val highFreqN = Lag.ar(Clip.ar(normFreq, 0, 1))
+      val highFreqN = Lag.ar(Clip.ar(normFreq,  0, 1))
       val lowFreq   = LinExp.ar(lowFreqN, -1, 0, 30, 20000)
       val highFreq  = LinExp.ar(highFreqN, 0, 1, 30, 20000)
-      val lowMix    = Clip.ar(lowFreqN * -10.0, 0, 1)
-      val highMix   = Clip.ar(highFreqN * 10.0, 0, 1)
+      val lowMix    = Clip.ar(lowFreqN  * -10.0, 0, 1)
+      val highMix   = Clip.ar(highFreqN * +10.0, 0, 1)
       val dryMix    = 1 - (lowMix + highMix)
-      val lpf       = LPF.ar(in, lowFreq) * lowMix
+      val lpf       = LPF.ar(in, lowFreq ) * lowMix
       val hpf       = HPF.ar(in, highFreq) * highMix
       val dry       = in * dryMix
       val flt       = dry + lpf + hpf
@@ -619,7 +660,7 @@ object ScissProcs {
       val rec         = (1 - feedBack).sqrt
       val pre         = feedBack.sqrt
 
-      // val numChans    = if (sConfig.generatorChannels > 0) sConfig.generatorChannels else 1
+      // val numChans    = if (generatorChannels > 0) generatorChannels else 1
 
       val trig        = LocalIn.kr(Pad(0, pSpeed)) // Pad.LocalIn.kr(pSpeed)
 
@@ -1016,7 +1057,7 @@ object ScissProcs {
 
     val sinkPrepObj = actions.actionRecPrepareH()
     val sinkDispObj = actions.actionRecDisposeH()
-    val genChansObj = IntObj.newConst[S](sConfig.generatorChannels)
+    val genChansObj = IntObj.newConst[S](generatorChannels)
     val recDirObj   = ArtifactLocation.newConst[S](sConfig.recDir)
 
     val sinkRecA = sinkRec.attr
@@ -1146,8 +1187,8 @@ object ScissProcs {
     filterF("a~div") { in =>
       shortcut = "V"
       val pThresh = pAudio("thresh", ParamSpec(0.01, 1, ExpWarp), default(0.1))
-      val pMul    = pAudio("mul"   , ParamSpec(1, 16, IntWarp), default(1.0))
-      val pDiv    = pAudio("div"   , ParamSpec(1, 16, IntWarp), default(1.0))
+      val pMul    = pAudio("mul"   , ParamSpec(1  , 16, IntWarp), default(1.0))
+      val pDiv    = pAudio("div"   , ParamSpec(1  , 16, IntWarp), default(1.0))
       val pAmp    = pAudio("amp"   , ParamSpec(0.01, 1, ExpWarp), default(0.1))
       val pMix    = mkMix()
       val inTrig  = in > pThresh // (in - pThresh).max(0.0)
@@ -1207,6 +1248,48 @@ object ScissProcs {
       val pMix    = mkMix()
       val sig     = Stepper.ar(inTrig, reset = reset, lo = 0, hi = pDiv).linlin(0, pDiv, pLo, pHi)
       mix(in, sig, pMix)
+    }
+
+    if (sConfig.plugins) {
+      filterF("squiz") { in =>
+        val lowest  = 30.0
+        val maxZero = 32
+        val maxDur  = 1.0 / lowest * maxZero
+        val pch     = pAudio("shift", ParamSpec(2, 16     , IntWarp), default(2f))
+        val zero    = pAudio("zero" , ParamSpec(1, maxZero /*, IntWarp */), default(1)) // too many points, don't use Int
+        val fade    = mkMix() // mkMix4()
+        val wet     = Squiz.ar(in, pitchRatio = pch, zeroCrossings = zero, maxDur = maxDur)
+        mix(in, wet, fade)
+      }
+
+      filterF("verb2") { in =>
+        val inL     = if (generatorChannels <= 0) in \ 0 else {
+          ChannelRangeProxy(in, from = 0, until = generatorChannels, step = 2)
+        }
+        val inR     = if (generatorChannels <= 0) in \ 1 else {
+          ChannelRangeProxy(in, from = 1, until = generatorChannels, step = 2)
+        }
+        val time    = pAudio("time"  , ParamSpec(0.1, 60.0, ExpWarp), default(2f))
+        val size    = pAudio("size"  , ParamSpec(0.5,  5.0, ExpWarp), default(1f))
+        val diff    = pAudio("diff"  , ParamSpec(0,  1), default(0.707f))
+        val damp    = pAudio("damp"  , ParamSpec(0,  1), default(0.1f))
+        val tail    = 1.0f // pAudio("tail" , ParamSpec(-12, 12), default(0f)).dbamp
+        val mod     = 0.1f
+        val fade    = mkMix()
+        val low     = tail// 1 - bright
+        val high    = tail // bright
+        val mid     = tail // 0.5
+        val verb    = JPverb.ar(inL = inL, inR = inR, revTime = time, damp = damp, size = size, earlyDiff = diff,
+        modDepth = mod, /* modFreq = ..., */ low = low, mid = mid, high = high)
+        val verbL   = if (generatorChannels <= 0) verb \ 0 else {
+          ChannelRangeProxy(verb, from = 0, until = generatorChannels, step = 2)
+        }
+        val verbR   = if (generatorChannels <= 0) verb \ 1 else {
+          ChannelRangeProxy(verb, from = 1, until = generatorChannels, step = 2)
+        }
+        val wet     = Flatten(Zip(verbL, verbR))
+        mix(in, wet, fade)
+      }
     }
 
     // -------------- DIFFUSIONS --------------
