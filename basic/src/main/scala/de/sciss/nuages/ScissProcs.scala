@@ -13,24 +13,19 @@
 
 package de.sciss.nuages
 
-import java.text.SimpleDateFormat
-import java.util.concurrent.TimeUnit
-import java.util.{Date, Locale}
-
 import de.sciss.file._
 import de.sciss.lucre.artifact.{Artifact, ArtifactLocation}
 import de.sciss.lucre.expr.IntObj
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{Obj, Source}
 import de.sciss.lucre.synth.Sys
 import de.sciss.synth
 import de.sciss.synth.GE
 import de.sciss.synth.io.AudioFile
-import de.sciss.synth.proc.{Action, AudioCue, Code, Proc, SoundProcesses}
+import de.sciss.synth.proc.{Action, AudioCue, Proc, SoundProcesses}
+import de.sciss.synth.proc.MacroImplicits.ActionMacroOps
 
-import scala.Predef.{any2stringadd => _, _} // IntelliJ highlighting bug; don't change import
+import scala.Predef.{any2stringadd => _, _}
 import scala.collection.immutable.{IndexedSeq => Vec}
-import scala.concurrent.Future
 import scala.language.implicitConversions
 
 /** This is my personal set of generators and filters. */
@@ -63,12 +58,10 @@ object ScissProcs {
 
   sealed trait Config extends ConfigLike
 
-  def defaultRecDir: File = file(sys.props("java.io.tmpdir"))
-
   final class ConfigBuilder private[ScissProcs]() extends ConfigLike {
     var audioFilesFolder: Option[File]        = None
     var masterGroups    : Vec[NamedBusConfig] = Vector.empty
-    var recDir          : File                = defaultRecDir
+    var recDir          : File                = Util.defaultRecDir
 
     var generatorChannels = 0
     var highPass          = 0
@@ -79,164 +72,62 @@ object ScissProcs {
       highPass = highPass, recDir = recDir, plugins = plugins)
   }
 
-  def mkLoop[S <: stm.Sys[S]](n: Nuages[S], art: Artifact[S], generatorChannels: Int)(implicit tx: S#Tx): Unit = {
-    import synth._
-    import ugen._
-
-    val dsl = DSL[S]
-    import dsl._
-    val f       = art.value
-    val spec    = AudioFile.readSpec(f)
-    implicit val nuages: Nuages[S] = n
-
-    def default(in: Double): ControlValues =
-      if (generatorChannels <= 0)
-        in
-      else
-        Vector.fill(generatorChannels)(in)
-
-    def ForceChan(in: GE): GE = if (generatorChannels <= 0) in else {
-      WrapExtendChannels(generatorChannels, in)
-    }
-
-    val procObj = generator(f.base) {
-      val pSpeed      = pAudio  ("speed", ParamSpec(0.125, 2.3511, ExpWarp), default(1.0))
-      val pStart      = pControl("start", ParamSpec(0, 1), default(0.0))
-      val pDur        = pControl("dur"  , ParamSpec(0, 1), default(1.0))
-      val bufID       = proc.graph.Buffer("file")
-      val loopFrames  = BufFrames.kr(bufID)
-
-      val numBufChans = spec.numChannels
-      // val numChans    = if (generatorChannels > 0) generatorChannels else numBufChans
-
-      val trig1       = LocalIn.kr(Pad(0, pSpeed)) // Pad.LocalIn.kr(pSpeed)
-      val gateTrig1   = PulseDivider.kr(trig = trig1, div = 2, start = 1)
-      val gateTrig2   = PulseDivider.kr(trig = trig1, div = 2, start = 0)
-      val startFrame  = pStart *  loopFrames
-      val numFrames   = pDur   * (loopFrames - startFrame)
-      val lOffset     = Latch.kr(in = startFrame, trig = trig1)
-      val lLength     = Latch.kr(in = numFrames , trig = trig1)
-      val speed       = A2K.kr(pSpeed)
-      val duration    = lLength / (speed * SampleRate.ir) - 2
-      val gate1       = Trig1.kr(in = gateTrig1, dur = duration)
-      val env         = Env.asr(2, 1, 2, Curve.lin) // \sin
-      // val bufID       = Select.kr(pBuf, loopBufIDs)
-      val play1a      = PlayBuf.ar(numBufChans, bufID, speed, gateTrig1, lOffset, loop = 0)
-      val play1b      = Mix(play1a)
-      val play1       = ForceChan(play1b)
-      // val play1       = Flatten(Seq.tabulate(numChans)(play1a \ _))
-      val play2a      = PlayBuf.ar(numBufChans, bufID, speed, gateTrig2, lOffset, loop = 0)
-      val play2b      = Mix(play2a)
-      val play2       = ForceChan(play2b)
-      // val play2       = Flatten(Seq.tabulate(numChans)(play2a \ _))
-      val amp0        = EnvGen.kr(env, gate1) // 0.999 = bug fix !!!
-      val amp2        = 1.0 - amp0.squared
-      val amp1        = 1.0 - (1.0 - amp0).squared
-      val sig         = (play1 * amp1) + (play2 * amp2)
-      LocalOut.kr(Impulse.kr(1.0 / duration.max(0.1)))
-      sig
-    }
-    // val art   = Artifact(locH(), f) // locH().add(f)
-    val gr    = AudioCue.Obj[S](art, spec, 0L, 1.0)
-    procObj.attr.put("file", gr) // Obj(AudioGraphemeElem(gr)))
-    // val artObj  = Obj(ArtifactElem(art))
-    // procObj.attr.put("file", artObj)
-  }
-
-  def recDispose[S <: stm.Sys[S]](universe: Action.Universe[S])(implicit tx: S#Tx): Unit = {
+  def actionRecPrepare[S <: stm.Sys[S]](implicit tx: S#Tx): Action[S] = Action.apply[S] { universe =>
     import universe._
-    val obj       = invoker.getOrElse(sys.error("ScissProcs.recDispose - no invoker"))
-    val attr      = obj.attr
-    val artObj    = attr.$[Artifact](attrRecArtifact).getOrElse(sys.error(s"ScissProcs.recDispose - Could not find $attrRecArtifact"))
-    val genChans  = attr.$[IntObj  ](attrRecGenChans).fold(0)(_.value)
-    val nuages0   = Nuages.find[S]()
-      .getOrElse(sys.error("ScissProcs.recDispose - Cannot find Nuages instance"))
-    val nuagesH   = tx.newHandle(nuages0)
-    SoundProcesses.scheduledExecutorService.schedule(new Runnable {
-      def run(): Unit = SoundProcesses.atomic[S, Unit] { implicit tx =>
-        val nuages: Nuages[S] = nuagesH()
-        mkLoop[S](nuages, artObj, generatorChannels = genChans)
-      } (universe.cursor)
-    }, 1000, TimeUnit.MILLISECONDS)
-  }
-
-  private[this] val recFormat = new SimpleDateFormat("'rec_'yyMMdd'_'HHmmss'.aif'", Locale.US)
-
-  private def findRecDir[S <: stm.Sys[S]](obj: Obj[S])(implicit tx: S#Tx): File =
-    obj.attr.$[ArtifactLocation](attrRecDir).fold(defaultRecDir)(_.value)
-
-  def recPrepare[S <: stm.Sys[S]](universe: Action.Universe[S])(implicit tx: S#Tx): Unit = {
-    import universe._
-    val obj               = invoker.getOrElse(sys.error(s"ScissProcs.recPrepare - no invoker"))
-    val name              = recFormat.format(new Date)
-    val nuages: Nuages[S] = Nuages.find[S]()
+    import de.sciss.nuages.Util._
+    val obj     = invoker.getOrElse(sys.error("ScissProcs.recPrepare - no invoker"))
+    val name    = recFormatAIFF.format(new java.util.Date)
+    val nuages  = de.sciss.nuages.Nuages.find[S]()
       .getOrElse(sys.error("ScissProcs.recPrepare - Cannot find Nuages instance"))
     val loc     = getRecLocation(nuages, findRecDir(obj))
     val artM    = Artifact[S](loc, Artifact.Child(name)) // XXX TODO - should check that it is different from previous value
     obj.attr.put(attrRecArtifact, artM)
   }
 
+  def actionRecDispose[S <: stm.Sys[S]](implicit tx: S#Tx): Action[S] = Action.apply[S] { universe =>
+    import universe._
+    import de.sciss.nuages.Util._
+    val obj       = invoker.getOrElse(sys.error("ScissProcs.recDispose - no invoker"))
+    val attr      = obj.attr
+    val artObj    = attr.$[Artifact](attrRecArtifact).getOrElse(
+      sys.error(s"ScissProcs.recDispose - Could not find $attrRecArtifact"))
+    val genChans  = attr.$[IntObj  ](attrRecGenChans).fold(0)(_.value)
+    val nuages0 = de.sciss.nuages.Nuages.find[S]()
+      .getOrElse(sys.error("ScissProcs.recDispose - Cannot find Nuages instance"))
+    val nuagesH   = tx.newHandle(nuages0)
+    SoundProcesses.scheduledExecutorService.schedule(new Runnable {
+      def run(): Unit = SoundProcesses.atomic[S, Unit] { implicit tx =>
+        val nuages = nuagesH()
+        mkLoop[S](nuages, artObj, generatorChannels = genChans)
+      } (universe.cursor)
+    }, 1000, java.util.concurrent.TimeUnit.MILLISECONDS)
+  }
+
   private case class ConfigImpl(audioFilesFolder: Option[File], masterGroups: Vec[NamedBusConfig],
                                 generatorChannels: Int, highPass: Int, recDir: File, plugins: Boolean)
     extends Config
 
-  private final val attrRecArtifact = "$file"
-  private final val attrRecGenChans = "$gen-chans"
-  private final val attrRecDir      = "$rec-dir"
-
 //  private final val attrPrepareRec  = "prepare-rec"
 //  private final val attrDisposeRec  = "dispose-rec"
 
-  def getRecLocation[S <: stm.Sys[S]](n: Nuages[S], recDir: => File)(implicit tx: S#Tx): ArtifactLocation[S] = {
-    val attr = n.attr
-    attr.$[ArtifactLocation](Nuages.attrRecLoc).getOrElse {
-      if (!recDir.exists()) tx.afterCommit(recDir.mkdirs())
-      val newLoc = ArtifactLocation.newVar[S](recDir)
-      // newLoc.name = RecName
-      // root.modifiableOption.foreach(_.addLast(newLoc))
-      attr.put(Nuages.attrRecLoc, newLoc)
-      newLoc
-    }
-  }
-
-  def WrapExtendChannels(n: Int, sig: GE): GE = Vec.tabulate(n)(sig \ _)
-
-  trait Actions[S <: Sys[S]] {
-    def actionRecPrepareH: stm.Source[S#Tx, Action[S]]
-    def actionRecDisposeH: stm.Source[S#Tx, Action[S]]
-  }
-
-  def compileAndApply[S <: Sys[S]](nuages: Nuages[S], nConfig: Nuages.Config, sConfig: ScissProcs.Config)
-                                  (implicit tx: S#Tx, cursor: stm.Cursor[S],
-                                   compiler: Code.Compiler): Future[Unit] = {
-    val futActions = compileActions[S]()
-    import SoundProcesses.executionContext
-    futActions.map { actions =>
-      cursor.step { implicit tx =>
-        ScissProcs[S](nuages, nConfig, sConfig, actions)
-      }
-    }
-  }
-
-  def compileActions[S <: Sys[S]]()(implicit tx: S#Tx, cursor: stm.Cursor[S],
-                                    compiler: Code.Compiler): Future[Actions[S]] = {
-    val futRecPrepare = Action.compile[S](Code.Action("""de.sciss.nuages.ScissProcs.recPrepare(universe)"""))
-    val futRecDispose = Action.compile[S](Code.Action("""de.sciss.nuages.ScissProcs.recDispose(universe)"""))
-
-    import SoundProcesses.executionContext
-
-    for {
-      recPrepare <- futRecPrepare
-      recDispose <- futRecDispose
-    } yield new Actions[S] {
-      val actionRecPrepareH: Source[S#Tx, Action[S]] = recPrepare
-      val actionRecDisposeH: Source[S#Tx, Action[S]] = recDispose
-    }
-  }
-
-  def apply[S <: Sys[S]](nuages: Nuages[S], nConfig: Nuages.Config, sConfig: ScissProcs.Config,
-                         actions: Actions[S])
+  def apply[S <: Sys[S]](nuages: Nuages[S], nConfig: Nuages.Config, sConfig: ScissProcs.Config)
                         (implicit tx: S#Tx): Unit = {
+    val mapActions = mkActions[S]()
+    applyWithActions[S](nuages, nConfig, sConfig, mapActions)
+  }
+
+  final val keyActionRecPrepare = "rec-prepare"
+  final val keyActionRecDispose = "rec-dispose"
+
+  def mkActions[S <: Sys[S]]()(implicit tx: S#Tx): Map[String, Action[S]] = {
+    val recPrepare = actionRecPrepare[S]
+    val recDispose = actionRecDispose[S]
+    Map(keyActionRecPrepare -> recPrepare, keyActionRecDispose -> recDispose)
+  }
+
+  def applyWithActions[S <: Sys[S]](nuages: Nuages[S], nConfig: Nuages.Config, sConfig: ScissProcs.Config,
+                                    actions: Map[String, Action[S]])
+                                   (implicit tx: S#Tx): Unit = {
     import synth._
     import ugen._
 
@@ -248,7 +139,7 @@ object ScissProcs {
     val masterChansOption = nConfig.masterChannels
 
     def ForceChan(in: GE): GE = if (generatorChannels <= 0) in else {
-      WrapExtendChannels(generatorChannels, in)
+      Util.wrapExtendChannels(generatorChannels, in)
     }
 
     implicit val _nuages: Nuages[S] = nuages
@@ -1052,31 +943,31 @@ object ScissProcs {
 
     // -------------- SINKS --------------
     val sinkRec = sinkF("rec") { in =>
-      proc.graph.DiskOut.ar(attrRecArtifact, in)
+      proc.graph.DiskOut.ar(Util.attrRecArtifact, in)
     }
 
-    val sinkPrepObj = actions.actionRecPrepareH()
-    val sinkDispObj = actions.actionRecDisposeH()
+    val sinkPrepObj = actions(keyActionRecPrepare)
+    val sinkDispObj = actions(keyActionRecDispose)
     val genChansObj = IntObj.newConst[S](generatorChannels)
     val recDirObj   = ArtifactLocation.newConst[S](sConfig.recDir)
 
     val sinkRecA = sinkRec.attr
-    sinkRecA.put(Nuages.attrPrepare , sinkPrepObj)
-    sinkRecA.put(Nuages.attrDispose , sinkDispObj)
-    sinkRecA.put(attrRecGenChans    , genChansObj)
-    sinkRecA.put(attrRecDir         , recDirObj  )
+    sinkRecA.put(Nuages.attrPrepare     , sinkPrepObj)
+    sinkRecA.put(Nuages.attrDispose     , sinkDispObj)
+    sinkRecA.put(Util  .attrRecGenChans , genChansObj)
+    sinkRecA.put(Util  .attrRecDir      , recDirObj  )
 
     val sumRec = generator("rec-sum") {
       val numCh = masterChansOption.map(_.size).getOrElse(1)
       val in    = InFeedback.ar(0, numCh)   // XXX TODO --- should find correct indices!
-      proc.graph.DiskOut.ar(attrRecArtifact, in)
+      proc.graph.DiskOut.ar(Util.attrRecArtifact, in)
       DC.ar(0)
     }
     val sumRecA = sumRec.attr
-    sumRecA.put(Nuages.attrPrepare, sinkPrepObj)
-    sumRecA.put(Nuages.attrDispose, sinkDispObj)
-    sumRecA.put(attrRecGenChans   , genChansObj)
-    sumRecA.put(attrRecDir        , recDirObj  )
+    sumRecA.put(Nuages.attrPrepare  , sinkPrepObj)
+    sumRecA.put(Nuages.attrDispose  , sinkDispObj)
+    sumRecA.put(Util.attrRecGenChans, genChansObj)
+    sumRecA.put(Util.attrRecDir     , recDirObj  )
 
     // -------------- CONTROL SIGNALS --------------
 
@@ -1333,7 +1224,7 @@ object ScissProcs {
           val pAmp          = mkAmp()
           val sig           = in * Lag.ar(pAmp, 0.1) // .outputs
           val outChannels   = cfg.numChannels
-          val outSig        = WrapExtendChannels(outChannels, sig)
+          val outSig        = Util.wrapExtendChannels(outChannels, sig)
           placeChannels(outSig)
         }
 
@@ -1377,13 +1268,13 @@ object ScissProcs {
           val sig         = in * Lag.ar(pAmp, 0.1) // .outputs
 //          NumChannels(sig).poll(0, "HELLO-IN")
           val outChannels = cfg.numChannels
-          val sig1        = WrapExtendChannels(outChannels, sig)
+          val sig1        = Util.wrapExtendChannels(outChannels, sig)
 //          NumChannels(sig).poll(0, "HELLO-OUT")
           val freq        = pFreq
           val lag         = pLag
           val pw          = pPow
 //          val rands       = Lag.ar(TRand.ar(0, 1, Dust.ar(List.fill(outChannels)(freq))).pow(pw), lag)
-          val rands       = Lag.ar(TRand.ar(0, 1, Dust.ar(WrapExtendChannels(outChannels, freq))).pow(pw), lag)
+          val rands       = Lag.ar(TRand.ar(0, 1, Dust.ar(Util.wrapExtendChannels(outChannels, freq))).pow(pw), lag)
 //          NumChannels(rands).poll(0, "HELLO-rands")
           val outSig      = sig1 * rands
 //          NumChannels(outSig).poll(0, "HELLO-outSig")

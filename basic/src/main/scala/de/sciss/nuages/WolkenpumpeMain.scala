@@ -17,11 +17,8 @@ import de.sciss.file._
 import de.sciss.lucre.stm
 import de.sciss.lucre.synth.{InMemory, Sys}
 import de.sciss.osc
-import de.sciss.synth.proc.{AuralSystem, Code, Compiler, SoundProcesses}
+import de.sciss.synth.proc.AuralSystem
 import de.sciss.synth.{Server => SServer}
-
-import scala.concurrent.Future
-import scala.util.{Failure, Success}
 
 object WolkenpumpeMain {
   def main(args: Array[String]): Unit = {
@@ -67,9 +64,8 @@ class WolkenpumpeMain[S <: Sys[S]] {
 
   /** Subclasses may want to override this. */
   protected def registerProcesses(nuages: Nuages[S], nCfg: Nuages.Config, sCfg: ScissProcs.Config)
-                                 (implicit tx: S#Tx, cursor: stm.Cursor[S],
-                                  compiler: Code.Compiler): Future[Unit] = {
-    ScissProcs.compileAndApply[S](nuages, nCfg, sCfg)
+                                 (implicit tx: S#Tx, cursor: stm.Cursor[S]): Unit = {
+    ScissProcs[S](nuages, nCfg, sCfg)
   }
 
   def run(nuagesH: stm.Source[S#Tx, Nuages[S]])(implicit cursor: stm.Cursor[S]): Unit = {
@@ -97,29 +93,15 @@ class WolkenpumpeMain[S <: Sys[S]] {
     aCfg.outputBusChannels  = maxOutputs
     aCfg.inputBusChannels   = maxInputs
 
-    implicit val compiler: Code.Compiler = Compiler()
-
-    val futPrep = cursor.step { implicit tx =>
+    cursor.step { implicit tx =>
       val n = nuagesH()
       _aural = AuralSystem()
       registerProcesses(n, nCfg, sCfg)
-    }
-
-    import SoundProcesses.executionContext
-    futPrep.onComplete {
-      case Success(_) =>
-        cursor.step { implicit tx =>
-          val n = nuagesH()
-          import de.sciss.synth.proc.WorkspaceHandle.Implicits._
-          implicit val aural: AuralSystem = _aural
-            _view = NuagesView(n, nCfg)
-          /* val frame = */ NuagesFrame(_view, undecorated = false /* true */)
-          aural.start(aCfg)
-        }
-
-      case Failure(ex) =>
-        Console.err.println("Wolkenpumpe, failed to initialize:")
-        ex.printStackTrace()
+      import de.sciss.synth.proc.WorkspaceHandle.Implicits._
+      implicit val aural: AuralSystem = _aural
+        _view = NuagesView(n, nCfg)
+      /* val frame = */ NuagesFrame(_view, undecorated = false /* true */)
+      aural.start(aCfg)
     }
   }
 }
