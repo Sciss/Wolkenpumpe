@@ -19,7 +19,6 @@ import de.sciss.lucre.expr.IntObj
 import de.sciss.lucre.stm
 import de.sciss.lucre.synth.Sys
 import de.sciss.synth
-import de.sciss.synth.GE
 import de.sciss.synth.io.AudioFile
 import de.sciss.synth.proc.{Action, AudioCue, Proc, SoundProcesses}
 import de.sciss.synth.proc.MacroImplicits.ActionMacroOps
@@ -511,7 +510,7 @@ object ScissProcs {
 
     filterF("filt") { in =>
       shortcut = "F"
-      val pFreq = pAudio("freq", ParamSpec(-1, 1), default(0.5))
+      val pFreq = pAudio("freq", ParamSpec(-1, 1), default(0.0))
       val pMix  = mkMix(1.0)
 
       val normFreq  = pFreq
