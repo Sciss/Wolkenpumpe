@@ -16,7 +16,7 @@ package de.sciss.nuages
 import de.sciss.synth.UGenSource.Vec
 
 final case class NamedBusConfig(name: String, indices: Vec[Int] /* offset: Int, numChannels: Int */) {
-  def stopOffset: Int = if (indices.isEmpty) 0 else indices.max // offset + numChannels
+  def stopOffset: Int = if (indices.isEmpty) 0 else indices.max + 1 // offset + numChannels
 
   def numChannels: Int = indices.size
 }
