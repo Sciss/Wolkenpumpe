@@ -1,7 +1,7 @@
 lazy val baseName        = "Wolkenpumpe"
 lazy val baseNameL       = baseName.toLowerCase
-lazy val projectVersion  = "2.21.2"
-lazy val mimaVersion     = "2.21.0"
+lazy val projectVersion  = "2.22.0-SNAPSHOT"
+lazy val mimaVersion     = "2.22.0"
 
 lazy val commonSettings = Seq(
   version              := projectVersion,
@@ -16,23 +16,26 @@ lazy val commonSettings = Seq(
   scalacOptions        += "-Yrangepos"  // this is needed to extract source code
 ) ++ publishSettings
 
-lazy val soundProcessesVersion      = "3.16.1"
-lazy val scalaColliderVersion       = "1.23.0"
-lazy val scalaColliderSwingVersion  = "1.35.0"
-lazy val prefuseVersion             = "1.0.1"
-lazy val lucreSwingVersion          = "1.7.0"
-lazy val swingPlusVersion           = "0.2.4"
-lazy val intensityVersion           = "1.0.0"
-lazy val modelVersion               = "0.3.4"
-lazy val fileUtilVersion            = "1.1.3"
-lazy val scissDSPVersion            = "1.2.3"
-
-// ---- test ----
-
-lazy val subminVersion              = "0.2.2"
-lazy val lucreVersion               = "3.5.0"
-lazy val scalaTestVersion           = "3.0.4"
-lazy val scoptVersion               = "3.7.0"
+lazy val deps = new {
+  val main = new {
+    val soundProcesses      = "3.17.0-SNAPSHOT"
+    val scalaCollider       = "1.23.0"
+    val scalaColliderSwing  = "1.35.0"
+    val prefuse             = "1.0.1"
+    val lucreSwing          = "1.7.0"
+    val swingPlus           = "0.2.4"
+    val intensity           = "1.0.0"
+    val model               = "0.3.4"
+    val fileUtil            = "1.1.3"
+    val scissDSP            = "1.2.3"
+  }
+  val test = new {
+    val submin              = "0.2.2"
+    val lucre               = "3.5.0"
+    val scalaTest           = "3.0.4"
+    val scopt               = "3.7.0"
+  }
+}
 
 lazy val root = Project(id = baseNameL, base = file("."))
   .aggregate(core, basic)
@@ -51,19 +54,19 @@ lazy val core = Project(id = s"$baseNameL-core", base = file("core"))
   .settings(
     name := s"$baseName-Core",
     libraryDependencies ++= Seq(
-      "de.sciss"          %% "soundprocesses-views"    % soundProcessesVersion,
-      "de.sciss"          %% "soundprocesses-compiler" % soundProcessesVersion,
-      "de.sciss"          %% "scalacollider"           % scalaColliderVersion,
-      "de.sciss"          %% "scalacolliderswing-core" % scalaColliderSwingVersion,
-      "de.sciss"          %  "prefuse-core"            % prefuseVersion,
-      "de.sciss"          %% "fileutil"                % fileUtilVersion,
-      "de.sciss"          %% "lucreswing"              % lucreSwingVersion,
-      "de.sciss"          %% "swingplus"               % swingPlusVersion,
-      "de.sciss"          %% "scissdsp"                % scissDSPVersion,
-      "de.sciss"          %  "intensitypalette"        % intensityVersion,
-      "de.sciss"          %% "model"                   % modelVersion,    // bloody sbt buf
-      "de.sciss"          %% "lucre-bdb"               % lucreVersion     % "test",
-      "org.scalatest"     %% "scalatest"               % scalaTestVersion % "test"
+      "de.sciss"          %% "soundprocesses-views"    % deps.main.soundProcesses,
+      "de.sciss"          %% "soundprocesses-compiler" % deps.main.soundProcesses,
+      "de.sciss"          %% "scalacollider"           % deps.main.scalaCollider,
+      "de.sciss"          %% "scalacolliderswing-core" % deps.main.scalaColliderSwing,
+      "de.sciss"          %  "prefuse-core"            % deps.main.prefuse,
+      "de.sciss"          %% "fileutil"                % deps.main.fileUtil,
+      "de.sciss"          %% "lucreswing"              % deps.main.lucreSwing,
+      "de.sciss"          %% "swingplus"               % deps.main.swingPlus,
+      "de.sciss"          %% "scissdsp"                % deps.main.scissDSP,
+      "de.sciss"          %  "intensitypalette"        % deps.main.intensity,
+      "de.sciss"          %% "model"                   % deps.main.model,    // (sbt bug)
+      "de.sciss"          %% "lucre-bdb"               % deps.test.lucre     % "test",
+      "org.scalatest"     %% "scalatest"               % deps.test.scalaTest % "test"
     ),
     mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-core" % mimaVersion),
     initialCommands in console :=
@@ -78,9 +81,9 @@ lazy val basic = Project(id = s"$baseNameL-basic", base = file("basic"))
   .settings(
     name := s"$baseName-Basic",
     libraryDependencies ++= Seq(
-      "com.github.scopt"  %% "scopt"     % scoptVersion  % "test",
-      "de.sciss"          %% "lucre-bdb" % lucreVersion  % "test",
-      "de.sciss"          %  "submin"    % subminVersion % "test"
+      "com.github.scopt"  %% "scopt"     % deps.test.scopt  % "test",
+      "de.sciss"          %% "lucre-bdb" % deps.test.lucre  % "test",
+      "de.sciss"          %  "submin"    % deps.test.submin % "test"
     ),
     mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-basic" % mimaVersion)
   )
