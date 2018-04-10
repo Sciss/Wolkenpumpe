@@ -19,7 +19,7 @@ import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.synth.{Sys => SSys}
 
 object NuagesIntAttrInput extends PassAttrInputFactory {
-  def typeID: Int = IntObj.typeID
+  def typeId: Int = IntObj.typeId
 
   type Repr[~ <: Sys[~]] = IntObj[~]
 

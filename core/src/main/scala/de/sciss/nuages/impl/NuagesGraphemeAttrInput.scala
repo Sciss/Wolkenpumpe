@@ -28,7 +28,7 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm.Ref
 
 object NuagesGraphemeAttrInput extends NuagesAttribute.Factory {
-  def typeID: Int = Grapheme.typeID
+  def typeId: Int = Grapheme.typeId
 
   type Repr[S <: Sys[S]] = Grapheme[S]
 

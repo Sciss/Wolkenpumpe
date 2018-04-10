@@ -102,8 +102,8 @@ object Util {
       val pSpeed      = pAudio  ("speed", ParamSpec(0.125, 2.3511, ExpWarp), default(1.0))
       val pStart      = pControl("start", ParamSpec(0, 1), default(0.0))
       val pDur        = pControl("dur"  , ParamSpec(0, 1), default(1.0))
-      val bufID       = proc.graph.Buffer("file")
-      val loopFrames  = BufFrames.kr(bufID)
+      val bufId       = proc.graph.Buffer("file")
+      val loopFrames  = BufFrames.kr(bufId)
 
       val numBufChans = spec.numChannels
       // val numChans    = if (generatorChannels > 0) generatorChannels else numBufChans
@@ -119,12 +119,12 @@ object Util {
       val duration    = lLength / (speed * SampleRate.ir) - 2
       val gate1       = Trig1.kr(in = gateTrig1, dur = duration)
       val env         = Env.asr(2, 1, 2, Curve.lin) // \sin
-      // val bufID       = Select.kr(pBuf, loopBufIDs)
-      val play1a      = PlayBuf.ar(numBufChans, bufID, speed, gateTrig1, lOffset, loop = 0)
+      // val bufId       = Select.kr(pBuf, loopBufIds)
+      val play1a      = PlayBuf.ar(numBufChans, bufId, speed, gateTrig1, lOffset, loop = 0)
       val play1b      = Mix(play1a)
       val play1       = ForceChan(play1b)
       // val play1       = Flatten(Seq.tabulate(numChans)(play1a \ _))
-      val play2a      = PlayBuf.ar(numBufChans, bufID, speed, gateTrig2, lOffset, loop = 0)
+      val play2a      = PlayBuf.ar(numBufChans, bufId, speed, gateTrig2, lOffset, loop = 0)
       val play2b      = Mix(play2a)
       val play2       = ForceChan(play2b)
       // val play2       = Flatten(Seq.tabulate(numChans)(play2a \ _))

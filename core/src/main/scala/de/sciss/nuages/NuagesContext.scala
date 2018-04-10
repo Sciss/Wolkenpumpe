@@ -20,22 +20,22 @@ object NuagesContext {
   def apply[S <: Sys[S]](implicit tx: S#Tx): NuagesContext[S] = Impl[S]
 
   sealed trait AuxUpdate[S <: Sys[S], +A] {
-    def id: S#ID
+    def id: S#Id
   }
-  final case class AuxAdded  [S <: Sys[S], A](id: S#ID, value: A) extends AuxUpdate[S, A]
-  final case class AuxRemoved[S <: Sys[S]   ](id: S#ID          ) extends AuxUpdate[S, Nothing]
+  final case class AuxAdded  [S <: Sys[S], A](id: S#Id, value: A) extends AuxUpdate[S, A]
+  final case class AuxRemoved[S <: Sys[S]   ](id: S#Id          ) extends AuxUpdate[S, Nothing]
 }
 trait NuagesContext[S <: Sys[S]] {
   import NuagesContext.AuxUpdate
 
-  def putAux[A](id: S#ID, value: A)(implicit tx: S#Tx): Unit
+  def putAux[A](id: S#Id, value: A)(implicit tx: S#Tx): Unit
 
-  def getAux[A](id: S#ID)(implicit tx: S#Tx): Option[A]
+  def getAux[A](id: S#Id)(implicit tx: S#Tx): Option[A]
 
   /** Waits for the auxiliary object to appear. If the object
     * appears the function is applied, otherwise nothing happens.
     */
-  def observeAux[A](id: S#ID)(fun: S#Tx => AuxUpdate[S, A] => Unit)(implicit tx: S#Tx): Disposable[S#Tx]
+  def observeAux[A](id: S#Id)(fun: S#Tx => AuxUpdate[S, A] => Unit)(implicit tx: S#Tx): Disposable[S#Tx]
 
-  def removeAux(id: S#ID)(implicit tx: S#Tx): Unit
+  def removeAux(id: S#Id)(implicit tx: S#Tx): Unit
 }

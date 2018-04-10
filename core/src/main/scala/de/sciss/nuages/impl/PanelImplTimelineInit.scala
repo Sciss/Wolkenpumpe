@@ -36,7 +36,7 @@ trait PanelImplTimelineInit[S <: Sys[S]] extends NuagesTimelineBase[S] {
 
   protected def removeLocationHint(obj: Obj[S])(implicit tx: S#Tx): Option[Point2D]
 
-  protected def nodeMap: stm.IdentifierMap[S#ID, S#Tx, NuagesObj[S]]
+  protected def nodeMap: stm.IdentifierMap[S#Id, S#Tx, NuagesObj[S]]
 
   //  protected def auralObjAdded(vp: NuagesObj[S], aural: AuralObj[S])(implicit tx: S#Tx): Unit
   //

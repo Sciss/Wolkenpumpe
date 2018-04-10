@@ -23,7 +23,7 @@ import de.sciss.synth.proc.EnvSegment
 import scala.collection.immutable.{IndexedSeq => Vec}
 
 object NuagesDoubleVectorAttrInput extends PassAttrInputFactory {
-  def typeID: Int = DoubleVector.typeID
+  def typeId: Int = DoubleVector.typeId
 
   type Repr[~ <: Sys[~]] = DoubleVector[~]
 

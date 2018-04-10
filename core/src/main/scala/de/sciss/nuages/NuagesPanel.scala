@@ -116,8 +116,8 @@ trait NuagesPanel[S <: Sys[S]] extends View[S] {
 
   def createGenerator(gen: Obj[S], colOpt: Option[Obj[S]], pt: Point2D)(implicit tx: S#Tx): Unit
 
-  def registerNode  (id: S#ID, view: NuagesObj[S])(implicit tx: S#Tx): Unit
-  def unregisterNode(id: S#ID, view: NuagesObj[S])(implicit tx: S#Tx): Unit
+  def registerNode  (id: S#Id, view: NuagesObj[S])(implicit tx: S#Tx): Unit
+  def unregisterNode(id: S#Id, view: NuagesObj[S])(implicit tx: S#Tx): Unit
 
   def appendFilter(pred: Output[S], fltSrc: Obj[S], colSrcOpt: Option[Obj[S]], fltPt: Point2D)
                   (implicit tx: S#Tx): Unit

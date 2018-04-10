@@ -25,7 +25,7 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.swing.Color
 
 object NuagesEnvSegmentAttrInput extends PassAttrInputFactory {
-  def typeID: Int = EnvSegment.typeID
+  def typeId: Int = EnvSegment.typeId
 
   type Repr[~ <: Sys[~]] = EnvSegment.Obj[~]
 

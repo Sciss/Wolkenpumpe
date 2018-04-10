@@ -27,13 +27,13 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm.TSet
 
 object NuagesTimelineAttrInput extends NuagesAttribute.Factory {
-  def typeID: Int = Timeline.typeID
+  def typeId: Int = Timeline.typeId
 
   type Repr[S <: Sys[S]] = Timeline[S]
 
   def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: Parent[S], frameOffset: Long, value: Timeline[S])
                          (implicit tx: S#Tx, context: NuagesContext[S]): Input[S] = {
-    val map = tx.newInMemoryIDMap[Input[S]]
+    val map = tx.newInMemoryIdMap[Input[S]]
     new NuagesTimelineAttrInput(attr, frameOffset = frameOffset, map = map).init(value, parent)
   }
 
@@ -51,7 +51,7 @@ object NuagesTimelineAttrInput extends NuagesAttribute.Factory {
       case (_ /* span */, Vec(entry)) :: Nil =>
         val head = entry.value
         if (oldInput.tryConsume(newOffset = ???!, newValue = head)) {
-          val map = tx.newInMemoryIDMap[Input[S]]
+          val map = tx.newInMemoryIdMap[Input[S]]
           val res = new NuagesTimelineAttrInput(attr, frameOffset = _frameOffset, map = map)
             .consume(entry, oldInput, newValue, attr.inputParent)
           Some(res)
@@ -63,7 +63,7 @@ object NuagesTimelineAttrInput extends NuagesAttribute.Factory {
 }
 final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesAttribute[S],
                                                           protected val frameOffset: Long,
-                                                          map: IdentifierMap[S#ID, S#Tx, Input[S]])
+                                                          map: IdentifierMap[S#Id, S#Tx, Input[S]])
                                                          (implicit context: NuagesContext[S])
   extends NuagesAttrInputBase[S] with NuagesTimelineBase[S] with Parent[S] {
 

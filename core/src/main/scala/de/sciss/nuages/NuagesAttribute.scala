@@ -40,7 +40,7 @@ object NuagesAttribute {
     * plugged into an attribute map.
     */
   trait Factory {
-    def typeID: Int
+    def typeId: Int
 
     type Repr[~ <: Sys[~]] <: Obj[~]
 

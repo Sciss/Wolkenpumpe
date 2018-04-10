@@ -24,7 +24,7 @@ import prefuse.data.{Node => PNode}
 import scala.concurrent.stm.Ref
 
 object NuagesOutputAttrInput extends NuagesAttribute.Factory {
-  def typeID: Int = Output.typeID
+  def typeId: Int = Output.typeId
 
   type Repr[~ <: Sys[~]] = Output[~]
 

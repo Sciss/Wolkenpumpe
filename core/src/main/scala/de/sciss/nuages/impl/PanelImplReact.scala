@@ -30,7 +30,7 @@ trait PanelImplReact[S <: Sys[S]] {
 
   protected def main: NuagesPanel[S]
 
-  protected def nodeMap: stm.IdentifierMap[S#ID, S#Tx, NuagesObj[S]]
+  protected def nodeMap: stm.IdentifierMap[S#Id, S#Tx, NuagesObj[S]]
 
   protected def mkMonitor(bus: AudioBus, node: Node)(fun: Vec[Double] => Unit)(implicit tx: S#Tx): Synth
 
@@ -45,13 +45,13 @@ trait PanelImplReact[S <: Sys[S]] {
     nodeMap.dispose()
   }
 
-  final def registerNode(id: S#ID, view: NuagesObj[S])(implicit tx: S#Tx): Unit = {
+  final def registerNode(id: S#Id, view: NuagesObj[S])(implicit tx: S#Tx): Unit = {
     val ok = nodeSet.add(view)
     if (!ok) throw new IllegalArgumentException(s"View $view was already registered")
     nodeMap.put(id, view)
   }
 
-  final def unregisterNode(id: S#ID, view: NuagesObj[S])(implicit tx: S#Tx): Unit = {
+  final def unregisterNode(id: S#Id, view: NuagesObj[S])(implicit tx: S#Tx): Unit = {
     val ok = nodeSet.remove(view)
     if (!ok) throw new IllegalArgumentException(s"View $view was not registered")
     nodeMap.remove(id)

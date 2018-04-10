@@ -25,7 +25,7 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.language.implicitConversions
 
 object Nuages extends Obj.Type {
-  final val typeID = 0x1000A
+  final val typeId = 0x1000A
 
   def folder  [S <: Sys[S]](implicit tx: S#Tx): Nuages[S] = Impl.folder  [S]
   def timeline[S <: Sys[S]](implicit tx: S#Tx): Nuages[S] = Impl.timeline[S]

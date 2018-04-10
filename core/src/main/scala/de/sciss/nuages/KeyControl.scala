@@ -76,7 +76,7 @@ object KeyControl {
 
   private abstract class CategoryImpl[S <: Sys[S]] extends Category[S] {
     protected def observer: Disposable[S#Tx]
-    protected def idMap: IdentifierMap[S#ID, S#Tx, KeyStroke]
+    protected def idMap: IdentifierMap[S#Id, S#Tx, KeyStroke]
 
     private val keyMap  = TMap.empty[KeyStroke, stm.Source[S#Tx, Obj[S]]]
     private val nameMap = TMap.empty[String   , stm.Source[S#Tx, Obj[S]]]
@@ -146,7 +146,7 @@ object KeyControl {
     }
 
     private def mkCategory(f: Folder[S])(implicit tx: S#Tx): Category[S] = new CategoryImpl[S] {
-      protected val idMap: IdentifierMap[S#ID, S#Tx, KeyStroke] = tx.newInMemoryIDMap[KeyStroke]
+      protected val idMap: IdentifierMap[S#Id, S#Tx, KeyStroke] = tx.newInMemoryIdMap[KeyStroke]
 
       protected val observer: Disposable[S#Tx] = f.changed.react { implicit tx =>upd =>
         upd.changes.foreach {

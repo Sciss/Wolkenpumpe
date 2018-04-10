@@ -23,7 +23,7 @@ import de.sciss.synth.proc.{Folder, TimeRef}
 import scala.concurrent.stm.Ref
 
 object NuagesFolderAttrInput extends NuagesAttribute.Factory {
-  def typeID: Int = Folder.typeID
+  def typeId: Int = Folder.typeId
 
   type Repr[S <: Sys[S]] = Folder[S]
 

@@ -39,7 +39,7 @@ object NuagesObjImpl {
 
   private val colrPeak = Array.tabulate(91)(ang => new Color(IntensityPalette.apply(ang / 90f)))
 
-  def apply[S <: Sys[S]](main: NuagesPanel[S], locOption: Option[Point2D], id: S#ID, obj: Obj[S],
+  def apply[S <: Sys[S]](main: NuagesPanel[S], locOption: Option[Point2D], id: S#Id, obj: Obj[S],
                          spanValue: SpanLike, spanOption: Option[SpanLikeObj[S]], hasMeter: Boolean, hasSolo: Boolean)
                         (implicit tx: S#Tx, context: NuagesContext[S]): NuagesObj[S] = {
     val frameOffset = spanValue match {
@@ -85,15 +85,15 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
 
   def aggr: AggregateItem = _aggr
 
-  def id        (implicit tx: S#Tx): S#ID                   = idH()
+  def id        (implicit tx: S#Tx): S#Id                   = idH()
   def obj       (implicit tx: S#Tx): Obj[S]                 = objH()
   def spanOption(implicit tx: S#Tx): Option[SpanLikeObj[S]] = spanOptionH.map(_.apply())
 
-  private[this] var idH         : stm.Source[S#Tx, S#ID]                    = _
+  private[this] var idH         : stm.Source[S#Tx, S#Id]                    = _
   private[this] var objH        : stm.Source[S#Tx, Obj[S]]                  = _
   private[this] var spanOptionH : Option[stm.Source[S#Tx, SpanLikeObj[S]]]  = _
 
-  def init(id: S#ID, obj: Obj[S], spanOption: Option[SpanLikeObj[S]], locOption: Option[Point2D])
+  def init(id: S#Id, obj: Obj[S], spanOption: Option[SpanLikeObj[S]], locOption: Option[Point2D])
           (implicit tx: S#Tx): this.type = {
     idH         = tx.newHandle(id)
     objH        = tx.newHandle(obj)

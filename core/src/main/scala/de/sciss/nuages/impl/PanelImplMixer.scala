@@ -62,9 +62,9 @@ trait PanelImplMixer[S <: Sys[S]] {
     val syn     = Synth.play(graph, Some("peak"))(server.defaultGroup, addAction = addToTail,
       dependencies = node :: Nil)
     syn.read(bus -> "in")
-    val NodeID = syn.peer.id
+    val NodeId = syn.peer.id
     val trigResp = message.Responder.add(server.peer) {
-      case message.Trigger(NodeID, 0, peak: Float) => defer(fun(peak))
+      case message.Trigger(NodeId, 0, peak: Float) => defer(fun(peak))
     }
     // Responder.add is non-transactional. Thus, if the transaction fails, we need to remove it.
     scala.concurrent.stm.Txn.afterRollback { _ =>
@@ -100,9 +100,9 @@ trait PanelImplMixer[S <: Sys[S]] {
     val syn     = Synth.play(graph, Some("snap"))(server.defaultGroup, addAction = addToTail,
       dependencies = node :: Nil)
     syn.read(bus -> "in")
-    val NodeID = syn.peer.id
+    val NodeId = syn.peer.id
     val trigResp = message.Responder.add(server.peer) {
-      case osc.Message(Name, NodeID, 0, raw @ _*) =>
+      case osc.Message(Name, NodeId, 0, raw @ _*) =>
         val values: Vec[Double] = raw.collect {
           case f: Float => f.toDouble
         } (breakOut)
@@ -134,9 +134,9 @@ trait PanelImplMixer[S <: Sys[S]] {
     val syn = Synth.play(graph, Some("monitor"))(node.server.defaultGroup, addAction = addToTail,
       dependencies = node :: Nil)
     syn.read(bus -> "in")
-    val NodeID = syn.peer.id
+    val NodeId = syn.peer.id
     val trigResp = message.Responder.add(node.server.peer) {
-      case osc.Message("/reply", NodeID, 0, values0 @ _*) =>
+      case osc.Message("/reply", NodeId, 0, values0 @ _*) =>
         val values: Vec[Double] = values0.map {
           case d: Float => d.toDouble
         } (breakOut)

@@ -47,9 +47,9 @@ object PanelImpl {
     val listCol2      = mkListView(nuages.collectors)
     val listMacro     = mkListView(nuages.macros    )
 
-    val nodeMap       = tx.newInMemoryIDMap[NuagesObj[S]]
-    // val scanMap       = tx.newInMemoryIDMap[NuagesOutput[S]] // ScanInfo [S]]
-    val missingScans  = tx.newInMemoryIDMap[List[NuagesAttribute[S]]]
+    val nodeMap       = tx.newInMemoryIdMap[NuagesObj[S]]
+    // val scanMap       = tx.newInMemoryIdMap[NuagesOutput[S]] // ScanInfo [S]]
+    val missingScans  = tx.newInMemoryIdMap[List[NuagesAttribute[S]]]
     val transport     = Transport[S](aural)
     val surface       = nuages.surface
     // transport.addObject(surface.peer)
@@ -99,9 +99,9 @@ object PanelImpl {
 }
 
 final class PanelImplTimeline[S <: Sys[S]](protected val nuagesH: stm.Source[S#Tx, Nuages[S]],
-                                           protected val nodeMap: stm.IdentifierMap[S#ID, S#Tx, NuagesObj[S]],
-//     protected val scanMap: stm.IdentifierMap[S#ID, S#Tx, NuagesOutput[S]],
-     protected val missingScans: stm.IdentifierMap[S#ID, S#Tx, List[NuagesAttribute[S]]],
+                                           protected val nodeMap: stm.IdentifierMap[S#Id, S#Tx, NuagesObj[S]],
+//     protected val scanMap: stm.IdentifierMap[S#Id, S#Tx, NuagesOutput[S]],
+     protected val missingScans: stm.IdentifierMap[S#Id, S#Tx, List[NuagesAttribute[S]]],
      val config   : Nuages.Config,
      val transport: Transport[S],
      val aural    : AuralSystem,
@@ -118,9 +118,9 @@ final class PanelImplTimeline[S <: Sys[S]](protected val nuagesH: stm.Source[S#T
   with PanelImplTimelineInit[S]
 
 final class PanelImplFolder[S <: Sys[S]](protected val nuagesH: stm.Source[S#Tx, Nuages[S]],
-                                         protected val nodeMap: stm.IdentifierMap[S#ID, S#Tx, NuagesObj[S]],
-//     protected val scanMap: stm.IdentifierMap[S#ID, S#Tx, NuagesOutput[S]],
-     protected val missingScans: stm.IdentifierMap[S#ID, S#Tx, List[NuagesAttribute[S]]],
+                                         protected val nodeMap: stm.IdentifierMap[S#Id, S#Tx, NuagesObj[S]],
+//     protected val scanMap: stm.IdentifierMap[S#Id, S#Tx, NuagesOutput[S]],
+     protected val missingScans: stm.IdentifierMap[S#Id, S#Tx, List[NuagesAttribute[S]]],
      val config   : Nuages.Config,
      val transport: Transport[S],
      val aural    : AuralSystem,

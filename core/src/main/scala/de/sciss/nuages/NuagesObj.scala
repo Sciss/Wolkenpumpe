@@ -24,7 +24,7 @@ import prefuse.visual.AggregateItem
 
 object NuagesObj {
   def apply[S <: SSys[S]](main: NuagesPanel[S], locOption: Option[Point2D],
-                          id: S#ID, obj: Obj[S], spanValue: SpanLike, spanOption: Option[SpanLikeObj[S]],
+                          id: S#Id, obj: Obj[S], spanValue: SpanLike, spanOption: Option[SpanLikeObj[S]],
                           hasMeter: Boolean, hasSolo: Boolean)
                          (implicit tx: S#Tx, context: NuagesContext[S]): NuagesObj[S] =
     impl.NuagesObjImpl(main, locOption = locOption, id = id, obj = obj,

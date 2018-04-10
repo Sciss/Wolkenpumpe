@@ -22,7 +22,7 @@ import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer, Writable}
 import de.sciss.synth
 
 object ParamSpec {
-  final val typeID = 21
+  final val typeId = 21
 
   final val Key     = "spec"
   final val DashKey = "-spec"
@@ -39,11 +39,11 @@ object ParamSpec {
   object Obj extends ExprTypeImpl[ParamSpec, Obj] {
     import ParamSpec.{Obj => Repr}
 
-    def typeID: Int = ParamSpec.typeID
+    def typeId: Int = ParamSpec.typeId
 
     implicit def valueSerializer: ImmutableSerializer[ParamSpec] = ParamSpec.serializer
 
-    protected def mkConst[S <: Sys[S]](id: S#ID, value: A)(implicit tx: S#Tx): Const[S] =
+    protected def mkConst[S <: Sys[S]](id: S#Id, value: A)(implicit tx: S#Tx): Const[S] =
       new _Const[S](id, value)
 
     protected def mkVar[S <: Sys[S]](targets: Targets[S], vr: S#Var[Ex[S]], connect: Boolean)
@@ -53,7 +53,7 @@ object ParamSpec {
       res
     }
 
-    private[this] final class _Const[S <: Sys[S]](val id: S#ID, val constValue: A)
+    private[this] final class _Const[S <: Sys[S]](val id: S#Id, val constValue: A)
       extends ConstImpl[S] with Repr[S]
 
     private[this] final class _Var[S <: Sys[S]](val targets: Targets[S], val ref: S#Var[Ex[S]])

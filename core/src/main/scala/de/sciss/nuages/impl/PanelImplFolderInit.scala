@@ -37,7 +37,7 @@ trait PanelImplFolderInit[S <: Sys[S]] {
 
   protected def transport: Transport[S]
 
-  protected def nodeMap: stm.IdentifierMap[S#ID, S#Tx, NuagesObj[S]]
+  protected def nodeMap: stm.IdentifierMap[S#Id, S#Tx, NuagesObj[S]]
 
   //  protected def auralObjAdded(vp: NuagesObj[S], aural: AuralObj[S])(implicit tx: S#Tx): Unit
   //

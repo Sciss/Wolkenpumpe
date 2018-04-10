@@ -36,7 +36,7 @@ object NuagesAttributeImpl {
   private[this] final val sync = new AnyRef
   
   def addFactory(f: Factory): Unit = sync.synchronized {
-    val tid = f.typeID
+    val tid = f.typeId
     if (map.contains(tid)) throw new IllegalArgumentException(s"View factory for type $tid already installed")
     map += tid -> f
   }
@@ -64,22 +64,22 @@ object NuagesAttributeImpl {
   }
 
   def getFactory[S <: Sys[S]](value: Obj[S]): Option[Factory] = {
-    val tid = value.tpe.typeID
+    val tid = value.tpe.typeId
     val opt = map.get(tid)
     opt
   }
 
   private[this] var map = Map[Int, Factory](
-    IntObj      .typeID -> NuagesIntAttrInput,
-    DoubleObj   .typeID -> NuagesDoubleAttrInput,
-    BooleanObj  .typeID -> NuagesBooleanAttrInput,
-//  FadeSpec.Obj.typeID -> FadeSpecAttribute,
-    DoubleVector.typeID -> NuagesDoubleVectorAttrInput,
-    Grapheme    .typeID -> NuagesGraphemeAttrInput,
-    Output      .typeID -> NuagesOutputAttrInput,
-    Folder      .typeID -> NuagesFolderAttrInput,
-    Timeline    .typeID -> NuagesTimelineAttrInput,
-    EnvSegment  .typeID -> NuagesEnvSegmentAttrInput
+    IntObj      .typeId -> NuagesIntAttrInput,
+    DoubleObj   .typeId -> NuagesDoubleAttrInput,
+    BooleanObj  .typeId -> NuagesBooleanAttrInput,
+//  FadeSpec.Obj.typeId -> FadeSpecAttribute,
+    DoubleVector.typeId -> NuagesDoubleVectorAttrInput,
+    Grapheme    .typeId -> NuagesGraphemeAttrInput,
+    Output      .typeId -> NuagesOutputAttrInput,
+    Folder      .typeId -> NuagesFolderAttrInput,
+    Timeline    .typeId -> NuagesTimelineAttrInput,
+    EnvSegment  .typeId -> NuagesEnvSegmentAttrInput
   )
   
   // ----
