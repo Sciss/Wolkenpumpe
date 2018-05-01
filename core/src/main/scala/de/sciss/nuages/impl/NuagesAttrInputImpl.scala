@@ -290,11 +290,13 @@ trait NuagesAttrInputExprImpl[S <: SSys[S]] extends NuagesAttrInputImpl[S] {
 
     lazy val nowVar = tpe.newVar[S](nowConst)
     if (durFrames == 0L) {
-      before match {
-        case tpe.Var(beforeV) => beforeV() = nowConst
-        case _ =>
+      // XXX TODO --- was this check for variable good for anything?
+      // it breaks grapheme expansion in timeline mode
+//      before match {
+//        case tpe.Var(beforeV) => beforeV() = nowConst
+//        case _ =>
           inputParent.updateChild(before = before, now = nowVar, dt = 0L, clearRight = true)
-      }
+//      }
     } else {
       val seg = mkEnvSeg(before, Curve.lin) // EnvSegment.Obj.ApplySingle()
       inputParent.updateChild(before = before, now = nowVar, dt = durFrames, clearRight = true )
