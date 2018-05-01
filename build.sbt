@@ -1,7 +1,7 @@
 lazy val baseName        = "Wolkenpumpe"
 lazy val baseNameL       = baseName.toLowerCase
-lazy val projectVersion  = "2.23.0"
-lazy val mimaVersion     = "2.23.0"
+lazy val projectVersion  = "2.24.0-SNAPSHOT"
+lazy val mimaVersion     = "2.24.0"
 
 lazy val commonSettings = Seq(
   version              := projectVersion,
@@ -9,8 +9,8 @@ lazy val commonSettings = Seq(
   homepage             := Some(url(s"https://github.com/Sciss/$baseName")),
   description          := "A Prefuse based visual interface for SoundProcesses, a sound synthesis framework",
   licenses             := Seq("GPL v2+" -> url( "http://www.gnu.org/licenses/gpl-2.0.txt")),
-  scalaVersion         := "2.12.5",
-  crossScalaVersions   := Seq("2.12.5", "2.11.12"),
+  scalaVersion         := "2.12.6",
+  crossScalaVersions   := Seq("2.12.6", "2.11.12"),
   resolvers            += "Oracle Repository" at "http://download.oracle.com/maven",  // required for sleepycat
   scalacOptions ++= Seq("-deprecation", "-unchecked", "-feature", "-encoding", "utf8", "-Xfuture", "-Xlint:-stars-align,_"),
   scalacOptions        += "-Yrangepos"  // this is needed to extract source code
@@ -18,11 +18,11 @@ lazy val commonSettings = Seq(
 
 lazy val deps = new {
   val main = new {
-    val soundProcesses      = "3.18.0"
-    val scalaCollider       = "1.25.0"
-    val scalaColliderSwing  = "1.37.0"
+    val soundProcesses      = "3.19.0"
+    val scalaCollider       = "1.26.0"
+    val scalaColliderSwing  = "1.38.0"
     val prefuse             = "1.0.1"
-    val lucreSwing          = "1.8.0"
+    val lucreSwing          = "1.9.0"
     val swingPlus           = "0.3.0"
     val intensity           = "1.0.0"
     val model               = "0.3.4"
@@ -31,7 +31,7 @@ lazy val deps = new {
   }
   val test = new {
     val submin              = "0.2.2"
-    val lucre               = "3.6.0"
+    val lucre               = "3.7.0"
     val scalaTest           = "3.0.5"
     val scopt               = "3.7.0"
   }

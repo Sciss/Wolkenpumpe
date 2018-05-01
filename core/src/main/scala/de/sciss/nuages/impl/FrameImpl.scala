@@ -27,7 +27,7 @@ object FrameImpl {
                         (implicit tx: S#Tx): NuagesFrame[S] = {
     val transport = view.panel.transport
     transport.play()
-    new Impl(view, undecorated = undecorated).init()
+    new Impl[S](view, undecorated = undecorated).init()
   }
 
   private final class Impl[S <: Sys[S]](val view: NuagesView[S], undecorated: Boolean)
