@@ -67,10 +67,10 @@ trait AttrInputKeyControl[S <: Sys[S]] extends ClipboardOwner {
     } else {
       def glide(k0: Key.Value): Boolean = main.acceptGlideTime && {
         import numbers.Implicits._
-        val time0 = code.id.linlin(k0.id, k0.id + 9, 0f, 1f)
+        val time0 = code.id.linLin(k0.id, k0.id + 9, 0f, 1f)
         // "double clicking" is to randomise
-        main.glideTime = if ((main.glideTime absdif time0) < 0.05f || (main.glideTimeSource !== "key")) time0 else {
-          (time0 + math.random.toFloat.linlin(0f, 1f, -0.1f, 0.1f)).clip(0f, 1f)
+        main.glideTime = if ((main.glideTime absDif time0) < 0.05f || (main.glideTimeSource !== "key")) time0 else {
+          (time0 + math.random.toFloat.linLin(0f, 1f, -0.1f, 0.1f)).clip(0f, 1f)
         }
         main.glideTimeSource = "key"
         true
@@ -129,7 +129,7 @@ trait AttrInputKeyControl[S <: Sys[S]] extends ClipboardOwner {
         val newMax  = math.max(mid, max - 0.0025)
         if (newMin === min && newMax === max) Vector.empty else {
           import numbers.Implicits._
-          vs.map(_.linlin(min, max, newMin, newMax))
+          vs.map(_.linLin(min, max, newMin, newMax))
         }
 
       case '}'  =>  // increase channel spacing
@@ -141,9 +141,9 @@ trait AttrInputKeyControl[S <: Sys[S]] extends ClipboardOwner {
         if (newMin === min && newMax === max) Vector.empty else {
           import numbers.Implicits._
           if (min === max) { // all equal -- use a random spread
-            vs.map(in => (in + math.random.linlin(0.0, 1.0, -0.0025, +0.0025)).clip(0.0, 1.0))
+            vs.map(in => (in + math.random.linLin(0.0, 1.0, -0.0025, +0.0025)).clip(0.0, 1.0))
           } else {
-            vs.map(_.linlin(min, max, newMin, newMax))
+            vs.map(_.linLin(min, max, newMin, newMax))
           }
         }
 

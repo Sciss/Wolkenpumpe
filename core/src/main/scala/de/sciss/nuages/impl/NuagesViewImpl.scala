@@ -252,7 +252,7 @@ object NuagesViewImpl {
             Seq.fill[GE](numOut)(sigMast)
           } else {
             val sigOut = SplayAz.ar(numOut, sigMast)
-            Limiter.ar(sigOut, (-0.2).dbamp)
+            Limiter.ar(sigOut, (-0.2).dbAmp)
           }
           //            assert( sig1.numOutputs == numOut )
           // Out.ar(off, sig1)

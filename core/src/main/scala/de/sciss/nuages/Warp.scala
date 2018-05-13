@@ -241,43 +241,43 @@ case object DbFaderWarp extends Warp {
   final val id = 6
 
   def map(spec: ParamSpec, value: Double): Double = {
-    val loDb    = spec.lo.dbamp
-    val hiDb    = spec.hi.dbamp
+    val loDb    = spec.lo.dbAmp
+    val hiDb    = spec.hi.dbAmp
     val rangeDb = hiDb - loDb
     if (rangeDb >= 0)
-      (value.squared * rangeDb + loDb).ampdb
+      (value.squared * rangeDb + loDb).ampDb
     else
-      ((1 - (1 - value).squared) * rangeDb + loDb).ampdb
+      ((1 - (1 - value).squared) * rangeDb + loDb).ampDb
   }
 
   def map(spec: ParamSpec, value: GE): GE  = {
-    val loDb    = spec.lo.dbamp
-    val hiDb    = spec.hi.dbamp
+    val loDb    = spec.lo.dbAmp
+    val hiDb    = spec.hi.dbAmp
     val rangeDb = hiDb - loDb
     if (rangeDb >= 0)
-      (value.squared * rangeDb + loDb).ampdb
+      (value.squared * rangeDb + loDb).ampDb
     else
-      ((1 - (1 - value).squared) * rangeDb + loDb).ampdb
+      ((1 - (1 - value).squared) * rangeDb + loDb).ampDb
   }
 
   def inverseMap(spec: ParamSpec, value: Double): Double = {
-    val loDb    = spec.lo.dbamp
-    val hiDb    = spec.hi.dbamp
+    val loDb    = spec.lo.dbAmp
+    val hiDb    = spec.hi.dbAmp
     val rangeDb = hiDb - loDb
     if (spec.range >= 0)
-      ((value.dbamp - loDb) / rangeDb).sqrt
+      ((value.dbAmp - loDb) / rangeDb).sqrt
     else
-      1 - (1 - ((value.dbamp - loDb) / rangeDb)).sqrt
+      1 - (1 - ((value.dbAmp - loDb) / rangeDb)).sqrt
   }
 
   def inverseMap(spec: ParamSpec, value: GE): GE = {
-    val loDb    = spec.lo.dbamp
-    val hiDb    = spec.hi.dbamp
+    val loDb    = spec.lo.dbAmp
+    val hiDb    = spec.hi.dbAmp
     val rangeDb = hiDb - loDb
     if (spec.range >= 0)
-      ((value.dbamp - loDb) / rangeDb).sqrt
+      ((value.dbAmp - loDb) / rangeDb).sqrt
     else
-      1 - (1 - ((value.dbamp - loDb) / rangeDb)).sqrt
+      1 - (1 - ((value.dbAmp - loDb) / rangeDb)).sqrt
   }
 
   def write(out: DataOutput): Unit = out.writeShort(id)

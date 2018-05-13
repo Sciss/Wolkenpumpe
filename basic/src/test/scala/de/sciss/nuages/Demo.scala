@@ -78,7 +78,7 @@ object Demo {
     }
 
     collector("Out") { in =>
-      val amp = pAudio("amp", ParamSpec(-inf, 20, DbFaderWarp), Double.NegativeInfinity).dbamp
+      val amp = pAudio("amp", ParamSpec(-inf, 20, DbFaderWarp), Double.NegativeInfinity).dbAmp
       val sig = in * amp
       Out.ar(0, sig)
     }

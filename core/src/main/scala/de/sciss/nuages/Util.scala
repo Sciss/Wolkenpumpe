@@ -76,7 +76,7 @@ object Util {
     }
   }
 
-  def wrapExtendChannels(n: Int, sig: GE): GE = Vector.tabulate(n)(sig \ _)
+  def wrapExtendChannels(n: Int, sig: GE): GE = Vector.tabulate(n)(sig.out)
 
   def mkLoop[S <: stm.Sys[S]](n: Nuages[S], art: Artifact[S], generatorChannels: Int)(implicit tx: S#Tx): Unit = {
     import synth._

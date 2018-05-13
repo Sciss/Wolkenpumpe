@@ -231,7 +231,7 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
         val dur           = if (dur0 == 0f) 0f else {
           import numbers.Implicits._
           if (dur0 <= 0.1f) dur0 * 2.5f
-          else dur0.linexp(0.1f, 1f, 0.25f, 60f)   // extreme :)
+          else dur0.linExp(0.1f, 1f, 0.25f, 60f)   // extreme :)
         }
         setControl(_drag.dragValue, dur = dur)
       }
