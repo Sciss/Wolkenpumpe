@@ -1,7 +1,7 @@
 lazy val baseName        = "Wolkenpumpe"
 lazy val baseNameL       = baseName.toLowerCase
-lazy val projectVersion  = "2.25.0"
-lazy val mimaVersion     = "2.25.0"
+lazy val projectVersion  = "2.26.0-SNAPSHOT"
+lazy val mimaVersion     = "2.26.0"
 
 lazy val commonSettings = Seq(
   version              := projectVersion,
@@ -18,11 +18,11 @@ lazy val commonSettings = Seq(
 
 lazy val deps = new {
   val main = new {
-    val soundProcesses      = "3.20.0"
+    val soundProcesses      = "3.21.0-SNAPSHOT"
     val scalaCollider       = "1.27.0"
     val scalaColliderSwing  = "1.39.0"
     val prefuse             = "1.0.1"
-    val lucreSwing          = "1.10.0"
+    val lucreSwing          = "1.11.0-SNAPSHOT"
     val swingPlus           = "0.3.0"
     val intensity           = "1.0.0"
     val model               = "0.3.4"
@@ -31,13 +31,13 @@ lazy val deps = new {
   }
   val test = new {
     val submin              = "0.2.2"
-    val lucre               = "3.8.0"
+    val lucre               = "3.9.0-SNAPSHOT"
     val scalaTest           = "3.0.5"
     val scopt               = "3.7.0"
   }
 }
 
-lazy val root = Project(id = baseNameL, base = file("."))
+lazy val root = project.withId(baseNameL).in(file("."))
   .aggregate(core, basic)
   .dependsOn(core, basic)
   .settings(commonSettings)
@@ -49,7 +49,7 @@ lazy val root = Project(id = baseNameL, base = file("."))
     autoScalaLibrary := false
   )
 
-lazy val core = Project(id = s"$baseNameL-core", base = file("core"))
+lazy val core = project.withId(s"$baseNameL-core").in(file("core"))
   .settings(commonSettings)
   .settings(
     name := s"$baseName-Core",
@@ -75,7 +75,7 @@ lazy val core = Project(id = s"$baseNameL-core", base = file("core"))
         |""".stripMargin
   )
 
-lazy val basic = Project(id = s"$baseNameL-basic", base = file("basic"))
+lazy val basic = project.withId(s"$baseNameL-basic").in(file("basic"))
   .dependsOn(core)
   .settings(commonSettings)
   .settings(

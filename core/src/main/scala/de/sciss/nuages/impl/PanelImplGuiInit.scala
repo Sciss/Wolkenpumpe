@@ -43,6 +43,8 @@ trait PanelImplGuiInit[S <: Sys[S]] extends ComponentHolder[Component] {
   import PanelImpl.{GROUP_NODES, GROUP_EDGES, AGGR_PROC, ACTION_COLOR, ACTION_LAYOUT, LAYOUT_TIME}
   import NuagesPanel.{GROUP_GRAPH, GROUP_SELECTION, COL_NUAGES}
 
+  type C = Component
+
   // ---- abstract ----
 
   protected def keyControl: Control

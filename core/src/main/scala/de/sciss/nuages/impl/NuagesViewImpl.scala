@@ -51,6 +51,8 @@ object NuagesViewImpl {
                                        (implicit val cursor: stm.Cursor[S])
     extends NuagesView[S] with ComponentHolder[Component] with AuralSystem.Client { impl =>
 
+    type C = Component
+
     import panel.{config => nConfig}
 
     private[this] var _southBox     : BoxPanel            = _
