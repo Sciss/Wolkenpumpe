@@ -17,11 +17,11 @@ package impl
 import java.awt.geom.Point2D
 
 import de.sciss.lucre.expr.SpanLikeObj
-import de.sciss.lucre.stm.{Cursor, Obj}
+import de.sciss.lucre.stm.{Cursor, Folder, Obj, WorkspaceHandle}
 import de.sciss.lucre.synth.Sys
 import de.sciss.nuages.Nuages.Surface
 import de.sciss.span.Span
-import de.sciss.synth.proc.{Action, Folder, Output, Proc, Timeline, WorkspaceHandle}
+import de.sciss.synth.proc.{Action, Output, Proc, Timeline}
 
 import scala.concurrent.stm.TxnLocal
 

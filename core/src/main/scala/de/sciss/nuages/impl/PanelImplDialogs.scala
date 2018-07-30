@@ -16,12 +16,12 @@ package impl
 
 import java.awt.Point
 import java.awt.geom.Point2D
-import javax.swing.event.{AncestorEvent, AncestorListener}
 
-import de.sciss.lucre.stm.Obj
+import javax.swing.event.{AncestorEvent, AncestorListener}
+import de.sciss.lucre.stm.{Folder, Obj}
 import de.sciss.lucre.swing.{ListView, requireEDT}
 import de.sciss.lucre.synth.Sys
-import de.sciss.synth.proc.{Folder, Proc}
+import de.sciss.synth.proc.Proc
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.swing.{Component, Swing}

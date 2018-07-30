@@ -16,17 +16,18 @@ package impl
 
 import java.awt.event.{ActionEvent, InputEvent, KeyEvent}
 import java.awt.{Color, Toolkit}
-import javax.swing.{AbstractAction, JComponent, KeyStroke}
 
+import javax.swing.{AbstractAction, JComponent, KeyStroke}
 import de.sciss.audiowidgets.{RotaryKnob, TimelineModel}
 import de.sciss.lucre.stm
+import de.sciss.lucre.stm.WorkspaceHandle
 import de.sciss.lucre.swing.impl.ComponentHolder
 import de.sciss.lucre.swing.{View, defer, deferTx, requireEDT}
 import de.sciss.lucre.synth.{Server, Synth, Sys, Txn}
 import de.sciss.osc
 import de.sciss.span.Span
 import de.sciss.synth.proc.gui.TransportView
-import de.sciss.synth.proc.{AuralSystem, TimeRef, WorkspaceHandle}
+import de.sciss.synth.proc.{AuralSystem, TimeRef}
 import de.sciss.synth.swing.j.JServerStatusPanel
 import de.sciss.synth.{SynthGraph, addAfter, message}
 

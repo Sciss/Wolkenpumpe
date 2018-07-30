@@ -14,14 +14,14 @@
 package de.sciss.nuages
 
 import java.awt.geom.Point2D
-import javax.swing.BoundedRangeModel
 
+import javax.swing.BoundedRangeModel
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{Obj, Sys, TxnLike}
+import de.sciss.lucre.stm.{Obj, Sys, TxnLike, WorkspaceHandle}
 import de.sciss.lucre.swing.View
 import de.sciss.lucre.synth.{AudioBus, Synth, Txn, Node => SNode, Sys => SSys}
 import de.sciss.nuages.impl.{PanelImpl => Impl}
-import de.sciss.synth.proc.{AuralSystem, Output, Transport, WorkspaceHandle}
+import de.sciss.synth.proc.{AuralSystem, Output, Transport}
 import prefuse.data.Graph
 import prefuse.visual.{AggregateTable, VisualGraph}
 import prefuse.{Display, Visualization}

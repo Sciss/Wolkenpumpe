@@ -13,12 +13,11 @@
 
 package de.sciss.nuages
 
-import de.sciss.lucre.stm.{Disposable, NoSys, Obj, Sys}
-import de.sciss.lucre.{event => evt}
+import de.sciss.lucre.stm.{Disposable, Folder, NoSys, Obj, Sys}
+import de.sciss.lucre.{stm, event => evt}
 import de.sciss.nuages.impl.{NuagesImpl => Impl}
 import de.sciss.serial.{DataInput, DataOutput, Serializer, Writable}
 import de.sciss.synth.proc
-import de.sciss.synth.proc.Folder
 
 import scala.annotation.switch
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -195,13 +194,13 @@ object Nuages extends Obj.Type {
 
   object Surface {
     case class Timeline[S <: Sys[S]](peer: proc.Timeline.Modifiable[S]) extends Surface[S] { def isTimeline = true  }
-    case class Folder  [S <: Sys[S]](peer: proc.Folder             [S]) extends Surface[S] { def isTimeline = false }
+    case class Folder  [S <: Sys[S]](peer: stm.Folder              [S]) extends Surface[S] { def isTimeline = false }
 
     implicit def serializer[S <: Sys[S]]: Serializer[S#Tx, S#Acc, Surface[S]] = anySer.asInstanceOf[Ser[S]]
 
     def read[S <: Sys[S]](in: DataInput, access: S#Acc)(implicit tx: S#Tx): Surface[S] =
       (in.readByte(): @switch) match {
-        case 0      => Surface.Folder  (proc.Folder.read(in, access))
+        case 0      => Surface.Folder  (stm.Folder.read(in, access))
         case 1      => Surface.Timeline(proc.Timeline.Modifiable.read(in, access))
         case other  => sys.error(s"Unexpected cookie $other")
       }

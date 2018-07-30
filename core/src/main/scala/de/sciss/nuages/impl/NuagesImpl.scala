@@ -16,13 +16,12 @@ package impl
 
 import de.sciss.lucre.event.Targets
 import de.sciss.lucre.stm.impl.ObjSerializer
-import de.sciss.lucre.stm.{Copy, Elem, NoSys, Obj, Sys}
+import de.sciss.lucre.stm.{Copy, Elem, Folder, NoSys, Obj, Sys}
 import de.sciss.lucre.{event => evt}
 import de.sciss.nuages.Nuages.Surface
 import de.sciss.serial.{DataInput, DataOutput, Serializer}
-import de.sciss.synth.proc
 import de.sciss.synth.proc.Implicits._
-import de.sciss.synth.proc.{Folder, Proc, Timeline}
+import de.sciss.synth.proc.{Proc, Timeline}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm.TxnLocal
@@ -43,8 +42,8 @@ object NuagesImpl {
     Option(nuagesLocal.get(tx.peer).asInstanceOf[Nuages[S]])
   }
 
-  private[this] def mkCategFolder[S <: Sys[S]]()(implicit tx: S#Tx): proc.Folder[S] = {
-    val folder = proc.Folder[S]
+  private[this] def mkCategFolder[S <: Sys[S]]()(implicit tx: S#Tx): Folder[S] = {
+    val folder = Folder[S]
     Nuages.CategoryNames.foreach { name =>
       folder.addLast(mkFolderObj(name))
     }

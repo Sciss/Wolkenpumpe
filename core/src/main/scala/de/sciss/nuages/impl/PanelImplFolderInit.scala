@@ -17,10 +17,10 @@ package impl
 import java.awt.geom.Point2D
 
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{TxnLike, Obj, Disposable}
+import de.sciss.lucre.stm.{Disposable, Folder, Obj, TxnLike}
 import de.sciss.lucre.synth.Sys
 import de.sciss.span.Span
-import de.sciss.synth.proc.{AuralObj, Transport, Folder}
+import de.sciss.synth.proc.{AuralObj, Transport}
 
 import scala.concurrent.stm.Ref
 

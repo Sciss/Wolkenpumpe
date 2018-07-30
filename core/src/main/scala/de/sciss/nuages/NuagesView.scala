@@ -14,9 +14,10 @@
 package de.sciss.nuages
 
 import de.sciss.lucre.stm
+import de.sciss.lucre.stm.WorkspaceHandle
 import de.sciss.lucre.swing.View
 import de.sciss.lucre.synth.Sys
-import de.sciss.synth.proc.{WorkspaceHandle, AuralSystem}
+import de.sciss.synth.proc.AuralSystem
 import impl.{NuagesViewImpl => Impl}
 
 import scala.swing.Component

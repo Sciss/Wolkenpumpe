@@ -16,14 +16,14 @@ package impl
 
 import java.awt.Color
 
-import de.sciss.lucre.stm.{Disposable, Obj, TxnLike}
+import de.sciss.lucre.stm
+import de.sciss.lucre.stm.{Disposable, Folder, Obj, TxnLike, WorkspaceHandle}
 import de.sciss.lucre.swing.{ListView, defer, deferTx, requireEDT}
 import de.sciss.lucre.synth.Sys
-import de.sciss.lucre.{expr, stm}
 import de.sciss.nuages.Nuages.Surface
 import de.sciss.serial.Serializer
 import de.sciss.synth.proc
-import de.sciss.synth.proc.{AuralObj, AuralSystem, Folder, Timeline, Transport, WorkspaceHandle}
+import de.sciss.synth.proc.{AuralObj, AuralSystem, Timeline, Transport}
 import prefuse.controls.Control
 import prefuse.visual.NodeItem
 
@@ -82,8 +82,8 @@ object PanelImpl {
                              (implicit tx: S#Tx): ListView[S, Obj[S], Unit] = {
     import proc.Implicits._
     val h = ListView.Handler[S, Obj[S], Unit /* Obj.Update[S] */] { implicit tx => obj => obj.name } (_ => (_, _) => None)
-    implicit val ser: Serializer[S#Tx, S#Acc, expr.List[S, Obj[S]]] =
-      expr.List.serializer[S, Obj[S] /* , Unit */ /* Obj.Update[S] */]
+    implicit val ser: Serializer[S#Tx, S#Acc, stm.List[S, Obj[S]]] =
+      stm.List.serializer[S, Obj[S] /* , Unit */ /* Obj.Update[S] */]
 
     // val res = ListView[S, Obj[S], Unit /* Obj.Update[S] */, String](folder, h)
     val res = ListView.empty[S, Obj[S], Unit /* Obj.Update[S] */, String](h)

@@ -15,10 +15,10 @@ package de.sciss.nuages
 package impl
 
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{Disposable, Obj, Sys, TxnLike}
+import de.sciss.lucre.stm.{Disposable, Folder, Obj, Sys, TxnLike}
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.nuages.NuagesAttribute.{Input, Parent}
-import de.sciss.synth.proc.{Folder, TimeRef}
+import de.sciss.synth.proc.TimeRef
 
 import scala.concurrent.stm.Ref
 

@@ -97,7 +97,7 @@ class WolkenpumpeMain[S <: Sys[S]] {
       val n = nuagesH()
       _aural = AuralSystem()
       registerProcesses(n, nCfg, sCfg)
-      import de.sciss.synth.proc.WorkspaceHandle.Implicits._
+      import de.sciss.lucre.stm.WorkspaceHandle.Implicits._
       implicit val aural: AuralSystem = _aural
         _view = NuagesView(n, nCfg)
       /* val frame = */ NuagesFrame(_view, undecorated = false /* true */)

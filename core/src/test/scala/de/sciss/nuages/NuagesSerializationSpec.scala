@@ -1,10 +1,10 @@
 package de.sciss.nuages
 
-import de.sciss.lucre.stm.Obj
+import de.sciss.lucre.stm.{Folder, Obj}
 import de.sciss.lucre.stm.store.BerkeleyDB
 import de.sciss.nuages.Nuages.Surface
 import de.sciss.span.Span
-import de.sciss.synth.proc.{Folder, Proc, Durable}
+import de.sciss.synth.proc.{Durable, Proc}
 import de.sciss.synth.proc.Implicits._
 import org.scalatest.{Matchers, Outcome, fixture}
 

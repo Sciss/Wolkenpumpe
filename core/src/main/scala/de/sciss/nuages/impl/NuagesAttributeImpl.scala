@@ -17,14 +17,14 @@ package impl
 import java.awt.Graphics2D
 
 import de.sciss.lucre.expr.{BooleanObj, DoubleObj, DoubleVector, IntObj, LongObj, SpanLikeObj}
-import de.sciss.lucre.stm.{Disposable, Obj, Sys, TxnLike}
+import de.sciss.lucre.stm.{Disposable, Folder, Obj, Sys, TxnLike}
 import de.sciss.lucre.swing.requireEDT
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.nuages.NuagesAttribute.{Factory, Input, Parent}
 import de.sciss.nuages.NuagesPanel.GROUP_GRAPH
 import de.sciss.span.Span
 import de.sciss.synth.proc.AuralObj.Proc
-import de.sciss.synth.proc.{AuralAttribute, AuralObj, AuralView, EnvSegment, Folder, Grapheme, Output, TimeRef, Timeline}
+import de.sciss.synth.proc.{AuralAttribute, AuralObj, EnvSegment, Grapheme, Output, Runner, TimeRef, Timeline}
 import prefuse.data.{Edge => PEdge, Node => PNode}
 import prefuse.visual.VisualItem
 
@@ -504,8 +504,8 @@ object NuagesAttributeImpl {
     private[this] def auralAttrAdded(aa: AuralAttribute[S])(implicit tx: S#Tx): Unit = {
       checkAuralTarget(aa)
       val obs = aa.react { implicit tx => {
-        case AuralView.Playing => checkAuralTarget(aa)
-        case AuralView.Stopped => auralTgtRemoved()
+        case Runner.Running => checkAuralTarget(aa)
+        case Runner.Stopped => auralTgtRemoved()
         case _ =>
       }}
       auralAttrObs.swap(obs).dispose()
