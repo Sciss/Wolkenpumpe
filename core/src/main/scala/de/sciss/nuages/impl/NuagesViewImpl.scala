@@ -41,7 +41,8 @@ object NuagesViewImpl {
                          cursor: stm.Cursor[S]): NuagesView[S] = {
     implicit val context: NuagesContext[S] = NuagesContext[S]
     val panel     = NuagesPanel(nuages, nuagesConfig)
-    val tlm       = TimelineModel(Span(0L, (TimeRef.SampleRate * 60 * 60 * 10).toLong), TimeRef.SampleRate)
+    val visSpan   = Span(0L, TimeRef.SampleRate.toLong)  // not used
+    val tlm       = TimelineModel(bounds = Span.from(0L), visible = visSpan, sampleRate = TimeRef.SampleRate)
     val transport = panel.transport
     val trnspView = TransportView(transport, tlm, hasMillis = false, hasLoop = false, hasShortcuts = false)
     val res       = new Impl[S](panel, trnspView).init()

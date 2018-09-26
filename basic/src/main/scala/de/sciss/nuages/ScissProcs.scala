@@ -23,12 +23,13 @@ import de.sciss.synth.io.AudioFile
 import de.sciss.synth.proc.{Action, AudioCue, Proc, SoundProcesses}
 import de.sciss.synth.proc.MacroImplicits.ActionMacroOps
 
-import scala.Predef.{any2stringadd => _, _}
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.language.implicitConversions
 
 /** This is my personal set of generators and filters. */
 object ScissProcs {
+  private def any2stringadd: Any = ()
+
   trait ConfigLike {
     def audioFilesFolder: Option[File]
 
