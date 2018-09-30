@@ -2,7 +2,7 @@
  *  WolkenpumpeMain.scala
  *  (Wolkenpumpe)
  *
- *  Copyright (c) 2008-2017 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2008-2018 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v2+
  *
@@ -17,7 +17,7 @@ import de.sciss.file._
 import de.sciss.lucre.stm
 import de.sciss.lucre.synth.{InMemory, Sys}
 import de.sciss.osc
-import de.sciss.synth.proc.AuralSystem
+import de.sciss.synth.proc.{AuralSystem, Universe}
 import de.sciss.synth.{Server => SServer}
 
 object WolkenpumpeMain {
@@ -64,7 +64,7 @@ class WolkenpumpeMain[S <: Sys[S]] {
 
   /** Subclasses may want to override this. */
   protected def registerProcesses(nuages: Nuages[S], nCfg: Nuages.Config, sCfg: ScissProcs.Config)
-                                 (implicit tx: S#Tx, cursor: stm.Cursor[S]): Unit = {
+                                 (implicit tx: S#Tx, universe: Universe[S]): Unit = {
     ScissProcs[S](nuages, nCfg, sCfg)
   }
 
@@ -95,13 +95,12 @@ class WolkenpumpeMain[S <: Sys[S]] {
 
     cursor.step { implicit tx =>
       val n = nuagesH()
-      _aural = AuralSystem()
+      implicit val universe: Universe[S] = Universe.dummy
+      _aural = universe.auralSystem
       registerProcesses(n, nCfg, sCfg)
-      import de.sciss.lucre.stm.WorkspaceHandle.Implicits._
-      implicit val aural: AuralSystem = _aural
         _view = NuagesView(n, nCfg)
       /* val frame = */ NuagesFrame(_view, undecorated = false /* true */)
-      aural.start(aCfg)
+      _aural.start(aCfg)
     }
   }
 }

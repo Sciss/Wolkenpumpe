@@ -2,7 +2,7 @@
  *  NuagesAttrInputImpl.scala
  *  (Wolkenpumpe)
  *
- *  Copyright (c) 2008-2017 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2008-2018 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v2+
  *
@@ -82,7 +82,7 @@ trait NuagesAttrInputImpl[S <: SSys[S]]
 
   final def main: NuagesPanel[S]  = attribute.parent.main
 
-  private def atomic[C](fun: S#Tx => C): C = main.transport.scheduler.cursor.step(fun)
+  private def atomic[C](fun: S#Tx => C): C = main.universe.cursor.step(fun)
 
   def name: String = attribute.name
 

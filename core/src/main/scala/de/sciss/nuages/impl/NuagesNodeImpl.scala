@@ -2,7 +2,7 @@
  *  NuagesNodeImpl.scala
  *  (Wolkenpumpe)
  *
- *  Copyright (c) 2008-2017 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2008-2018 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v2+
  *
@@ -19,7 +19,7 @@ import prefuse.data.{Node => PNode}
 import prefuse.visual.VisualItem
 
 trait NuagesNodeImpl[S <: Sys[S]] extends NuagesDataImpl[S] with NuagesNode[S] {
-  protected final def atomic[A](fun: S#Tx => A): A = main.transport.scheduler.cursor.step(fun)
+  protected final def atomic[A](fun: S#Tx => A): A = main.universe.cursor.step(fun)
 }
 
 trait NuagesNodeRootImpl[S <: Sys[S]] extends NuagesNodeImpl[S] {

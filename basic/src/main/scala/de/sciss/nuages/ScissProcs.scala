@@ -2,7 +2,7 @@
  *  ScissProcs.scala
  *  (Wolkenpumpe)
  *
- *  Copyright (c) 2008-2017 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2008-2018 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v2+
  *
@@ -28,7 +28,7 @@ import scala.language.implicitConversions
 
 /** This is my personal set of generators and filters. */
 object ScissProcs {
-  private def any2stringadd: Any = ()
+  private[nuages] def any2stringadd: Any = ()
 
   trait ConfigLike {
     def audioFilesFolder: Option[File]

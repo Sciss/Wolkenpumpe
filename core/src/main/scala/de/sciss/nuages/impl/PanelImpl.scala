@@ -2,7 +2,7 @@
  *  PanelImpl.scala
  *  (Wolkenpumpe)
  *
- *  Copyright (c) 2008-2017 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2008-2018 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v2+
  *
@@ -17,13 +17,13 @@ package impl
 import java.awt.Color
 
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{Disposable, Folder, Obj, TxnLike, WorkspaceHandle}
+import de.sciss.lucre.stm.{Disposable, Folder, Obj, TxnLike}
 import de.sciss.lucre.swing.{ListView, defer, deferTx, requireEDT}
 import de.sciss.lucre.synth.Sys
 import de.sciss.nuages.Nuages.Surface
 import de.sciss.serial.Serializer
 import de.sciss.synth.proc
-import de.sciss.synth.proc.{AuralObj, AuralSystem, Timeline, Transport}
+import de.sciss.synth.proc.{AuralObj, Timeline, Transport, Universe}
 import prefuse.controls.Control
 import prefuse.visual.NodeItem
 
@@ -36,8 +36,7 @@ object PanelImpl {
   var DEBUG = false
 
   def apply[S <: Sys[S]](nuages: Nuages[S], config: Nuages.Config)
-                        (implicit tx: S#Tx, aural: AuralSystem, cursor: stm.Cursor[S],
-                         workspace: WorkspaceHandle[S], context: NuagesContext[S]): NuagesPanel[S] = {
+                        (implicit tx: S#Tx, universe: Universe[S], context: NuagesContext[S]): NuagesPanel[S] = {
     val nuagesH       = tx.newHandle(nuages)
 
     val listGen       = mkListView(nuages.generators)
@@ -50,19 +49,19 @@ object PanelImpl {
     val nodeMap       = tx.newInMemoryIdMap[NuagesObj[S]]
     // val scanMap       = tx.newInMemoryIdMap[NuagesOutput[S]] // ScanInfo [S]]
     val missingScans  = tx.newInMemoryIdMap[List[NuagesAttribute[S]]]
-    val transport     = Transport[S](aural)
+    val transport     = Transport[S](universe)
     val surface       = nuages.surface
     // transport.addObject(surface.peer)
 
     surface match {
       case Surface.Timeline(tl) =>
-        new PanelImplTimeline[S](nuagesH, nodeMap, /* scanMap, */ missingScans, config, transport, aural,
+        new PanelImplTimeline[S](nuagesH, nodeMap, /* scanMap, */ missingScans, config, transport,
           listGen = listGen, listFlt1 = listFlt1, listCol1 = listCol1, listFlt2 = listFlt2, listCol2 = listCol2,
           listMacro = listMacro)
           .init(tl)
 
       case Surface.Folder(f) =>
-        new PanelImplFolder[S](nuagesH, nodeMap, /* scanMap, */ missingScans, config, transport, aural,
+        new PanelImplFolder[S](nuagesH, nodeMap, /* scanMap, */ missingScans, config, transport,
           listGen = listGen, listFlt1 = listFlt1, listCol1 = listCol1, listFlt2 = listFlt2, listCol2 = listCol2,
           listMacro = listMacro)
           .init(f)
@@ -104,15 +103,13 @@ final class PanelImplTimeline[S <: Sys[S]](protected val nuagesH: stm.Source[S#T
      protected val missingScans: stm.IdentifierMap[S#Id, S#Tx, List[NuagesAttribute[S]]],
      val config   : Nuages.Config,
      val transport: Transport[S],
-     val aural    : AuralSystem,
      protected val listGen  : ListView[S, Obj[S], Unit /* Obj.Update[S] */],
      protected val listFlt1 : ListView[S, Obj[S], Unit /* Obj.Update[S] */],
      protected val listCol1 : ListView[S, Obj[S], Unit /* Obj.Update[S] */],
      protected val listFlt2 : ListView[S, Obj[S], Unit /* Obj.Update[S] */],
      protected val listCol2 : ListView[S, Obj[S], Unit /* Obj.Update[S] */],
      protected val listMacro: ListView[S, Obj[S], Unit /* Obj.Update[S] */])
-    (implicit val cursor: stm.Cursor[S],
-     protected val workspace: WorkspaceHandle[S],
+    (implicit val universe: Universe[S],
      val context: NuagesContext[S])
   extends PanelImpl[S, Timeline[S], AuralObj.Timeline[S]]
   with PanelImplTimelineInit[S]
@@ -123,15 +120,13 @@ final class PanelImplFolder[S <: Sys[S]](protected val nuagesH: stm.Source[S#Tx,
      protected val missingScans: stm.IdentifierMap[S#Id, S#Tx, List[NuagesAttribute[S]]],
      val config   : Nuages.Config,
      val transport: Transport[S],
-     val aural    : AuralSystem,
      protected val listGen  : ListView[S, Obj[S], Unit /* Obj.Update[S] */],
      protected val listFlt1 : ListView[S, Obj[S], Unit /* Obj.Update[S] */],
      protected val listCol1 : ListView[S, Obj[S], Unit /* Obj.Update[S] */],
      protected val listFlt2 : ListView[S, Obj[S], Unit /* Obj.Update[S] */],
      protected val listCol2 : ListView[S, Obj[S], Unit /* Obj.Update[S] */],
      protected val listMacro: ListView[S, Obj[S], Unit /* Obj.Update[S] */])
-    (implicit val cursor: stm.Cursor[S],
-     protected val workspace: WorkspaceHandle[S],
+    (implicit val universe: Universe[S],
      val context: NuagesContext[S])
   extends PanelImpl[S, Folder[S], AuralObj.Folder[S]]
   with PanelImplFolderInit[S]
@@ -166,6 +161,8 @@ trait PanelImpl[S <: Sys[S], Repr <: Obj[S], AuralRepr <: AuralObj[S]]
   // ---- impl ----
 
   protected final def main: NuagesPanel[S] = this
+
+  final def cursor: stm.Cursor[S] = universe.cursor
 
   protected final var observers: List[Disposable[S#Tx]] = Nil
   protected final val auralObserver                     = Ref(Option.empty[Disposable[S#Tx]])

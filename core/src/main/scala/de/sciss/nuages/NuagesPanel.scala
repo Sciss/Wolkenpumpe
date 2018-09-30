@@ -2,7 +2,7 @@
  *  NuagesPanel.scala
  *  (Wolkenpumpe)
  *
- *  Copyright (c) 2008-2017 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2008-2018 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v2+
  *
@@ -15,13 +15,12 @@ package de.sciss.nuages
 
 import java.awt.geom.Point2D
 
-import javax.swing.BoundedRangeModel
-import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{Obj, Sys, TxnLike, WorkspaceHandle}
+import de.sciss.lucre.stm.{Obj, Sys, TxnLike}
 import de.sciss.lucre.swing.View
 import de.sciss.lucre.synth.{AudioBus, Synth, Txn, Node => SNode, Sys => SSys}
 import de.sciss.nuages.impl.{PanelImpl => Impl}
-import de.sciss.synth.proc.{AuralSystem, Output, Transport}
+import de.sciss.synth.proc.{Output, Transport, Universe}
+import javax.swing.BoundedRangeModel
 import prefuse.data.Graph
 import prefuse.visual.{AggregateTable, VisualGraph}
 import prefuse.{Display, Visualization}
@@ -40,18 +39,14 @@ object NuagesPanel {
   final val soloAmpSpec   : (ParamSpec, Double) = ParamSpec(0.10, 10.0, ExponentialWarp) -> 0.5
 
   def apply[S <: SSys[S]](nuages: Nuages[S], config: Nuages.Config)
-                        (implicit tx: S#Tx, aural: AuralSystem,
-                         cursor: stm.Cursor[S], workspace: WorkspaceHandle[S],
-                         context: NuagesContext[S]): NuagesPanel[S] =
+                        (implicit tx: S#Tx, universe: Universe[S], context: NuagesContext[S]): NuagesPanel[S] =
     Impl(nuages, config)
 }
-trait NuagesPanel[S <: Sys[S]] extends View[S] {
+trait NuagesPanel[S <: Sys[S]] extends View.Cursor[S] {
 
-  def aural: AuralSystem
+  implicit val universe: Universe[S]
 
   def transport: Transport[S]
-
-  def cursor: stm.Cursor[S]
 
   def config : Nuages.Config
 

@@ -2,7 +2,7 @@
  *  NuagesViewImpl.scala
  *  (Wolkenpumpe)
  *
- *  Copyright (c) 2008-2017 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2008-2018 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v2+
  *
@@ -17,19 +17,18 @@ package impl
 import java.awt.event.{ActionEvent, InputEvent, KeyEvent}
 import java.awt.{Color, Toolkit}
 
-import javax.swing.{AbstractAction, JComponent, KeyStroke}
 import de.sciss.audiowidgets.{RotaryKnob, TimelineModel}
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.WorkspaceHandle
 import de.sciss.lucre.swing.impl.ComponentHolder
 import de.sciss.lucre.swing.{View, defer, deferTx, requireEDT}
 import de.sciss.lucre.synth.{Server, Synth, Sys, Txn}
 import de.sciss.osc
 import de.sciss.span.Span
 import de.sciss.synth.proc.gui.TransportView
-import de.sciss.synth.proc.{AuralSystem, TimeRef}
+import de.sciss.synth.proc.{AuralSystem, TimeRef, Universe}
 import de.sciss.synth.swing.j.JServerStatusPanel
 import de.sciss.synth.{SynthGraph, addAfter, message}
+import javax.swing.{AbstractAction, JComponent, KeyStroke}
 
 import scala.collection.breakOut
 import scala.swing.Swing._
@@ -37,16 +36,17 @@ import scala.swing.{BorderPanel, BoxPanel, Component, GridBagPanel, Orientation}
 
 object NuagesViewImpl {
   def apply[S <: Sys[S]](nuages: Nuages[S], nuagesConfig: Nuages.Config)
-                        (implicit tx: S#Tx, aural: AuralSystem, workspace: WorkspaceHandle[S],
-                         cursor: stm.Cursor[S]): NuagesView[S] = {
+                        (implicit tx: S#Tx, universe: Universe[S]): NuagesView[S] = {
     implicit val context: NuagesContext[S] = NuagesContext[S]
-    val panel     = NuagesPanel(nuages, nuagesConfig)
-    val visSpan   = Span(0L, TimeRef.SampleRate.toLong)  // not used
-    val tlm       = TimelineModel(bounds = Span.from(0L), visible = visSpan, clipStop = false,
-      sampleRate = TimeRef.SampleRate)
-    val transport = panel.transport
-    val trnspView = TransportView(transport, tlm, hasMillis = false, hasLoop = false, hasShortcuts = false)
-    val res       = new Impl[S](panel, trnspView).init()
+    val panel       = NuagesPanel(nuages, nuagesConfig)
+    val visSpan     = Span(0L, TimeRef.SampleRate.toLong)  // not used
+    val virtualSpan = Span(0L, (60.0 * 60.0 * TimeRef.SampleRate).toLong)  // not used
+    val tlm         = TimelineModel(bounds = Span.from(0L), visible = visSpan, virtual = virtualSpan,
+      clipStop = false, sampleRate = TimeRef.SampleRate)
+    val transport   = panel.transport
+    import universe.cursor
+    val trnspView   = TransportView(transport, tlm, hasMillis = false, hasLoop = false, hasShortcuts = false)
+    val res         = new Impl[S](panel, trnspView).init()
     res
   }
 
@@ -64,8 +64,9 @@ object NuagesViewImpl {
 
     def init()(implicit tx: S#Tx): this.type = {
       deferTx(guiInit())
-      panel.aural.serverOption.foreach(auralStarted)
-      panel.aural.addClient(this)
+      val aural = panel.universe.auralSystem
+      aural.serverOption.foreach(auralStarted)
+      aural.addClient(this)
       this
     }
 
@@ -229,7 +230,8 @@ object NuagesViewImpl {
 //    }
 
     def dispose()(implicit tx: S#Tx): Unit = {
-      panel.aural.removeClient(this)
+      val aural = panel.universe.auralSystem
+      aural.removeClient(this)
       val synth = panel.masterSynth
       panel.masterSynth = None
       panel.dispose()
