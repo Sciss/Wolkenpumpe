@@ -1,4 +1,5 @@
-        - glide, fade
+[OK]    - glide
+        - fade
         - group filtering
         - fscape procs
         - main recorder
@@ -20,7 +21,12 @@
 [OK]    - mapping: multi-channel display; clip value
 [OK]    - mapping: deleting mapping results in 'mono' param? (sets to DoubleObj?)
         - mono-mix filter, possibly with sample-and-hold option
-        - master meters don't properly show more than eight chans
+[OK?]   - master meters don't properly show more than eight chans
 
 [OK]    - Exception in thread "AWT-EventQueue-0" java.lang.ClassCastException: de.sciss.synth.proc.impl.ScanImpl$Impl cannot be cast to de.sciss.synth.proc.Scan$Link
 	      at de.sciss.synth.proc.impl.ScanImpl$Impl$$anonfun$copy$1$$anonfun$apply$mcV$sp$1.apply(ScanImpl.scala:107)
+
+        - 'in' disappears from filter / collector when removing all inputs
+        - fine grained param mode (higher keyboard and mouse resolution)
+        - tags and tag-based search?
+        
