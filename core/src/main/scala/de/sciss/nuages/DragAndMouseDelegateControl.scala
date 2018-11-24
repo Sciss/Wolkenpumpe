@@ -39,6 +39,7 @@ object DragAndMouseDelegateControl {
       case Some(data) => data.fixed
       case _ => false
     })
+    // println(s"setSmartFixed(_, $vi, $state), state1 = $state1")
     vi.setFixed(state1)
   }
 
@@ -51,7 +52,7 @@ object DragAndMouseDelegateControl {
       case _ => None
     }
 
-  private final class Drag(/* val vi: VisualItem,*/ val lastPt: Point2D) {
+  private final class Drag(val vi: VisualItem, val lastPt: Point2D) {
     var started = false
   }
 }
@@ -61,7 +62,7 @@ class DragAndMouseDelegateControl[S <: Sys[S]](vis: Visualization) extends Contr
   import NuagesPanel._
 
 //  private var hoverItem : Option[VisualItem] = None
-  private var drag      : Option[Drag      ] = None
+  private var drag: Option[Drag] = None
 
   override def itemEntered(vi: VisualItem, e: MouseEvent): Unit = {
     vis.getRenderer(vi) match {
@@ -80,6 +81,7 @@ class DragAndMouseDelegateControl[S <: Sys[S]](vis: Visualization) extends Contr
 //    hoverItem = Some(vi)
     vi match {
       case ni: NodeItem =>
+        // println(s"fixed = true; $ni")
         setFixed(ni, fixed = true)
 
       case ei: EdgeItem =>
@@ -108,6 +110,7 @@ class DragAndMouseDelegateControl[S <: Sys[S]](vis: Visualization) extends Contr
 //    hoverItem = None
     vi match {
       case ni: NodeItem =>
+        // println(s"fixed = false; $ni")
         setFixed(ni, fixed = false)
 
       case ei: EdgeItem =>
@@ -134,10 +137,14 @@ class DragAndMouseDelegateControl[S <: Sys[S]](vis: Visualization) extends Contr
       // case er: EdgeRenderer =>
       case _ =>
     }
-    if (!SwingUtilities.isLeftMouseButton(e) || e.isShiftDown) return
-    val dr = new Drag(displayPt)
-    drag = Some(dr)
-    if (vi.isInstanceOf[AggregateItem]) setFixed(vi, fixed = true)
+    if (SwingUtilities.isLeftMouseButton(e) && !e.isShiftDown) {
+      val dr = new Drag(vi, displayPt)
+      drag = Some(dr)
+      // println("drag = Some")
+      if (vi.isInstanceOf[AggregateItem]) { // XXX TODO remind me, why this check?
+        setFixed(vi, fixed = true)
+      }
+    }
   }
 
   override def itemReleased(vi: VisualItem, e: MouseEvent): Unit = {
@@ -155,6 +162,7 @@ class DragAndMouseDelegateControl[S <: Sys[S]](vis: Visualization) extends Contr
     }
     drag.foreach { _ =>
       setFixed(vi, fixed = false)
+      // println("drag = None")
       drag = None
     }
   }
@@ -173,11 +181,17 @@ class DragAndMouseDelegateControl[S <: Sys[S]](vis: Visualization) extends Contr
       case _ =>
     }
     drag.foreach { dr =>
-      if (!dr.started) dr.started = true
-      val dx = newPt.getX - dr.lastPt.getX
-      val dy = newPt.getY - dr.lastPt.getY
-      move(vi, dx, dy)
-      dr.lastPt.setLocation(newPt)
+      if (dr.vi == vi) {  // skip orphaned drag
+        if (!dr.started) {
+          dr.started = true
+        }
+        val dx = newPt.getX - dr.lastPt.getX
+        val dy = newPt.getY - dr.lastPt.getY
+        move(vi, dx, dy)
+        dr.lastPt.setLocation(newPt)
+      } else {
+        drag = None // clear orphan
+      }
     }
   }
 
@@ -185,9 +199,9 @@ class DragAndMouseDelegateControl[S <: Sys[S]](vis: Visualization) extends Contr
   private def setFixed(vi: VisualItem, fixed: Boolean): Unit =
     vi match {
       case ai: AggregateItem =>
-        val iter = ai.items()
-        while (iter.hasNext) {
-          val vi2 = iter.next.asInstanceOf[VisualItem]
+        val it = ai.items()
+        while (it.hasNext) {
+          val vi2 = it.next.asInstanceOf[VisualItem]
           setFixed(vi2, fixed)
         }
 
@@ -198,9 +212,9 @@ class DragAndMouseDelegateControl[S <: Sys[S]](vis: Visualization) extends Contr
   private def move(vi: VisualItem, dx: Double, dy: Double): Unit = {
     vi match {
       case ai: AggregateItem =>
-        val iter = ai.items()
-        while (iter.hasNext) {
-          val vi2 = iter.next.asInstanceOf[VisualItem]
+        val it = ai.items()
+        while (it.hasNext) {
+          val vi2 = it.next.asInstanceOf[VisualItem]
           move(vi2, dx, dy)
         }
 

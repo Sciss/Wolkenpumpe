@@ -18,6 +18,7 @@ import java.awt.event.{KeyEvent, MouseEvent, MouseMotionListener}
 
 import de.sciss.lucre.synth.Sys
 
+/** A control that remembers the last mouse location. */
 final class GlobalControl[S <: Sys[S]](main: NuagesPanel[S]) extends MouseMotionListener {
   private val lastPt        = new Point
 

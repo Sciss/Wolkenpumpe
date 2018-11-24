@@ -24,6 +24,16 @@ import prefuse.util.GraphicsLib
 import prefuse.util.display.DisplayLib
 import prefuse.visual.{EdgeItem, VisualItem}
 
+/** A mouse control for interacting with the display surface
+  * as well as with nodes and edges.
+  *
+  * - meta-click on surface: zoom-to-fit
+  * - meta-click on node: zoom to fit node
+  * - control-click on surface or node: pan to mouse coordinate
+  * - double-click on surface: show generator dialog
+  * - double-click on edge   : show filter    dialog
+  * - alt-click on edge: delete edge
+  */
 class ClickControl[S <: Sys[S]](main: NuagesPanel[S]) extends ControlAdapter {
 
   import NuagesPanel._

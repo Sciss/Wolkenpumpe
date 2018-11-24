@@ -36,6 +36,15 @@ import scala.concurrent.stm.{InTxn, TMap, TxnExecutor}
 import scala.swing.event.Key
 import scala.swing.{Orientation, ScrollPane, TextField}
 
+/** A control that handles keyboard input.
+  *
+  * - shortcuts as defined per `Nuages.attrShortcut`
+  * - enter to type a generator or filter
+  * - `1` and `2`: zoom levels
+  * - `O` pan to next output
+  * - forwards to `itemKeyPressed`, `itemKeyReleased`, `itemKeyTypes` of `NuagesData`
+  *   (thus making all other keyboard control such as parameter adjustments possible)
+  */
 object KeyControl {
   def apply[S <: Sys[S]](main: NuagesPanel[S])(implicit tx: S#Tx): Control with Disposable[S#Tx] = {
     val res = new Impl(main)
@@ -236,8 +245,8 @@ object KeyControl {
 
           } else {
             val ks = KeyStroke.getKeyStroke(e.getKeyCode, e.getModifiers)
-            val filtOpt = filters.get(ks)
-            filtOpt.foreach { objH =>
+            val filterOpt = filters.get(ks)
+            filterOpt.foreach { objH =>
               perform { (vOut, vIn, pt) =>
                 main.cursor.step { implicit tx =>
                   val pred    = vOut.output
@@ -248,7 +257,7 @@ object KeyControl {
                 }
               }
             }
-            filtOpt.isDefined
+            filterOpt.isDefined
           }
 
         case ni: NodeItem =>
@@ -278,8 +287,8 @@ object KeyControl {
 
                   } else {
                     val ks = KeyStroke.getKeyStroke(e.getKeyCode, e.getModifiers)
-                    val filtOpt = filters.get(ks)
-                    filtOpt.foreach { objH =>
+                    val filterOpt = filters.get(ks)
+                    filterOpt.foreach { objH =>
                       perform { pt =>
                         main.cursor.step { implicit tx =>
                           val pred = vOut.output
@@ -287,7 +296,7 @@ object KeyControl {
                         }
                       }
                     }
-                    filtOpt.isDefined
+                    filterOpt.isDefined
                   }
                 case _ => false
               })
@@ -364,7 +373,7 @@ object KeyControl {
     private def showCategoryInput(c: Category[S])(complete: S#Tx => (Obj[S], Point2D) => Unit): Unit = {
       val lpx = lastPt.x
       val lpy = lastPt.y
-      val p = new OverlayPanel(Orientation.Horizontal) { panel =>
+      val p: OverlayPanel = new OverlayPanel(Orientation.Horizontal) { panel =>
         val ggName = new TextField(12)
         Wolkenpumpe.mkBlackWhite(ggName)
         ggName.peer.addAncestorListener(new AncestorListener {

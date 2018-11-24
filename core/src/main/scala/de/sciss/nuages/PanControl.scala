@@ -15,6 +15,7 @@ package de.sciss.nuages
 
 import java.awt.event.MouseEvent
 
+/** A control to pan by pressing on the surface and moving the mouse. */
 class PanControl extends prefuse.controls.PanControl {
   private[this] var active = false
 

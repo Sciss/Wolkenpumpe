@@ -23,6 +23,7 @@ import prefuse.controls.ControlAdapter
 import prefuse.util.display.PaintListener
 import prefuse.visual.{NodeItem, VisualItem}
 
+/** A control that draws a rubber band for connecting two nodes. */
 object ConnectControl {
   private final case class DragSource[S <: Sys[S]](vi: VisualItem, outputView: NuagesOutput        [S])
   private final case class DragTarget[S <: Sys[S]](vi: VisualItem, inputView: NuagesAttribute.Input[S])
@@ -76,13 +77,13 @@ class ConnectControl[S <: Sys[S]](main: NuagesPanel[S])
     }
   }
 
-  /** Bug in Prefuse: With Ctrl+Mouse we loose
+  /** Bug in Prefuse: With Ctrl+Mouse we lose
     * the item. So make sure we continue to track
     * the motion and eventually kill the edge
     */
   override def mouseMoved(e: MouseEvent): Unit = checkDrag(e)
 
-  /** Bug in Prefuse: With Ctrl+Mouse we loose
+  /** Bug in Prefuse: With Ctrl+Mouse we lose
     * the item. So make sure we continue to track
     * the motion and eventually kill the edge
     */
@@ -108,7 +109,7 @@ class ConnectControl[S <: Sys[S]](main: NuagesPanel[S])
     if (tgt != dr.target) {
       dr.target.foreach(t => DragAndMouseDelegateControl.setSmartFixed(vis, t.vi, state = false))
       dr.target = tgt
-      dr.target.foreach(t => DragAndMouseDelegateControl.setSmartFixed(vis, t.vi, state = false))
+      dr.target.foreach(t => DragAndMouseDelegateControl.setSmartFixed(vis, t.vi, state = true ))
     }
   }
 
