@@ -69,10 +69,11 @@ trait AttrInputKeyControl[S <: Sys[S]] extends ClipboardOwner {
         import numbers.Implicits._
         val time0 = code.id.linLin(k0.id, k0.id + 9, 0f, 1f)
         // "double clicking" is to randomise
-        main.glideTime = if ((main.glideTime absDif time0) < 0.05f || (main.glideTimeSource !== "key")) time0 else {
-          (time0 + math.random.toFloat.linLin(0f, 1f, -0.1f, 0.1f)).clip(0f, 1f)
-        }
-        main.glideTimeSource = "key"
+        main.glideTime =
+          if ((main.glideTime absDif time0) < 0.05f || (main.glideTimeSource !== NuagesPanel.GLIDE_KEY)) time0 else {
+            (time0 + math.random.toFloat.linLin(0f, 1f, -0.1f, 0.1f)).clip(0f, 1f)
+          }
+        main.glideTimeSource = NuagesPanel.GLIDE_KEY
         true
       }
 

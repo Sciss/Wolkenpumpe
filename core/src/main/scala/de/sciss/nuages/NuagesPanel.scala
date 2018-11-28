@@ -35,6 +35,8 @@ object NuagesPanel {
   private[nuages] val COL_NUAGES      = "nuages"
   private[nuages] val GROUP_SELECTION = "sel"
 
+  final val GLIDE_KEY = "key"
+
   final val masterAmpSpec : (ParamSpec, Double) = ParamSpec(0.01, 10.0, ExponentialWarp) -> 1.0
   final val soloAmpSpec   : (ParamSpec, Double) = ParamSpec(0.10, 10.0, ExponentialWarp) -> 0.5
 
@@ -86,6 +88,7 @@ trait NuagesPanel[S <: Sys[S]] extends View.Cursor[S] {
   /** Glide time normalised to 0..1 */
   var glideTime       : Float
   def glideTimeModel  : BoundedRangeModel
+  /** Used internally to indicate if driven by tablet or keys (`"key"`). */
   var glideTimeSource : String
 
   /** Whether glide time should be used or set */
