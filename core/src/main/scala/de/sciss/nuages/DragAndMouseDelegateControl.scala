@@ -53,6 +53,9 @@ object DragAndMouseDelegateControl {
     }
 
   private final class Drag(val vi: VisualItem, val lastPt: Point2D) {
+    def this(pt: Point2D) =
+      this(throw new UnsupportedOperationException, pt) // make MiMa happy
+
     var started = false
   }
 }

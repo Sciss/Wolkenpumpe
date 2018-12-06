@@ -1,6 +1,6 @@
 lazy val baseName        = "Wolkenpumpe"
 lazy val baseNameL       = baseName.toLowerCase
-lazy val projectVersion  = "2.28.1"
+lazy val projectVersion  = "2.28.2-SNAPSHOT"
 lazy val mimaVersion     = "2.28.0"
 
 lazy val commonSettings = Seq(

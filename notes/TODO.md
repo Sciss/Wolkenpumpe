@@ -44,6 +44,7 @@
 - {  }  improve default positions of UI nodes (avoid having to wait for the params to "swim away" from the centre)
 - {  }  resettable timer
 - {  }  find a solution for using `setGraph` macro and generate source code
+- {  }  glide options for `[` and `]` (e.g. keep numbers pressed?)
 
 # insert modulators
 

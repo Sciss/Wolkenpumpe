@@ -112,6 +112,10 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
 
   def hasOutput(key: String)(implicit tx: TxnLike): Boolean = outputs.contains(key)
 
+//  def outputsIterator(implicit tx: TxnLike): Iterator[(String, NuagesOutput[S])] = outputs.iterator
+
+  def getOutput(key: String)(implicit tx: TxnLike): Option[NuagesOutput[S]] = outputs.get(key)
+
   private[this] def initProc(proc: Proc[S])(implicit tx: S#Tx): Unit = {
     proc.outputs.iterator.foreach(outputAdded)
 
