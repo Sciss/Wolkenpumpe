@@ -28,7 +28,7 @@ Builds with sbt against Scala 2.12, 2.11.
 
     "de.sciss" %% "wolkenpumpe" % v
 
-The current version `v` is `"2.27.0"`.
+The current version `v` is `"2.28.2"`.
 
 ## contributing
 
