@@ -1,16 +1,16 @@
 lazy val baseName        = "Wolkenpumpe"
 lazy val baseNameL       = baseName.toLowerCase
-lazy val projectVersion  = "2.28.2"
-lazy val mimaVersion     = "2.28.0"
+lazy val projectVersion  = "2.29.0-SNAPSHOT"
+lazy val mimaVersion     = "2.29.0"
 
 lazy val commonSettings = Seq(
   version              := projectVersion,
   organization         := "de.sciss",
-  homepage             := Some(url(s"https://github.com/Sciss/$baseName")),
+  homepage             := Some(url(s"https://git.iem.at/sciss/$baseName")),
   description          := "A Prefuse based visual interface for SoundProcesses, a sound synthesis framework",
   licenses             := Seq("GPL v2+" -> url( "http://www.gnu.org/licenses/gpl-2.0.txt")),
-  scalaVersion         := "2.12.7",
-  crossScalaVersions   := Seq("2.12.7", "2.11.12"),
+  scalaVersion         := "2.13.0-M5",
+  crossScalaVersions   := Seq("2.12.8", "2.11.12", "2.13.0-M5"),
   resolvers            += "Oracle Repository" at "http://download.oracle.com/maven",  // required for sleepycat
   scalacOptions       ++= Seq(
     "-deprecation", "-unchecked", "-feature", "-encoding", "utf8", "-Xfuture", "-Xlint:-stars-align,_", "-Xsource:2.13"
@@ -21,22 +21,21 @@ lazy val commonSettings = Seq(
 
 lazy val deps = new {
   val main = new {
-    val soundProcesses      = "3.23.1"
-    val scalaCollider       = "1.27.1"
-    val scalaColliderSwing  = "1.40.0"
+    val soundProcesses      = "3.24.0-SNAPSHOT"
+    val scalaCollider       = "1.28.0-SNAPSHOT"
+    val scalaColliderSwing  = "1.41.0-SNAPSHOT"
     val prefuse             = "1.0.1"
-    val lucreSwing          = "1.13.0"
-    val swingPlus           = "0.3.1"
+    val lucreSwing          = "1.14.0-SNAPSHOT"
+    val swingPlus           = "0.4.0-SNAPSHOT"
     val intensity           = "1.0.0"
-    val model               = "0.3.4"
     val fileUtil            = "1.1.3"
-    val scissDSP            = "1.3.0"
+    val scissDSP            = "1.3.1-SNAPSHOT"
   }
   val test = new {
-    val submin              = "0.2.2"
-    val lucre               = "3.10.1"
+    val submin              = "0.2.3"
+    val lucre               = "3.11.0-SNAPSHOT"
     val scalaTest           = "3.0.5"
-    val scopt               = "3.7.0"
+    val scopt               = "3.7.1"
   }
 }
 
@@ -67,10 +66,12 @@ lazy val core = project.withId(s"$baseNameL-core").in(file("core"))
       "de.sciss"          %% "swingplus"               % deps.main.swingPlus,
       "de.sciss"          %% "scissdsp"                % deps.main.scissDSP,
       "de.sciss"          %  "intensitypalette"        % deps.main.intensity,
-      "de.sciss"          %% "model"                   % deps.main.model,    // (sbt bug)
-      "de.sciss"          %% "lucre-bdb"               % deps.test.lucre     % "test",
-      "org.scalatest"     %% "scalatest"               % deps.test.scalaTest % "test"
+      "de.sciss"          %% "lucre-bdb"               % deps.test.lucre  % Test,
     ),
+    libraryDependencies += {
+      val v = if (scalaVersion.value == "2.13.0-M5") "3.0.6-SNAP5" else deps.test.scalaTest
+      "org.scalatest" %% "scalatest" % v % Test
+    },
     mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-core" % mimaVersion),
     initialCommands in console :=
       """import de.sciss.nuages._
@@ -84,9 +85,9 @@ lazy val basic = project.withId(s"$baseNameL-basic").in(file("basic"))
   .settings(
     name := s"$baseName-Basic",
     libraryDependencies ++= Seq(
-      "com.github.scopt"  %% "scopt"     % deps.test.scopt  % "test",
-      "de.sciss"          %% "lucre-bdb" % deps.test.lucre  % "test",
-      "de.sciss"          %  "submin"    % deps.test.submin % "test"
+      "com.github.scopt"  %% "scopt"     % deps.test.scopt  % Test,
+      "de.sciss"          %% "lucre-bdb" % deps.test.lucre  % Test,
+      "de.sciss"          %  "submin"    % deps.test.submin % Test
     ),
     mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-basic" % mimaVersion)
   )
@@ -106,8 +107,8 @@ lazy val publishSettings = Seq(
   pomIncludeRepository := { _ => false },
   pomExtra := { val n = baseName
 <scm>
-  <url>git@github.com:Sciss/{n}.git</url>
-  <connection>scm:git:git@github.com:Sciss/{n}.git</connection>
+  <url>git@git.iem.at:sciss/{n}.git</url>
+  <connection>scm:git:git@git.iem.at:sciss/{n}.git</connection>
 </scm>
 <developers>
    <developer>

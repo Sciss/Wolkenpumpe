@@ -20,7 +20,6 @@ import de.sciss.nuages.impl.PanelImpl.LAYOUT_TIME
 import de.sciss.osc
 import de.sciss.synth.{SynthGraph, addToTail, message}
 
-import scala.collection.breakOut
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm.{InTxn, Ref}
 
@@ -103,10 +102,11 @@ trait PanelImplMixer[S <: Sys[S]] {
     val NodeId = syn.peer.id
     val trigResp = message.Responder.add(server.peer) {
       case osc.Message(Name, NodeId, 0, raw @ _*) =>
-        val values: Vec[Double] = raw.collect {
-          case f: Float => f.toDouble
-        } (breakOut)
-        defer(fun(values))
+        val vec: Vec[Double] = raw match {
+          case rawV: Vec[_] => rawV         .map(_.asInstanceOf[Float].toDouble)
+          case _            => raw.iterator .map(_.asInstanceOf[Float].toDouble).toIndexedSeq
+        }
+        defer(fun(vec))
     }
     // Responder.add is non-transactional. Thus, if the transaction fails, we need to remove it.
     scala.concurrent.stm.Txn.afterRollback { _ =>
@@ -136,11 +136,12 @@ trait PanelImplMixer[S <: Sys[S]] {
     syn.read(bus -> "in")
     val NodeId = syn.peer.id
     val trigResp = message.Responder.add(node.server.peer) {
-      case osc.Message("/reply", NodeId, 0, values0 @ _*) =>
-        val values: Vec[Double] = values0.map {
-          case d: Float => d.toDouble
-        } (breakOut)
-        defer(fun(values))
+      case osc.Message("/reply", NodeId, 0, raw @ _*) =>
+        val vec: Vec[Double] = raw match {
+          case rawV: Vec[_] => rawV         .map(_.asInstanceOf[Float].toDouble)
+          case _            => raw.iterator .map(_.asInstanceOf[Float].toDouble).toIndexedSeq
+        }
+        defer(fun(vec))
     }
     // Responder.add is non-transactional. Thus, if the transaction fails, we need to remove it.
     scala.concurrent.stm.Txn.afterRollback { _ =>

@@ -24,13 +24,13 @@ import de.sciss.lucre.swing.{View, defer, deferTx, requireEDT}
 import de.sciss.lucre.synth.{Server, Synth, Sys, Txn}
 import de.sciss.osc
 import de.sciss.span.Span
+import de.sciss.synth.UGenSource.Vec
 import de.sciss.synth.proc.gui.TransportView
 import de.sciss.synth.proc.{AuralSystem, TimeRef, Universe}
 import de.sciss.synth.swing.j.JServerStatusPanel
 import de.sciss.synth.{SynthGraph, addAfter, message}
 import javax.swing.{AbstractAction, JComponent, KeyStroke}
 
-import scala.collection.breakOut
 import scala.swing.Swing._
 import scala.swing.{BorderPanel, BoxPanel, Component, GridBagPanel, Orientation}
 
@@ -302,8 +302,12 @@ object NuagesViewImpl {
       val synPostMId = synPostM.peer.id
       val resp = message.Responder.add(server.peer) {
         case osc.Message( "/meters", `synPostMId`, 0, values @ _* ) =>
+          val vec: Vec[Float] = values match {
+            case vv: Vec[_] => vv             .map(v => Math.min(10f, v.asInstanceOf[Float]))
+            case _          => values.iterator.map(v => Math.min(10f, v.asInstanceOf[Float])).toIndexedSeq
+          }
           defer {
-            _controlPanel.meterUpdate(values.map(x => math.min(10f, x.asInstanceOf[Float]))(breakOut))
+            _controlPanel.meterUpdate(vec)
           }
       }
       scala.concurrent.stm.Txn.afterRollback(_ => resp.remove())(tx.peer)

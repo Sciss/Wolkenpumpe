@@ -27,7 +27,6 @@ import de.sciss.synth.proc.{AuralObj, Timeline, Transport, Universe}
 import prefuse.controls.Control
 import prefuse.visual.NodeItem
 
-import scala.collection.breakOut
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm.{Ref, TxnLocal}
 import scala.util.control.NonFatal
@@ -242,7 +241,7 @@ trait PanelImpl[S <: Sys[S], Repr <: Obj[S], AuralRepr <: AuralObj[S]]
 
   final def saveMacro(name: String, sel: Set[NuagesObj[S]]): Unit =
     cursor.step { implicit tx =>
-     val copies = Nuages.copyGraph(sel.map(_.obj)(breakOut))
+     val copies = Nuages.copyGraph(sel.iterator.map(_.obj).toIndexedSeq)
 
       val macroF = Folder[S]
       copies.foreach(macroF.addLast)
