@@ -1,6 +1,6 @@
 lazy val baseName        = "Wolkenpumpe"
 lazy val baseNameL       = baseName.toLowerCase
-lazy val projectVersion  = "2.30.0-SNAPSHOT"
+lazy val projectVersion  = "2.30.0"
 lazy val mimaVersion     = "2.30.0"
 
 lazy val commonSettings = Seq(
@@ -9,7 +9,7 @@ lazy val commonSettings = Seq(
   homepage             := Some(url(s"https://git.iem.at/sciss/$baseName")),
   description          := "A Prefuse based visual interface for SoundProcesses, a sound synthesis framework",
   licenses             := Seq("GPL v2+" -> url( "http://www.gnu.org/licenses/gpl-2.0.txt")),
-  scalaVersion         := "2.13.0-M5",
+  scalaVersion         := "2.12.8",
   crossScalaVersions   := Seq("2.12.8", "2.11.12", "2.13.0-M5"),
   resolvers            += "Oracle Repository" at "http://download.oracle.com/maven",  // required for sleepycat
   scalacOptions       ++= Seq(
@@ -21,8 +21,8 @@ lazy val commonSettings = Seq(
 
 lazy val deps = new {
   val main = new {
-    val soundProcesses      = "3.25.0-SNAPSHOT"
-    val scalaCollider       = "1.28.0"
+    val soundProcesses      = "3.25.0"
+    val scalaCollider       = "1.28.1"
     val scalaColliderSwing  = "1.41.0"
     val prefuse             = "1.0.1"
     val lucreSwing          = "1.14.0"

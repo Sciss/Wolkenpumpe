@@ -2,7 +2,7 @@
  *  NuagesTimelineAttrInput.scala
  *  (Wolkenpumpe)
  *
- *  Copyright (c) 2008-2018 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2008-2019 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v2+
  *
