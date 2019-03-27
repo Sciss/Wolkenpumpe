@@ -21,7 +21,7 @@ lazy val commonSettings = Seq(
 
 lazy val deps = new {
   val main = new {
-    val soundProcesses      = "3.26.0-SNAPSHOT"
+    val soundProcesses      = "3.26.0"
     val scalaCollider       = "1.28.1"
     val scalaColliderSwing  = "1.41.0"
     val prefuse             = "1.0.1"
