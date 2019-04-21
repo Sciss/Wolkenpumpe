@@ -1,7 +1,7 @@
 lazy val baseName        = "Wolkenpumpe"
 lazy val baseNameL       = baseName.toLowerCase
-lazy val projectVersion  = "2.31.0"
-lazy val mimaVersion     = "2.31.0"
+lazy val projectVersion  = "2.32.0-SNAPSHOT"
+lazy val mimaVersion     = "2.32.0"
 
 lazy val commonSettings = Seq(
   version              := projectVersion,
@@ -10,10 +10,10 @@ lazy val commonSettings = Seq(
   description          := "A Prefuse based visual interface for SoundProcesses, a sound synthesis framework",
   licenses             := Seq("GPL v2+" -> url( "http://www.gnu.org/licenses/gpl-2.0.txt")),
   scalaVersion         := "2.12.8",
-  crossScalaVersions   := Seq("2.12.8", "2.11.12", "2.13.0-M5"),
+  crossScalaVersions   := Seq("2.12.8", "2.11.12", "2.13.0-RC1"),
   resolvers            += "Oracle Repository" at "http://download.oracle.com/maven",  // required for sleepycat
   scalacOptions       ++= Seq(
-    "-deprecation", "-unchecked", "-feature", "-encoding", "utf8", "-Xfuture", "-Xlint:-stars-align,_", "-Xsource:2.13"
+    "-deprecation", "-unchecked", "-feature", "-encoding", "utf8", "-Xlint:-stars-align,_", "-Xsource:2.13"
   ),
   scalacOptions        += "-Yrangepos",  // this is needed to extract source code
   updateOptions        := updateOptions.value.withLatestSnapshots(false)
@@ -21,20 +21,20 @@ lazy val commonSettings = Seq(
 
 lazy val deps = new {
   val main = new {
-    val soundProcesses      = "3.27.0"
-    val scalaCollider       = "1.28.1"
-    val scalaColliderSwing  = "1.41.0"
+    val soundProcesses      = "3.28.0-SNAPSHOT"
+    val scalaCollider       = "1.28.2"
+    val scalaColliderSwing  = "1.41.1"
     val prefuse             = "1.0.1"
-    val lucreSwing          = "1.15.0"
-    val swingPlus           = "0.4.1"
+    val lucreSwing          = "1.16.0-SNAPSHOT"
+    val swingPlus           = "0.4.2"
     val intensity           = "1.0.0"
     val fileUtil            = "1.1.3"
-    val scissDSP            = "1.3.1"
+    val scissDSP            = "1.3.2"
   }
   val test = new {
-    val submin              = "0.2.4"
-    val lucre               = "3.11.0"
-    val scalaTest           = "3.0.7"
+    val submin              = "0.2.5"
+    val lucre               = "3.12.0-SNAPSHOT"
+    val scalaTest           = "3.0.8-RC2"
     val scopt               = "3.7.1"
   }
 }
