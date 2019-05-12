@@ -19,8 +19,9 @@ import java.awt.{Color, Toolkit}
 
 import de.sciss.audiowidgets.{RotaryKnob, TimelineModel}
 import de.sciss.lucre.stm
+import de.sciss.lucre.swing.LucreSwing.{defer, deferTx, requireEDT}
+import de.sciss.lucre.swing.View
 import de.sciss.lucre.swing.impl.ComponentHolder
-import de.sciss.lucre.swing.{View, defer, deferTx, requireEDT}
 import de.sciss.lucre.synth.{Server, Synth, Sys, Txn}
 import de.sciss.osc
 import de.sciss.span.Span

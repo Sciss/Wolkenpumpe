@@ -18,7 +18,8 @@ import java.awt.Color
 
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Disposable, Folder, Obj, TxnLike}
-import de.sciss.lucre.swing.{ListView, defer, deferTx, requireEDT}
+import de.sciss.lucre.swing.ListView
+import de.sciss.lucre.swing.LucreSwing.{defer, deferTx, requireEDT}
 import de.sciss.lucre.synth.Sys
 import de.sciss.nuages.Nuages.Surface
 import de.sciss.serial.Serializer

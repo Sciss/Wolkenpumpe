@@ -18,7 +18,7 @@ import java.awt.Graphics2D
 
 import de.sciss.lucre.expr.{BooleanObj, DoubleObj, DoubleVector, IntObj, LongObj, SpanLikeObj}
 import de.sciss.lucre.stm.{Disposable, Folder, Obj, Sys, TxnLike}
-import de.sciss.lucre.swing.requireEDT
+import de.sciss.lucre.swing.LucreSwing.requireEDT
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.nuages.NuagesAttribute.{Factory, Input, Parent}
 import de.sciss.nuages.NuagesPanel.GROUP_GRAPH

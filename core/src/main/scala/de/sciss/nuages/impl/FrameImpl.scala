@@ -14,7 +14,7 @@
 package de.sciss.nuages
 package impl
 
-import de.sciss.lucre.swing.deferTx
+import de.sciss.lucre.swing.LucreSwing.deferTx
 import de.sciss.lucre.synth.Sys
 import de.sciss.swingplus.CloseOperation
 import de.sciss.swingplus.Implicits._

@@ -23,7 +23,7 @@ import de.sciss.intensitypalette.IntensityPalette
 import de.sciss.lucre.expr.{DoubleVector, SpanLikeObj}
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Disposable, Obj, TxnLike}
-import de.sciss.lucre.swing.requireEDT
+import de.sciss.lucre.swing.LucreSwing.requireEDT
 import de.sciss.lucre.synth.{Synth, Sys}
 import de.sciss.nuages.Nuages.Surface
 import de.sciss.span.{Span, SpanLike}

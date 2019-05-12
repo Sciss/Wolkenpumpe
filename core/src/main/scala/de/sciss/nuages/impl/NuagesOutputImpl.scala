@@ -20,7 +20,7 @@ import java.awt.geom.Point2D
 
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Disposable, TxnLike}
-import de.sciss.lucre.swing.requireEDT
+import de.sciss.lucre.swing.LucreSwing.requireEDT
 import de.sciss.lucre.synth.{AudioBus, Synth, Sys, Txn, Node => SNode}
 import de.sciss.nuages.NuagesAttribute.Input
 import de.sciss.nuages.impl.NuagesOutputImpl.Meter

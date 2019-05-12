@@ -14,7 +14,7 @@
 package de.sciss.nuages
 package impl
 
-import de.sciss.lucre.swing.{defer, deferTx, requireEDT}
+import de.sciss.lucre.swing.LucreSwing.{defer, deferTx, requireEDT}
 import de.sciss.lucre.synth.{AudioBus, Synth, Sys, Txn, Node => SNode}
 import de.sciss.nuages.impl.PanelImpl.LAYOUT_TIME
 import de.sciss.osc
