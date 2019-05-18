@@ -10,7 +10,7 @@ lazy val commonSettings = Seq(
   description          := "A Prefuse based visual interface for SoundProcesses, a sound synthesis framework",
   licenses             := Seq("GPL v2+" -> url( "http://www.gnu.org/licenses/gpl-2.0.txt")),
   scalaVersion         := "2.12.8",
-  crossScalaVersions   := Seq("2.12.8", "2.11.12", "2.13.0-RC1"),
+  crossScalaVersions   := Seq("2.12.8", "2.11.12", "2.13.0-RC2"),
   resolvers            += "Oracle Repository" at "http://download.oracle.com/maven",  // required for sleepycat
   scalacOptions       ++= Seq(
     "-deprecation", "-unchecked", "-feature", "-encoding", "utf8", "-Xlint:-stars-align,_", "-Xsource:2.13"
@@ -22,8 +22,8 @@ lazy val commonSettings = Seq(
 lazy val deps = new {
   val main = new {
     val soundProcesses      = "3.29.0-SNAPSHOT"
-    val scalaCollider       = "1.28.2"
-    val scalaColliderSwing  = "1.41.1"
+    val scalaCollider       = "1.28.3"
+    val scalaColliderSwing  = "1.41.2"
     val prefuse             = "1.0.1"
     val lucreSwing          = "1.17.0-SNAPSHOT"
     val swingPlus           = "0.4.2"
@@ -66,9 +66,15 @@ lazy val core = project.withId(s"$baseNameL-core").in(file("core"))
       "de.sciss"          %% "swingplus"               % deps.main.swingPlus,
       "de.sciss"          %% "scissdsp"                % deps.main.scissDSP,
       "de.sciss"          %  "intensitypalette"        % deps.main.intensity,
-      "de.sciss"          %% "lucre-bdb"               % deps.test.lucre     % Test,
-      "org.scalatest"     %% "scalatest"               % deps.test.scalaTest % Test
+      "de.sciss"          %% "lucre-bdb"               % deps.test.lucre     % Test
     ),
+    libraryDependencies += {
+      if (scalaVersion.value == "2.13.0-RC2") {
+        "org.scalatest" % "scalatest_2.13.0-RC1" % deps.test.scalaTest % Test exclude("org.scala-lang.modules", "scala-xml_2.13.0-RC1")
+      } else {
+        "org.scalatest" %% "scalatest" % deps.test.scalaTest % Test
+      }
+    },
     mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-core" % mimaVersion),
     initialCommands in console :=
       """import de.sciss.nuages._
@@ -82,10 +88,16 @@ lazy val basic = project.withId(s"$baseNameL-basic").in(file("basic"))
   .settings(
     name := s"$baseName-Basic",
     libraryDependencies ++= Seq(
-      "com.github.scopt"  %% "scopt"     % deps.test.scopt  % Test,
       "de.sciss"          %% "lucre-bdb" % deps.test.lucre  % Test,
       "de.sciss"          %  "submin"    % deps.test.submin % Test
     ),
+    libraryDependencies += {
+      if (scalaVersion.value == "2.13.0-RC2") {
+        "com.github.scopt" % "scopt_2.13.0-RC1" % deps.test.scopt % Test
+      } else {
+        "com.github.scopt" %% "scopt" % deps.test.scopt % Test
+      }
+    },
     mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-basic" % mimaVersion)
   )
 
