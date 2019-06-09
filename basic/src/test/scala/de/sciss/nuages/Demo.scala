@@ -7,6 +7,7 @@ import de.sciss.lucre.synth.{InMemory, Sys}
 import de.sciss.submin.Submin
 import de.sciss.synth.Server
 import de.sciss.synth.proc.Durable
+import org.rogach.scallop.{ScallopConf, ScallopOption => Opt}
 
 object Demo {
 
@@ -14,13 +15,19 @@ object Demo {
                     log: Boolean = false)
 
   def main(args: Array[String]): Unit = {
-    val p = new scopt.OptionParser[Config]("Demo") {
-      opt[File]('d', "durable")  text "Durable database"         action { case (f, c) => c.copy(durable  = Some(f)) }
-      opt[Unit]('t', "timeline") text "Use performance timeline" action { case (_, c) => c.copy(timeline = true) }
-      opt[Unit]("dump-osc")      text "Dump OSC messages"        action { case (_, c) => c.copy(dumpOSC  = true) }
-      opt[Unit]("log")           text "Enable logging"           action { case (_, c) => c.copy(log      = true) }
+    object p extends ScallopConf {
+      printedName = "Demo"
+
+      val durable : Opt[File]    = opt(descr = "Durable database")
+      val timeline: Opt[Boolean] = opt(descr = "Use performance timeline")
+      val dumpOSC : Opt[Boolean] = opt(name = "dump-osc", descr = "Dump OSC messages")
+      val log     : Opt[Boolean] = opt(descr = "Enable logging")
+
+      verify()
+      val config = Config(durable = durable.toOption, timeline = timeline(), dumpOSC = dumpOSC(), log = log())
     }
-    p.parse(args, Config()).fold(sys.exit(1))(run)
+
+    run(p.config)
   }
 
   def mkTestProcs[S <: Sys[S]]()(implicit tx: S#Tx, nuages: Nuages[S]): Unit = {

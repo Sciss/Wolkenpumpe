@@ -22,13 +22,13 @@ Note that you can use this interface through [Mellite](https://git.iem.at/sciss/
 
 ## building
 
-Builds with sbt against Scala 2.12, 2.11.
+Builds with sbt against Scala 2.13, 2.12, 2.11.
 
 ## linking
 
     "de.sciss" %% "wolkenpumpe" % v
 
-The current version `v` is `"2.33.0"`.
+The current version `v` is `"2.33.1`.
 
 ## contributing
 
