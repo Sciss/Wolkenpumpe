@@ -1,7 +1,7 @@
 lazy val baseName        = "Wolkenpumpe"
 lazy val baseNameL       = baseName.toLowerCase
-lazy val projectVersion  = "2.33.1"
-lazy val mimaVersion     = "2.33.0"
+lazy val projectVersion  = "2.34.0"
+lazy val mimaVersion     = "2.34.0"
 
 lazy val commonSettings = Seq(
   version              := projectVersion,
@@ -23,18 +23,18 @@ lazy val deps = new {
   val main = new {
     val fileUtil            = "1.1.3"
     val intensity           = "1.0.0"
-    val lucreSwing          = "1.17.0"
+    val lucreSwing          = "1.17.2"
     val prefuse             = "1.0.1"
-    val scalaCollider       = "1.28.3"
-    val scalaColliderSwing  = "1.41.3"
+    val scalaCollider       = "1.28.4"
+    val scalaColliderSwing  = "1.41.4"
     val scissDSP            = "1.3.2"
-    val soundProcesses      = "3.29.2"
+    val soundProcesses      = "3.30.0"
     val swingPlus           = "0.4.2"
   }
   val test = new {
     val lucre               = "3.13.1"
-    val scalaTest           = "3.0.8-RC5"
-    val scallop             = "3.3.0"
+    val scalaTest           = "3.0.8"
+    val scallop             = "3.3.1"
     val submin              = "0.2.5"
   }
 }
@@ -69,11 +69,7 @@ lazy val core = project.withId(s"$baseNameL-core").in(file("core"))
       "de.sciss"          %% "lucre-bdb"               % deps.test.lucre     % Test
     ),
     libraryDependencies += {
-      if (scalaVersion.value == "2.13.0") {
-        "org.scalatest" % "scalatest_2.13.0-RC3" % deps.test.scalaTest % Test exclude("org.scala-lang.modules", "scala-xml_2.13.0-RC3")
-      } else {
-        "org.scalatest" %% "scalatest" % deps.test.scalaTest % Test
-      }
+      "org.scalatest" %% "scalatest" % deps.test.scalaTest % Test
     },
     mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-core" % mimaVersion),
     initialCommands in console :=
