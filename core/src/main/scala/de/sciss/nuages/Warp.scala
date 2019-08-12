@@ -35,6 +35,11 @@ object Warp {
 
     implicit def valueSerializer: ImmutableSerializer[Warp] = Warp.serializer
 
+    def tryParse(value: Any): Option[Warp] = value match {
+      case x: Warp  => Some(x)
+      case _        => None
+    }
+
     protected def mkConst[S <: Sys[S]](id: S#Id, value: A)(implicit tx: S#Tx): Const[S] =
       new _Const[S](id, value)
 

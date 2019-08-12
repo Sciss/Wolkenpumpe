@@ -43,6 +43,11 @@ object ParamSpec {
 
     implicit def valueSerializer: ImmutableSerializer[ParamSpec] = ParamSpec.serializer
 
+    def tryParse(value: Any): Option[ParamSpec] = value match {
+      case x: ParamSpec => Some(x)
+      case _            => None
+    }
+
     protected def mkConst[S <: Sys[S]](id: S#Id, value: A)(implicit tx: S#Tx): Const[S] =
       new _Const[S](id, value)
 
