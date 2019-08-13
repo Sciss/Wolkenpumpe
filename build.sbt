@@ -15,6 +15,7 @@ lazy val commonSettings = Seq(
   scalacOptions       ++= Seq(
     "-deprecation", "-unchecked", "-feature", "-encoding", "utf8", "-Xlint:-stars-align,_", "-Xsource:2.13"
   ),
+  scalacOptions in (Compile, compile) ++= (if (scala.util.Properties.isJavaAtLeast("9")) Seq("-release", "8") else Nil), // JDK >8 breaks API; skip scala-doc
   scalacOptions        += "-Yrangepos",  // this is needed to extract source code
   updateOptions        := updateOptions.value.withLatestSnapshots(false)
 ) ++ publishSettings
