@@ -20,7 +20,7 @@ import de.sciss.lucre.stm
 import de.sciss.lucre.synth.Sys
 import de.sciss.synth
 import de.sciss.synth.io.AudioFile
-import de.sciss.synth.proc.{Action, AudioCue, Proc, SoundProcesses}
+import de.sciss.synth.proc.{ActionRaw, AudioCue, Proc, SoundProcesses}
 import de.sciss.synth.proc.MacroImplicits.ActionMacroOps
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -72,7 +72,7 @@ object ScissProcs {
       highPass = highPass, recDir = recDir, plugins = plugins)
   }
 
-  def actionRecPrepare[S <: stm.Sys[S]](implicit tx: S#Tx): Action[S] = Action.apply[S] { universe =>
+  def actionRecPrepare[S <: stm.Sys[S]](implicit tx: S#Tx): ActionRaw[S] = ActionRaw.apply[S] { universe =>
     import universe._
     import de.sciss.nuages.Util._
     val obj     = invoker.getOrElse(sys.error("ScissProcs.recPrepare - no invoker"))
@@ -84,7 +84,7 @@ object ScissProcs {
     obj.attr.put(attrRecArtifact, artM)
   }
 
-  def actionRecDispose[S <: stm.Sys[S]](implicit tx: S#Tx): Action[S] = Action.apply[S] { universe =>
+  def actionRecDispose[S <: stm.Sys[S]](implicit tx: S#Tx): ActionRaw[S] = ActionRaw.apply[S] { universe =>
     import universe._
     import de.sciss.nuages.Util._
     val obj       = invoker.getOrElse(sys.error("ScissProcs.recDispose - no invoker"))
@@ -119,14 +119,14 @@ object ScissProcs {
   final val keyActionRecPrepare = "rec-prepare"
   final val keyActionRecDispose = "rec-dispose"
 
-  def mkActions[S <: Sys[S]]()(implicit tx: S#Tx): Map[String, Action[S]] = {
+  def mkActions[S <: Sys[S]]()(implicit tx: S#Tx): Map[String, ActionRaw[S]] = {
     val recPrepare = actionRecPrepare[S]
     val recDispose = actionRecDispose[S]
     Map(keyActionRecPrepare -> recPrepare, keyActionRecDispose -> recDispose)
   }
 
   def applyWithActions[S <: Sys[S]](nuages: Nuages[S], nConfig: Nuages.Config, sConfig: ScissProcs.Config,
-                                    actions: Map[String, Action[S]])
+                                    actions: Map[String, ActionRaw[S]])
                                    (implicit tx: S#Tx): Unit = {
     import synth._
     import ugen._
