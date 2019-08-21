@@ -83,18 +83,20 @@ object ScissProcs {
       val name    = ts.format("'rec_'yyMMdd'_'HHmmss'.aif'")
 //      val artIn   = Artifact("invoker:nuages-rec-loc")
 //      val value   = "value".attr[Obj](Obj.empty)
-      val artIn   = Artifact("value:$rec-dir")
+      val artIn   = Artifact("$rec-dir")
 //      val recDir  = value.attr[File]("$rec-dir").getOrElse(Const(file("")))
 //      val recDir  = "$rec-dir".attr[File](Const(file("")))
-      val artOut  = Artifact("value:$file")
-      val artNew  = artIn / name // .replaceName(name)
+//      val artOut  = Artifact("value:$file")
+//      val artNew  = artIn / name
+      val artNew  = artIn.replaceName(name)
       // we don't need to run `ts.update`, because the action
       // is expanded and run only once, thus recreating a
       // fresh time stamp each time.
       Act(
         // ts.update,
         PrintLn(Const("artNew: ") ++ artNew.path),
-        artOut.set(artNew)
+//        artOut.set(artNew)
+        artIn.set(artNew)
       )
 
       /*
@@ -114,7 +116,9 @@ object ScissProcs {
     val a = proc.Action[S]()
     import de.sciss.lucre.expr.graph._
     a.setGraph {
-//      val obj       = invoker.getOrElse(sys.error("ScissProcs.recDispose - no invoker"))
+      val artNew = Artifact("$file")
+
+      //      val obj       = invoker.getOrElse(sys.error("ScissProcs.recDispose - no invoker"))
 //      val attr      = obj.attr
 //      val artObj    = attr.$[Artifact](attrRecArtifact).getOrElse(
 //        sys.error(s"ScissProcs.recDispose - Could not find $attrRecArtifact"))
@@ -128,7 +132,9 @@ object ScissProcs {
 //          mkLoop[S](nuages, artObj, generatorChannels = genChans)
 //        } (universe.cursor)
 //      }, 1000, java.util.concurrent.TimeUnit.MILLISECONDS)
-      Act.Nop()
+      Act(
+        PrintLn(Const("art-new: ") ++ artNew.toStr)
+      )
     }
     a
   }
@@ -972,13 +978,23 @@ object ScissProcs {
 
     // -------------- SINKS --------------
     val sinkRec = sinkF("rec") { in =>
-//      proc.graph.DiskOut.ar(Util.attrRecArtifact, in)
+      val disk = proc.graph.DiskOut.ar(Util.attrRecArtifact, in)
+      disk.poll(0, "disk")
     }
 
     val sinkPrepObj = actions(keyActionRecPrepare)
     val sinkDispObj = actions(keyActionRecDispose)
     val genChansObj = IntObj.newConst[S](generatorChannels)
     val recDirObj   = _ArtifactLocation.newConst[S](sConfig.recDir)
+
+    // XXX TODO --- while we cannot use expr.Artifact("value:sub"),
+    // let's just copy the artifact into all objects that use it.
+    // This works, because the attribute updater takes care of
+    // Artifact.Modifiable.
+    val recDirObjTEST  = _Artifact[S](recDirObj, _Artifact.Child("out.aif")) // .newConst[S](sConfig.recDir)
+    sinkPrepObj .attr.put(Util.attrRecDir     , recDirObjTEST)
+    sinkDispObj .attr.put(Util.attrRecArtifact, recDirObjTEST)
+    sinkRec     .attr.put(Util.attrRecArtifact, recDirObjTEST)
 
     val sinkRecA = sinkRec.attr
     sinkRecA.put(Nuages.attrPrepare     , sinkPrepObj)

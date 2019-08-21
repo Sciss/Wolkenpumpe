@@ -12,19 +12,21 @@ import org.rogach.scallop.{ScallopConf, ScallopOption => Opt}
 object Demo {
 
   case class Config(durable: Option[File] = None, timeline: Boolean = false, dumpOSC: Boolean = false,
-                    log: Boolean = false)
+                    recDir: Option[File] = None, log: Boolean = false)
 
   def main(args: Array[String]): Unit = {
-    object p extends ScallopConf {
+    object p extends ScallopConf(args) {
       printedName = "Demo"
 
-      val durable : Opt[File]    = opt(descr = "Durable database")
-      val timeline: Opt[Boolean] = opt(descr = "Use performance timeline")
-      val dumpOSC : Opt[Boolean] = opt(name = "dump-osc", descr = "Dump OSC messages")
-      val log     : Opt[Boolean] = opt(descr = "Enable logging")
+      val durable : Opt[File]     = opt(descr = "Durable database")
+      val timeline: Opt[Boolean]  = opt(descr = "Use performance timeline")
+      val dumpOSC : Opt[Boolean]  = opt(name = "dump-osc", descr = "Dump OSC messages")
+      val log     : Opt[Boolean]  = opt(descr = "Enable logging")
+      val recDir  : Opt[File]     = opt(name = "rec-dir", descr = "Snippet audio recordings directory")
 
       verify()
-      val config = Config(durable = durable.toOption, timeline = timeline(), dumpOSC = dumpOSC(), log = log())
+      val config = Config(durable = durable.toOption, timeline = timeline(), dumpOSC = dumpOSC(), log = log(),
+        recDir = recDir.toOption)
     }
 
     run(p.config)
@@ -93,11 +95,14 @@ object Demo {
 
   val DEBUG = true
 
-  private class DemoNuages[S <: Sys[S]] extends WolkenpumpeMain[S] {
+  private class DemoNuages[S <: Sys[S]](config: Config) extends WolkenpumpeMain[S] {
     /** Subclasses may want to override this. */
     override protected def configure(sCfg: ScissProcs.ConfigBuilder, nCfg: Nuages.ConfigBuilder,
                                      aCfg: Server.ConfigBuilder): Unit = {
-      super.configure(sCfg, nCfg, aCfg)
+      config.recDir.foreach { d =>
+        sCfg.recDir = d
+      }
+
       if (DEBUG) {
         nCfg.masterChannels     = Some(0 to 1)
         nCfg.soloChannels       = None
@@ -113,12 +118,14 @@ object Demo {
         aCfg.audioBuffers       = 4096
         aCfg.blockSize          = 128
       }
+
+      super.configure(sCfg, nCfg, aCfg)
     }
   }
 
   private def mkNuages[S <: Sys[S]](config: Config, nuagesH: stm.Source[S#Tx, Nuages[S]])
                                    (implicit cursor: stm.Cursor[S]): Unit = {
-    val w = new DemoNuages[S]
+    val w = new DemoNuages[S](config)
     w.run(nuagesH)
     if (config.dumpOSC) cursor.step { implicit tx =>
       w.auralSystem.whenStarted(_.peer.dumpOSC(filter = m =>
