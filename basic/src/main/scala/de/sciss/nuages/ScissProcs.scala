@@ -14,14 +14,15 @@
 package de.sciss.nuages
 
 import de.sciss.file._
-import de.sciss.lucre.artifact.{Artifact, ArtifactLocation}
+import de.sciss.lucre.artifact.{Artifact => _Artifact, ArtifactLocation => _ArtifactLocation}
 import de.sciss.lucre.expr.IntObj
 import de.sciss.lucre.stm
 import de.sciss.lucre.synth.Sys
 import de.sciss.synth
 import de.sciss.synth.io.AudioFile
-import de.sciss.synth.proc.{ActionRaw, AudioCue, Proc, SoundProcesses}
+import de.sciss.synth.proc
 import de.sciss.synth.proc.MacroImplicits.ActionMacroOps
+import de.sciss.synth.proc.{AudioCue, Proc}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.language.implicitConversions
@@ -72,35 +73,64 @@ object ScissProcs {
       highPass = highPass, recDir = recDir, plugins = plugins)
   }
 
-  def actionRecPrepare[S <: stm.Sys[S]](implicit tx: S#Tx): ActionRaw[S] = ActionRaw.apply[S] { universe =>
-    import universe._
-    import de.sciss.nuages.Util._
-    val obj     = invoker.getOrElse(sys.error("ScissProcs.recPrepare - no invoker"))
-    val name    = recFormatAIFF.format(new java.util.Date)
-    val nuages  = de.sciss.nuages.Nuages.find[S]()
-      .getOrElse(sys.error("ScissProcs.recPrepare - Cannot find Nuages instance"))
-    val loc     = getRecLocation(nuages, findRecDir(obj))
-    val artM    = Artifact[S](loc, Artifact.Child(name)) // XXX TODO - should check that it is different from previous value
-    obj.attr.put(attrRecArtifact, artM)
+  def actionRecPrepare[S <: stm.Sys[S]](implicit tx: S#Tx): proc.Action[S] = {
+    val a = proc.Action[S]()
+    import de.sciss.lucre.expr.graph._
+    import de.sciss.lucre.expr.ExImport._
+    a.setGraph {
+//      val obj   = Obj("invoker") // "invoker".attr[Obj]
+      val ts      = TimeStamp()
+      val name    = ts.format("'rec_'yyMMdd'_'HHmmss'.aif'")
+//      val artIn   = Artifact("invoker:nuages-rec-loc")
+//      val value   = "value".attr[Obj](Obj.empty)
+      val artIn   = Artifact("value:$rec-dir")
+//      val recDir  = value.attr[File]("$rec-dir").getOrElse(Const(file("")))
+//      val recDir  = "$rec-dir".attr[File](Const(file("")))
+      val artOut  = Artifact("value:$file")
+      val artNew  = artIn / name // .replaceName(name)
+      // we don't need to run `ts.update`, because the action
+      // is expanded and run only once, thus recreating a
+      // fresh time stamp each time.
+      Act(
+        // ts.update,
+        PrintLn(Const("artNew: ") ++ artNew.path),
+        artOut.set(artNew)
+      )
+
+      /*
+      val obj     = invoker.getOrElse(sys.error("ScissProcs.recPrepare - no invoker"))
+      val name    = recFormatAIFF.format(new java.util.Date)
+      val nuages  = de.sciss.nuages.Nuages.find[S]()
+        .getOrElse(sys.error("ScissProcs.recPrepare - Cannot find Nuages instance"))
+      val loc     = getRecLocation(nuages, findRecDir(obj))
+      val artM    = Artifact[S](loc, Artifact.Child(name)) // XXX TODO - should check that it is different from previous value
+      obj.attr.put(attrRecArtifact, artM)
+      */
+    }
+    a
   }
 
-  def actionRecDispose[S <: stm.Sys[S]](implicit tx: S#Tx): ActionRaw[S] = ActionRaw.apply[S] { universe =>
-    import universe._
-    import de.sciss.nuages.Util._
-    val obj       = invoker.getOrElse(sys.error("ScissProcs.recDispose - no invoker"))
-    val attr      = obj.attr
-    val artObj    = attr.$[Artifact](attrRecArtifact).getOrElse(
-      sys.error(s"ScissProcs.recDispose - Could not find $attrRecArtifact"))
-    val genChans  = attr.$[IntObj  ](attrRecGenChans).fold(0)(_.value)
-    val nuages0 = de.sciss.nuages.Nuages.find[S]()
-      .getOrElse(sys.error("ScissProcs.recDispose - Cannot find Nuages instance"))
-    val nuagesH   = tx.newHandle(nuages0)
-    SoundProcesses.scheduledExecutorService.schedule(new Runnable {
-      def run(): Unit = SoundProcesses.atomic[S, Unit] { implicit tx =>
-        val nuages = nuagesH()
-        mkLoop[S](nuages, artObj, generatorChannels = genChans)
-      } (universe.cursor)
-    }, 1000, java.util.concurrent.TimeUnit.MILLISECONDS)
+  def actionRecDispose[S <: stm.Sys[S]](implicit tx: S#Tx): proc.Action[S] = {
+    val a = proc.Action[S]()
+    import de.sciss.lucre.expr.graph._
+    a.setGraph {
+//      val obj       = invoker.getOrElse(sys.error("ScissProcs.recDispose - no invoker"))
+//      val attr      = obj.attr
+//      val artObj    = attr.$[Artifact](attrRecArtifact).getOrElse(
+//        sys.error(s"ScissProcs.recDispose - Could not find $attrRecArtifact"))
+//      val genChans  = attr.$[IntObj  ](attrRecGenChans).fold(0)(_.value)
+//      val nuages0 = de.sciss.nuages.Nuages.find[S]()
+//        .getOrElse(sys.error("ScissProcs.recDispose - Cannot find Nuages instance"))
+//      val nuagesH   = tx.newHandle(nuages0)
+//      SoundProcesses.scheduledExecutorService.schedule(new Runnable {
+//        def run(): Unit = SoundProcesses.atomic[S, Unit] { implicit tx =>
+//          val nuages = nuagesH()
+//          mkLoop[S](nuages, artObj, generatorChannels = genChans)
+//        } (universe.cursor)
+//      }, 1000, java.util.concurrent.TimeUnit.MILLISECONDS)
+      Act.Nop()
+    }
+    a
   }
 
   private case class ConfigImpl(audioFilesFolder: Option[File], masterGroups: Vec[NamedBusConfig],
@@ -119,21 +149,20 @@ object ScissProcs {
   final val keyActionRecPrepare = "rec-prepare"
   final val keyActionRecDispose = "rec-dispose"
 
-  def mkActions[S <: Sys[S]]()(implicit tx: S#Tx): Map[String, ActionRaw[S]] = {
+  def mkActions[S <: Sys[S]]()(implicit tx: S#Tx): Map[String, proc.Action[S]] = {
     val recPrepare = actionRecPrepare[S]
     val recDispose = actionRecDispose[S]
     Map(keyActionRecPrepare -> recPrepare, keyActionRecDispose -> recDispose)
   }
 
   def applyWithActions[S <: Sys[S]](nuages: Nuages[S], nConfig: Nuages.Config, sConfig: ScissProcs.Config,
-                                    actions: Map[String, ActionRaw[S]])
+                                    actions: Map[String, proc.Action[S]])
                                    (implicit tx: S#Tx): Unit = {
     import synth._
     import ugen._
 
     val dsl = DSL[S]
     import dsl._
-
     import sConfig.generatorChannels
 
     val masterChansOption = nConfig.masterChannels
@@ -168,7 +197,7 @@ object ScissProcs {
     // -------------- GENERATORS --------------
     
     sConfig.audioFilesFolder.foreach { folder =>
-      val loc = ArtifactLocation.newConst[S](folder)
+      val loc = _ArtifactLocation.newConst[S](folder)
 
       // N.B. do not use ellipsis character (…) because synth-def names are ASCII-7
       def abbreviate(s: String) = if (s.length < 16) s else s"${s.take(7)}...${s.takeRight(7)}"
@@ -188,7 +217,7 @@ object ScissProcs {
           sig
         }
 
-        val art   = Artifact(loc, f) // loc.add(f)
+        val art   = _Artifact(loc, f) // loc.add(f)
         val spec  = AudioFile.readSpec(f)
         val gr    = AudioCue.Obj[S](art, spec, 0L, 1.0)
         procObj.attr.put("file", gr)
@@ -943,13 +972,13 @@ object ScissProcs {
 
     // -------------- SINKS --------------
     val sinkRec = sinkF("rec") { in =>
-      proc.graph.DiskOut.ar(Util.attrRecArtifact, in)
+//      proc.graph.DiskOut.ar(Util.attrRecArtifact, in)
     }
 
     val sinkPrepObj = actions(keyActionRecPrepare)
     val sinkDispObj = actions(keyActionRecDispose)
     val genChansObj = IntObj.newConst[S](generatorChannels)
-    val recDirObj   = ArtifactLocation.newConst[S](sConfig.recDir)
+    val recDirObj   = _ArtifactLocation.newConst[S](sConfig.recDir)
 
     val sinkRecA = sinkRec.attr
     sinkRecA.put(Nuages.attrPrepare     , sinkPrepObj)

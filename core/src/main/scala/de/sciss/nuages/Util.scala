@@ -53,7 +53,7 @@ object Util {
 
   // ---- ScissProcs ----
 
-  final val recFormatAIFF: DateFormat = new SimpleDateFormat("'rec_'yyMMdd'_'HHmmss'.aif'", Locale.US)
+//  final val recFormatAIFF: DateFormat = new SimpleDateFormat("'rec_'yyMMdd'_'HHmmss'.aif'", Locale.US)
 
   final val attrRecArtifact = "$file"
   final val attrRecGenChans = "$gen-chans"

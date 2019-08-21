@@ -16,17 +16,20 @@ package impl
 
 import java.awt.geom.Point2D
 
-import de.sciss.lucre.expr.SpanLikeObj
+import de.sciss.lucre.expr.{SourcesAsRunnerMap, SpanLikeObj}
+import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Folder, Obj}
 import de.sciss.lucre.synth.Sys
 import de.sciss.nuages.Nuages.Surface
 import de.sciss.span.Span
-import de.sciss.synth.proc.{ActionRaw, Output, Proc, Timeline}
+import de.sciss.synth.proc.{Action, Output, Proc, Runner, Timeline}
 
 import scala.concurrent.stm.TxnLocal
 
 trait PanelImplTxnFuns[S <: Sys[S]] {
   _: NuagesPanel[S] =>
+
+  protected def nuagesH: stm.Source[S#Tx, Nuages[S]]
 
   // ---- impl ----
 
@@ -146,11 +149,18 @@ trait PanelImplTxnFuns[S <: Sys[S]] {
   }
 
   private[this] def exec(obj: Obj[S], key: String)(implicit tx: S#Tx): Unit =
-    for (self <- obj.attr.$[ActionRaw](key)) {
-      val n = nuages
-      NuagesImpl.use(n) {
-        self.execute(ActionRaw.Universe(self, invoker = Some(obj)))
-      }
+    for (self <- obj.attr.$[Action](key)) {
+//      val n = nuages
+      val r = Runner(self)
+      val attr = new SourcesAsRunnerMap(Map(
+        "value"   -> tx.newHandle(obj),
+        "invoker" -> nuagesH
+      ))
+      r.prepare(attr)
+      r.run()
+//      NuagesImpl.use(n) {
+//        self.execute(ActionRaw.Universe(self, invoker = Some(obj)))
+//      }
     }
 
   protected final def prepareObj(obj: Obj[S])(implicit tx: S#Tx): Unit = exec(obj, Nuages.attrPrepare)
