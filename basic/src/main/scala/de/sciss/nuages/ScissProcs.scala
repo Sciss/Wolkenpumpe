@@ -131,13 +131,16 @@ object ScissProcs {
         spec    <- specOpt
         procTmp <- procOpt
         invoker <- invOpt
+        gen     <- invoker.attr[Folder]("generators")
       } yield {
         val cue   = AudioCue(artNew, spec)
         val proc  = procTmp.copy
         Act(
-          PrintLn("Cue: numFrames = " ++ cue.numFrames.toStr ++ ", numChannels = " ++ cue.numChannels.toStr),
           proc.make,
-          proc.attr[AudioCue]("file").set(cue)
+          proc.attr[AudioCue]("file").set(cue),
+          proc.attr[String  ]("name").set(artNew.base),
+          gen.append(proc),
+          PrintLn("Cue: numFrames = " ++ cue.numFrames.toStr ++ ", numChannels = " ++ cue.numChannels.toStr),
         )
       }
       val actDone = actOpt.getOrElse {
@@ -1025,6 +1028,13 @@ object ScissProcs {
     sinkPrepObj .attr.put(Util.attrRecDir     , recDirObjTEST)
     sinkDispObj .attr.put(Util.attrRecArtifact, recDirObjTEST)
     sinkRec     .attr.put(Util.attrRecArtifact, recDirObjTEST)
+
+    // we currently have to ex represenation for nuages, perhaps
+    // for good reason (is it really a good structure with the
+    // fixed folders?). as a work around, to be able to access them
+    // from the dispose action, we put the generators again into
+    // the attribute map
+    nuages.attr.put("generators", nuages.generators.getOrElse(throw new IllegalStateException()))
 
     require (genNumChannels > 0)
     val pPlaySinkRec = Util.mkLoop(nuages, "play-sink", numBufChans = genNumChannels, genNumChannels = genNumChannels)

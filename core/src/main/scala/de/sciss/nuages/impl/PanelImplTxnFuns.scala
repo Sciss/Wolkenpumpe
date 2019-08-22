@@ -22,7 +22,7 @@ import de.sciss.lucre.stm.{Folder, Obj}
 import de.sciss.lucre.synth.Sys
 import de.sciss.nuages.Nuages.Surface
 import de.sciss.span.Span
-import de.sciss.synth.proc.{Action, Output, Proc, Runner, Timeline}
+import de.sciss.synth.proc.{Output, Proc, Runner, Timeline}
 
 import scala.concurrent.stm.TxnLocal
 
@@ -149,15 +149,15 @@ trait PanelImplTxnFuns[S <: Sys[S]] {
   }
 
   private def exec(obj: Obj[S], key: String)(implicit tx: S#Tx): Unit =
-    for (self <- obj.attr.$[Action](key)) {
+    for (self <- obj.attr.get(key)) {
 //      val n = nuages
       val r = Runner(self)
       val attr = new SourcesAsRunnerMap(Map(
-        "value"   -> tx.newHandle(obj),
-        "invoker" -> nuagesH
+        "value"   -> Left(tx.newHandle(obj)),
+        "invoker" -> Left(nuagesH)
       ))
       r.prepare(attr)
-      r.run()
+      r.runAndDispose()
 //      NuagesImpl.use(n) {
 //        self.execute(ActionRaw.Universe(self, invoker = Some(obj)))
 //      }
