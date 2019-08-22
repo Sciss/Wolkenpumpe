@@ -13,17 +13,12 @@
 
 package de.sciss.nuages
 
-import java.text.{DateFormat, SimpleDateFormat}
-import java.util.Locale
-
 import de.sciss.file._
-import de.sciss.lucre.artifact.{Artifact, ArtifactLocation}
+import de.sciss.lucre.artifact.ArtifactLocation
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.Obj
 import de.sciss.synth
-import de.sciss.synth.GE
-import de.sciss.synth.io.AudioFile
-import de.sciss.synth.proc.AudioCue
+import de.sciss.synth.{GE, proc}
 
 object Util {
   /** Binary search on an indexed collection.
@@ -78,34 +73,35 @@ object Util {
 
   def wrapExtendChannels(n: Int, sig: GE): GE = Vector.tabulate(n)(sig.out)
 
-  def mkLoop[S <: stm.Sys[S]](n: Nuages[S], art: Artifact[S], generatorChannels: Int)(implicit tx: S#Tx): Unit = {
+  def mkLoop[S <: stm.Sys[S]](n: Nuages[S], name: String, numBufChans: Int, genNumChannels: Int)
+                             (implicit tx: S#Tx): proc.Proc[S] = {
     import synth._
     import ugen._
 
     val dsl = DSL[S]
     import dsl._
-    val f       = art.value
-    val spec    = AudioFile.readSpec(f)
+//    val f       = art.value
+//    val spec    = AudioFile.readSpec(f)
     implicit val nuages: Nuages[S] = n
 
     def default(in: Double): ControlValues =
-      if (generatorChannels <= 0)
+      if (genNumChannels <= 0)
         in
       else
-        Vector.fill(generatorChannels)(in)
+        Vector.fill(genNumChannels)(in)
 
-    def ForceChan(in: GE): GE = if (generatorChannels <= 0) in else {
-      wrapExtendChannels(generatorChannels, in)
+    def ForceChan(in: GE): GE = if (genNumChannels <= 0) in else {
+      wrapExtendChannels(genNumChannels, in)
     }
 
-    val procObj = generator(f.base) {
+    val procObj = generator(name) {
       val pSpeed      = pAudio  ("speed", ParamSpec(0.125, 2.3511, ExpWarp), default(1.0))
       val pStart      = pControl("start", ParamSpec(0, 1), default(0.0))
       val pDur        = pControl("dur"  , ParamSpec(0, 1), default(1.0))
       val bufId       = proc.graph.Buffer("file")
       val loopFrames  = BufFrames.kr(bufId)
 
-      val numBufChans = spec.numChannels
+//      val numBufChans = spec.numChannels
       // val numChans    = if (generatorChannels > 0) generatorChannels else numBufChans
 
       val trig1       = LocalIn.kr(Pad(0, pSpeed)) // Pad.LocalIn.kr(pSpeed)
@@ -135,10 +131,8 @@ object Util {
       LocalOut.kr(Impulse.kr(1.0 / duration.max(0.1)))
       sig
     }
-    // val art   = Artifact(locH(), f) // locH().add(f)
-    val gr    = AudioCue.Obj[S](art, spec, 0L, 1.0)
-    procObj.attr.put("file", gr) // Obj(AudioGraphemeElem(gr)))
-    // val artObj  = Obj(ArtifactElem(art))
-    // procObj.attr.put("file", artObj)
+//    val gr    = AudioCue.Obj[S](art, spec, 0L, 1.0)
+//    procObj.attr.put("file", gr) // Obj(AudioGraphemeElem(gr)))
+    procObj
   }
 }

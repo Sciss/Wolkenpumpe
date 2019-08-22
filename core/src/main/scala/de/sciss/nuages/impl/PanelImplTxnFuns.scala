@@ -41,7 +41,7 @@ trait PanelImplTxnFuns[S <: Sys[S]] {
   final def removeLocationHint(obj: Obj[S])(implicit tx: S#Tx): Option[Point2D] =
     locHintMap.getAndTransform(_ - obj)(tx.peer).get(obj)
 
-  private[this] def addToTimeline(tl: Timeline.Modifiable[S], frameOffset: Long, obj: Obj[S])
+  private def addToTimeline(tl: Timeline.Modifiable[S], frameOffset: Long, obj: Obj[S])
                                  (implicit tx: S#Tx): Unit = {
     val pos     = transport.position
     val start   = pos - frameOffset
@@ -50,7 +50,7 @@ trait PanelImplTxnFuns[S <: Sys[S]] {
     tl.add(spanEx, obj)
   }
 
-  private[this] def connectToNewSink(out: Output[S], sink: Obj[S], key: String = Proc.mainIn)
+  private def connectToNewSink(out: Output[S], sink: Obj[S], key: String = Proc.mainIn)
                                     (implicit tx: S#Tx): Unit =
     nuages.surface match {
       case Surface.Timeline(_) =>
@@ -70,12 +70,12 @@ trait PanelImplTxnFuns[S <: Sys[S]] {
         in.addLast(out)
     }
 
-  private[this] def prepareAndLocate(proc: Obj[S], pt: Point2D)(implicit tx: S#Tx): Unit = {
+  private def prepareAndLocate(proc: Obj[S], pt: Point2D)(implicit tx: S#Tx): Unit = {
     prepareObj(proc)
     setLocationHint(proc, pt)
   }
 
-  private[this] def addNewObject(obj: Obj[S])(implicit tx: S#Tx): Unit =
+  private def addNewObject(obj: Obj[S])(implicit tx: S#Tx): Unit =
     nuages.surface match {
       case Surface.Timeline(tl) =>
         addToTimeline(tl, 0L, obj)
@@ -83,7 +83,7 @@ trait PanelImplTxnFuns[S <: Sys[S]] {
         f.addLast(obj)
     }
 
-  private[this] def finalizeProcAndCollector(proc: Obj[S], colSrcOpt: Option[Obj[S]], pt: Point2D)
+  private def finalizeProcAndCollector(proc: Obj[S], colSrcOpt: Option[Obj[S]], pt: Point2D)
                                             (implicit tx: S#Tx): Unit = {
     val colOpt = colSrcOpt.map(Obj.copy(_))
 
@@ -148,7 +148,7 @@ trait PanelImplTxnFuns[S <: Sys[S]] {
     finalizeProcAndCollector(flt, colSrcOpt, fltPt)
   }
 
-  private[this] def exec(obj: Obj[S], key: String)(implicit tx: S#Tx): Unit =
+  private def exec(obj: Obj[S], key: String)(implicit tx: S#Tx): Unit =
     for (self <- obj.attr.$[Action](key)) {
 //      val n = nuages
       val r = Runner(self)

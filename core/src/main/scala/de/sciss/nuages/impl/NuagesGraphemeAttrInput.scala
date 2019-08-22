@@ -120,14 +120,14 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
     this
   }
 
-  private[this] def initGrapheme(gr: Grapheme[S])(implicit tx: S#Tx): Unit = {
+  private def initGrapheme(gr: Grapheme[S])(implicit tx: S#Tx): Unit = {
     val frame0 = currentOffset()
     gr.floor(frame0).foreach { entry =>
       elemAdded(entry.key.value, entry.value)
     }
   }
 
-  private[this] def initObserver(gr: Grapheme[S])(implicit tx: S#Tx): Unit =
+  private def initObserver(gr: Grapheme[S])(implicit tx: S#Tx): Unit =
     observer = gr.changed.react { implicit tx => upd =>
       if (!isDisposed) upd.changes.foreach {
         case Grapheme.Added  (time, entry) => elemAdded  (time, entry.value)
@@ -161,7 +161,7 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
     override def toString: String = if (isEmpty) "View(<empty>)" else s"View($start, $input)"
   }
 
-  private[this] def emptyView   = new View(Long.MaxValue, null)
+  private def emptyView   = new View(Long.MaxValue, null)
   private[this] val currentView = Ref(emptyView)
 
   def collect[A](pf: PartialFunction[Input[S], A])(implicit tx: S#Tx): Iterator[A] = {
@@ -169,7 +169,7 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
     if (curr.isDefined) curr.input.collect(pf) else Iterator.empty
   }
 
-  private[this] def elemAdded(start: Long, child: Obj[S])(implicit tx: S#Tx): Unit = {
+  private def elemAdded(start: Long, child: Obj[S])(implicit tx: S#Tx): Unit = {
     val t     = transport
     val time  = currentOffset()
     val curr  = currentView()
@@ -181,14 +181,14 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
     }
   }
 
-  private[this] def elemRemoved(start: Long, child: Obj[S])(implicit tx: S#Tx): Unit = {
+  private def elemRemoved(start: Long, child: Obj[S])(implicit tx: S#Tx): Unit = {
     val curr = currentView()
     if (curr.start === start && curr.input.input === child) {
       currentView.swap(emptyView).dispose()
     }
   }
 
-//  private[this] def elemRemoved1(start: Long, child: Obj[S], childView: Elem)
+//  private def elemRemoved1(start: Long, child: Obj[S], childView: Elem)
 //                                (implicit tx: S#Tx): Unit = {
 //    // remove view for the element from tree and map
 //    ...
@@ -254,7 +254,7 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
   }
 
   // bubble up if grapheme is not modifiable
-  private[this] def updateParent(childNow: Obj[S], dt: Long, clearRight: Boolean)(implicit tx: S#Tx): Unit =
+  private def updateParent(childNow: Obj[S], dt: Long, clearRight: Boolean)(implicit tx: S#Tx): Unit =
     inputParent.updateChild(before = graphemeH(), now = childNow, dt = dt, clearRight = clearRight)
 
   def dispose()(implicit tx: S#Tx): Unit = {
@@ -290,7 +290,7 @@ final class NuagesGraphemeAttrInput[S <: SSys[S]] private(val attribute: NuagesA
     setChild(start = frame, child = child)
   }
 
-  private[this] def setChild(start: Long, child: Obj[S])(implicit tx: S#Tx): Unit = {
+  private def setChild(start: Long, child: Obj[S])(implicit tx: S#Tx): Unit = {
     log(s"$this setChild($start / ${TimeRef.framesToSecs(start)}, $child")
     val curr        = currentView()
     val childOffset = if (frameOffset === Long.MaxValue) Long.MaxValue else frameOffset + start

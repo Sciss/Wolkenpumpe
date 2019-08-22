@@ -42,7 +42,7 @@ final class NuagesOutputAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S
 
   import TxnLike.peer
 
-  private[this] def deferVisTx(body: => Unit)(implicit tx: S#Tx): Unit =
+  private def deferVisTx(body: => Unit)(implicit tx: S#Tx): Unit =
     attribute.parent.main.deferVisTx(body)
 
   private[this] var _observer: Disposable[S#Tx] = _
@@ -72,7 +72,7 @@ final class NuagesOutputAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S
     this
   }
 
-  private[this] def setView(view: NuagesOutput[S])(implicit tx: S#Tx): Unit = {
+  private def setView(view: NuagesOutput[S])(implicit tx: S#Tx): Unit = {
     val old = outputViewRef.swap(Some(view))
     require(old.isEmpty)
     view.addMapping(this)
@@ -84,7 +84,7 @@ final class NuagesOutputAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S
     }
   }
 
-  private[this] def unsetView()(implicit tx: S#Tx): Unit = {
+  private def unsetView()(implicit tx: S#Tx): Unit = {
     outputViewRef.swap(None).foreach(_.removeMapping(this))
     deferVisTx {
       _pNode.foreach { n =>

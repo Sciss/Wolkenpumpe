@@ -106,7 +106,7 @@ final class NuagesOutputImpl[S <: Sys[S]] private(val parent: NuagesObj[S],
     main.deferVisTx(disposeGUI())
   }
 
-  private[this] def initGUI(): Unit = {
+  private def initGUI(): Unit = {
     requireEDT()
     mkPNodeAndEdge()
   }
@@ -126,7 +126,7 @@ final class NuagesOutputImpl[S <: Sys[S]] private(val parent: NuagesObj[S],
 
   def meterOption(implicit tx: TxnLike): Option[Meter] = meterRef()
 
-  private[this] def mkMeter(auralOutput: AuralOutput[S])(implicit tx: S#Tx): Unit = {
+  private def mkMeter(auralOutput: AuralOutput[S])(implicit tx: S#Tx): Unit = {
     val bus   = auralOutput.bus
     val node  = auralOutput.view.nodeOption.fold[SNode](bus.server.defaultGroup)(_.node)
     val syn   = main.mkPeakMeter(bus = bus, node = node)(parent.meterUpdate)
@@ -134,9 +134,9 @@ final class NuagesOutputImpl[S <: Sys[S]] private(val parent: NuagesObj[S],
     meterRef.swap(Some(m)).foreach(_.dispose())
   }
 
-  private[this] def disposeMeter()(implicit tx: S#Tx): Unit =
+  private def disposeMeter()(implicit tx: S#Tx): Unit =
     meterRef.swap(None).foreach(_.dispose())
 
-  private[this] def disposeAuralObserver()(implicit tx: S#Tx): Unit =
+  private def disposeAuralObserver()(implicit tx: S#Tx): Unit =
     auralObserverRef.swap(Disposable.empty).dispose()
 }

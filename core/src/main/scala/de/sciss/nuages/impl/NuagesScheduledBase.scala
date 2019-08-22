@@ -97,7 +97,7 @@ trait NuagesScheduledBase[S <: Sys[S]] {
     if (t.isPlaying) play()
   }
 
-  private[this] def setTransportPosition(pos: Long)(implicit tx: S#Tx): Unit = {
+  private def setTransportPosition(pos: Long)(implicit tx: S#Tx): Unit = {
     val frame0      = frameOffset
     // i.e. if object has absolute position, offsets will always
     // be transport-pos - frameOffset. If it hasn't, offsets will
@@ -106,9 +106,9 @@ trait NuagesScheduledBase[S <: Sys[S]] {
     playShiftRef()  = shift
   }
 
-  private[this] def stop()(implicit tx: S#Tx): Unit = clearSched()
+  private def stop()(implicit tx: S#Tx): Unit = clearSched()
 
-  private[this] def play()(implicit tx: S#Tx): Unit = {
+  private def play()(implicit tx: S#Tx): Unit = {
     val offset = currentOffset()
     log(s"$this play $offset / ${TimeRef.framesToSecs(offset)}")
     schedNext(offset)
@@ -119,12 +119,12 @@ trait NuagesScheduledBase[S <: Sys[S]] {
     schedNext(frame)
   }
 
-  private[this] def clearSched()(implicit tx: S#Tx): Unit = {
+  private def clearSched()(implicit tx: S#Tx): Unit = {
     val token = tokenRef.swap(-1)
     if (token >= 0) transport.scheduler.cancel(token)
   }
 
-  private[this] def schedNext(currentOffset: Long)(implicit tx: S#Tx): Unit = {
+  private def schedNext(currentOffset: Long)(implicit tx: S#Tx): Unit = {
     val nextOffset = eventAfter(currentOffset)
     if (nextOffset == Long.MaxValue) return
 
@@ -138,7 +138,7 @@ trait NuagesScheduledBase[S <: Sys[S]] {
     s.cancel(oldToken)
   }
 
-  private[this] def eventReached(offset: Long)(implicit tx: S#Tx): Unit = {
+  private def eventReached(offset: Long)(implicit tx: S#Tx): Unit = {
     offsetRef() = offset
     processEvent(offset)
     schedNext(offset)

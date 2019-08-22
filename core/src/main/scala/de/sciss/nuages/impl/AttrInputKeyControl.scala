@@ -153,7 +153,7 @@ trait AttrInputKeyControl[S <: Sys[S]] extends ClipboardOwner {
     if (v.nonEmpty) setControl(v, dur = 0f)
   }
 
-  private[this] def showParamInput(vi: VisualItem): Unit = {
+  private def showParamInput(vi: VisualItem): Unit = {
     val spec    = attribute.spec
     val ggValue = new TextField(f"${spec.map(numericValue.head)}%1.3f", 12)
     Wolkenpumpe.mkBlackWhite(ggValue)
@@ -185,9 +185,9 @@ trait AttrInputKeyControl[S <: Sys[S]] extends ClipboardOwner {
   }
 
   @inline
-  private[this] def main: NuagesPanel[S] = attribute.parent.main
+  private def main: NuagesPanel[S] = attribute.parent.main
 
-  private[this] def calcPanelPoint(p: OverlayPanel, vi: VisualItem): Point = {
+  private def calcPanelPoint(p: OverlayPanel, vi: VisualItem): Point = {
     val b     = vi.getBounds
     val dim   = p.preferredSize
     val p2d   = main.display.getTransform.transform(new Point2D.Double(b.getCenterX , b.getMaxY), null)

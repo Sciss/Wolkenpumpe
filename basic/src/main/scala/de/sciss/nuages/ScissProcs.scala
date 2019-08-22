@@ -22,7 +22,6 @@ import de.sciss.synth
 import de.sciss.synth.io.AudioFile
 import de.sciss.synth.proc
 import de.sciss.synth.proc.MacroImplicits.ActionMacroOps
-import de.sciss.synth.proc.{AudioCue, Proc}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.language.implicitConversions
@@ -43,10 +42,10 @@ object ScissProcs {
     def highPass: Int
 
     /** Force the number of channels in the generator, where `<= 0` indicates no forcing. */
-    def generatorChannels: Int
+    def genNumChannels: Int
 
     def recDir: File
-    
+
     /** Whether to create procs that require third-party UGens (sc3plugins). */
     def plugins: Boolean
   }
@@ -64,12 +63,12 @@ object ScissProcs {
     var masterGroups    : Vec[NamedBusConfig] = Vector.empty
     var recDir          : File                = Util.defaultRecDir
 
-    var generatorChannels = 0
+    var genNumChannels = 0
     var highPass          = 0
     var plugins           = false
 
     def build: Config = ConfigImpl(
-      audioFilesFolder = audioFilesFolder, masterGroups = masterGroups, generatorChannels = generatorChannels,
+      audioFilesFolder = audioFilesFolder, masterGroups = masterGroups, genNumChannels = genNumChannels,
       highPass = highPass, recDir = recDir, plugins = plugins)
   }
 
@@ -80,7 +79,13 @@ object ScissProcs {
     a.setGraph {
 //      val obj   = Obj("invoker") // "invoker".attr[Obj]
       val ts      = TimeStamp()
-      val name    = ts.format("'rec_'yyMMdd'_'HHmmss'.aif'")
+      // N.B.: We currently cannot wait in the dispose action
+      // for the file header to have been asynchronously flushed.
+      // For AIFF it means, the spec says zero frames. We can
+      // use the trick with the IRCAM file format, which has no
+      // explicit number of frames, other than determined by its
+      // file size.
+      val name    = ts.format("'rec_'yyMMdd'_'HHmmss'.irc'")
 //      val artIn   = Artifact("invoker:nuages-rec-loc")
 //      val value   = "value".attr[Obj](Obj.empty)
       val artIn   = Artifact("$rec-dir")
@@ -94,7 +99,7 @@ object ScissProcs {
       // fresh time stamp each time.
       Act(
         // ts.update,
-        PrintLn(Const("artNew: ") ++ artNew.path),
+        PrintLn("File to write: " ++ artNew.path),
 //        artOut.set(artNew)
         artIn.set(artNew)
       )
@@ -115,8 +120,32 @@ object ScissProcs {
   def actionRecDispose[S <: stm.Sys[S]](implicit tx: S#Tx): proc.Action[S] = {
     val a = proc.Action[S]()
     import de.sciss.lucre.expr.graph._
+    import de.sciss.lucre.expr.ExImport._
+    import de.sciss.synth.proc.ExImport._
     a.setGraph {
-      val artNew = Artifact("$file")
+      val artNew  = Artifact("$file")
+      val specOpt = AudioFileSpec.Read(artNew)
+      val procOpt = "play-template" .attr[Obj]
+      val invOpt  = "invoker"       .attr[Obj]
+      val actOpt  = for {
+        spec    <- specOpt
+        procTmp <- procOpt
+        invoker <- invOpt
+      } yield {
+        val cue   = AudioCue(artNew, spec)
+        val proc  = procTmp.copy
+        Act(
+          PrintLn("Cue: numFrames = " ++ cue.numFrames.toStr ++ ", numChannels = " ++ cue.numChannels.toStr),
+          proc.make,
+          proc.attr[AudioCue]("file").set(cue)
+        )
+      }
+      val actDone = actOpt.getOrElse {
+        PrintLn("Could not create player! spec? " ++
+          specOpt.isDefined.toStr ++
+          ", proc? "   ++ procOpt.isDefined.toStr ++
+          ", invoker? " ++ invOpt.isDefined.toStr)
+      }
 
       //      val obj       = invoker.getOrElse(sys.error("ScissProcs.recDispose - no invoker"))
 //      val attr      = obj.attr
@@ -133,14 +162,15 @@ object ScissProcs {
 //        } (universe.cursor)
 //      }, 1000, java.util.concurrent.TimeUnit.MILLISECONDS)
       Act(
-        PrintLn(Const("art-new: ") ++ artNew.toStr)
+        PrintLn("File written: " ++ artNew.toStr),
+        actDone
       )
     }
     a
   }
 
   private case class ConfigImpl(audioFilesFolder: Option[File], masterGroups: Vec[NamedBusConfig],
-                                generatorChannels: Int, highPass: Int, recDir: File, plugins: Boolean)
+                                genNumChannels: Int, highPass: Int, recDir: File, plugins: Boolean)
     extends Config
 
 //  private final val attrPrepareRec  = "prepare-rec"
@@ -169,39 +199,39 @@ object ScissProcs {
 
     val dsl = DSL[S]
     import dsl._
-    import sConfig.generatorChannels
+    import sConfig.genNumChannels
 
     val masterChansOption = nConfig.masterChannels
 
-    def ForceChan(in: GE): GE = if (generatorChannels <= 0) in else {
-      Util.wrapExtendChannels(generatorChannels, in)
+    def ForceChan(in: GE): GE = if (genNumChannels <= 0) in else {
+      Util.wrapExtendChannels(genNumChannels, in)
     }
 
     implicit val _nuages: Nuages[S] = nuages
 
-    def filterF   (name: String)(fun: GE => GE): Proc[S] =
-      filter      (name, if (DSL.useScanFixed) generatorChannels else -1)(fun)
+    def filterF   (name: String)(fun: GE => GE): proc.Proc[S] =
+      filter      (name, if (DSL.useScanFixed) genNumChannels else -1)(fun)
 
-    def sinkF     (name: String)(fun: GE => Unit): Proc[S] =
-      sink        (name, if (DSL.useScanFixed) generatorChannels else -1)(fun)
+    def sinkF     (name: String)(fun: GE => Unit): proc.Proc[S] =
+      sink        (name, if (DSL.useScanFixed) genNumChannels else -1)(fun)
 
-    def collectorF(name: String)(fun: GE => Unit): Proc[S] =
-      collector   (name, if (DSL.useScanFixed) generatorChannels else -1)(fun)
+    def collectorF(name: String)(fun: GE => Unit): proc.Proc[S] =
+      collector   (name, if (DSL.useScanFixed) genNumChannels else -1)(fun)
 
     def mkSpread(arg: GE)(gen: GE => GE): GE = {
       val nM = gen(arg)
-      if (generatorChannels <= 0) nM else {
+      if (genNumChannels <= 0) nM else {
         val spread    = pAudio("spread", ParamSpec(0.0, 1.0), default(0.0f))
-        val spreadAvg = Mix.mono(spread) / generatorChannels
+        val spreadAvg = Mix.mono(spread) / genNumChannels
         val pan       = spreadAvg.linLin(0, 1, -1, 1)
-        val argAvg    = Mix.mono(arg) / generatorChannels
+        val argAvg    = Mix.mono(arg) / genNumChannels
         val n0        = gen(argAvg)
         LinXFade2.ar(n0, nM, pan)
       }
     }
 
     // -------------- GENERATORS --------------
-    
+
     sConfig.audioFilesFolder.foreach { folder =>
       val loc = _ArtifactLocation.newConst[S](folder)
 
@@ -225,7 +255,7 @@ object ScissProcs {
 
         val art   = _Artifact(loc, f) // loc.add(f)
         val spec  = AudioFile.readSpec(f)
-        val gr    = AudioCue.Obj[S](art, spec, 0L, 1.0)
+        val gr    = proc.AudioCue.Obj[S](art, spec, 0L, 1.0)
         procObj.attr.put("file", gr)
       })
     }
@@ -247,10 +277,10 @@ object ScissProcs {
     }
 
     def default(in: Double): ControlValues =
-      if (generatorChannels <= 0)
+      if (genNumChannels <= 0)
         in
       else
-        Vector.fill(generatorChannels)(in)
+        Vector.fill(genNumChannels)(in)
 
     nConfig.micInputs.foreach { cfg =>
       generator(cfg.name) {
@@ -284,7 +314,7 @@ object ScissProcs {
         val sig   = XFade2.ar(pureIn, dly, feed)
 
         // val numOut = masterChansOption.fold(2)(_.size)
-        val numOut = if (generatorChannels <= 0) masterChansOption.fold(2)(_.size) else generatorChannels
+        val numOut = if (genNumChannels <= 0) masterChansOption.fold(2)(_.size) else genNumChannels
 
         val sig1: GE = if (numOut == cfg.numChannels) {
             sig
@@ -305,7 +335,7 @@ object ScissProcs {
 //        val sig     = In.ar(NumOutputBuses.ir + cfg.offset, cfg.numChannels) * boost
         val sig     = PhysicalIn.ar(cfg.indices) * boost
         // val numOut  = masterChansOption.fold(2)(_.size)
-        val numOut  = if (generatorChannels <= 0) masterChansOption.fold(2)(_.size) else generatorChannels
+        val numOut  = if (genNumChannels <= 0) masterChansOption.fold(2)(_.size) else genNumChannels
 
         val sig1: GE = if (numOut == cfg.numChannels) {
             sig
@@ -385,7 +415,7 @@ object ScissProcs {
       val range   = n.linLin(-1, 1, 0, 1)
       Slew.ar(range, up = up, down = down)
     }
-    
+
     // -------------- FILTERS --------------
 
     def mix(in: GE, flt: GE, mix: GE): GE = LinXFade2.ar(in, flt, mix * 2 - 1)
@@ -984,17 +1014,21 @@ object ScissProcs {
 
     val sinkPrepObj = actions(keyActionRecPrepare)
     val sinkDispObj = actions(keyActionRecDispose)
-    val genChansObj = IntObj.newConst[S](generatorChannels)
+    val genChansObj = IntObj.newConst[S](genNumChannels)
     val recDirObj   = _ArtifactLocation.newConst[S](sConfig.recDir)
 
     // XXX TODO --- while we cannot use expr.Artifact("value:sub"),
     // let's just copy the artifact into all objects that use it.
     // This works, because the attribute updater takes care of
     // Artifact.Modifiable.
-    val recDirObjTEST  = _Artifact[S](recDirObj, _Artifact.Child("out.aif")) // .newConst[S](sConfig.recDir)
+    val recDirObjTEST  = _Artifact[S](recDirObj, _Artifact.Child("out.irc")) // .newConst[S](sConfig.recDir)
     sinkPrepObj .attr.put(Util.attrRecDir     , recDirObjTEST)
     sinkDispObj .attr.put(Util.attrRecArtifact, recDirObjTEST)
     sinkRec     .attr.put(Util.attrRecArtifact, recDirObjTEST)
+
+    require (genNumChannels > 0)
+    val pPlaySinkRec = Util.mkLoop(nuages, "play-sink", numBufChans = genNumChannels, genNumChannels = genNumChannels)
+    sinkDispObj.attr.put("play-template", pPlaySinkRec)
 
     val sinkRecA = sinkRec.attr
     sinkRecA.put(Nuages.attrPrepare     , sinkPrepObj)
@@ -1199,11 +1233,11 @@ object ScissProcs {
       }
 
       filterF("verb2") { in =>
-        val inL     = if (generatorChannels <= 0) in out 0 else {
-          ChannelRangeProxy(in, from = 0, until = generatorChannels, step = 2)
+        val inL     = if (genNumChannels <= 0) in out 0 else {
+          ChannelRangeProxy(in, from = 0, until = genNumChannels, step = 2)
         }
-        val inR     = if (generatorChannels <= 0) in out 1 else {
-          ChannelRangeProxy(in, from = 1, until = generatorChannels, step = 2)
+        val inR     = if (genNumChannels <= 0) in out 1 else {
+          ChannelRangeProxy(in, from = 1, until = genNumChannels, step = 2)
         }
         val time    = pAudio("time"  , ParamSpec(0.1, 60.0, ExpWarp), default(2f))
         val size    = pAudio("size"  , ParamSpec(0.5,  5.0, ExpWarp), default(1f))
@@ -1217,11 +1251,11 @@ object ScissProcs {
         val mid     = tail // 0.5
         val verb    = JPverb.ar(inL = inL, inR = inR, revTime = time, damp = damp, size = size, earlyDiff = diff,
         modDepth = mod, /* modFreq = ..., */ low = low, mid = mid, high = high)
-        val verbL   = if (generatorChannels <= 0) verb out 0 else {
-          ChannelRangeProxy(verb, from = 0, until = generatorChannels, step = 2)
+        val verbL   = if (genNumChannels <= 0) verb out 0 else {
+          ChannelRangeProxy(verb, from = 0, until = genNumChannels, step = 2)
         }
-        val verbR   = if (generatorChannels <= 0) verb out 1 else {
-          ChannelRangeProxy(verb, from = 1, until = generatorChannels, step = 2)
+        val verbR   = if (genNumChannels <= 0) verb out 1 else {
+          ChannelRangeProxy(verb, from = 1, until = genNumChannels, step = 2)
         }
         val wet     = Flatten(Zip(verbL, verbR))
         mix(in, wet, fade)

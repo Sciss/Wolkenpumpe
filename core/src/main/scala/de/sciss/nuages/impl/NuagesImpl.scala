@@ -42,7 +42,7 @@ object NuagesImpl {
     Option(nuagesLocal.get(tx.peer).asInstanceOf[Nuages[S]])
   }
 
-  private[this] def mkCategFolder[S <: Sys[S]]()(implicit tx: S#Tx): Folder[S] = {
+  private def mkCategFolder[S <: Sys[S]]()(implicit tx: S#Tx): Folder[S] = {
     val folder = Folder[S]
     Nuages.CategoryNames.foreach { name =>
       folder.addLast(mkFolderObj(name))
@@ -164,7 +164,7 @@ object NuagesImpl {
 
     private def findChild(name: String)(implicit tx: S#Tx): Option[Folder[S]] = findChildIn(_folder, name)
 
-    private[this] def disconnect(): Unit = ()
+    private def disconnect(): Unit = ()
 
     def connect()(implicit tx: S#Tx): this.type = {
       // XXX TODO -- currently not listening to folder etc.

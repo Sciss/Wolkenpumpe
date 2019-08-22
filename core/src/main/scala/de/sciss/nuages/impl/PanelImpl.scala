@@ -211,7 +211,7 @@ trait PanelImpl[S <: Sys[S], Repr <: Obj[S], AuralRepr <: AuralObj[S]]
 
   private[this] val guiCode = TxnLocal(init = Vector.empty[() => Unit], afterCommit = handleGUI)
 
-  private[this] def handleGUI(seq: Vec[() => Unit]): Unit = {
+  private def handleGUI(seq: Vec[() => Unit]): Unit = {
     def exec(): Unit = visualization.synchronized {
       stopAnimation()
       // AGGR_LOCK = true
@@ -232,12 +232,12 @@ trait PanelImpl[S <: Sys[S], Repr <: Obj[S], AuralRepr <: AuralObj[S]]
   final def deferVisTx(thunk: => Unit)(implicit tx: TxnLike): Unit =
     guiCode.transform(_ :+ (() => thunk))
 
-  @inline private[this] def stopAnimation(): Unit = {
+  @inline private def stopAnimation(): Unit = {
     visualization.cancel(ACTION_COLOR)
     visualization.cancel(ACTION_LAYOUT)
   }
 
-  @inline private[this] def startAnimation(): Unit =
+  @inline private def startAnimation(): Unit =
     visualization.run(ACTION_COLOR)
 
   final def saveMacro(name: String, sel: Set[NuagesObj[S]]): Unit =

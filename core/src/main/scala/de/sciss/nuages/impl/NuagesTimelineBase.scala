@@ -81,7 +81,7 @@ trait NuagesTimelineBase[S <: Sys[S]] extends NuagesScheduledBase[S] {
     }
   }
 
-  private[this] def addRemoveNode(span: SpanLike, timed: Timed[S], add: Boolean)(implicit tx: S#Tx): Unit = {
+  private def addRemoveNode(span: SpanLike, timed: Timed[S], add: Boolean)(implicit tx: S#Tx): Unit = {
     val t    = transport
     val time = currentOffset()
     if (span.contains(time)) {

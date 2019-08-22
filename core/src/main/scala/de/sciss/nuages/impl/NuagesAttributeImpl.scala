@@ -382,7 +382,7 @@ object NuagesAttributeImpl {
       }
     }
 
-    private[this] def removeAggr(n: PNode): Unit = {
+    private def removeAggr(n: PNode): Unit = {
       val vi = main.visualization.getVisualItem(GROUP_GRAPH, n)
       logAggr(s"rem $vi@${vi.hashCode.toHexString} - $this")
       // VALIDATE_AGGR("before removeAggr")
@@ -391,7 +391,7 @@ object NuagesAttributeImpl {
       // VALIDATE_AGGR("after  removeAggr")
     }
 
-    private[this] def addAggr(n: PNode): Unit = {
+    private def addAggr(n: PNode): Unit = {
       val vi = main.visualization.getVisualItem(GROUP_GRAPH, n)
       logAggr(s"add $vi${vi.hashCode.toHexString} - $this")
       // VALIDATE_AGGR("before empty>free")
@@ -444,7 +444,7 @@ object NuagesAttributeImpl {
     }
     
     @inline
-    private[this] def showsValue: Boolean = _state.isSummary && isControl
+    private def showsValue: Boolean = _state.isSummary && isControl
 
     protected def boundsResized(): Unit = if (showsValue) updateContainerArea()
 
@@ -467,13 +467,13 @@ object NuagesAttributeImpl {
       inputView.dispose()
     }
 
-    private[this] def setAuralScalarValue(v: Vec[Double])(implicit tx: S#Tx): Unit = {
+    private def setAuralScalarValue(v: Vec[Double])(implicit tx: S#Tx): Unit = {
       disposeValueSynth()
 //      println(s"setAuralScalarValue $key")
       valueA = v
     }
 
-    private[this] def setAuralValue(v: AuralAttribute.Value)(implicit tx: S#Tx): Unit = {
+    private def setAuralValue(v: AuralAttribute.Value)(implicit tx: S#Tx): Unit = {
       v match {
         case AuralAttribute.ScalarValue (f )  => setAuralScalarValue(Vector(f.toDouble))
         case AuralAttribute.ScalarVector(xs)  => setAuralScalarValue(xs.map(_.toDouble))
@@ -486,22 +486,22 @@ object NuagesAttributeImpl {
       }
     }
 
-    private[this] def checkAuralTarget(aa: AuralAttribute[S])(implicit tx: S#Tx): Unit =
+    private def checkAuralTarget(aa: AuralAttribute[S])(implicit tx: S#Tx): Unit =
       aa.targetOption.foreach { tgt =>
         tgt.valueOption.foreach(setAuralValue)
         val obs = tgt.react { implicit tx => setAuralValue }
         auralTgtObs.swap(obs).dispose()
       }
 
-    private[this] def disposeValueSynth()(implicit tx: S#Tx): Unit =
+    private def disposeValueSynth()(implicit tx: S#Tx): Unit =
       valueSynthRef.swap(Disposable.empty).dispose()
 
-    private[this] def auralTgtRemoved()(implicit tx: S#Tx): Unit = {
+    private def auralTgtRemoved()(implicit tx: S#Tx): Unit = {
       disposeValueSynth()
       auralTgtObs.swap(Disposable.empty).dispose()
     }
 
-    private[this] def auralAttrAdded(aa: AuralAttribute[S])(implicit tx: S#Tx): Unit = {
+    private def auralAttrAdded(aa: AuralAttribute[S])(implicit tx: S#Tx): Unit = {
       checkAuralTarget(aa)
       val obs = aa.react { implicit tx => {
         case Runner.Running => checkAuralTarget(aa)
@@ -511,7 +511,7 @@ object NuagesAttributeImpl {
       auralAttrObs.swap(obs).dispose()
     }
 
-    private[this] def auralAttrRemoved()(implicit tx: S#Tx): Unit = {
+    private def auralAttrRemoved()(implicit tx: S#Tx): Unit = {
       auralTgtRemoved()
       auralAttrObs.swap(Disposable.empty).dispose()
     }
@@ -526,7 +526,7 @@ object NuagesAttributeImpl {
       auralObjObs.swap(obs).dispose()
     }
 
-    private[this] def auralObjRemoved()(implicit tx: S#Tx): Unit = if (isControl) {
+    private def auralObjRemoved()(implicit tx: S#Tx): Unit = if (isControl) {
       auralAttrRemoved()
       auralObjObs.swap(Disposable.empty).dispose()
     }

@@ -77,7 +77,7 @@ final class NuagesFolderAttrInput[S <: SSys[S]] private(val attribute: NuagesAtt
     this
   }
 
-  private[this] def initObserver(folder: Folder[S])(implicit tx: S#Tx): Unit = {
+  private def initObserver(folder: Folder[S])(implicit tx: S#Tx): Unit = {
     objH = tx.newHandle(folder)
     _observer = folder.changed.react { implicit tx => upd => upd.changes.foreach {
       case Folder.Added(idx, elem) =>
@@ -124,7 +124,7 @@ final class NuagesFolderAttrInput[S <: SSys[S]] private(val attribute: NuagesAtt
   def collect[A](pf: PartialFunction[Input[S], A])(implicit tx: S#Tx): Iterator[A] =
     map().iterator.flatMap(_.collect(pf))
 
-  private[this] def mkChild(elem: Obj[S])(implicit tx: S#Tx): NuagesAttribute.Input[S] =
+  private def mkChild(elem: Obj[S])(implicit tx: S#Tx): NuagesAttribute.Input[S] =
     NuagesAttribute.mkInput(attribute, value = elem, frameOffset = Long.MaxValue, parent = this)
 
 //  def value: Vec[Double] = ...

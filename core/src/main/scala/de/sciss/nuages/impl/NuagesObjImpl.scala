@@ -116,7 +116,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
 
   def getOutput(key: String)(implicit tx: TxnLike): Option[NuagesOutput[S]] = outputs.get(key)
 
-  private[this] def initProc(proc: Proc[S])(implicit tx: S#Tx): Unit = {
+  private def initProc(proc: Proc[S])(implicit tx: S#Tx): Unit = {
     proc.outputs.iterator.foreach(outputAdded)
 
     observers ::= proc.changed.react { implicit tx => upd =>
@@ -138,7 +138,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
     }
   }
 
-  private[this] def attrAdded(key: String, value: Obj[S])(implicit tx: S#Tx): Unit =
+  private def attrAdded(key: String, value: Obj[S])(implicit tx: S#Tx): Unit =
     if (isAttrShown(key)) {
       val view = NuagesAttribute(key = key, value = value, parent = parent)
       val res  = attrs.put(key, view)
@@ -146,13 +146,13 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
       assert(res.isEmpty)
     }
 
-  private[this] def attrRemoved(key: String)(implicit tx: S#Tx): Unit =
+  private def attrRemoved(key: String)(implicit tx: S#Tx): Unit =
     if (isAttrShown(key)) {
       val view = attrs.remove(key).getOrElse(throw new IllegalStateException(s"No view for attribute $key"))
       view.dispose()
     }
 
-  private[this] def attrReplaced(key: String, before: Obj[S], now: Obj[S])(implicit tx: S#Tx): Unit =
+  private def attrReplaced(key: String, before: Obj[S], now: Obj[S])(implicit tx: S#Tx): Unit =
     if (isAttrShown(key)) {
       val oldView = attrs.get(key).getOrElse(throw new IllegalStateException(s"No view for attribute $key"))
       if (oldView.tryConsume(newOffset = frameOffset, newValue = now)) return
@@ -165,19 +165,19 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
       }
     }
 
-  private[this] def outputAdded(output: Output[S])(implicit tx: S#Tx): Unit = {
+  private def outputAdded(output: Output[S])(implicit tx: S#Tx): Unit = {
     val view = NuagesOutput(this, output, meter = hasMeter && output.key == Proc.mainOut)
     outputs.put(output.key, view)
     auralRef().foreach(view.auralObjAdded)
   }
 
-  private[this] def outputRemoved(output: Output[S])(implicit tx: S#Tx): Unit = {
+  private def outputRemoved(output: Output[S])(implicit tx: S#Tx): Unit = {
     val view = outputs.remove(output.key)
       .getOrElse(throw new IllegalStateException(s"View for output ${output.key} not found"))
     view.dispose()
   }
 
-  private[this] def initGUI(locOption: Option[Point2D]): Unit = {
+  private def initGUI(locOption: Option[Point2D]): Unit = {
     requireEDT()
     // important: this must be this first step
     _aggr = main.aggrTable.addItem().asInstanceOf[AggregateItem]
@@ -278,7 +278,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
     case _ =>
   }
 
-  private[this] def removeSelf()(implicit tx: S#Tx): Unit = {
+  private def removeSelf()(implicit tx: S#Tx): Unit = {
     // ---- connect former input sources to former output sinks ----
     // - in the previous version we limit ourselves to
     //  `Proc.mainIn` and `Proc.mainOut`.

@@ -112,7 +112,7 @@ object Demo {
         nCfg.lineInputs         = Vector.empty
         nCfg.lineOutputs        = Vector.empty
 
-        sCfg.generatorChannels  = 2
+        sCfg.genNumChannels  = 2
 
         aCfg.wireBuffers        = 512
         aCfg.audioBuffers       = 4096

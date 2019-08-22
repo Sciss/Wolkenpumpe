@@ -170,7 +170,7 @@ class DSL[S <: stm.Sys[S]] private() {
   def collector(name: String, numChannels: Int = -1)(fun: GE => Unit)(implicit tx: S#Tx, n: Nuages[S]): Proc[S] =
     sinkLike(n.collectors.get, name = name, numChannels = numChannels, fun = fun)
 
-  private[this] def sinkLike(folder: Folder[S], name: String, numChannels: Int, fun: GE => Unit)
+  private def sinkLike(folder: Folder[S], name: String, numChannels: Int, fun: GE => Unit)
                             (implicit tx: S#Tx): Proc[S] = {
     val obj = mkProcObj(name) {
       val in = if (numChannels == -1) ScanIn() else ScanInFix(numChannels)
