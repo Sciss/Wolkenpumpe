@@ -4,7 +4,7 @@
  *
  *  Copyright (c) 2008-2019 Hanns Holger Rutz. All rights reserved.
  *
- *  This software is published under the GNU General Public License v2+
+ *  This software is published under the GNU Affero General Public License v3+
  *
  *
  *  For further information, please contact Hanns Holger Rutz at
@@ -49,7 +49,7 @@ trait NuagesObj[S <: Sys[S]]
   /** GUI property: name of the object to display. */
   var name: String
 
-  def aggr: AggregateItem
+  def aggregate: AggregateItem
 
   /** GUI property: whether the object is heard through the solo function or not. */
   var soloed: Boolean

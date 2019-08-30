@@ -4,7 +4,7 @@
  *
  *  Copyright (c) 2008-2019 Hanns Holger Rutz. All rights reserved.
  *
- *  This software is published under the GNU General Public License v2+
+ *  This software is published under the GNU Affero General Public License v3+
  *
  *
  *  For further information, please contact Hanns Holger Rutz at
@@ -60,11 +60,11 @@ trait NuagesPanel[S <: Sys[S]] extends View.Cursor[S] {
 
   // -- prefuse --
 
-  def display       : Display
-  def visualization : Visualization
-  def graph         : Graph
-  def visualGraph   : VisualGraph
-  def aggrTable     : AggregateTable
+  def display         : Display
+  def visualization   : Visualization
+  def graph           : Graph
+  def visualGraph     : VisualGraph
+  def aggregateTable  : AggregateTable
 
   // -- dialogs --
 

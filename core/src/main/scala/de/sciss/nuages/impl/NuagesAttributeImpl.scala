@@ -4,7 +4,7 @@
  *
  *  Copyright (c) 2008-2019 Hanns Holger Rutz. All rights reserved.
  *
- *  This software is published under the GNU General Public License v2+
+ *  This software is published under the GNU Affero General Public License v3+
  *
  *
  *  For further information, please contact Hanns Holger Rutz at
@@ -386,8 +386,8 @@ object NuagesAttributeImpl {
       val vi = main.visualization.getVisualItem(GROUP_GRAPH, n)
       logAggr(s"rem $vi@${vi.hashCode.toHexString} - $this")
       // VALIDATE_AGGR("before removeAggr")
-      assert(parent.aggr.containsItem(vi))
-      parent.aggr.removeItem(vi)
+      assert(parent.aggregate.containsItem(vi))
+      parent.aggregate.removeItem(vi)
       // VALIDATE_AGGR("after  removeAggr")
     }
 
@@ -395,8 +395,8 @@ object NuagesAttributeImpl {
       val vi = main.visualization.getVisualItem(GROUP_GRAPH, n)
       logAggr(s"add $vi${vi.hashCode.toHexString} - $this")
       // VALIDATE_AGGR("before empty>free")
-      assert(!parent.aggr.containsItem(vi))
-      parent.aggr.addItem(vi)
+      assert(!parent.aggregate.containsItem(vi))
+      parent.aggregate.addItem(vi)
     }
 
     final def removePNode(n: PNode): Unit = {
@@ -428,7 +428,7 @@ object NuagesAttributeImpl {
             val vi = main.visualization.getVisualItem(GROUP_GRAPH, ns)
             g.removeNode(ns)
             assert(!vi.isValid)
-            assert(!attribute.parent.aggr.containsItem(vi))
+            assert(!attribute.parent.aggregate.containsItem(vi))
 
             if (numFree == 0) EmptyState else { // become internal
               val (n1, _ /* e1 */)  = _freeNodes.head // the former edge is already removed because we removed `ns`

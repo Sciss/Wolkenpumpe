@@ -4,7 +4,7 @@
  *
  *  Copyright (c) 2008-2019 Hanns Holger Rutz. All rights reserved.
  *
- *  This software is published under the GNU General Public License v2+
+ *  This software is published under the GNU Affero General Public License v3+
  *
  *
  *  For further information, please contact Hanns Holger Rutz at
@@ -48,7 +48,7 @@ trait NuagesNodeRootImpl[S <: Sys[S]] extends NuagesNodeImpl[S] {
     val sz  = nodeSize
     if (sz != 1.0f) vi.set(VisualItem.SIZE, sz)
     logAggr(s"add $vi@${vi.hashCode.toHexString} - $this")
-    parent.aggr.addItem(vi)
+    parent.aggregate.addItem(vi)
     vi
   }
 
@@ -56,7 +56,7 @@ trait NuagesNodeRootImpl[S <: Sys[S]] extends NuagesNodeImpl[S] {
     log(s"disposeGUI($name)")
     val _vi = main.visualization.getVisualItem(NuagesPanel.GROUP_GRAPH, pNode)
     logAggr(s"rem ${_vi}@${_vi.hashCode.toHexString} - $this")
-    parent.aggr.removeItem(_vi)
+    parent.aggregate.removeItem(_vi)
     main.graph.removeNode(pNode)
   }
 }

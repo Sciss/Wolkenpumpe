@@ -4,7 +4,7 @@
  *
  *  Copyright (c) 2008-2019 Hanns Holger Rutz. All rights reserved.
  *
- *  This software is published under the GNU General Public License v2+
+ *  This software is published under the GNU Affero General Public License v3+
  *
  *
  *  For further information, please contact Hanns Holger Rutz at
@@ -41,7 +41,7 @@ class OverlayPanel(orientation: Orientation.Value) extends BasicPanel(orientatio
   var locationHint = Option.empty[Point]
 
   override lazy val peer: JPanel with SuperMixin = {
-    val p = new JPanel with SuperMixin {
+    val p: JPanel with SuperMixin = new JPanel with SuperMixin {
       private val masks = MOUSE_EVENT_MASK | MOUSE_MOTION_EVENT_MASK | MOUSE_WHEEL_EVENT_MASK
       enableEvents(masks)
 

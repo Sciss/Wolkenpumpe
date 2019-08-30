@@ -4,7 +4,7 @@
  *
  *  Copyright (c) 2008-2019 Hanns Holger Rutz. All rights reserved.
  *
- *  This software is published under the GNU General Public License v2+
+ *  This software is published under the GNU Affero General Public License v3+
  *
  *
  *  For further information, please contact Hanns Holger Rutz at
@@ -57,13 +57,13 @@ trait PanelImplGuiInit[S <: Sys[S]] extends ComponentHolder[Component] {
   private[this] var _g  : Graph         = _
   private[this] var _vg : VisualGraph   = _
 
-  private[this] var _aggrTable: AggregateTable = _
+  private[this] var _agrTable: AggregateTable = _
 
-  def display      : Display        = _dsp
-  def visualization: Visualization  = _vis
-  def graph        : Graph          = _g
-  def visualGraph  : VisualGraph    = _vg
-  def aggrTable    : AggregateTable = _aggrTable
+  def display       : Display        = _dsp
+  def visualization : Visualization  = _vis
+  def graph         : Graph          = _g
+  def visualGraph   : VisualGraph    = _vg
+  def aggregateTable: AggregateTable = _agrTable
 
   private[this] var _mGlideTime : BoundedRangeModel   = _
 
@@ -102,8 +102,8 @@ trait PanelImplGuiInit[S <: Sys[S]] extends ComponentHolder[Component] {
     _g     = new Graph
     _vg    = _vis.addGraph(GROUP_GRAPH, _g)
     _vg.addColumn(COL_NUAGES, classOf[AnyRef])
-    _aggrTable = _vis.addAggregates(AGGR_PROC)
-    _aggrTable .addColumn(VisualItem.POLYGON, classOf[Array[Float]])
+    _agrTable = _vis.addAggregates(AGGR_PROC)
+    _agrTable .addColumn(VisualItem.POLYGON, classOf[Array[Float]])
 
     val procRenderer = new NuagesShapeRenderer(50)
     val edgeRenderer = new EdgeRenderer(Constants.EDGE_TYPE_LINE, Constants.EDGE_ARROW_FORWARD) {

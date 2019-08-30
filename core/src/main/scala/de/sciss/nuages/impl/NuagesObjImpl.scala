@@ -4,7 +4,7 @@
  *
  *  Copyright (c) 2008-2019 Hanns Holger Rutz. All rights reserved.
  *
- *  This software is published under the GNU General Public License v2+
+ *  This software is published under the GNU Affero General Public License v3+
  *
  *
  *  For further information, please contact Hanns Holger Rutz at
@@ -83,7 +83,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
 
   def parent: NuagesObj[S] = this
 
-  def aggr: AggregateItem = _aggr
+  def aggregate: AggregateItem = _aggr
 
   def id        (implicit tx: S#Tx): S#Id                   = idH()
   def obj       (implicit tx: S#Tx): Obj[S]                 = objH()
@@ -180,7 +180,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
   private def initGUI(locOption: Option[Point2D]): Unit = {
     requireEDT()
     // important: this must be this first step
-    _aggr = main.aggrTable.addItem().asInstanceOf[AggregateItem]
+    _aggr = main.aggregateTable.addItem().asInstanceOf[AggregateItem]
     val vi = mkPNode()
     locOption.foreach { pt =>
       // println(s"location: $pt")
@@ -207,7 +207,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
 
   override def disposeGUI(): Unit = {
     super.disposeGUI()
-    main.aggrTable.removeTuple(aggr)
+    main.aggregateTable.removeTuple(aggregate)
     //    main.graph    .removeNode (pNode)
   }
 

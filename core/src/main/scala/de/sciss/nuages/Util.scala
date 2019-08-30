@@ -4,7 +4,7 @@
  *
  *  Copyright (c) 2008-2019 Hanns Holger Rutz. All rights reserved.
  *
- *  This software is published under the GNU General Public License v2+
+ *  This software is published under the GNU Affero General Public License v3+
  *
  *
  *  For further information, please contact Hanns Holger Rutz at
@@ -50,9 +50,9 @@ object Util {
 
 //  final val recFormatAIFF: DateFormat = new SimpleDateFormat("'rec_'yyMMdd'_'HHmmss'.aif'", Locale.US)
 
-  final val attrRecArtifact = "$file"
-  final val attrRecGenChans = "$gen-chans"
-  final val attrRecDir      = "$rec-dir"
+  final val attrRecArtifact     = "$file"
+  final val attrRecGenChannels  = "$gen-chans"
+  final val attrRecDir          = "$rec-dir"
 
   def defaultRecDir: File = File.tempDir
 
@@ -73,7 +73,7 @@ object Util {
 
   def wrapExtendChannels(n: Int, sig: GE): GE = Vector.tabulate(n)(sig.out)
 
-  def mkLoop[S <: stm.Sys[S]](n: Nuages[S], name: String, numBufChans: Int, genNumChannels: Int)
+  def mkLoop[S <: stm.Sys[S]](n: Nuages[S], name: String, numBufChannels: Int, genNumChannels: Int)
                              (implicit tx: S#Tx): proc.Proc[S] = {
     import synth._
     import ugen._
@@ -101,9 +101,6 @@ object Util {
       val bufId       = proc.graph.Buffer("file")
       val loopFrames  = BufFrames.kr(bufId)
 
-//      val numBufChans = spec.numChannels
-      // val numChans    = if (generatorChannels > 0) generatorChannels else numBufChans
-
       val trig1       = LocalIn.kr(Pad(0, pSpeed)) // Pad.LocalIn.kr(pSpeed)
       val gateTrig1   = PulseDivider.kr(trig = trig1, div = 2, start = 1)
       val gateTrig2   = PulseDivider.kr(trig = trig1, div = 2, start = 0)
@@ -116,14 +113,12 @@ object Util {
       val gate1       = Trig1.kr(in = gateTrig1, dur = duration)
       val env         = Env.asr(2, 1, 2, Curve.lin) // \sin
       // val bufId       = Select.kr(pBuf, loopBufIds)
-      val play1a      = PlayBuf.ar(numBufChans, bufId, speed, gateTrig1, lOffset, loop = 0)
+      val play1a      = PlayBuf.ar(numBufChannels, bufId, speed, gateTrig1, lOffset, loop = 0)
       val play1b      = Mix(play1a)
       val play1       = ForceChan(play1b)
-      // val play1       = Flatten(Seq.tabulate(numChans)(play1a \ _))
-      val play2a      = PlayBuf.ar(numBufChans, bufId, speed, gateTrig2, lOffset, loop = 0)
+      val play2a      = PlayBuf.ar(numBufChannels, bufId, speed, gateTrig2, lOffset, loop = 0)
       val play2b      = Mix(play2a)
       val play2       = ForceChan(play2b)
-      // val play2       = Flatten(Seq.tabulate(numChans)(play2a \ _))
       val amp0        = EnvGen.kr(env, gate1) // 0.999 = bug fix !!!
       val amp2        = 1.0 - amp0.squared
       val amp1        = 1.0 - (1.0 - amp0).squared

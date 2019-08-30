@@ -4,7 +4,7 @@
  *
  *  Copyright (c) 2008-2019 Hanns Holger Rutz. All rights reserved.
  *
- *  This software is published under the GNU General Public License v2+
+ *  This software is published under the GNU Affero General Public License v3+
  *
  *
  *  For further information, please contact Hanns Holger Rutz at
@@ -53,9 +53,6 @@ object DragAndMouseDelegateControl {
     }
 
   private final class Drag(val vi: VisualItem, val lastPt: Point2D) {
-    def this(pt: Point2D) =
-      this(throw new UnsupportedOperationException, pt) // make MiMa happy
-
     var started = false
   }
 }

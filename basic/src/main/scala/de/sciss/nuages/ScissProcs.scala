@@ -1029,7 +1029,8 @@ object ScissProcs {
     sinkDispObj .attr.put(Util.attrRecArtifact, recDirObjTEST)
     sinkRec     .attr.put(Util.attrRecArtifact, recDirObjTEST)
 
-    // we currently have to ex represenation for nuages, perhaps
+    // XXX TODO
+    // we currently have to ex representation for nuages, perhaps
     // for good reason (is it really a good structure with the
     // fixed folders?). as a work around, to be able to access them
     // from the dispose action, we put the generators again into
@@ -1037,13 +1038,13 @@ object ScissProcs {
     nuages.attr.put("generators", nuages.generators.getOrElse(throw new IllegalStateException()))
 
     require (genNumChannels > 0)
-    val pPlaySinkRec = Util.mkLoop(nuages, "play-sink", numBufChans = genNumChannels, genNumChannels = genNumChannels)
+    val pPlaySinkRec = Util.mkLoop(nuages, "play-sink", numBufChannels = genNumChannels, genNumChannels = genNumChannels)
     sinkDispObj.attr.put("play-template", pPlaySinkRec)
 
     val sinkRecA = sinkRec.attr
     sinkRecA.put(Nuages.attrPrepare     , sinkPrepObj)
     sinkRecA.put(Nuages.attrDispose     , sinkDispObj)
-    sinkRecA.put(Util  .attrRecGenChans , genChansObj)
+    sinkRecA.put(Util  .attrRecGenChannels , genChansObj)
     sinkRecA.put(Util  .attrRecDir      , recDirObj  )
 
     val sumRec = generator("rec-sum") {
@@ -1055,7 +1056,7 @@ object ScissProcs {
     val sumRecA = sumRec.attr
     sumRecA.put(Nuages.attrPrepare  , sinkPrepObj)
     sumRecA.put(Nuages.attrDispose  , sinkDispObj)
-    sumRecA.put(Util.attrRecGenChans, genChansObj)
+    sumRecA.put(Util.attrRecGenChannels, genChansObj)
     sumRecA.put(Util.attrRecDir     , recDirObj  )
 
     // -------------- CONTROL SIGNALS --------------

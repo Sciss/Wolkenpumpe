@@ -4,7 +4,7 @@
  *
  *  Copyright (c) 2008-2019 Hanns Holger Rutz. All rights reserved.
  *
- *  This software is published under the GNU General Public License v2+
+ *  This software is published under the GNU Affero General Public License v3+
  *
  *
  *  For further information, please contact Hanns Holger Rutz at
@@ -77,31 +77,31 @@ object PrefuseAggregateLayout {
   }
 }
 
-class PrefuseAggregateLayout(aggrGroup: String) extends Layout(aggrGroup) {
+class PrefuseAggregateLayout(aggregateGroup: String) extends Layout(aggregateGroup) {
 
   import PrefuseAggregateLayout._
 
   private var points = new Array[Double](8 * 4) // buffer for computing convex hulls
 
-  def run(frac: Double): Unit = /* getVisualization.synchronized */ {
+  def run(fraction: Double): Unit = /* getVisualization.synchronized */ {
     // require(AGGR_LOCK)
 
-    val aggr = m_vis.getGroup(aggrGroup) // .asInstanceOf[ AggregateTable ]
-    if (aggr.getTupleCount == 0) return // do we have any to process?
+    val agr = m_vis.getGroup(aggregateGroup) // .asInstanceOf[ AggregateTable ]
+    if (agr.getTupleCount == 0) return // do we have any to process?
 
     // update buffers
     var maxSz = 0
-    val iter1 = aggr.tuples()
-    while (iter1.hasNext) {
-      val item = iter1.next().asInstanceOf[AggregateItem]
+    val it1 = agr.tuples()
+    while (it1.hasNext) {
+      val item = it1.next().asInstanceOf[AggregateItem]
       // val before = Thread.getAllStackTraces
       try {
         maxSz = math.max(maxSz, item.getAggregateSize)
       } catch {
         case e: ConcurrentModificationException =>
-          val aggrS = s"$aggr@${aggr.hashCode.toHexString}"
+          val agrS = s"$agr@${agr.hashCode.toHexString}"
           val itemS = s"$item@${item.hashCode.toHexString}"
-          Console.err.println(s"PrefuseAggregateLayout.run - ${e.getMessage} - $aggrS - $itemS")
+          Console.err.println(s"PrefuseAggregateLayout.run - ${e.getMessage} - $agrS - $itemS")
           e.printStackTrace()
 //          val allStackTraces = before // Thread.getAllStackTraces
 //          import scala.collection.JavaConverters._
@@ -123,14 +123,14 @@ class PrefuseAggregateLayout(aggrGroup: String) extends Layout(aggrGroup) {
     }
 
     // compute and assign convex hull for each aggregate
-    val iter2 = m_vis.visibleItems(aggrGroup)
-    while (iter2.hasNext) {
-      val aItem = iter2.next().asInstanceOf[AggregateItem]
+    val it2 = m_vis.visibleItems(aggregateGroup)
+    while (it2.hasNext) {
+      val aItem = it2.next().asInstanceOf[AggregateItem]
       var idx = 0
       if (aItem.getAggregateSize > 0) {
-        val iter3 = aItem.items()
-        while (iter3.hasNext) {
-          val item = iter3.next().asInstanceOf[VisualItem]
+        val it3 = aItem.items()
+        while (it3.hasNext) {
+          val item = it3.next().asInstanceOf[VisualItem]
           if (item.isVisible) {
             addPoint(points, idx, item, hullMargin)
             idx += 2 * 4
