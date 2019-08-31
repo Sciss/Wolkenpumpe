@@ -15,7 +15,6 @@ package de.sciss.nuages
 
 import de.sciss.file._
 import de.sciss.lucre.artifact.{Artifact => _Artifact, ArtifactLocation => _ArtifactLocation}
-import de.sciss.lucre.expr.IntObj
 import de.sciss.lucre.stm
 import de.sciss.lucre.synth.Sys
 import de.sciss.synth
@@ -74,10 +73,9 @@ object ScissProcs {
 
   def actionRecPrepare[S <: stm.Sys[S]](implicit tx: S#Tx): proc.Action[S] = {
     val a = proc.Action[S]()
-    import de.sciss.lucre.expr.graph._
     import de.sciss.lucre.expr.ExImport._
+    import de.sciss.lucre.expr.graph._
     a.setGraph {
-//      val obj   = Obj("invoker") // "invoker".attr[Obj]
       val ts      = TimeStamp()
       // N.B.: We currently cannot wait in the dispose action
       // for the file header to have been asynchronously flushed.
@@ -86,22 +84,17 @@ object ScissProcs {
       // explicit number of frames, other than determined by its
       // file size.
       val name    = ts.format("'rec_'yyMMdd'_'HHmmss'.irc'")
-//      val artIn   = Artifact("invoker:nuages-rec-loc")
-//      val value   = "value".attr[Obj](Obj.empty)
-      val artIn   = Artifact("$rec-dir")
-//      val recDir  = value.attr[File]("$rec-dir").getOrElse(Const(file("")))
-//      val recDir  = "$rec-dir".attr[File](Const(file("")))
-//      val artOut  = Artifact("value:$file")
-//      val artNew  = artIn / name
-      val artNew  = artIn.replaceName(name)
+      val artIn   = ArtifactLocation("value:$rec-dir")
+      val artOut  = Artifact("value:$file")
+      val artNew  = artIn / name
       // we don't need to run `ts.update`, because the action
       // is expanded and run only once, thus recreating a
       // fresh time stamp each time.
       Act(
         // ts.update,
         PrintLn("File to write: " ++ artNew.path),
-//        artOut.set(artNew)
-        artIn.set(artNew)
+        artOut.set(artNew)
+//        artIn.set(artNew)
       )
 
       /*
@@ -119,11 +112,11 @@ object ScissProcs {
 
   def actionRecDispose[S <: stm.Sys[S]](implicit tx: S#Tx): proc.Action[S] = {
     val a = proc.Action[S]()
-    import de.sciss.lucre.expr.graph._
     import de.sciss.lucre.expr.ExImport._
+    import de.sciss.lucre.expr.graph._
     import de.sciss.synth.proc.ExImport._
     a.setGraph {
-      val artNew  = Artifact("$file")
+      val artNew  = Artifact("value:$file")
       val specOpt = AudioFileSpec.Read(artNew)
       val procOpt = "play-template" .attr[Obj]
       val invOpt  = "invoker"       .attr[Obj]
@@ -1017,17 +1010,8 @@ object ScissProcs {
 
     val sinkPrepObj = actions(keyActionRecPrepare)
     val sinkDispObj = actions(keyActionRecDispose)
-    val genChansObj = IntObj.newConst[S](genNumChannels)
+//    val genChansObj = IntObj.newConst[S](genNumChannels)
     val recDirObj   = _ArtifactLocation.newConst[S](sConfig.recDir)
-
-    // XXX TODO --- while we cannot use expr.Artifact("value:sub"),
-    // let's just copy the artifact into all objects that use it.
-    // This works, because the attribute updater takes care of
-    // Artifact.Modifiable.
-    val recDirObjTEST  = _Artifact[S](recDirObj, _Artifact.Child("out.irc")) // .newConst[S](sConfig.recDir)
-    sinkPrepObj .attr.put(Util.attrRecDir     , recDirObjTEST)
-    sinkDispObj .attr.put(Util.attrRecArtifact, recDirObjTEST)
-    sinkRec     .attr.put(Util.attrRecArtifact, recDirObjTEST)
 
     // XXX TODO
     // we currently have to ex representation for nuages, perhaps
@@ -1044,7 +1028,7 @@ object ScissProcs {
     val sinkRecA = sinkRec.attr
     sinkRecA.put(Nuages.attrPrepare     , sinkPrepObj)
     sinkRecA.put(Nuages.attrDispose     , sinkDispObj)
-    sinkRecA.put(Util  .attrRecGenChannels , genChansObj)
+//    sinkRecA.put(Util  .attrRecGenChannels , genChansObj)
     sinkRecA.put(Util  .attrRecDir      , recDirObj  )
 
     val sumRec = generator("rec-sum") {
@@ -1056,7 +1040,7 @@ object ScissProcs {
     val sumRecA = sumRec.attr
     sumRecA.put(Nuages.attrPrepare  , sinkPrepObj)
     sumRecA.put(Nuages.attrDispose  , sinkDispObj)
-    sumRecA.put(Util.attrRecGenChannels, genChansObj)
+//    sumRecA.put(Util.attrRecGenChannels, genChansObj)
     sumRecA.put(Util.attrRecDir     , recDirObj  )
 
     // -------------- CONTROL SIGNALS --------------

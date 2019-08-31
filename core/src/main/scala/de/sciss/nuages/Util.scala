@@ -51,7 +51,7 @@ object Util {
 //  final val recFormatAIFF: DateFormat = new SimpleDateFormat("'rec_'yyMMdd'_'HHmmss'.aif'", Locale.US)
 
   final val attrRecArtifact     = "$file"
-  final val attrRecGenChannels  = "$gen-chans"
+//  final val attrRecGenChannels  = "$gen-chans"
   final val attrRecDir          = "$rec-dir"
 
   def defaultRecDir: File = File.tempDir
