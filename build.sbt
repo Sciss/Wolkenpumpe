@@ -1,7 +1,7 @@
 lazy val baseName        = "Wolkenpumpe"
 lazy val baseNameL       = baseName.toLowerCase
-lazy val projectVersion  = "2.35.0"
-lazy val mimaVersion     = "2.35.0"
+lazy val projectVersion  = "2.36.0"
+lazy val mimaVersion     = "2.36.0"
 
 lazy val commonSettings = Seq(
   version              := projectVersion,
@@ -24,16 +24,16 @@ lazy val deps = new {
   val main = new {
     val fileUtil            = "1.1.3"
     val intensity           = "1.0.0"
-    val lucreSwing          = "1.18.0"
+    val lucreSwing          = "1.19.0"
     val prefuse             = "1.0.1"
     val scalaCollider       = "1.28.4"
     val scalaColliderSwing  = "1.41.4"
     val scissDSP            = "1.3.2"
-    val soundProcesses      = "3.31.0"
+    val soundProcesses      = "3.32.0"
     val swingPlus           = "0.4.2"
   }
   val test = new {
-    val lucre               = "3.14.0"
+    val lucre               = "3.15.0"
     val scalaTest           = "3.0.8"
     val scallop             = "3.3.1"
     val submin              = "0.2.5"
@@ -63,7 +63,7 @@ lazy val core = project.withId(s"$baseNameL-core").in(file("core"))
       "de.sciss"          %% "scalacolliderswing-core" % deps.main.scalaColliderSwing,
       "de.sciss"          %  "prefuse-core"            % deps.main.prefuse,
       "de.sciss"          %% "fileutil"                % deps.main.fileUtil,
-      "de.sciss"          %% "lucreswing"              % deps.main.lucreSwing,
+      "de.sciss"          %% "lucre-swing"             % deps.main.lucreSwing,
       "de.sciss"          %% "swingplus"               % deps.main.swingPlus,
       "de.sciss"          %% "scissdsp"                % deps.main.scissDSP,
       "de.sciss"          %  "intensitypalette"        % deps.main.intensity,
