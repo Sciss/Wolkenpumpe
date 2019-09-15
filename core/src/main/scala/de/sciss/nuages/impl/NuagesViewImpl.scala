@@ -30,7 +30,7 @@ import de.sciss.synth.proc.gui.TransportView
 import de.sciss.synth.proc.{AuralSystem, TimeRef, Universe}
 import de.sciss.synth.swing.j.JServerStatusPanel
 import de.sciss.synth.{SynthGraph, addAfter, message}
-import javax.swing.{AbstractAction, JComponent, KeyStroke}
+import javax.swing.{AbstractAction, JComponent, KeyStroke, SwingUtilities}
 
 import scala.swing.Swing._
 import scala.swing.{BorderPanel, BoxPanel, Component, GridBagPanel, Orientation}
@@ -83,7 +83,10 @@ object NuagesViewImpl {
       _serverPanel.server = None
     }
 
-    def installFullScreenKey(frame: scala.swing.Window): Unit = {
+    def installFullScreenKey(frame: scala.swing.Window): Unit =
+      installFullScreenKey(frame: scala.swing.RootPanel)
+
+    override def installFullScreenKey(frame: scala.swing.RootPanel): Unit = {
       val display = panel.display
       val iMap    = display.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
       val aMap    = display.getActionMap
@@ -94,7 +97,8 @@ object NuagesViewImpl {
         def actionPerformed(e: ActionEvent): Unit = {
           val gc = frame.peer.getGraphicsConfiguration
           val sd = gc.getDevice
-          sd.setFullScreenWindow(if (sd.getFullScreenWindow == frame.peer) null else frame.peer)
+          val w  = SwingUtilities.getWindowAncestor(frame.peer.getRootPane)
+          sd.setFullScreenWindow(if (sd.getFullScreenWindow == w) null else w)
         }
       })
 

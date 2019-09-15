@@ -29,7 +29,11 @@ trait NuagesView[S <: Sys[S]] extends View.Cursor[S] {
   def panel: NuagesPanel[S]
   def controlPanel: ControlPanel
 
+  // XXX TODO: remove this in next major version
   def installFullScreenKey(frame: scala.swing.Window): Unit
+
+  def installFullScreenKey(p: scala.swing.RootPanel): Unit =
+    throw new NotImplementedError()
 
   def addSouthComponent(c: Component): Unit
 }
