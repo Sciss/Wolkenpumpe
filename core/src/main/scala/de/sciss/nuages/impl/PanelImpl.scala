@@ -183,7 +183,7 @@ trait PanelImpl[S <: Sys[S], Repr <: Obj[S], AuralRepr <: AuralObj[S]]
     disposeTransport()
     disposeNodes()
     deferTx(stopAnimation())
-    clearSolo()
+    disposeSoloSynth()
     observers.foreach(_.dispose())
     disposeAuralObserver()
     transport .dispose()

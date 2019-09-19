@@ -14,7 +14,7 @@
 package de.sciss.nuages
 package impl
 
-import de.sciss.lucre.swing.LucreSwing.{defer, deferTx, requireEDT}
+import de.sciss.lucre.swing.LucreSwing.defer
 import de.sciss.lucre.synth.{AudioBus, Synth, Sys, Txn, Node => SNode}
 import de.sciss.nuages.impl.PanelImpl.LAYOUT_TIME
 import de.sciss.osc
@@ -38,7 +38,8 @@ trait PanelImplMixer[S <: Sys[S]] {
   private[this] var peakMeterGraphMap   = Map.empty[Int, SynthGraph]
   private[this] var valueMeterGraphMap  = Map.empty[Int, SynthGraph]
   private[this] val soloVolume          = Ref(NuagesPanel.soloAmpSpec._2)  // 0.5
-  private[this] val soloInfo            = Ref(Option.empty[(NuagesObj[S], Synth)])
+  private[this] val soloObj             = Ref(Option.empty[NuagesObj[S]])
+  private[this] val _soloSynth          = Ref(Option.empty[Synth])
   private[this] val _masterSynth        = Ref(Option.empty[Synth])
 
   final def mkPeakMeter(bus: AudioBus, node: SNode)(fun: Double => Unit)(implicit tx: S#Tx): Synth = {
@@ -71,6 +72,31 @@ trait PanelImplMixer[S <: Sys[S]] {
     } (tx.peer)
     syn.onEnd(trigResp.remove())
     syn
+  }
+
+  final def mkSoloSynth(bus: AudioBus, node: SNode)(implicit tx: S#Tx): Synth = {
+    val sg = SynthGraph {
+      import de.sciss.synth.Ops.stringToControl
+      import de.sciss.synth._
+      import de.sciss.synth.ugen._
+      val numIn     = bus.numChannels
+      main.config.soloChannels.foreach { outChannels =>
+        val numOut    = outChannels.size
+        // println(s"numIn = $numIn, numOut = $numOut")
+        val in        = In.ar("in".kr, numIn)
+        val amp       = "amp".kr(1f)
+        val sigOut    = SplayAz.ar(numOut, in)
+        val mix       = sigOut * amp
+        outChannels.zipWithIndex.foreach { case (ch, idx) =>
+          ReplaceOut.ar(ch, mix out idx)
+        }
+      }
+    }
+    val soloSynth = Synth.play(sg, Some("solo"))(target = node.server.defaultGroup, addAction = addToTail,
+      args = "amp" -> soloVolume()(tx.peer) :: Nil, dependencies = node :: Nil)
+    soloSynth.read(bus -> "in")
+    _soloSynth.swap(Some(soloSynth))(tx.peer).foreach(_.dispose())
+    soloSynth
   }
 
   final def mkValueMeter(bus: AudioBus, node: SNode)(fun: Vec[Double] => Unit)(implicit tx: S#Tx): Synth = {
@@ -151,44 +177,14 @@ trait PanelImplMixer[S <: Sys[S]] {
     syn
   }
 
-  def clearSolo()(implicit tx: S#Tx): Unit = {
-    val oldInfo = soloInfo.swap(None)(tx.peer)
-    oldInfo.foreach { case (oldVP, oldSynth) =>
-      oldSynth.dispose()
-      deferTx(oldVP.soloed = false)
-    }
+  protected def disposeSoloSynth()(implicit tx: S#Tx): Unit = {
+    _soloSynth.swap(None)(tx.peer).foreach(_.dispose())
   }
 
-  def setSolo(vp: NuagesObj[S], onOff: Boolean): Unit = main.config.soloChannels.foreach { _ /* outChans */ =>
-    requireEDT()
-    cursor.step { implicit tx =>
-//      implicit val itx = tx.peer
-      clearSolo()
-      if (onOff)
-//        viewToAuralMap.get(vp).foreach { auralProc =>
-//          getAuralScanData(auralProc).foreach { case (bus, node) =>
-//            val sg = SynthGraph {
-//              import de.sciss.synth._
-//              import de.sciss.synth.ugen._
-//              val numIn     = bus.numChannels
-//              val numOut    = outChans.size
-//              // println(s"numIn = $numIn, numOut = $numOut")
-//              val in        = In.ar("in".kr, numIn)
-//              val amp       = "amp".kr(1f)
-//              val sigOut    = SplayAz.ar(numOut, in)
-//              val mix       = sigOut * amp
-//              outChans.zipWithIndex.foreach { case (ch, idx) =>
-//                ReplaceOut.ar(ch, mix \ idx)
-//              }
-//            }
-//            val soloSynth = Synth.play(sg, Some("solo"))(target = node.server.defaultGroup, addAction = addToTail,
-//              args = "amp" -> soloVolume() :: Nil, dependencies = node :: Nil)
-//            soloSynth.read(bus -> "in")
-//            soloInfo.set(Some(vp -> soloSynth))
-//          }
-//        }
-      deferTx(vp.soloed = onOff)
-    }
+  def setSolo(vp: NuagesObj[S], onOff: Boolean)(implicit tx: S#Tx): Unit = {
+    val oldObj = soloObj.swap(Some(vp))(tx.peer)
+    oldObj.foreach(_.setSolo(onOff = false))
+    vp.setSolo(onOff = onOff)
   }
 
   def masterSynth(implicit tx: Txn): Option[Synth] = _masterSynth.get(tx.peer)
@@ -202,6 +198,6 @@ trait PanelImplMixer[S <: Sys[S]] {
     implicit val itx: InTxn = tx.peer
     val oldV = soloVolume.swap(v)
     if (v == oldV) return
-    soloInfo().foreach(_._2.set("amp" -> v))
+    _soloSynth().foreach(_.set("amp" -> v))
   }
 }

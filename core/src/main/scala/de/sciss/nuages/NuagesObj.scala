@@ -51,8 +51,8 @@ trait NuagesObj[S <: Sys[S]]
 
   def aggregate: AggregateItem
 
-  /** GUI property: whether the object is heard through the solo function or not. */
-  var soloed: Boolean
+//  /** GUI property: whether the object is heard through the solo function or not. */
+//  var soloed: Boolean
 
   def meterUpdate(newPeak: Double): Unit
 
@@ -64,6 +64,9 @@ trait NuagesObj[S <: Sys[S]]
   def isCollector(implicit tx: TxnLike): Boolean
 
   def hasOutput(key: String)(implicit tx: TxnLike): Boolean
+  def getOutput(key: String)(implicit tx: TxnLike): Option[NuagesOutput[S]]
+
+  def setSolo(onOff: Boolean)(implicit tx: S#Tx): Unit
 
   def auralObjAdded  (aural: AuralObj[S])(implicit tx: S#Tx): Unit
   def auralObjRemoved(aural: AuralObj[S])(implicit tx: S#Tx): Unit

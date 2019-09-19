@@ -75,7 +75,7 @@ trait NuagesPanel[S <: Sys[S]] extends View.Cursor[S] {
 
   def showOverlayPanel(p: OverlayPanel, pt: Option[Point] = None): Boolean
 
-  def setSolo(vp: NuagesObj[S], onOff: Boolean): Unit
+  def setSolo(vp: NuagesObj[S], onOff: Boolean)(implicit tx: S#Tx): Unit
 
   def selection: Set[NuagesNode[S]]
 
@@ -106,6 +106,7 @@ trait NuagesPanel[S <: Sys[S]] extends View.Cursor[S] {
 
   def mkPeakMeter (bus: AudioBus, node: SNode)(fun: Double      => Unit)(implicit tx: S#Tx): Synth
   def mkValueMeter(bus: AudioBus, node: SNode)(fun: Vec[Double] => Unit)(implicit tx: S#Tx): Synth
+  def mkSoloSynth (bus: AudioBus, node: SNode)                          (implicit tx: S#Tx): Synth
 
   /** Schedule code to be executed during paused visualization animation
     * on the EDT after the commit of the transaction.

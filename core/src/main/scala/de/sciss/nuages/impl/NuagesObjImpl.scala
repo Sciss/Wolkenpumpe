@@ -23,8 +23,8 @@ import de.sciss.intensitypalette.IntensityPalette
 import de.sciss.lucre.expr.{DoubleVector, SpanLikeObj}
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Disposable, Obj, TxnLike}
-import de.sciss.lucre.swing.LucreSwing.requireEDT
-import de.sciss.lucre.synth.{Synth, Sys}
+import de.sciss.lucre.swing.LucreSwing.{deferTx, requireEDT}
+import de.sciss.lucre.synth.Sys
 import de.sciss.nuages.Nuages.Surface
 import de.sciss.span.{Span, SpanLike}
 import de.sciss.synth.proc.Implicits._
@@ -77,7 +77,23 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
   private[this] val outputs = TMap.empty[String, NuagesOutput   [S]]
   private[this] val attrs   = TMap.empty[String, NuagesAttribute[S]]
 
-  private[this] val _meterSynth = Ref(Option.empty[Synth])
+  private[this] var idH         : stm.Source[S#Tx, S#Id]                    = _
+  private[this] var objH        : stm.Source[S#Tx, Obj[S]]                  = _
+  private[this] var spanOptionH : Option[stm.Source[S#Tx, SpanLikeObj[S]]]  = _
+
+
+  private[this] val playArea = new Area()
+  private[this] val soloArea = new Area()
+
+  private[this] var peak        = 0f
+  private[this] var peakToPaint = -160f
+  private[this] var peakNorm    = 0f
+
+  private[this] var lastUpdate = System.currentTimeMillis()
+
+  private[this] var _soloed     = false
+
+  private[this] val auralRef    = Ref(Option.empty[AuralObj.Proc[S]])
 
   override def toString = s"NuagesObj($name)@${hashCode.toHexString}"
 
@@ -88,10 +104,6 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
   def id        (implicit tx: S#Tx): S#Id                   = idH()
   def obj       (implicit tx: S#Tx): Obj[S]                 = objH()
   def spanOption(implicit tx: S#Tx): Option[SpanLikeObj[S]] = spanOptionH.map(_.apply())
-
-  private[this] var idH         : stm.Source[S#Tx, S#Id]                    = _
-  private[this] var objH        : stm.Source[S#Tx, Obj[S]]                  = _
-  private[this] var spanOptionH : Option[stm.Source[S#Tx, SpanLikeObj[S]]]  = _
 
   def init(id: S#Id, obj: Obj[S], spanOption: Option[SpanLikeObj[S]], locOption: Option[Point2D])
           (implicit tx: S#Tx): this.type = {
@@ -110,11 +122,19 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
   def isCollector(implicit tx: TxnLike): Boolean =
     outputs.isEmpty && name.startsWith("O-") // attrs.contains("in") && attrs.size == 1
 
-  def hasOutput(key: String)(implicit tx: TxnLike): Boolean = outputs.contains(key)
-
-//  def outputsIterator(implicit tx: TxnLike): Iterator[(String, NuagesOutput[S])] = outputs.iterator
-
+  def hasOutput(key: String)(implicit tx: TxnLike): Boolean                 = outputs.contains(key)
   def getOutput(key: String)(implicit tx: TxnLike): Option[NuagesOutput[S]] = outputs.get(key)
+
+  def setSolo(onOff: Boolean)(implicit tx: S#Tx): Unit = {
+    for {
+      outputView <- outputs.get(Proc.mainOut)
+    } {
+      outputView.setSolo(onOff = onOff)
+    }
+    deferTx {
+      _soloed = onOff
+    }
+  }
 
   private def initProc(proc: Proc[S])(implicit tx: S#Tx): Unit = {
     proc.outputs.iterator.foreach(outputAdded)
@@ -189,15 +209,15 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
     }
   }
 
-  def meterSynth(implicit tx: S#Tx): Option[Synth] = _meterSynth()
-  def meterSynth_=(value: Option[Synth])(implicit tx: S#Tx): Unit = {
-    val old = _meterSynth.swap(value)
-    old.foreach(_.dispose())
-  }
+//  def meterSynth(implicit tx: S#Tx): Option[Synth] = _meterSynth()
+//  def meterSynth_=(value: Option[Synth])(implicit tx: S#Tx): Unit = {
+//    val old = _meterSynth.swap(value)
+//    old.foreach(_.dispose())
+//  }
 
   def dispose()(implicit tx: S#Tx): Unit = {
     observers.foreach(_.dispose())
-    meterSynth = None
+//    meterSynth = None
     attrs .foreach(_._2.dispose())
     // inputs .foreach(_._2.dispose())
     outputs.foreach(_._2.dispose())
@@ -210,21 +230,6 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
     main.aggregateTable.removeTuple(aggregate)
     //    main.graph    .removeNode (pNode)
   }
-
-  private[this] val playArea = new Area()
-  private[this] val soloArea = new Area()
-
-  private[this] var peak        = 0f
-  private[this] var peakToPaint = -160f
-  private[this] var peakNorm    = 0f
-
-  //   private var rms         = 0f
-  //   private var rmsToPaint	= -160f
-  //   private var rmsNorm     = 0f
-
-  private[this] var lastUpdate = System.currentTimeMillis()
-
-  @volatile var soloed = false
 
   private def paintToNorm(paint: Float): Float = {
     if (paint >= -30f) {
@@ -258,8 +263,6 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
 
     lastUpdate  = time
   }
-
-  private[this] val auralRef = Ref(Option.empty[AuralObj.Proc[S]])
 
   def auralObjAdded  (aural: AuralObj[S])(implicit tx: S#Tx): Unit = aural match {
     case ap: AuralObj.Proc[S] =>
@@ -392,7 +395,10 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
     if (playArea.contains(xt, yt)) {
       true
     } else if (hasSolo && soloArea.contains(xt, yt)) {
-      main.setSolo(this, !soloed)
+      val newState = !_soloed
+      atomic { implicit tx =>
+        main.setSolo(this, newState)
+      }
       true
 
     } else if (outerShape.contains(xt, yt) & e.isAltDown) {
@@ -434,7 +440,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
     g.fill(playArea)
 
     if (hasSolo) {
-      g.setColor(if (soloed) colrSoloed else colrStopped)
+      g.setColor(if (_soloed) colrSoloed else colrStopped)
       g.fill(soloArea)
     }
 
