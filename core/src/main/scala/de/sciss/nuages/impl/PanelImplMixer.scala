@@ -15,10 +15,10 @@ package de.sciss.nuages
 package impl
 
 import de.sciss.lucre.swing.LucreSwing.defer
-import de.sciss.lucre.synth.{AudioBus, Group, Peek, Synth, Sys, Txn, Node => SNode}
+import de.sciss.lucre.synth.{AudioBus, Synth, Sys, Txn, Node => SNode}
 import de.sciss.nuages.impl.PanelImpl.LAYOUT_TIME
 import de.sciss.osc
-import de.sciss.synth.{SynthGraph, addAfter, addToTail, message}
+import de.sciss.synth.{SynthGraph, addToTail, message}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm.{InTxn, Ref}
@@ -87,21 +87,23 @@ trait PanelImplMixer[S <: Sys[S]] {
         val amp       = "amp".kr(1f)
         val sigOut    = SplayAz.ar(numOut, in)
         val mix       = sigOut * amp
-        outChannels.zipWithIndex.foreach { case (ch, idx) =>
-          ReplaceOut.ar(ch, mix out idx)
+        outChannels.zipWithIndex.foreach { case (sigOut, idx) =>
+          val lim = Limiter.ar(sigOut, (-0.2).dbAmp)
+          ReplaceOut.ar(lim, mix out idx)
         }
       }
     }
+    // adding to the tail of root-node means we are guaranteed
+    // behind the master line-outputs, which also use `ReplaceOut`.
+    // this is allows one to us a line-output for non-solo headphones
+    // and still override it with solo signals.
 //    val target = node.server.defaultGroup
-    val target = Peek.rootNode(node.server) //node.server.peer.rootNode
+    val target = node.server.rootNode
 
     val soloSynth = Synth.play(sg, Some("solo"))(target = target, addAction = addToTail,
       args = "amp" -> soloVolume()(tx.peer) :: Nil, dependencies = node :: Nil)
     soloSynth.read(bus -> "in")
     _soloSynth.swap(Some(soloSynth))(tx.peer).foreach(_.dispose())
-//    tx.afterCommit {
-//      soloSynth.server.peer.dumpTree()
-//    }
     soloSynth
   }
 
