@@ -136,7 +136,7 @@ object ScissProcs {
           PrintLn("Cue: numFrames = " ++ cue.numFrames.toStr ++ ", numChannels = " ++ cue.numChannels.toStr),
         )
       }
-      val actDone = actOpt.getOrElse {
+      val actDone = actOpt.orElse {
         PrintLn("Could not create player! spec? " ++
           specOpt.isDefined.toStr ++
           ", proc? "   ++ procOpt.isDefined.toStr ++
