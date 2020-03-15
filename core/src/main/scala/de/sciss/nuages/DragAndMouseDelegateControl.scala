@@ -2,7 +2,7 @@
  *  DragAndMouseDelegateControl.scala
  *  (Wolkenpumpe)
  *
- *  Copyright (c) 2008-2019 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2008-2020 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU Affero General Public License v3+
  *

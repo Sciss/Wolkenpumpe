@@ -2,7 +2,7 @@
  *  NuagesAttribute.scala
  *  (Wolkenpumpe)
  *
- *  Copyright (c) 2008-2019 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2008-2020 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU Affero General Public License v3+
  *
@@ -20,7 +20,6 @@ import prefuse.data.{Node => PNode}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm.Ref
-import scala.language.higherKinds
 
 object NuagesAttribute {
   /** Creates a new attribute view for a given `parent` object and an `attribute` key.

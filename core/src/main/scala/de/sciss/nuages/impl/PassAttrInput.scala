@@ -2,7 +2,7 @@
  *  PassAttrInput.scala
  *  (Wolkenpumpe)
  *
- *  Copyright (c) 2008-2019 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2008-2020 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU Affero General Public License v3+
  *
@@ -18,8 +18,6 @@ import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.nuages.NuagesAttribute.{Input, Parent}
 import prefuse.data.{Node => PNode}
-
-import scala.language.higherKinds
 
 /** An attribute input view that can populate its state from another one.
   * In practise, it means that the Prefuse node is re-used, and state such

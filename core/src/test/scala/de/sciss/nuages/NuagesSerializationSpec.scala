@@ -1,12 +1,14 @@
 package de.sciss.nuages
 
-import de.sciss.lucre.stm.{Folder, Obj}
 import de.sciss.lucre.stm.store.BerkeleyDB
+import de.sciss.lucre.stm.{Folder, Obj}
 import de.sciss.nuages.Nuages.Surface
 import de.sciss.span.Span
-import de.sciss.synth.proc.{Durable, Proc}
 import de.sciss.synth.proc.Implicits._
-import org.scalatest.{Matchers, Outcome, fixture}
+import de.sciss.synth.proc.{Durable, Proc}
+import org.scalatest.Outcome
+import org.scalatest.flatspec.FixtureAnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 /*
  To test only this suite:
@@ -14,7 +16,7 @@ import org.scalatest.{Matchers, Outcome, fixture}
  test-only de.sciss.nuages.NuagesSerializationSpec
 
  */
-class NuagesSerializationSpec extends fixture.FlatSpec with Matchers {
+class NuagesSerializationSpec extends FixtureAnyFlatSpec with Matchers {
   type S = Durable
   type FixtureParam = Durable
 

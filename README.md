@@ -2,12 +2,12 @@
 
 [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/Sciss/Mellite?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![Build Status](https://travis-ci.org/Sciss/Wolkenpumpe.svg?branch=master)](https://travis-ci.org/Sciss/Wolkenpumpe)
-[![Maven Central](https://maven-badges.herokuapp.com/maven-central/de.sciss/wolkenpumpe_2.12/badge.svg)](https://maven-badges.herokuapp.com/maven-central/de.sciss/wolkenpumpe_2.12)
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/de.sciss/wolkenpumpe_2.13/badge.svg)](https://maven-badges.herokuapp.com/maven-central/de.sciss/wolkenpumpe_2.13)
 
 ## statement
 
 Wolkenpumpe is a live improvisation interface based on ScalaCollider / SoundProcesses / Prefuse. It is (C)opyright
-2008&ndash;2019 by Hanns Holger Rutz. All rights reserved. Wolkenpumpe is released under
+2008&ndash;2020 by Hanns Holger Rutz. All rights reserved. Wolkenpumpe is released under
 the [GNU Affero General Public License](https://git.iem.at/sciss/Wolkenpumpe/raw/master/LICENSE)
 and comes with absolutely no warranties. To contact the author, send an email to `contact at sciss.de`.
 
@@ -28,7 +28,7 @@ Builds with sbt against Scala 2.13, 2.12 (last version to support Scala 2.11 was
 
     "de.sciss" %% "wolkenpumpe" % v
 
-The current version `v` is `"2.38.0`.
+The current version `v` is `"2.39.0`.
 
 ## contributing
 

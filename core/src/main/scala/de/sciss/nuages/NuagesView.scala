@@ -2,7 +2,7 @@
  *  NuagesView.scala
  *  (Wolkenpumpe)
  *
- *  Copyright (c) 2008-2019 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2008-2020 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU Affero General Public License v3+
  *
@@ -28,9 +28,6 @@ object NuagesView {
 trait NuagesView[S <: Sys[S]] extends View.Cursor[S] {
   def panel: NuagesPanel[S]
   def controlPanel: ControlPanel
-
-  // XXX TODO: remove this in next major version
-  def installFullScreenKey(frame: scala.swing.Window): Unit
 
   def installFullScreenKey(p: scala.swing.RootPanel): Unit =
     throw new NotImplementedError()

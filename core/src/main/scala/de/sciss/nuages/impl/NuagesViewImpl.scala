@@ -2,7 +2,7 @@
  *  NuagesViewImpl.scala
  *  (Wolkenpumpe)
  *
- *  Copyright (c) 2008-2019 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2008-2020 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU Affero General Public License v3+
  *
@@ -82,9 +82,6 @@ object NuagesViewImpl {
     def auralStopped()(implicit tx: Txn): Unit = deferTx {
       _serverPanel.server = None
     }
-
-    def installFullScreenKey(frame: scala.swing.Window): Unit =
-      installFullScreenKey(frame: scala.swing.RootPanel)
 
     override def installFullScreenKey(frame: scala.swing.RootPanel): Unit = {
       val display = panel.display
