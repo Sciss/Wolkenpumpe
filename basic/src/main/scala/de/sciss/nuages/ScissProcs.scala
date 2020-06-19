@@ -32,10 +32,10 @@ object ScissProcs {
   trait ConfigLike {
     def audioFilesFolder: Option[File]
 
-    /** Indices are 'secondary', i.e. they index the logical master channels,
+    /** Indices are 'secondary', i.e. they index the logical main channels,
       * not physical channels.
       */
-    def masterGroups: Vec[NamedBusConfig]
+    def mainGroups: Vec[NamedBusConfig]
 
     // set to zero to switch off
     def highPass: Int
@@ -59,7 +59,7 @@ object ScissProcs {
 
   final class ConfigBuilder private[ScissProcs]() extends ConfigLike {
     var audioFilesFolder: Option[File]        = None
-    var masterGroups    : Vec[NamedBusConfig] = Vector.empty
+    var mainGroups    : Vec[NamedBusConfig] = Vector.empty
     var recDir          : File                = Util.defaultRecDir
 
     var genNumChannels = 0
@@ -67,7 +67,7 @@ object ScissProcs {
     var plugins           = false
 
     def build: Config = ConfigImpl(
-      audioFilesFolder = audioFilesFolder, masterGroups = masterGroups, genNumChannels = genNumChannels,
+      audioFilesFolder = audioFilesFolder, mainGroups = mainGroups, genNumChannels = genNumChannels,
       highPass = highPass, recDir = recDir, plugins = plugins)
   }
 
@@ -165,7 +165,7 @@ object ScissProcs {
     a
   }
 
-  private case class ConfigImpl(audioFilesFolder: Option[File], masterGroups: Vec[NamedBusConfig],
+  private case class ConfigImpl(audioFilesFolder: Option[File], mainGroups: Vec[NamedBusConfig],
                                 genNumChannels: Int, highPass: Int, recDir: File, plugins: Boolean)
     extends Config
 
@@ -197,7 +197,7 @@ object ScissProcs {
     import dsl._
     import sConfig.genNumChannels
 
-    val masterChansOption = nConfig.masterChannels
+    val mainChansOption = nConfig.mainChannels
 
     def ForceChan(in: GE): GE = if (genNumChannels <= 0) in else {
       Util.wrapExtendChannels(genNumChannels, in)
@@ -256,18 +256,18 @@ object ScissProcs {
       })
     }
 
-    masterChansOption.foreach { masterChans =>
-      val numChans = masterChans.size
+    mainChansOption.foreach { mainChans =>
+      val numChannels = mainChans.size
 
       generator("(test)") {
         val pAmp  = pControl("amp" , ParamSpec(0.01,  1.0, ExpWarp),  default(1.0))
         val pSig  = pControl("sig" , /* ParamSpec(0, 2, IntWarp) */ TrigSpec, default(0.0))
         val pFreq = pControl("freq", ParamSpec(0.1 , 10  , ExpWarp),  default(1.0))
 
-        val idx       = Stepper.kr(Impulse.kr(pFreq), lo = 0, hi = numChans)
+        val idx       = Stepper.kr(Impulse.kr(pFreq), lo = 0, hi = numChannels)
         val sig0: GE  = Seq(WhiteNoise.ar(1), SinOsc.ar(441))
         val sig       = Select.ar(pSig, sig0) * pAmp
-        val sigOut: GE = Seq.tabulate(numChans)(ch => sig.out(ch) * (1 - (ch - idx.out(ch)).abs.min(1)))
+        val sigOut: GE = Seq.tabulate(numChannels)(ch => sig.out(ch) * (1 - (ch - idx.out(ch)).abs.min(1)))
         sigOut
       }
     }
@@ -309,8 +309,8 @@ object ScissProcs {
         val feed  = pFeed * 2 - 1
         val sig   = XFade2.ar(pureIn, dly, feed)
 
-        // val numOut = masterChansOption.fold(2)(_.size)
-        val numOut = if (genNumChannels <= 0) masterChansOption.fold(2)(_.size) else genNumChannels
+        // val numOut = mainChansOption.fold(2)(_.size)
+        val numOut = if (genNumChannels <= 0) mainChansOption.fold(2)(_.size) else genNumChannels
 
         val sig1: GE = if (numOut == cfg.numChannels) {
             sig
@@ -330,8 +330,8 @@ object ScissProcs {
         val boost   = pBoost
 //        val sig     = In.ar(NumOutputBuses.ir + cfg.offset, cfg.numChannels) * boost
         val sig     = PhysicalIn.ar(cfg.indices) * boost
-        // val numOut  = masterChansOption.fold(2)(_.size)
-        val numOut  = if (genNumChannels <= 0) masterChansOption.fold(2)(_.size) else genNumChannels
+        // val numOut  = mainChansOption.fold(2)(_.size)
+        val numOut  = if (genNumChannels <= 0) mainChansOption.fold(2)(_.size) else genNumChannels
 
         val sig1: GE = if (numOut == cfg.numChannels) {
             sig
@@ -1032,7 +1032,7 @@ object ScissProcs {
     sinkRecA.put(Util  .attrRecDir      , recDirObj  )
 
     val sumRec = generator("rec-sum") {
-      val numCh = masterChansOption.map(_.size).getOrElse(1)
+      val numCh = mainChansOption.map(_.size).getOrElse(1)
       val in    = InFeedback.ar(0, numCh)   // XXX TODO --- should find correct indices!
       proc.graph.DiskOut.ar(Util.attrRecArtifact, in)
       DC.ar(0)
@@ -1259,12 +1259,12 @@ object ScissProcs {
 
     // -------------- DIFFUSIONS --------------
 
-    masterChansOption.foreach { masterChans =>
-      val numChans          = masterChans.size
-      val masterCfg         = NamedBusConfig("", 0 until numChans)
-      val masterGroupsCfg   = masterCfg +: sConfig.masterGroups
+    mainChansOption.foreach { mainChannels =>
+      val numChans          = mainChannels.size
+      val mainCfg           = NamedBusConfig("", 0 until numChans)
+      val mainGroupsCfg     = mainCfg +: sConfig.mainGroups
 
-      masterGroupsCfg.zipWithIndex.foreach { case (cfg, _ /* idx */) =>
+      mainGroupsCfg.zipWithIndex.foreach { case (cfg, _ /* idx */) =>
         def placeChannels(sig: GE): GE = {
           if (cfg.numChannels == numChans) sig
           else {
@@ -1363,7 +1363,7 @@ object ScissProcs {
           def mkDirectOut(sig0: GE): Unit = {
             val bad = CheckBadValues.ar(sig0)
             val sig = Gate.ar(sig0, bad sig_== 0)
-            masterChans.zipWithIndex.foreach { case (ch, i) =>
+            mainChannels.zipWithIndex.foreach { case (ch, i) =>
               val sig0 = sig out i
               val hpf  = sConfig.highPass
               val sig1 = if (hpf >= 16 && hpf < 20000) HPF.ar(sig0, hpf) else sig0

@@ -72,7 +72,7 @@ Before you submit your pull request consider the following guidelines:
     git push origin issue-descriptive-name-branch
     ```
 
-- In GitHub, send a pull request to the upstream `work` branch, or to `master` branch if no `work` branch exists.
+- In GitHub, send a pull request to the upstream `work` branch, or to `main` branch if no `work` branch exists.
   If you are unsure about which branch to use as reference,
   consult with us first (through the issue tracker) to determine the best point of merge.
 - If we suggest changes then:
@@ -104,7 +104,7 @@ from the main (upstream) repository:
     git push origin --delete issue-descriptive-name-branch
     ```
 
-- Check out the `work` branch, or if it does not exist, the `master` branch (or the branch into which your work was merged):
+- Check out the `work` branch, or if it does not exist, the `main` branch (or the branch into which your work was merged):
 
     ```shell
     git checkout work -f
@@ -158,7 +158,7 @@ changes to be accepted, the CLA must be signed. It's a quick process, we promise
 
 - The process is provided through the separate project
   [github.com/Sciss/Contributing](https://github.com/Sciss/Contributing).
-- In particular read the document [sign-cla.md](https://github.com/Sciss/Contributing/blob/master/sign-cla.md).
+- In particular read the document [sign-cla.md](https://github.com/Sciss/Contributing/blob/main/sign-cla.md).
 
 This CLA covers all projects at [github.com/Sciss](https://github.com/Sciss), so you should have to go through
 this process only once. Thanks for your understanding.

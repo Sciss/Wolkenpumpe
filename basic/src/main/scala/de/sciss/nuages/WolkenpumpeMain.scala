@@ -46,7 +46,7 @@ class WolkenpumpeMain[S <: Sys[S]] {
   /** Subclasses may want to override this. */
   protected def configure(sCfg: ScissProcs.ConfigBuilder, nCfg: Nuages.ConfigBuilder,
                           aCfg: SServer.ConfigBuilder): Unit = {
-    nCfg.masterChannels     = Some(0 to 7) // Vector(0, 1))
+    nCfg.mainChannels     = Some(0 to 7) // Vector(0, 1))
     nCfg.soloChannels       = None // Some(0 to 1)
 
     nCfg.micInputs          = Vector(
@@ -86,7 +86,7 @@ class WolkenpumpeMain[S <: Sys[S]] {
 
     val maxInputs   = ((nCfg.lineInputs ++ nCfg.micInputs).map(_.stopOffset) :+ 0).max
     val maxOutputs  = (
-      nCfg.lineOutputs.map(_.stopOffset) :+ nCfg.soloChannels.fold(0)(_.max + 1) :+ nCfg.masterChannels.fold(0)(_.max + 1)
+      nCfg.lineOutputs.map(_.stopOffset) :+ nCfg.soloChannels.fold(0)(_.max + 1) :+ nCfg.mainChannels.fold(0)(_.max + 1)
       ).max
     println(s"numInputs = $maxInputs, numOutputs = $maxOutputs")
 

@@ -104,7 +104,7 @@ object Demo {
       }
 
       if (DEBUG) {
-        nCfg.masterChannels     = Some(0 to 1)
+        nCfg.mainChannels     = Some(0 to 1)
         nCfg.soloChannels       = None
         nCfg.recordPath         = Some("/tmp")
 

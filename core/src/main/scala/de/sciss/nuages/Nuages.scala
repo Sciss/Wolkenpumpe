@@ -49,7 +49,7 @@ object Nuages extends Obj.Type {
     Impl.readIdentifiedObj(in, access)
 
   sealed trait ConfigLike {
-    def masterChannels: Option[Vec[Int]]
+    def mainChannels  : Option[Vec[Int]]
     def soloChannels  : Option[Vec[Int]]
     def recordPath    : Option[String]
 
@@ -73,7 +73,7 @@ object Nuages extends Obj.Type {
     def apply(config: Config): ConfigBuilder = {
       val b = Config()
       import config._
-      b.masterChannels  = masterChannels
+      b.mainChannels    = mainChannels
       b.soloChannels    = soloChannels
       b.recordPath      = recordPath
 
@@ -88,7 +88,7 @@ object Nuages extends Obj.Type {
     }
   }
   trait ConfigBuilder extends ConfigLike {
-    var masterChannels: Option[Vec[Int]]
+    var mainChannels: Option[Vec[Int]]
     var soloChannels  : Option[Vec[Int]]
     var recordPath    : Option[String]
 
@@ -106,7 +106,7 @@ object Nuages extends Obj.Type {
   private final class ConfigBuilderImpl extends ConfigBuilder {
     override def toString = s"Nuages.ConfigBuilder@${hashCode().toHexString}"
 
-    var masterChannels: Option[Vec[Int]]    = None
+    var mainChannels: Option[Vec[Int]]    = None
     var soloChannels  : Option[Vec[Int]]    = None
     var recordPath    : Option[String]      = None
 
@@ -119,7 +119,7 @@ object Nuages extends Obj.Type {
     var fullScreenKey : Boolean             = true
 
     def build: Config = ConfigImpl(
-      masterChannels  = masterChannels,
+      mainChannels  = mainChannels,
       soloChannels    = soloChannels,
       recordPath      = recordPath,
 
@@ -134,17 +134,17 @@ object Nuages extends Obj.Type {
   }
 
   private final case class ConfigImpl(
-    masterChannels: Option[Vec[Int]],
-    soloChannels  : Option[Vec[Int]],
-    recordPath    : Option[String],
+                                       mainChannels: Option[Vec[Int]],
+                                       soloChannels  : Option[Vec[Int]],
+                                       recordPath    : Option[String],
 
-    lineInputs    : Vec[NamedBusConfig],
-    micInputs     : Vec[NamedBusConfig],
-    lineOutputs   : Vec[NamedBusConfig],
+                                       lineInputs    : Vec[NamedBusConfig],
+                                       micInputs     : Vec[NamedBusConfig],
+                                       lineOutputs   : Vec[NamedBusConfig],
 
-    meters        : Boolean,
-    collector     : Boolean,
-    fullScreenKey : Boolean
+                                       meters        : Boolean,
+                                       collector     : Boolean,
+                                       fullScreenKey : Boolean
   ) extends Config {
     override def productPrefix = "Nuages.Config"
   }

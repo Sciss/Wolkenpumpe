@@ -37,8 +37,8 @@ object NuagesPanel {
 
   final val GLIDE_KEY = "key"
 
-  final val masterAmpSpec : (ParamSpec, Double) = ParamSpec(0.01, 10.0, ExponentialWarp) -> 1.0
-  final val soloAmpSpec   : (ParamSpec, Double) = ParamSpec(0.10, 10.0, ExponentialWarp) -> 0.5
+  final val mainAmpSpec : (ParamSpec, Double) = ParamSpec(0.01, 10.0, ExponentialWarp) -> 1.0
+  final val soloAmpSpec : (ParamSpec, Double) = ParamSpec(0.10, 10.0, ExponentialWarp) -> 0.5
 
   def apply[S <: SSys[S]](nuages: Nuages[S], config: Nuages.Config)
                         (implicit tx: S#Tx, universe: Universe[S], context: NuagesContext[S]): NuagesPanel[S] =
@@ -98,11 +98,11 @@ trait NuagesPanel[S <: Sys[S]] extends View.Cursor[S] {
 
   def nuages(implicit tx: S#Tx): Nuages[S]
 
-  def setMasterVolume(v: Double)(implicit tx: S#Tx): Unit
-  def setSoloVolume  (v: Double)(implicit tx: S#Tx): Unit
+  def setMainVolume(v: Double)(implicit tx: S#Tx): Unit
+  def setSoloVolume(v: Double)(implicit tx: S#Tx): Unit
 
-  def masterSynth(implicit tx: Txn): Option[Synth]
-  def masterSynth_=(value: Option[Synth])(implicit tx: Txn): Unit
+  def mainSynth(implicit tx: Txn): Option[Synth]
+  def mainSynth_=(value: Option[Synth])(implicit tx: Txn): Unit
 
   def mkPeakMeter (bus: AudioBus, node: SNode)(fun: Double      => Unit)(implicit tx: S#Tx): Synth
   def mkValueMeter(bus: AudioBus, node: SNode)(fun: Vec[Double] => Unit)(implicit tx: S#Tx): Synth

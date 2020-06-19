@@ -76,7 +76,7 @@ object NuagesViewImpl {
 
     def auralStarted(s: Server)(implicit tx: Txn): Unit = {
       deferTx(_serverPanel.server = Some(s.peer))
-      installMasterSynth(s)
+      installMainSynth(s)
     }
 
     def auralStopped()(implicit tx: Txn): Unit = deferTx {
@@ -125,7 +125,7 @@ object NuagesViewImpl {
       ggSouthBox.contents += Component.wrap(_serverPanel)
       ggSouthBox.contents += HStrut(8)
       val cConfig = ControlPanel.Config()
-      cConfig.numOutputChannels = panel.config.masterChannels.map(_.size).getOrElse(0)
+      cConfig.numOutputChannels = panel.config.mainChannels.map(_.size).getOrElse(0)
       val numInputChannels = nConfig.lineInputs.size + nConfig.micInputs.size
       cConfig.numInputChannels  = numInputChannels
       cConfig.log = false
@@ -169,7 +169,7 @@ object NuagesViewImpl {
         val slid = BasicSlider(Orientation.Vertical, min = slidSpec.lo.toInt, max = slidSpec.hi.toInt,
           value = slidInit) { v =>
           val ctrlVal = ctrlSpec.map(slidSpec.inverseMap(v))
-          //               grpMaster.set( ctrlName -> ctrlVal )
+          //               grpMain.set( ctrlName -> ctrlVal )
           cursor.step { implicit tx =>
             fun(ctrlVal, tx)
           }
@@ -179,7 +179,7 @@ object NuagesViewImpl {
         ggFaderBox.layout(slid) = gridCon
       }
 
-      if (nConfig.masterChannels.isDefined) mkFader(NuagesPanel.masterAmpSpec, 0.75)(panel.setMasterVolume(_)(_))
+      if (nConfig.mainChannels.isDefined) mkFader(NuagesPanel.mainAmpSpec, 0.75)(panel.setMainVolume(_)(_))
       if (nConfig.soloChannels  .isDefined) mkFader(NuagesPanel.soloAmpSpec  , 0.25)(panel.setSoloVolume  (_)(_))
 
       _southBox = ggSouthBox
@@ -234,27 +234,26 @@ object NuagesViewImpl {
     def dispose()(implicit tx: S#Tx): Unit = {
       val aural = panel.universe.auralSystem
       aural.removeClient(this)
-      val synth = panel.masterSynth
-      panel.masterSynth = None
+      val synth = panel.mainSynth
+      panel.mainSynth = None
       panel.dispose()
       synth.foreach(_.dispose())
     }
 
-    private def installMasterSynth(server: Server)
-                                  (implicit tx: Txn): Unit = {
+    private def installMainSynth(server: Server)(implicit tx: Txn): Unit = {
       val dfPostM = SynthGraph {
         import de.sciss.synth._
         import de.sciss.synth.ugen._
-        // val masterBus = settings.frame.panel.masterBus.get // XXX ouch
-        // val sigMast = In.ar( masterBus.index, masterBus.numChannels )
-        val masterBus   = nConfig.masterChannels.getOrElse(Vector.empty)
-        val sigMast0    = masterBus.map(ch => In.ar(ch))
+        // val mainBus = settings.frame.panel.mainBus.get // XXX ouch
+        // val sigMast = In.ar( mainBus.index, mainBus.numChannels )
+        val mainBus     = nConfig.mainChannels.getOrElse(Vector.empty)
+        val sigMast0    = mainBus.map(ch => In.ar(ch))
         val sigMast: GE = sigMast0
         // external recorders
         nConfig.lineOutputs.foreach { cfg =>
 //          val off     = cfg.offset
           val numOut  = cfg.numChannels
-          val numIn   = masterBus.size // numChannels
+          val numIn   = mainBus.size // numChannels
           val sig1: GE = if (numOut == numIn) {
             sigMast
           } else if (numIn == 1) {
@@ -267,7 +266,7 @@ object NuagesViewImpl {
           // Out.ar(off, sig1)
           PhysicalOut.ar(cfg.indices, sig1)
         }
-        // master + people meters
+        // main + people meters
         val meterTr    = Impulse.kr(20)
         val (peoplePeak, peopleRMS) = {
           val groups = /* if( NuagesApp.METER_MICS ) */ nConfig.micInputs ++ nConfig.lineInputs // else sConfig.lineInputs
@@ -284,22 +283,22 @@ object NuagesViewImpl {
             }
           (res.map( _._1 ): GE) -> (res.map( _._2 ): GE)  // elegant it's not
         }
-        val masterPeak    = Peak.kr(sigMast, meterTr)
-        val masterRMS     = A2K.kr(Lag.ar(sigMast.squared, 0.1))
-        val peak: GE      = Flatten(Seq(masterPeak, peoplePeak))
-        val rms: GE       = Flatten(Seq(masterRMS, peopleRMS))
+        val mainPeak      = Peak.kr(sigMast, meterTr)
+        val mainRMS       = A2K.kr(Lag.ar(sigMast.squared, 0.1))
+        val peak: GE      = Flatten(Seq(mainPeak, peoplePeak))
+        val rms: GE       = Flatten(Seq(mainRMS, peopleRMS))
         val meterData     = Zip(peak, rms) // XXX correct?
         SendReply.kr(meterTr, meterData, "/meters")
 
         import Ops._
         val amp = "amp".kr(1f)
-        (masterBus zip sigMast0).foreach { case (ch, sig) =>
+        (mainBus zip sigMast0).foreach { case (ch, sig) =>
           ReplaceOut.ar(ch, Limiter.ar(sig * amp))
         }
       }
-      val synPostM = Synth.play(dfPostM, Some("post-master"))(server.defaultGroup, addAction = addAfter)
+      val synPostM = Synth.play(dfPostM, Some("post-main"))(server.defaultGroup, addAction = addAfter)
 
-      panel.masterSynth = Some(synPostM)
+      panel.mainSynth = Some(synPostM)
 
       val synPostMId = synPostM.peer.id
       val resp = message.Responder.add(server.peer) {

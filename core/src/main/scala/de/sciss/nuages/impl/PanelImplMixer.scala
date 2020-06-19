@@ -40,7 +40,7 @@ trait PanelImplMixer[S <: Sys[S]] {
   private[this] val soloVolume          = Ref(NuagesPanel.soloAmpSpec._2)  // 0.5
   private[this] val soloObj             = Ref(Option.empty[NuagesObj[S]])
   private[this] val _soloSynth          = Ref(Option.empty[Synth])
-  private[this] val _masterSynth        = Ref(Option.empty[Synth])
+  private[this] val _mainSynth          = Ref(Option.empty[Synth])
 
   final def mkPeakMeter(bus: AudioBus, node: SNode)(fun: Double => Unit)(implicit tx: S#Tx): Synth = {
     val numCh  = bus.numChannels
@@ -94,7 +94,7 @@ trait PanelImplMixer[S <: Sys[S]] {
       }
     }
     // adding to the tail of root-node means we are guaranteed
-    // behind the master line-outputs, which also use `ReplaceOut`.
+    // behind the main line-outputs, which also use `ReplaceOut`.
     // this is allows one to us a line-output for non-solo headphones
     // and still override it with solo signals.
 //    val target = node.server.defaultGroup
@@ -195,12 +195,12 @@ trait PanelImplMixer[S <: Sys[S]] {
     vp.setSolo(onOff = onOff)
   }
 
-  def masterSynth(implicit tx: Txn): Option[Synth] = _masterSynth.get(tx.peer)
-  def masterSynth_=(value: Option[Synth])(implicit tx: Txn): Unit =
-    _masterSynth.set(value)(tx.peer)
+  def mainSynth(implicit tx: Txn): Option[Synth] = _mainSynth.get(tx.peer)
+  def mainSynth_=(value: Option[Synth])(implicit tx: Txn): Unit =
+    _mainSynth.set(value)(tx.peer)
 
-  def setMasterVolume(v: Double)(implicit tx: S#Tx): Unit =
-    _masterSynth.get(tx.peer).foreach(_.set("amp" -> v))
+  def setMainVolume(v: Double)(implicit tx: S#Tx): Unit =
+    _mainSynth.get(tx.peer).foreach(_.set("amp" -> v))
 
   def setSoloVolume(v: Double)(implicit tx: S#Tx): Unit = {
     implicit val itx: InTxn = tx.peer

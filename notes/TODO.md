@@ -10,7 +10,7 @@
 - {OK}  broken: frgmnt (silent)
 - {OK}  mapping: multi-channel display; clip value
 - {OK}  mapping: deleting mapping results in 'mono' param? (sets to DoubleObj?)
-- {OK?} master meters don't properly show more than eight chans
+- {OK?} main meters don't properly show more than eight chans
 - {OK}  `Exception in thread "AWT-EventQueue-0" java.lang.ClassCastException: de.sciss.synth.proc.impl.ScanImpl$Impl`
         `cannot be cast to de.sciss.synth.proc.Scan$Link`
         `at	   de.sciss.synth.proc.impl.ScanImpl$Impl$$anonfun$copy$1$$anonfun$apply$mcV$sp$1.apply(ScanImpl.scala:107)`
