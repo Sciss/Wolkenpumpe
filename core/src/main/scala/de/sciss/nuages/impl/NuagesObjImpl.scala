@@ -74,8 +74,8 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
 
   private[this] var _aggr: AggregateItem = _
 
-  private[this] val outputs = TMap.empty[String, NuagesOutput   [S]]
-  private[this] val attrs   = TMap.empty[String, NuagesAttribute[S]]
+  private[this] val _outputs = TMap.empty[String, NuagesOutput   [S]]
+  private[this] val _attrs   = TMap.empty[String, NuagesAttribute[S]]
 
   private[this] var idH         : stm.Source[S#Tx, S#Id]                    = _
   private[this] var objH        : stm.Source[S#Tx, Obj[S]]                  = _
@@ -101,6 +101,9 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
 
   def aggregate: AggregateItem = _aggr
 
+  override def outputs   (implicit tx: S#Tx): Map[String, NuagesOutput   [S]] = _outputs .snapshot
+  override def attributes(implicit tx: S#Tx): Map[String, NuagesAttribute[S]] = _attrs   .snapshot
+
   def id        (implicit tx: S#Tx): S#Id                   = idH()
   def obj       (implicit tx: S#Tx): Obj[S]                 = objH()
   def spanOption(implicit tx: S#Tx): Option[SpanLikeObj[S]] = spanOptionH.map(_.apply())
@@ -120,14 +123,14 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
   }
 
   def isCollector(implicit tx: TxnLike): Boolean =
-    outputs.isEmpty && name.startsWith("O-") // attrs.contains("in") && attrs.size == 1
+    _outputs.isEmpty && name.startsWith("O-") // attrs.contains("in") && attrs.size == 1
 
-  def hasOutput(key: String)(implicit tx: TxnLike): Boolean                 = outputs.contains(key)
-  def getOutput(key: String)(implicit tx: TxnLike): Option[NuagesOutput[S]] = outputs.get(key)
+  def hasOutput(key: String)(implicit tx: TxnLike): Boolean                 = _outputs.contains(key)
+  def getOutput(key: String)(implicit tx: TxnLike): Option[NuagesOutput[S]] = _outputs.get(key)
 
   def setSolo(onOff: Boolean)(implicit tx: S#Tx): Unit = {
     for {
-      outputView <- outputs.get(Proc.mainOut)
+      outputView <- _outputs.get(Proc.mainOut)
     } {
       outputView.setSolo(onOff = onOff)
     }
@@ -161,38 +164,38 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
   private def attrAdded(key: String, value: Obj[S])(implicit tx: S#Tx): Unit =
     if (isAttrShown(key)) {
       val view = NuagesAttribute(key = key, value = value, parent = parent)
-      val res  = attrs.put(key, view)
+      val res  = _attrs.put(key, view)
       auralRef().foreach(view.auralObjAdded)
       assert(res.isEmpty)
     }
 
   private def attrRemoved(key: String)(implicit tx: S#Tx): Unit =
     if (isAttrShown(key)) {
-      val view = attrs.remove(key).getOrElse(throw new IllegalStateException(s"No view for attribute $key"))
+      val view = _attrs.remove(key).getOrElse(throw new IllegalStateException(s"No view for attribute $key"))
       view.dispose()
     }
 
   private def attrReplaced(key: String, before: Obj[S], now: Obj[S])(implicit tx: S#Tx): Unit =
     if (isAttrShown(key)) {
-      val oldView = attrs.get(key).getOrElse(throw new IllegalStateException(s"No view for attribute $key"))
+      val oldView = _attrs.get(key).getOrElse(throw new IllegalStateException(s"No view for attribute $key"))
       if (oldView.tryConsume(newOffset = frameOffset, newValue = now)) return
 
       oldView.tryReplace(now).fold[Unit] {
         attrRemoved(key)
         attrAdded(key, value = now)
       } { newView =>
-        attrs.put(key, newView)
+        _attrs.put(key, newView)
       }
     }
 
   private def outputAdded(output: Output[S])(implicit tx: S#Tx): Unit = {
     val view = NuagesOutput(this, output, meter = hasMeter && output.key == Proc.mainOut)
-    outputs.put(output.key, view)
+    _outputs.put(output.key, view)
     auralRef().foreach(view.auralObjAdded)
   }
 
   private def outputRemoved(output: Output[S])(implicit tx: S#Tx): Unit = {
-    val view = outputs.remove(output.key)
+    val view = _outputs.remove(output.key)
       .getOrElse(throw new IllegalStateException(s"View for output ${output.key} not found"))
     view.dispose()
   }
@@ -218,9 +221,9 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
   def dispose()(implicit tx: S#Tx): Unit = {
     observers.foreach(_.dispose())
 //    meterSynth = None
-    attrs .foreach(_._2.dispose())
+    _attrs .foreach(_._2.dispose())
     // inputs .foreach(_._2.dispose())
-    outputs.foreach(_._2.dispose())
+    _outputs.foreach(_._2.dispose())
     main.unregisterNode(idH(), this) // nodeMap.remove(idH())
     main.deferVisTx(disposeGUI())
   }
@@ -266,8 +269,8 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
 
   def auralObjAdded  (aural: AuralObj[S])(implicit tx: S#Tx): Unit = aural match {
     case ap: AuralObj.Proc[S] =>
-      outputs.foreach(_._2.auralObjAdded  (ap))
-      attrs  .foreach(_._2.auralObjAdded  (ap))
+      _outputs.foreach(_._2.auralObjAdded  (ap))
+      _attrs  .foreach(_._2.auralObjAdded  (ap))
       auralRef() = Some(ap)
 
     case _ =>
@@ -275,8 +278,8 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
 
   def auralObjRemoved(aural: AuralObj[S])(implicit tx: S#Tx): Unit = aural match {
     case ap: AuralObj.Proc[S] =>
-      outputs.foreach(_._2.auralObjRemoved(ap))
-      attrs  .foreach(_._2.auralObjRemoved(ap))
+      _outputs.foreach(_._2.auralObjRemoved(ap))
+      _attrs  .foreach(_._2.auralObjRemoved(ap))
       auralRef() = None
     case _ =>
   }
@@ -289,8 +292,8 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
     var updatedMain = false // XXX TODO -- horrible, dirty hack
 
     for {
-      outputView <- outputs.get(Proc.mainOut)
-      inputAttr  <- attrs  .get(Proc.mainIn )
+      outputView <- _outputs.get(Proc.mainOut)
+      inputAttr  <- _attrs  .get(Proc.mainIn )
       sourceView <- inputAttr.collect {
         case out: NuagesOutput.Input[S] => out
       }
@@ -316,7 +319,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
     //   an offline edit extends the self span,
     //   those connections will automatically extend
     //   likewise.
-    outputs.foreach { case (key, outputView) =>
+    _outputs.foreach { case (key, outputView) =>
       val output = outputView.output
       outputView.mappings.foreach { outAttrIn =>
         // XXX TODO -- if we are the last child,

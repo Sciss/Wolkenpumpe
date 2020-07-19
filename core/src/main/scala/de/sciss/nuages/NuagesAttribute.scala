@@ -184,5 +184,11 @@ trait NuagesAttribute[S <: Sys[S]]
     */
   def tryReplace(newValue: Obj[S])(implicit tx: S#Tx, context: NuagesContext[S]): Option[NuagesAttribute[S]]
 
+  /** The current shown value on the UI, when patched to an input, or `null` if unknown.
+    * In order to obtain the numeric value in all cases, use `inputView` and see if it is
+    * `NuagesAttribute.Numeric`.
+    */
   def numericValue: Vec[Double]
+
+  def inputView: NuagesAttribute.Input[S]
 }

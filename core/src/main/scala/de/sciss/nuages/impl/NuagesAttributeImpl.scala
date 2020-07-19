@@ -49,7 +49,7 @@ object NuagesAttributeImpl {
 //    val spec          = getSpec(_value)
     val _frameOffset  = parent.frameOffset
     val res: Impl[S] = new Impl[S](parent = parent, key = key, spec = spec) { self =>
-      protected val inputView: Input[S] =
+      val inputView: Input[S] =
         mkInput(attr = self, parent = self, frameOffset = _frameOffset, value = _value)
     }
     res
@@ -111,7 +111,7 @@ object NuagesAttributeImpl {
 
     // ---- abstract ----
 
-    protected def inputView: NuagesAttribute.Input[S]
+    def inputView: NuagesAttribute.Input[S]
 
     // ---- impl ----
 
@@ -183,7 +183,7 @@ object NuagesAttributeImpl {
                            newValue = newValue.asInstanceOf[factory.Repr[S]])
           .map { newInput =>
             val res: Impl[S] = new Impl[S](parent = parent, key = key, spec = spec) {
-              protected val inputView: Input[S] = newInput
+              val inputView: Input[S] = newInput
             }
             main.deferVisTx {
               res.initReplace(self._state, freeNodes = self._freeNodes, boundNodes = self._boundNodes)

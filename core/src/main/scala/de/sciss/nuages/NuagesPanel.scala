@@ -118,6 +118,10 @@ trait NuagesPanel[S <: Sys[S]] extends View.Cursor[S] {
   def registerNode  (id: S#Id, view: NuagesObj[S])(implicit tx: S#Tx): Unit
   def unregisterNode(id: S#Id, view: NuagesObj[S])(implicit tx: S#Tx): Unit
 
+  def getNode(id: S#Id)(implicit tx: S#Tx): Option[NuagesObj[S]] = throw new NotImplementedError()
+
+  def nodes(implicit tx: S#Tx): Set[NuagesObj[S]] = throw new NotImplementedError()
+
   def appendFilter(pred: Output[S], fltSrc: Obj[S], colSrcOpt: Option[Obj[S]], fltPt: Point2D)
                   (implicit tx: S#Tx): Unit
 

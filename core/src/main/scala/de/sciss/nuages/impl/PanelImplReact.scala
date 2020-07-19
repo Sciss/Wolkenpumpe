@@ -22,6 +22,8 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm.TSet
 
 trait PanelImplReact[S <: Sys[S]] {
+  _: NuagesPanel[S] =>
+
   import TxnLike.peer
 
   // ---- abstract ----
@@ -36,23 +38,27 @@ trait PanelImplReact[S <: Sys[S]] {
 
   // ---- impl ----
 
-  private[this] val nodeSet = TSet.empty[NuagesObj[S]]
+  private[this] val _nodeSet = TSet.empty[NuagesObj[S]]
 
   /** Disposes all registered nodes. Disposes `nodeMap`. */
   protected final def disposeNodes()(implicit tx: S#Tx): Unit = {
-    nodeSet.foreach(_.dispose())
-    nodeSet.clear()
+    _nodeSet.foreach(_.dispose())
+    _nodeSet.clear()
     nodeMap.dispose()
   }
 
-  final def registerNode(id: S#Id, view: NuagesObj[S])(implicit tx: S#Tx): Unit = {
-    val ok = nodeSet.add(view)
+  final override def getNode(id: S#Id)(implicit tx: S#Tx): Option[NuagesObj[S]] = nodeMap.get(id)
+
+  final override def nodes(implicit tx: S#Tx): Set[NuagesObj[S]] = _nodeSet.snapshot
+
+  final override def registerNode(id: S#Id, view: NuagesObj[S])(implicit tx: S#Tx): Unit = {
+    val ok = _nodeSet.add(view)
     if (!ok) throw new IllegalArgumentException(s"View $view was already registered")
     nodeMap.put(id, view)
   }
 
-  final def unregisterNode(id: S#Id, view: NuagesObj[S])(implicit tx: S#Tx): Unit = {
-    val ok = nodeSet.remove(view)
+  final override def unregisterNode(id: S#Id, view: NuagesObj[S])(implicit tx: S#Tx): Unit = {
+    val ok = _nodeSet.remove(view)
     if (!ok) throw new IllegalArgumentException(s"View $view was not registered")
     nodeMap.remove(id)
   }
