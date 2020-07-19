@@ -665,7 +665,7 @@ object ScissProcs {
     filterF("*") { in =>
       shortcut = "M" // does not work: "ASTERISK"
       val pMix  = mkMix()
-      val in2   = pAudio("mod", ParamSpec(0 /* -1 */, 1), default(0.0))
+      val in2   = /*pAudioIn("in_m")*/ pAudio("mod", ParamSpec(0 /* -1 */, 1), default(0.0))
       val pLag  = pAudio("lag", ParamSpec(0.001, 0.1, ExpWarp), default(0.001))
       val flt   = in * Lag.ar(in2, pLag - 0.001)
       mix(in, flt, pMix)
@@ -1021,9 +1021,10 @@ object ScissProcs {
     // the attribute map
     nuages.attr.put("generators", nuages.generators.getOrElse(throw new IllegalStateException()))
 
-    require (genNumChannels > 0)
-    val pPlaySinkRec = Util.mkLoop(nuages, "play-sink", numBufChannels = genNumChannels, genNumChannels = genNumChannels)
-    sinkDispObj.attr.put("play-template", pPlaySinkRec)
+    if (genNumChannels > 0) {
+      val pPlaySinkRec = Util.mkLoop(nuages, "play-sink", numBufChannels = genNumChannels, genNumChannels = genNumChannels)
+      sinkDispObj.attr.put("play-template", pPlaySinkRec)
+    }
 
     val sinkRecA = sinkRec.attr
     sinkRecA.put(Nuages.attrPrepare     , sinkPrepObj)

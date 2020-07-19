@@ -1,6 +1,6 @@
 lazy val baseName        = "Wolkenpumpe"
 lazy val baseNameL       = baseName.toLowerCase
-lazy val projectVersion  = "2.41.0"
+lazy val projectVersion  = "2.41.1-SNAPSHOT"
 lazy val mimaVersion     = "2.41.0"
 
 lazy val commonSettings = Seq(
@@ -9,8 +9,8 @@ lazy val commonSettings = Seq(
   homepage             := Some(url(s"https://git.iem.at/sciss/$baseName")),
   description          := "A Prefuse based visual interface for SoundProcesses, a sound synthesis framework",
   licenses             := Seq("AGPL v3+" -> url( "http://www.gnu.org/licenses/agpl-3.0.txt")),
-  scalaVersion         := "2.13.1",
-  crossScalaVersions   := Seq("2.13.1", "2.12.11"),
+  scalaVersion         := "2.13.3",
+  crossScalaVersions   := Seq("2.13.3", "2.12.12"),
   // resolvers            += "Oracle Repository" at "http://download.oracle.com/maven",  // required for sleepycat
   scalacOptions       ++= Seq(
     "-deprecation", "-unchecked", "-feature", "-encoding", "utf8", "-Xlint:-stars-align,_", "-Xsource:2.13"
@@ -23,19 +23,19 @@ lazy val commonSettings = Seq(
 lazy val deps = new {
   val main = new {
     val fileUtil            = "1.1.4"
-    val intensity           = "1.0.1"
+    val intensity           = "1.0.2"
     val lucreSwing          = "1.21.0"
     val prefuse             = "1.0.1"
     val scalaCollider       = "1.28.5"
     val scalaColliderSwing  = "1.41.7"
     val scissDSP            = "1.3.2"
-    val soundProcesses      = "3.35.5"
+    val soundProcesses      = "3.35.8"
     val swingPlus           = "0.4.2"
   }
   val test = new {
-    val lucre               = "3.17.1"
+    val lucre               = "3.17.4"
     val scalaTest           = "3.1.2"
-    val scallop             = "3.4.0"
+    val scallop             = "3.5.0"
     val submin              = "0.3.4"
   }
 }

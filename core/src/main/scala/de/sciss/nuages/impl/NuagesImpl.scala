@@ -43,7 +43,7 @@ object NuagesImpl {
   }
 
   private def mkCategFolder[S <: Sys[S]]()(implicit tx: S#Tx): Folder[S] = {
-    val folder = Folder[S]
+    val folder = Folder[S]()
     Nuages.CategoryNames.foreach { name =>
       folder.addLast(mkFolderObj(name))
     }
@@ -76,12 +76,12 @@ object NuagesImpl {
   }
 
   def folder[S <: Sys[S]](implicit tx: S#Tx): Nuages[S] = {
-    val sPeer = Folder[S]
+    val sPeer = Folder[S]()
     apply(Surface.Folder(sPeer))
   }
 
   def timeline[S <: Sys[S]](implicit tx: S#Tx): Nuages[S] = {
-    val sPeer = Timeline[S]
+    val sPeer = Timeline[S]()
     apply(Surface.Timeline(sPeer))
   }
 
@@ -108,7 +108,7 @@ object NuagesImpl {
   }
 
   private def mkFolderObj[S <: Sys[S]](name: String)(implicit tx: S#Tx): Folder[S] = {
-    val f   = Folder[S]
+    val f   = Folder[S]()
     f.name  = name
     // assert(f.name == name)
     f

@@ -58,14 +58,14 @@ trait PanelImplTxnFuns[S <: Sys[S]] {
 
         val colAttr = sink.attr
         require(!colAttr.contains(key))
-        val in      = Timeline[S]
+        val in      = Timeline[S]()
         colAttr.put(Proc.mainIn, in)
         addToTimeline(in, pos, out)
 
       case Surface.Folder(_) =>
         val colAttr = sink.attr
         require(!colAttr.contains(key))
-        val in      = Folder[S]
+        val in      = Folder[S]()
         colAttr.put(Proc.mainIn, in)
         in.addLast(out)
     }

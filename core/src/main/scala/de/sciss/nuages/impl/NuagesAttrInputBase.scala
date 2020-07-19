@@ -22,7 +22,7 @@ import scala.concurrent.stm.Ref
 trait NuagesAttrInputBase[S <: Sys[S]] extends NuagesAttribute.Input[S] {
   import TxnLike.peer
 
-  private[this] val parentRef = Ref.make[Parent[S]]
+  private[this] val parentRef = Ref.make[Parent[S]]()
 
   final def inputParent                     (implicit tx: S#Tx): Parent[S]  = parentRef()
   final def inputParent_=(parent: Parent[S])(implicit tx: S#Tx): Unit       = parentRef() = parent

@@ -17,13 +17,15 @@ package impl
 import java.awt.datatransfer.{Clipboard, ClipboardOwner, Transferable}
 import java.awt.geom.Point2D
 import java.awt.{Color, Point, Toolkit}
-import javax.swing.event.{AncestorEvent, AncestorListener}
+import java.text.NumberFormat
+import java.util.Locale
 
 import de.sciss.desktop.KeyStrokes
 import de.sciss.equal.Implicits._
 import de.sciss.lucre.stm.Sys
 import de.sciss.nuages.KeyControl.ControlDrag
 import de.sciss.numbers
+import javax.swing.event.{AncestorEvent, AncestorListener}
 import prefuse.visual.VisualItem
 
 import scala.annotation.switch
@@ -32,8 +34,18 @@ import scala.swing.event.Key
 import scala.swing.{Label, Orientation, Swing, TextField}
 import scala.util.Try
 
+object AttrInputKeyControl {
+  private val decimalFormat: NumberFormat = {
+    val nf = NumberFormat.getInstance(Locale.US)
+    nf.setGroupingUsed(false)
+    nf.setMaximumFractionDigits(3)
+    nf
+  }
+}
 trait AttrInputKeyControl[S <: Sys[S]] extends ClipboardOwner {
   _: NuagesAttribute.Input[S] with NuagesAttribute.Numeric with NuagesData[S] =>
+
+  import AttrInputKeyControl._
 
   // ---- abstract ----
 
@@ -71,7 +83,7 @@ trait AttrInputKeyControl[S <: Sys[S]] extends ClipboardOwner {
         // "double clicking" is to randomise
         main.glideTime =
           if ((main.glideTime absDif time0) < 0.05f || (main.glideTimeSource !== NuagesPanel.GLIDE_KEY)) time0 else {
-            (time0 + math.random.toFloat.linLin(0f, 1f, -0.1f, 0.1f)).clip(0f, 1f)
+            (time0 + math.random().toFloat.linLin(0f, 1f, -0.1f, 0.1f)).clip(0f, 1f)
           }
         main.glideTimeSource = NuagesPanel.GLIDE_KEY
         true
@@ -100,8 +112,8 @@ trait AttrInputKeyControl[S <: Sys[S]] extends ClipboardOwner {
     }
 
     val v = (e.char: @switch) match {
-      case 'r'  => val v = math.random; checkDouble(Vector.fill(numChannels)(v))
-      case 'R'  => checkDouble(Vector.fill(numChannels)(math.random))
+      case 'r'  => val v = math.random(); checkDouble(Vector.fill(numChannels)(v))
+      case 'R'  => checkDouble(Vector.fill(numChannels)(math.random()))
       case 'n'  => Vector.fill(numChannels)(0.0)
       case 'x'  => checkDouble(Vector.fill(numChannels)(1.0))
       case 'c'  => Vector.fill(numChannels)(0.5)
@@ -142,7 +154,7 @@ trait AttrInputKeyControl[S <: Sys[S]] extends ClipboardOwner {
         if (newMin === min && newMax === max) Vector.empty else {
           import numbers.Implicits._
           if (min === max) { // all equal -- use a random spread
-            vs.map(in => (in + math.random.linLin(0.0, 1.0, -0.0025, +0.0025)).clip(0.0, 1.0))
+            vs.map(in => (in + math.random().linLin(0.0, 1.0, -0.0025, +0.0025)).clip(0.0, 1.0))
           } else {
             vs.map(_.linLin(min, max, newMin, newMax))
           }
@@ -155,7 +167,9 @@ trait AttrInputKeyControl[S <: Sys[S]] extends ClipboardOwner {
 
   private def showParamInput(vi: VisualItem): Unit = {
     val spec    = attribute.spec
-    val ggValue = new TextField(f"${spec.map(numericValue.head)}%1.3f", 12)
+    val v0      = spec.map(numericValue.head)
+    val s0      = decimalFormat.format(v0)
+    val ggValue = new TextField(s0 /*f"$v0%1.3f"*/, 12)
     Wolkenpumpe.mkBlackWhite(ggValue)
     ggValue.peer.addAncestorListener(new AncestorListener {
       def ancestorRemoved(e: AncestorEvent): Unit = ()

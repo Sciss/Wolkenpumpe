@@ -244,14 +244,14 @@ trait PanelImpl[S <: Sys[S], Repr <: Obj[S], AuralRepr <: AuralObj[S]]
     cursor.step { implicit tx =>
      val copies = Nuages.copyGraph(sel.iterator.map(_.obj).toIndexedSeq)
 
-      val macroF = Folder[S]
+      val macroF = Folder[S]()
       copies.foreach(macroF.addLast)
       val nuagesF = panel.nuages.folder
       import proc.Implicits._
       val parent = nuagesF.iterator.collect {
         case parentObj: Folder[S] if parentObj.name == Nuages.NameMacros => parentObj
       } .toList.headOption.getOrElse {
-        val res = Folder[S]
+        val res = Folder[S]()
         res.name = Nuages.NameMacros
         nuagesF.addLast(res)
         res

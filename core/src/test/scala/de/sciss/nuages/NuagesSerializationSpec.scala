@@ -36,7 +36,7 @@ class NuagesSerializationSpec extends FixtureAnyFlatSpec with Matchers {
     val nH = system.step { implicit tx =>
       val n = Nuages.timeline[S]
       val Surface.Timeline(t) = n.surface
-      val p = Proc[S]
+      val p = Proc[S]()
       p.name = "Schoko"
       assert(p.name === "Schoko")
       t.modifiableOption.get.add(Span(0L, 10000L), p)
@@ -59,7 +59,7 @@ class NuagesSerializationSpec extends FixtureAnyFlatSpec with Matchers {
 
     val fH = system.step { implicit tx =>
       val n = nH()
-      val f = Folder[S]
+      val f = Folder[S]()
       f.addLast(n)
       tx.newHandle(f)
     }

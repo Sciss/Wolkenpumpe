@@ -77,15 +77,16 @@ trait RenderNumericAttr[S <: Sys[S]] extends RenderAttrValue[S] with NuagesAttri
       s"$s1…$s2"
     }
 
-  protected final def drawAdjust(g: Graphics2D, v: Vec[Double]): Unit =
-    if (allValuesEqual || true /* XXX TODO */ ) {
+  protected final def drawAdjust(g: Graphics2D, v: Vec[Double]): Unit = {
+//    if (allValuesEqual || true /* XXX TODO */ ) {
       setSpine(v.head)
       g.draw(gLine)
-    } else {
-      ???!
-      //    setSpine(v.head)
-      //    g.draw(gLine)
-    }
+//    } else {
+//      ???!
+//      //    setSpine(v.head)
+//      //    g.draw(gLine)
+//    }
+  }
 }
 
 trait RenderAttrDoubleVec[S <: Sys[S]] extends RenderNumericAttr[S] {

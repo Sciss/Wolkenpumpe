@@ -22,7 +22,7 @@ import scala.annotation.elidable.CONFIG
 package object nuages {
   def ExpWarp: ExponentialWarp.type   = ExponentialWarp
   def LinWarp: LinearWarp     .type   = LinearWarp
-  val TrigSpec  = ParamSpec(0, 1, IntWarp)
+  val TrigSpec: ParamSpec             = ParamSpec(0, 1, IntWarp)
 
   private lazy val logHeader = new SimpleDateFormat("[d MMM yyyy, HH:mm''ss.SSS] 'Nuages' ", Locale.US)
 

@@ -48,7 +48,7 @@ object NuagesAttributeImpl {
     val spec          = getSpec(parent, key)
 //    val spec          = getSpec(_value)
     val _frameOffset  = parent.frameOffset
-    val res = new Impl[S](parent = parent, key = key, spec = spec) { self =>
+    val res: Impl[S] = new Impl[S](parent = parent, key = key, spec = spec) { self =>
       protected val inputView: Input[S] =
         mkInput(attr = self, parent = self, frameOffset = _frameOffset, value = _value)
     }
@@ -134,7 +134,9 @@ object NuagesAttributeImpl {
     // ... methods ...
 
 //    final val isControl: Boolean = key != "in"  // XXX TODO --- not cool
-    final val isControl: Boolean = /* Wolkenpumpe.ALWAYS_CONTROL || */  key != "in"  // XXX TODO --- not cool
+    // XXX TODO if we test for `key.startsWith("in_")`, the input is not rendered
+    // XXX TODO by default unless it is already connected. This needs fixing
+    final val isControl: Boolean = /* Wolkenpumpe.ALWAYS_CONTROL || */  key != "in" /*&& !key.startsWith("in_")*/  // XXX TODO --- not cool
 
     // loop
 
@@ -180,7 +182,7 @@ object NuagesAttributeImpl {
         factory.tryConsume(oldInput = inputView, newOffset = parent.frameOffset,
                            newValue = newValue.asInstanceOf[factory.Repr[S]])
           .map { newInput =>
-            val res = new Impl[S](parent = parent, key = key, spec = spec) {
+            val res: Impl[S] = new Impl[S](parent = parent, key = key, spec = spec) {
               protected val inputView: Input[S] = newInput
             }
             main.deferVisTx {
@@ -203,7 +205,7 @@ object NuagesAttributeImpl {
     private def updateChildHere(before: Obj[S], now: Obj[S], dt: Long)(implicit tx: S#Tx): Unit = {
       val objAttr = parent.obj.attr
       val value   = if (main.isTimeline) {
-        val gr      = Grapheme[S]
+        val gr      = Grapheme[S]()
         val start   = currentOffset() + dt
 
         log(s"$this updateChild($before, $now - $start / ${TimeRef.framesToSecs(start)})")
@@ -238,7 +240,7 @@ object NuagesAttributeImpl {
           }
 
           def mkTimeline(): (Timeline.Modifiable[S], SpanLikeObj.Var[S]) = {
-            val tl    = Timeline[S]
+            val tl    = Timeline[S]()
             val span  = mkSpan()
             (tl, span)
           }
@@ -291,7 +293,7 @@ object NuagesAttributeImpl {
                 // (finding a timeline in a folder when we dissolve
                 // a folder, so we might end up with nested timeline objects)
 
-                val f = Folder[S]
+                val f = Folder[S]()
                 f.addLast(other)
                 f.addLast(child)
                 ParamSpec.copyAttr(source = other, target = f)
@@ -307,7 +309,7 @@ object NuagesAttributeImpl {
         case _ =>
           val objAttr = parent.obj.attr
           if (main.isTimeline) {
-            val tl          = Timeline[S]
+            val tl          = Timeline[S]()
             val span        = SpanLikeObj.newVar[S](Span.until(currentOffset()))
             ParamSpec.copyAttr(source = child, target = tl)
             tl.add(span, child)
