@@ -33,6 +33,7 @@ import prefuse.util.ColorLib
 import prefuse.visual.{AggregateItem, VisualItem}
 
 import scala.concurrent.stm.{Ref, TMap}
+import scala.swing.event.Key
 
 object NuagesObjImpl {
   private val logPeakCorr = 20.0f
@@ -405,13 +406,26 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
       true
 
     } else if (outerShape.contains(xt, yt) & e.isAltDown) {
-      // val instant = !stateVar.playing || stateVar.bypassed || (main.transition(0) == Instant)
-      atomic { implicit tx =>
-        removeSelf()
-      }
+      txRemoveSelf()
       true
 
     } else false
+  }
+
+  private def txRemoveSelf(): Unit =
+    atomic { implicit tx =>
+      removeSelf()
+    }
+
+  override def itemKeyPressed(vi: VisualItem, e: KeyControl.Pressed): Boolean = {
+    val code = e.code
+    if (code == Key.BackSpace /*&& outerShape.contains(xt, yt)*/) { // copy
+      txRemoveSelf()
+      true
+
+    } else {
+      super.itemKeyPressed(vi, e)
+    }
   }
 
   protected def boundsResized(): Unit = {
