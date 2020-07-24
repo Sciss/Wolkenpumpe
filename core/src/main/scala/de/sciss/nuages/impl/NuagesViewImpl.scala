@@ -180,7 +180,7 @@ object NuagesViewImpl {
       }
 
       if (nConfig.mainChannels.isDefined) mkFader(NuagesPanel.mainAmpSpec, 0.75)(panel.setMainVolume(_)(_))
-      if (nConfig.soloChannels  .isDefined) mkFader(NuagesPanel.soloAmpSpec  , 0.25)(panel.setSoloVolume  (_)(_))
+      if (nConfig.soloChannels.isDefined) mkFader(NuagesPanel.soloAmpSpec, 0.25)(panel.setSoloVolume(_)(_))
 
       _southBox = ggSouthBox
 
@@ -241,6 +241,8 @@ object NuagesViewImpl {
     }
 
     private def installMainSynth(server: Server)(implicit tx: Txn): Unit = {
+      if (nConfig.mainSynth) return // user already installed their own synth
+
       val dfPostM = SynthGraph {
         import de.sciss.synth._
         import de.sciss.synth.ugen._
@@ -302,7 +304,7 @@ object NuagesViewImpl {
 
       val synPostMId = synPostM.peer.id
       val resp = message.Responder.add(server.peer) {
-        case osc.Message( "/meters", `synPostMId`, 0, values @ _* ) =>
+        case osc.Message("/meters", `synPostMId`, 0, values @ _*) =>
           val vec: Vec[Float] = values match {
             case vv: Vec[_] => vv             .map(v => Math.min(10f, v.asInstanceOf[Float]))
             case _          => values.iterator.map(v => Math.min(10f, v.asInstanceOf[Float])).toIndexedSeq
@@ -312,6 +314,8 @@ object NuagesViewImpl {
           }
       }
       scala.concurrent.stm.Txn.afterRollback(_ => resp.remove())(tx.peer)
+
+      synPostM.onEnd(resp.remove())
     }
   }
 }

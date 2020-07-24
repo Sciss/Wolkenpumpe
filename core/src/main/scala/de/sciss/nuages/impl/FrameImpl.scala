@@ -26,7 +26,7 @@ object FrameImpl {
   def apply[S <: Sys[S]](view: NuagesView[S], undecorated: Boolean)
                         (implicit tx: S#Tx): NuagesFrame[S] = {
     val transport = view.panel.transport
-    transport.play()
+    if (view.panel.config.autoStart) transport.play()
     new Impl[S](view, undecorated = undecorated).init()
   }
 

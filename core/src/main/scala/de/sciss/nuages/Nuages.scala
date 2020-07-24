@@ -60,6 +60,11 @@ object Nuages extends Obj.Type {
     def meters        : Boolean
     def collector     : Boolean
     def fullScreenKey : Boolean
+
+    /** Whether to automatically start the transport when the window is opened */
+    def autoStart     : Boolean
+    /** Whether to install the default main synth */
+    def mainSynth     : Boolean
   }
 
   object Config {
@@ -84,11 +89,14 @@ object Nuages extends Obj.Type {
       b.meters          = meters
       b.collector       = collector
       b.fullScreenKey   = fullScreenKey
+
+      b.autoStart       = autoStart
+      b.mainSynth       = mainSynth
       b
     }
   }
   trait ConfigBuilder extends ConfigLike {
-    var mainChannels: Option[Vec[Int]]
+    var mainChannels  : Option[Vec[Int]]
     var soloChannels  : Option[Vec[Int]]
     var recordPath    : Option[String]
 
@@ -100,13 +108,16 @@ object Nuages extends Obj.Type {
     var collector     : Boolean
     var fullScreenKey : Boolean
 
+    var autoStart     : Boolean = true  // XXX TODO --- move impl to `Impl` in major version
+    var mainSynth     : Boolean = true  // XXX TODO --- move impl to `Impl` in major version
+
     def build: Config
   }
 
   private final class ConfigBuilderImpl extends ConfigBuilder {
     override def toString = s"Nuages.ConfigBuilder@${hashCode().toHexString}"
 
-    var mainChannels: Option[Vec[Int]]    = None
+    var mainChannels  : Option[Vec[Int]]    = None
     var soloChannels  : Option[Vec[Int]]    = None
     var recordPath    : Option[String]      = None
 
@@ -119,7 +130,7 @@ object Nuages extends Obj.Type {
     var fullScreenKey : Boolean             = true
 
     def build: Config = ConfigImpl(
-      mainChannels  = mainChannels,
+      mainChannels    = mainChannels,
       soloChannels    = soloChannels,
       recordPath      = recordPath,
 
@@ -129,22 +140,28 @@ object Nuages extends Obj.Type {
 
       meters          = meters,
       collector       = collector,
-      fullScreenKey   = fullScreenKey
+      fullScreenKey   = fullScreenKey,
+
+      autoStart       = autoStart,
+      mainSynth       = mainSynth,
     )
   }
 
   private final case class ConfigImpl(
-                                       mainChannels: Option[Vec[Int]],
-                                       soloChannels  : Option[Vec[Int]],
-                                       recordPath    : Option[String],
+                                       mainChannels   : Option[Vec[Int]],
+                                       soloChannels   : Option[Vec[Int]],
+                                       recordPath     : Option[String],
 
-                                       lineInputs    : Vec[NamedBusConfig],
-                                       micInputs     : Vec[NamedBusConfig],
-                                       lineOutputs   : Vec[NamedBusConfig],
+                                       lineInputs     : Vec[NamedBusConfig],
+                                       micInputs      : Vec[NamedBusConfig],
+                                       lineOutputs    : Vec[NamedBusConfig],
 
-                                       meters        : Boolean,
-                                       collector     : Boolean,
-                                       fullScreenKey : Boolean
+                                       meters         : Boolean,
+                                       collector      : Boolean,
+                                       fullScreenKey  : Boolean,
+
+                                       autoStart      : Boolean,
+                                       mainSynth      : Boolean,
   ) extends Config {
     override def productPrefix = "Nuages.Config"
   }

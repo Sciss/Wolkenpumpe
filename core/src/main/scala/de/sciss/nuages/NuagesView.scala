@@ -26,7 +26,9 @@ object NuagesView {
     Impl[S](nuages, nuagesConfig)
 }
 trait NuagesView[S <: Sys[S]] extends View.Cursor[S] {
+
   def panel: NuagesPanel[S]
+
   def controlPanel: ControlPanel
 
   def installFullScreenKey(p: scala.swing.RootPanel): Unit =
