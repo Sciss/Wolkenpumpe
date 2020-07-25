@@ -70,12 +70,12 @@ trait PanelImplTxnFuns[S <: Sys[S]] {
         in.addLast(out)
     }
 
-  private def prepareAndLocate(proc: Obj[S], pt: Point2D)(implicit tx: S#Tx): Unit = {
+  override final def prepareAndLocate(proc: Obj[S], pt: Point2D)(implicit tx: S#Tx): Unit = {
     prepareObj(proc)
     setLocationHint(proc, pt)
   }
 
-  private def addNewObject(obj: Obj[S])(implicit tx: S#Tx): Unit =
+  override final def addNewObject(obj: Obj[S])(implicit tx: S#Tx): Unit =
     nuages.surface match {
       case Surface.Timeline(tl) =>
         addToTimeline(tl, 0L, obj)

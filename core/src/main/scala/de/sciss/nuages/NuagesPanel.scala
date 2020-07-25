@@ -127,4 +127,9 @@ trait NuagesPanel[S <: Sys[S]] extends View.Cursor[S] {
 
   def insertFilter(pred: Output[S], succ: NuagesAttribute[S], fltSrc: Obj[S], fltPt: Point2D)
                   (implicit tx: S#Tx): Obj[S]
+
+  def prepareAndLocate(proc: Obj[S], pt: Point2D)(implicit tx: S#Tx): Unit =
+    throw new NotImplementedError()
+
+  def addNewObject(obj: Obj[S])(implicit tx: S#Tx): Unit = throw new NotImplementedError()
 }
