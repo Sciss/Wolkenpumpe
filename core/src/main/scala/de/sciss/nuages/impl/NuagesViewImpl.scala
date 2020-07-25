@@ -241,7 +241,7 @@ object NuagesViewImpl {
     }
 
     private def installMainSynth(server: Server)(implicit tx: Txn): Unit = {
-      if (nConfig.mainSynth) return // user already installed their own synth
+      if (!nConfig.mainSynth) return // user already installed their own synth
 
       val dfPostM = SynthGraph {
         import de.sciss.synth._
@@ -253,20 +253,24 @@ object NuagesViewImpl {
         val sigMast: GE = sigMast0
         // external recorders
         nConfig.lineOutputs.foreach { cfg =>
-//          val off     = cfg.offset
-          val numOut  = cfg.numChannels
-          val numIn   = mainBus.size // numChannels
-          val sig1: GE = if (numOut == numIn) {
-            sigMast
-          } else if (numIn == 1) {
-            Seq.fill[GE](numOut)(sigMast)
-          } else {
-            val sigOut = SplayAz.ar(numOut, sigMast)
-            Limiter.ar(sigOut, (-0.2).dbAmp)
+          if (cfg.name != NamedBusConfig.Ignore) {
+            //mval off     = cfg.offset
+            val numOut  = cfg.numChannels
+            val numIn   = mainBus.size // numChannels
+            val sig1: GE = if (numOut == numIn) {
+              sigMast
+            } else if (numIn == 1) {
+              Seq.fill[GE](numOut)(sigMast)
+            } else if (nConfig.lineOutputsSplay) {
+              val sigOut = SplayAz.ar(numOut, sigMast)
+              Limiter.ar(sigOut, (-0.2).dbAmp)
+            } else {
+              Seq.tabulate[GE](numOut)(sigMast.out) // wraps if necessary
+            }
+            //            assert( sig1.numOutputs == numOut )
+            // Out.ar(off, sig1)
+            PhysicalOut.ar(cfg.indices, sig1)
           }
-          //            assert( sig1.numOutputs == numOut )
-          // Out.ar(off, sig1)
-          PhysicalOut.ar(cfg.indices, sig1)
         }
         // main + people meters
         val meterTr    = Impulse.kr(20)

@@ -65,6 +65,10 @@ object Nuages extends Obj.Type {
     def autoStart     : Boolean
     /** Whether to install the default main synth */
     def mainSynth     : Boolean
+    /** Whether to 'splay' all main channels when routing to line outputs and
+      * channel numbers do not match.
+      */
+    def lineOutputsSplay: Boolean
   }
 
   object Config {
@@ -78,20 +82,21 @@ object Nuages extends Obj.Type {
     def apply(config: Config): ConfigBuilder = {
       val b = Config()
       import config._
-      b.mainChannels    = mainChannels
-      b.soloChannels    = soloChannels
-      b.recordPath      = recordPath
+      b.mainChannels      = mainChannels
+      b.soloChannels      = soloChannels
+      b.recordPath        = recordPath
 
-      b.lineInputs      = lineInputs
-      b.micInputs       = micInputs
-      b.lineOutputs     = lineOutputs
+      b.lineInputs        = lineInputs
+      b.micInputs         = micInputs
+      b.lineOutputs       = lineOutputs
 
-      b.meters          = meters
-      b.collector       = collector
-      b.fullScreenKey   = fullScreenKey
+      b.meters            = meters
+      b.collector         = collector
+      b.fullScreenKey     = fullScreenKey
 
-      b.autoStart       = autoStart
-      b.mainSynth       = mainSynth
+      b.autoStart         = autoStart
+      b.mainSynth         = mainSynth
+      b.lineOutputsSplay  = lineOutputsSplay
       b
     }
   }
@@ -108,8 +113,9 @@ object Nuages extends Obj.Type {
     var collector     : Boolean
     var fullScreenKey : Boolean
 
-    var autoStart     : Boolean = true  // XXX TODO --- move impl to `Impl` in major version
-    var mainSynth     : Boolean = true  // XXX TODO --- move impl to `Impl` in major version
+    var autoStart       : Boolean = true  // XXX TODO --- move impl to `Impl` in major version
+    var mainSynth       : Boolean = true  // XXX TODO --- move impl to `Impl` in major version
+    var lineOutputsSplay: Boolean = true  // XXX TODO --- move impl to `Impl` in major version
 
     def build: Config
   }
@@ -130,38 +136,40 @@ object Nuages extends Obj.Type {
     var fullScreenKey : Boolean             = true
 
     def build: Config = ConfigImpl(
-      mainChannels    = mainChannels,
-      soloChannels    = soloChannels,
-      recordPath      = recordPath,
+      mainChannels      = mainChannels,
+      soloChannels      = soloChannels,
+      recordPath        = recordPath,
 
-      lineInputs      = lineInputs,
-      micInputs       = micInputs,
-      lineOutputs     = lineOutputs,
+      lineInputs        = lineInputs,
+      micInputs         = micInputs,
+      lineOutputs       = lineOutputs,
 
-      meters          = meters,
-      collector       = collector,
-      fullScreenKey   = fullScreenKey,
+      meters            = meters,
+      collector         = collector,
+      fullScreenKey     = fullScreenKey,
 
-      autoStart       = autoStart,
-      mainSynth       = mainSynth,
+      autoStart         = autoStart,
+      mainSynth         = mainSynth,
+      lineOutputsSplay  = lineOutputsSplay,
     )
   }
 
   private final case class ConfigImpl(
-                                       mainChannels   : Option[Vec[Int]],
-                                       soloChannels   : Option[Vec[Int]],
-                                       recordPath     : Option[String],
+                                       mainChannels     : Option[Vec[Int]],
+                                       soloChannels     : Option[Vec[Int]],
+                                       recordPath       : Option[String],
 
-                                       lineInputs     : Vec[NamedBusConfig],
-                                       micInputs      : Vec[NamedBusConfig],
-                                       lineOutputs    : Vec[NamedBusConfig],
+                                       lineInputs       : Vec[NamedBusConfig],
+                                       micInputs        : Vec[NamedBusConfig],
+                                       lineOutputs      : Vec[NamedBusConfig],
 
-                                       meters         : Boolean,
-                                       collector      : Boolean,
-                                       fullScreenKey  : Boolean,
+                                       meters           : Boolean,
+                                       collector        : Boolean,
+                                       fullScreenKey    : Boolean,
 
-                                       autoStart      : Boolean,
-                                       mainSynth      : Boolean,
+                                       autoStart        : Boolean,
+                                       mainSynth        : Boolean,
+                                       lineOutputsSplay : Boolean,
   ) extends Config {
     override def productPrefix = "Nuages.Config"
   }

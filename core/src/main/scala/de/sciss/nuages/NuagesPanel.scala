@@ -113,7 +113,7 @@ trait NuagesPanel[S <: Sys[S]] extends View.Cursor[S] {
     */
   def deferVisTx(thunk: => Unit)(implicit tx: TxnLike): Unit
 
-  def createGenerator(gen: Obj[S], colOpt: Option[Obj[S]], pt: Point2D)(implicit tx: S#Tx): Unit
+  def createGenerator(gen: Obj[S], colOpt: Option[Obj[S]], pt: Point2D)(implicit tx: S#Tx): Obj[S]
 
   def registerNode  (id: S#Id, view: NuagesObj[S])(implicit tx: S#Tx): Unit
   def unregisterNode(id: S#Id, view: NuagesObj[S])(implicit tx: S#Tx): Unit
@@ -123,8 +123,8 @@ trait NuagesPanel[S <: Sys[S]] extends View.Cursor[S] {
   def nodes(implicit tx: S#Tx): Set[NuagesObj[S]] = throw new NotImplementedError()
 
   def appendFilter(pred: Output[S], fltSrc: Obj[S], colSrcOpt: Option[Obj[S]], fltPt: Point2D)
-                  (implicit tx: S#Tx): Unit
+                  (implicit tx: S#Tx): Obj[S]
 
   def insertFilter(pred: Output[S], succ: NuagesAttribute[S], fltSrc: Obj[S], fltPt: Point2D)
-                  (implicit tx: S#Tx): Unit
+                  (implicit tx: S#Tx): Obj[S]
 }

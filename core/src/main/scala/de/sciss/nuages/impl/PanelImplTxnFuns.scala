@@ -110,13 +110,14 @@ trait PanelImplTxnFuns[S <: Sys[S]] {
     }
   }
 
-  final def createGenerator(genSrc: Obj[S], colSrcOpt: Option[Obj[S]], pt: Point2D)(implicit tx: S#Tx): Unit = {
+  final def createGenerator(genSrc: Obj[S], colSrcOpt: Option[Obj[S]], pt: Point2D)(implicit tx: S#Tx): Obj[S] = {
     val gen = Obj.copy(genSrc)
     finalizeProcAndCollector(gen, colSrcOpt, pt)
+    gen
   }
 
   final def insertFilter(pred: Output[S], succ: NuagesAttribute[S], fltSrc: Obj[S], fltPt: Point2D)
-                        (implicit tx: S#Tx): Unit = {
+                        (implicit tx: S#Tx): Obj[S] = {
     val flt = Obj.copy(fltSrc)
     prepareAndLocate(flt, fltPt)
 
@@ -138,14 +139,16 @@ trait PanelImplTxnFuns[S <: Sys[S]] {
     }
 
     addNewObject(flt)
+    flt
   }
 
   final def appendFilter(pred: Output[S], fltSrc: Obj[S], colSrcOpt: Option[Obj[S]], fltPt: Point2D)
-                        (implicit tx: S#Tx): Unit = {
+                        (implicit tx: S#Tx): Obj[S] = {
     val flt = Obj.copy(fltSrc)
 
     connectToNewSink(out = pred, sink = flt)
     finalizeProcAndCollector(flt, colSrcOpt, fltPt)
+    flt
   }
 
   private def exec(obj: Obj[S], key: String)(implicit tx: S#Tx): Unit =

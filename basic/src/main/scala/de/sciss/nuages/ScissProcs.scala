@@ -279,7 +279,7 @@ object ScissProcs {
         Vector.fill(genNumChannels)(in)
 
     nConfig.micInputs.foreach { cfg =>
-      generator(cfg.name) {
+      if (cfg.name != NamedBusConfig.Ignore) generator(cfg.name) {
         val pBoost    = pAudio("gain", ParamSpec(0.1, 10, ExpWarp), default(0.1))
         val pFeed0    = pAudio("feed", ParamSpec(0, 1), default(0.0))
 
@@ -324,7 +324,7 @@ object ScissProcs {
     }
 
     nConfig.lineInputs.foreach { cfg =>
-      generator(cfg.name) {
+      if (cfg.name != NamedBusConfig.Ignore) generator(cfg.name) {
         val pBoost = pAudio("gain", ParamSpec(0.1, 10, ExpWarp), default(1.0))
 
         val boost   = pBoost
