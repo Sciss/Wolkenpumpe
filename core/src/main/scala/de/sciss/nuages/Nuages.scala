@@ -69,6 +69,8 @@ object Nuages extends Obj.Type {
       * channel numbers do not match.
       */
     def lineOutputsSplay: Boolean
+
+    def showTransport: Boolean
   }
 
   object Config {
@@ -97,6 +99,7 @@ object Nuages extends Obj.Type {
       b.autoStart         = autoStart
       b.mainSynth         = mainSynth
       b.lineOutputsSplay  = lineOutputsSplay
+      b.showTransport     = showTransport
       b
     }
   }
@@ -116,6 +119,7 @@ object Nuages extends Obj.Type {
     var autoStart       : Boolean = true  // XXX TODO --- move impl to `Impl` in major version
     var mainSynth       : Boolean = true  // XXX TODO --- move impl to `Impl` in major version
     var lineOutputsSplay: Boolean = true  // XXX TODO --- move impl to `Impl` in major version
+    var showTransport   : Boolean = true  // XXX TODO --- move impl to `Impl` in major version
 
     def build: Config
   }
@@ -151,6 +155,7 @@ object Nuages extends Obj.Type {
       autoStart         = autoStart,
       mainSynth         = mainSynth,
       lineOutputsSplay  = lineOutputsSplay,
+      showTransport     = showTransport,
     )
   }
 
@@ -170,6 +175,7 @@ object Nuages extends Obj.Type {
                                        autoStart        : Boolean,
                                        mainSynth        : Boolean,
                                        lineOutputsSplay : Boolean,
+                                       showTransport    : Boolean,
   ) extends Config {
     override def productPrefix = "Nuages.Config"
   }

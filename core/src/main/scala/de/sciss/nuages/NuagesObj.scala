@@ -73,4 +73,6 @@ trait NuagesObj[S <: Sys[S]]
 
   def outputs   (implicit tx: S#Tx): Map[String, NuagesOutput   [S]] = throw new NotImplementedError()
   def attributes(implicit tx: S#Tx): Map[String, NuagesAttribute[S]] = throw new NotImplementedError()
+
+  def removeSelf()(implicit tx: S#Tx): Unit = throw new NotImplementedError()
 }

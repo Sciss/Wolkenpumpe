@@ -46,12 +46,17 @@ object NuagesViewImpl {
       clipStop = false, sampleRate = TimeRef.SampleRate)
     val transport   = panel.transport
     import universe.cursor
-    val trnspView   = TransportView(transport, tlm, hasMillis = false, hasLoop = false, hasShortcuts = false)
+    val trnspView   = if (nuagesConfig.showTransport) {
+      val v = TransportView(transport, tlm, hasMillis = false, hasLoop = false, hasShortcuts = false)
+      Some(v)
+    } else {
+      None
+    }
     val res         = new Impl[S](panel, trnspView).init()
     res
   }
 
-  private final class Impl[S <: Sys[S]](val panel: NuagesPanel[S], transportView: View[S])
+  private final class Impl[S <: Sys[S]](val panel: NuagesPanel[S], transportView: Option[View[S]])
                                        (implicit val cursor: stm.Cursor[S])
     extends NuagesView[S] with ComponentHolder[Component] with AuralSystem.Client { impl =>
 
@@ -116,11 +121,12 @@ object NuagesViewImpl {
       val ggSouthBox = new BasicPanel(Orientation.Horizontal)
       // ggSouthBox.contents += bottom
       // ggSouthBox.contents += Swing.HStrut(8)
-      val transportC = transportView.component
-      transportC.border = EmptyBorder(0, 4, 0, 4)
-      // transportC.background = Color.black
-      ggSouthBox.contents += transportC
-      ggSouthBox.contents += HStrut(8)
+      transportView.foreach { v =>
+        val transportC = v.component
+        transportC.border = EmptyBorder(0, 4, 0, 4)
+        ggSouthBox.contents += transportC
+        ggSouthBox.contents += HStrut(8)
+      }
       _serverPanel = new JServerStatusPanel(JServerStatusPanel.COUNTS)
       ggSouthBox.contents += Component.wrap(_serverPanel)
       ggSouthBox.contents += HStrut(8)

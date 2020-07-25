@@ -285,7 +285,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
     case _ =>
   }
 
-  private def removeSelf()(implicit tx: S#Tx): Unit = {
+  override def removeSelf()(implicit tx: S#Tx): Unit = {
     // ---- connect former input sources to former output sinks ----
     // - in the previous version we limit ourselves to
     //  `Proc.mainIn` and `Proc.mainOut`.

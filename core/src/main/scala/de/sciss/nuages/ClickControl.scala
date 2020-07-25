@@ -13,7 +13,7 @@
 
 package de.sciss.nuages
 
-import java.awt.event.MouseEvent
+import java.awt.event.{KeyEvent, MouseEvent}
 import java.awt.geom.{Point2D, Rectangle2D}
 
 import de.sciss.lucre.expr.DoubleVector
@@ -67,6 +67,15 @@ class ClickControl[S <: Sys[S]](main: NuagesPanel[S]) extends ControlAdapter {
       pan(e, new Point2D.Double(b.getCenterX, b.getCenterY))
     } else {
       if (e.getClickCount == 2) doubleClick(vi, e)
+    }
+  }
+
+  override def itemKeyPressed(vi: VisualItem, e: KeyEvent): Unit = {
+    if (e.getKeyCode == KeyEvent.VK_BACK_SPACE) {
+      vi match {
+        case ei: EdgeItem => deleteEdge(ei)
+        case _ =>
+      }
     }
   }
 
