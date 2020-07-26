@@ -29,6 +29,7 @@ trait RenderNumericAttr[S <: Sys[S]] extends RenderAttrValue[S] with NuagesAttri
 
   protected final def renderValueUpdated(): Unit = {
     val rv = numericValue // renderedValue
+    if (rv == null) return  // XXX TODO --- when does this happen?
     val sz = rv.size
     val eq = sz == 1 || (sz > 1 && {
       val v0  = rv.head
