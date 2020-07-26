@@ -99,7 +99,8 @@ class WolkenpumpeMain[S <: Sys[S]] {
       _aural = universe.auralSystem
       registerProcesses(n, nCfg, sCfg)
         _view = NuagesView(n, nCfg)
-      /* val frame = */ NuagesFrame(_view, undecorated = false /* true */)
+      /* val frame = */ if (nCfg.showFrame) NuagesFrame(_view, undecorated = false /* true */)
+      if (nCfg.autoStart) _view.panel.transport.play()
       _aural.start(aCfg)
     }
   }

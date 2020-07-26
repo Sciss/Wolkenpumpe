@@ -25,8 +25,8 @@ import scala.swing.Swing._
 object FrameImpl {
   def apply[S <: Sys[S]](view: NuagesView[S], undecorated: Boolean)
                         (implicit tx: S#Tx): NuagesFrame[S] = {
-    val transport = view.panel.transport
-    if (view.panel.config.autoStart) transport.play()
+//    val transport = view.panel.transport
+//    if (view.panel.config.autoStart) transport.play()
     new Impl[S](view, undecorated = undecorated).init()
   }
 
