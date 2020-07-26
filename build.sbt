@@ -1,6 +1,6 @@
 lazy val baseName        = "Wolkenpumpe"
 lazy val baseNameL       = baseName.toLowerCase
-lazy val projectVersion  = "2.41.2-SNAPSHOT"
+lazy val projectVersion  = "2.41.2"
 lazy val mimaVersion     = "2.41.0"
 
 lazy val commonSettings = Seq(
@@ -33,7 +33,7 @@ lazy val deps = new {
     val swingPlus           = "0.4.2"
   }
   val test = new {
-    val lucre               = "3.17.4"
+    val lucre               = "3.17.5"
     val scalaTest           = "3.1.2"
     val scallop             = "3.5.0"
     val submin              = "0.3.4"
