@@ -186,7 +186,8 @@ trait PanelImplGuiInit[S <: Sys[S]] extends ComponentHolder[Component] {
     // ------------------------------------------------
 
     // initialize the display
-    _dsp.setSize(960, 640)
+    val sz = config.displaySize
+    _dsp.setSize(sz._1, sz._2)
     _dsp.addControlListener(new ZoomControl     ())
     _dsp.addControlListener(new WheelZoomControl())
     _dsp.addControlListener(new PanControl        )

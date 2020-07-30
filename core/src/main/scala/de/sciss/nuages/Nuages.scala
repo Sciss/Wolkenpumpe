@@ -74,6 +74,8 @@ object Nuages extends Obj.Type {
 
     /** If opening a frame by default. `false` to hide UI */
     def showFrame: Boolean
+
+    def displaySize: (Int, Int)
   }
 
   object Config {
@@ -104,6 +106,7 @@ object Nuages extends Obj.Type {
       b.lineOutputsSplay  = lineOutputsSplay
       b.showTransport     = showTransport
       b.showFrame         = showFrame
+      b.displaySize       = displaySize
       b
     }
   }
@@ -125,6 +128,8 @@ object Nuages extends Obj.Type {
     var lineOutputsSplay: Boolean = true  // XXX TODO --- move impl to `Impl` in major version
     var showTransport   : Boolean = true  // XXX TODO --- move impl to `Impl` in major version
     var showFrame       : Boolean = true  // XXX TODO --- move impl to `Impl` in major version
+
+    var displaySize     : (Int, Int) = (960, 640)  // XXX TODO --- move impl to `Impl` in major version
 
     def build: Config
   }
@@ -162,6 +167,7 @@ object Nuages extends Obj.Type {
       lineOutputsSplay  = lineOutputsSplay,
       showTransport     = showTransport,
       showFrame         = showFrame,
+      displaySize       = displaySize,
     )
   }
 
@@ -183,6 +189,7 @@ object Nuages extends Obj.Type {
                                        lineOutputsSplay : Boolean,
                                        showTransport    : Boolean,
                                        showFrame        : Boolean,
+                                       displaySize      : (Int, Int),
   ) extends Config {
     override def productPrefix = "Nuages.Config"
   }
