@@ -20,7 +20,6 @@ import de.sciss.swingplus.CloseOperation
 import de.sciss.swingplus.Implicits._
 
 import scala.swing.Frame
-import scala.swing.Swing._
 
 object FrameImpl {
   def apply[S <: Sys[S]](view: NuagesView[S], undecorated: Boolean)
@@ -56,7 +55,8 @@ object FrameImpl {
 
         contents = view.component
         this.defaultCloseOperation = CloseOperation.Exit
-        size = (800, 600)
+//        size = (800, 600)
+        pack()
         centerOnScreen()
         open()
       }

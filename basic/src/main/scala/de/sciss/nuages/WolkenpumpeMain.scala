@@ -31,11 +31,17 @@ object WolkenpumpeMain {
 }
 class WolkenpumpeMain[S <: Sys[S]] {
   private[this] var _view : NuagesView[S] = _
+  private[this] var _frame: Option[NuagesFrame[S]] = _
   private[this] var _aural: AuralSystem   = _
 
   def view: NuagesView[S] = {
     if (_view == null) throw new IllegalStateException(s"NuagesView not yet initialized")
     _view
+  }
+
+  def frame: Option[NuagesFrame[S]] = {
+    if (_frame == null) throw new IllegalStateException(s"NuagesFrame not yet initialized")
+    _frame
   }
 
   def auralSystem: AuralSystem = {
@@ -98,8 +104,13 @@ class WolkenpumpeMain[S <: Sys[S]] {
       implicit val universe: Universe[S] = Universe.dummy
       _aural = universe.auralSystem
       registerProcesses(n, nCfg, sCfg)
-        _view = NuagesView(n, nCfg)
-      /* val frame = */ if (nCfg.showFrame) NuagesFrame(_view, undecorated = false /* true */)
+      _view = NuagesView(n, nCfg)
+      _frame = if (nCfg.showFrame) {
+        val f = NuagesFrame(_view, undecorated = false /* true */)
+        Some(f)
+      } else {
+        None
+      }
       if (nCfg.autoStart) _view.panel.transport.play()
       _aural.start(aCfg)
     }
