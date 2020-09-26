@@ -17,7 +17,7 @@ package impl
 import java.awt.{Shape, Graphics2D}
 import java.awt.geom.{Arc2D, GeneralPath, Area}
 
-import de.sciss.lucre.synth.Sys
+import de.sciss.lucre.synth.Txn
 import de.sciss.nuages.impl.NuagesDataImpl._
 import prefuse.data.{Node => PNode}
 import prefuse.util.ColorLib
@@ -25,7 +25,7 @@ import prefuse.visual.VisualItem
 
 import scala.swing.Color
 
-trait RenderAttrValue[S <: Sys[S]] extends NuagesDataImpl[S] {
+trait RenderAttrValue[T <: Txn[T]] extends NuagesDataImpl[T] {
   type A
 
   protected final var renderedValue: A        = null.asInstanceOf[A]

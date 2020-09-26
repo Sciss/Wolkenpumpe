@@ -22,7 +22,7 @@ import java.util.Locale
 
 import de.sciss.desktop.KeyStrokes
 import de.sciss.equal.Implicits._
-import de.sciss.lucre.stm.Sys
+import de.sciss.lucre.Txn
 import de.sciss.nuages.KeyControl.ControlDrag
 import de.sciss.numbers
 import javax.swing.event.{AncestorEvent, AncestorListener}
@@ -42,8 +42,8 @@ object AttrInputKeyControl {
     nf
   }
 }
-trait AttrInputKeyControl[S <: Sys[S]] extends ClipboardOwner {
-  _: NuagesAttribute.Input[S] with NuagesAttribute.Numeric with NuagesData[S] =>
+trait AttrInputKeyControl[T <: Txn[T]] extends ClipboardOwner {
+  _: NuagesAttribute.Input[T] with NuagesAttribute.Numeric with NuagesData[T] =>
 
   import AttrInputKeyControl._
 
@@ -199,7 +199,7 @@ trait AttrInputKeyControl[S <: Sys[S]] extends ClipboardOwner {
   }
 
   @inline
-  private def main: NuagesPanel[S] = attribute.parent.main
+  private def main: NuagesPanel[T] = attribute.parent.main
 
   private def calcPanelPoint(p: OverlayPanel, vi: VisualItem): Point = {
     val b     = vi.getBounds

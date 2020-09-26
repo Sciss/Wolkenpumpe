@@ -16,10 +16,10 @@ package de.sciss.nuages
 import java.awt.Point
 import java.awt.event.{KeyEvent, MouseEvent, MouseMotionListener}
 
-import de.sciss.lucre.synth.Sys
+import de.sciss.lucre.synth.Txn
 
 /** A control that remembers the last mouse location. */
-final class GlobalControl[S <: Sys[S]](main: NuagesPanel[S]) extends MouseMotionListener {
+final class GlobalControl[T <: Txn[T]](main: NuagesPanel[T]) extends MouseMotionListener {
   private val lastPt        = new Point
 
   main.display.addMouseMotionListener(this)

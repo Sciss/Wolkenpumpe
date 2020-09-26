@@ -13,17 +13,17 @@
 
 package de.sciss.nuages
 
-import de.sciss.lucre.stm.Disposable
-import de.sciss.lucre.synth.Sys
+import de.sciss.lucre.Disposable
+import de.sciss.lucre.synth.Txn
 import de.sciss.nuages.impl.{FrameImpl => Impl}
 
 import scala.swing.Frame
 
 object NuagesFrame {
-  def apply[S <: Sys[S]](view: NuagesView[S], undecorated: Boolean = false)(implicit tx: S#Tx): NuagesFrame[S] =
+  def apply[T <: Txn[T]](view: NuagesView[T], undecorated: Boolean = false)(implicit tx: T): NuagesFrame[T] =
     Impl(view, undecorated = undecorated)
 }
-trait NuagesFrame[S <: Sys[S]] extends Disposable[S#Tx] {
-  def view: NuagesView[S]
+trait NuagesFrame[T <: Txn[T]] extends Disposable[T] {
+  def view: NuagesView[T]
   def frame: Frame
 }

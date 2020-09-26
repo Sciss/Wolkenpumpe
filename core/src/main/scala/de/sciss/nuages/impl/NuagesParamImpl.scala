@@ -14,21 +14,21 @@
 package de.sciss.nuages
 package impl
 
-import de.sciss.lucre.synth.Sys
+import de.sciss.lucre.synth.Txn
 import prefuse.data.{Edge => PEdge}
 import prefuse.visual.VisualItem
 
-trait NuagesParamImpl[S <: Sys[S]] extends NuagesDataImpl[S] /* NuagesNodeImpl[S] */ with NuagesParam[S] {
+trait NuagesParamImpl[T <: Txn[T]] extends NuagesDataImpl[T] /* NuagesNodeImpl[T] */ with NuagesParam[T] {
 //  final def pEdge: PEdge = {
 //    if (_pEdge == null) throw new IllegalStateException(s"Component $this has no initialized GUI")
 //    _pEdge
 //  }
 
   final def name: String          = key
-  final def main: NuagesPanel[S]  = parent.main
+  final def main: NuagesPanel[T]  = parent.main
 }
 
-trait NuagesParamRootImpl[S <: Sys[S]] extends NuagesParamImpl[S] with NuagesNodeRootImpl[S] {
+trait NuagesParamRootImpl[T <: Txn[T]] extends NuagesParamImpl[T] with NuagesNodeRootImpl[T] {
   private[this] var _pEdge: PEdge = _
 
   protected final def mkPNodeAndEdge(): VisualItem = {

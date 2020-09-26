@@ -14,9 +14,7 @@
 package de.sciss.nuages
 package impl
 
-import de.sciss.lucre.expr.{DoubleVector, Type}
-import de.sciss.lucre.stm.Sys
-import de.sciss.lucre.synth.{Sys => SSys}
+import de.sciss.lucre.{DoubleVector, Expr, Txn, synth}
 import de.sciss.synth.Curve
 import de.sciss.synth.proc.EnvSegment
 
@@ -25,27 +23,27 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 object NuagesDoubleVectorAttrInput extends PassAttrInputFactory {
   def typeId: Int = DoubleVector.typeId
 
-  type Repr[~ <: Sys[~]] = DoubleVector[~]
+  type Repr[~ <: Txn[~]] = DoubleVector[~]
 
-  protected def mkNoInit[S <: SSys[S]](attr: NuagesAttribute[S])
-                                     (implicit tx: S#Tx, context: NuagesContext[S]): View[S] =
-    new NuagesDoubleVectorAttrInput[S](attr)
+  protected def mkNoInit[T <: synth.Txn[T]](attr: NuagesAttribute[T])
+                                     (implicit tx: T, context: NuagesContext[T]): View[T] =
+    new NuagesDoubleVectorAttrInput[T](attr)
 }
-final class NuagesDoubleVectorAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S])
-  extends RenderAttrDoubleVec[S] with NuagesAttrInputExprImpl[S] {
+final class NuagesDoubleVectorAttrInput[T <: synth.Txn[T]](val attribute: NuagesAttribute[T])
+  extends RenderAttrDoubleVec[T] with NuagesAttrInputExprImpl[T] {
 
   override def toString = s"DoubleVector($attribute)"
 
-  type Repr[~ <: Sys[~]]  = DoubleVector[~]
+  type Repr[~ <: Txn[~]]  = DoubleVector[~]
 
-  val tpe: Type.Expr[A, Repr] = DoubleVector
+  val tpe: Expr.Type[A, Repr] = DoubleVector
 
-  protected def mkConst(v: Vec[Double])(implicit tx: S#Tx): DoubleVector[S] =
+  protected def mkConst(v: Vec[Double])(implicit tx: T): DoubleVector[T] =
     tpe.newConst(v)
 
-  protected def mkEnvSeg(start: Repr[S], curve: Curve)(implicit tx: S#Tx): EnvSegment.Obj[S] = {
+  protected def mkEnvSeg(start: Repr[T], curve: Curve)(implicit tx: T): EnvSegment.Obj[T] = {
     val lvl = start.value
-    EnvSegment.Obj.newVar[S](EnvSegment.Multi(lvl, curve))
+    EnvSegment.Obj.newVar[T](EnvSegment.Multi(lvl, curve))
   }
 
   def numChannels: Int = valueA.size

@@ -13,18 +13,18 @@
 
 package de.sciss.nuages
 
-import de.sciss.lucre.stm.Sys
-import de.sciss.lucre.synth.{AudioBus, Synth, Sys => SSys}
+import de.sciss.lucre.synth.{AudioBus, Synth}
+import de.sciss.lucre.{Txn, synth}
 import de.sciss.nuages.NuagesAttribute.Input
-import de.sciss.synth.proc
+import de.sciss.synth.proc.Proc
 
 object NuagesOutput {
-  def apply[S <: SSys[S]](parent: NuagesObj[S], output: proc.Output[S], meter: Boolean)
-                        (implicit tx: S#Tx, context: NuagesContext[S]): NuagesOutput[S] =
+  def apply[T <: synth.Txn[T]](parent: NuagesObj[T], output: Proc.Output[T], meter: Boolean)
+                        (implicit tx: T, context: NuagesContext[T]): NuagesOutput[T] =
     impl.NuagesOutputImpl(parent, output = output, meter = meter)
 
-  trait Input[S <: Sys[S]] extends NuagesAttribute.Input[S] {
-    def output(implicit tx: S#Tx): proc.Output[S]
+  trait Input[T <: Txn[T]] extends NuagesAttribute.Input[T] {
+    def output(implicit tx: T): Proc.Output[T]
   }
 
   trait Meter {
@@ -32,15 +32,15 @@ object NuagesOutput {
     def synth : Synth
   }
 }
-trait NuagesOutput[S <: Sys[S]] extends NuagesParam[S] with NuagesNode[S] {
-  def mappings(implicit tx: S#Tx): Set[Input[S]]
+trait NuagesOutput[T <: Txn[T]] extends NuagesParam[T] with NuagesNode[T] {
+  def mappings(implicit tx: T): Set[Input[T]]
 
-  def meterOption(implicit tx: S#Tx): Option[NuagesOutput.Meter]
+  def meterOption(implicit tx: T): Option[NuagesOutput.Meter]
 
-  def addMapping   (view: Input[S])(implicit tx: S#Tx): Unit
-  def removeMapping(view: Input[S])(implicit tx: S#Tx): Unit
+  def addMapping   (view: Input[T])(implicit tx: T): Unit
+  def removeMapping(view: Input[T])(implicit tx: T): Unit
 
-  def output(implicit tx: S#Tx): proc.Output[S]
+  def output(implicit tx: T): Proc.Output[T]
 
-  def setSolo(onOff: Boolean)(implicit tx: S#Tx): Unit
+  def setSolo(onOff: Boolean)(implicit tx: T): Unit
 }

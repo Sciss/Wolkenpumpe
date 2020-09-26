@@ -14,8 +14,8 @@
 package de.sciss.nuages
 
 import de.sciss.file._
-import de.sciss.lucre.stm
-import de.sciss.lucre.synth.{InMemory, Sys}
+import de.sciss.lucre.{Cursor, Source}
+import de.sciss.lucre.synth.{InMemory, Txn}
 import de.sciss.osc
 import de.sciss.synth.proc.{AuralSystem, Universe}
 import de.sciss.synth.{Server => SServer}
@@ -23,23 +23,24 @@ import de.sciss.synth.{Server => SServer}
 object WolkenpumpeMain {
   def main(args: Array[String]): Unit = {
     type S = InMemory
+    type T = InMemory.Txn
     implicit val system: S = InMemory()
-    val w = new WolkenpumpeMain[S]
-    val nuagesH = system.step { implicit tx => tx.newHandle(Nuages.timeline[S]) }
+    val w = new WolkenpumpeMain[T]
+    val nuagesH = system.step { implicit tx => tx.newHandle(Nuages.timeline[T]) }
     w.run(nuagesH)
   }
 }
-class WolkenpumpeMain[S <: Sys[S]] {
-  private[this] var _view : NuagesView[S] = _
-  private[this] var _frame: Option[NuagesFrame[S]] = _
+class WolkenpumpeMain[T <: Txn[T]] {
+  private[this] var _view : NuagesView[T] = _
+  private[this] var _frame: Option[NuagesFrame[T]] = _
   private[this] var _aural: AuralSystem   = _
 
-  def view: NuagesView[S] = {
+  def view: NuagesView[T] = {
     if (_view == null) throw new IllegalStateException(s"NuagesView not yet initialized")
     _view
   }
 
-  def frame: Option[NuagesFrame[S]] = {
+  def frame: Option[NuagesFrame[T]] = {
     if (_frame == null) throw new IllegalStateException(s"NuagesFrame not yet initialized")
     _frame
   }
@@ -69,12 +70,12 @@ class WolkenpumpeMain[S <: Sys[S]] {
   }
 
   /** Subclasses may want to override this. */
-  protected def registerProcesses(nuages: Nuages[S], nCfg: Nuages.Config, sCfg: ScissProcs.Config)
-                                 (implicit tx: S#Tx, universe: Universe[S]): Unit = {
-    ScissProcs[S](nuages, nCfg, sCfg)
+  protected def registerProcesses(nuages: Nuages[T], nCfg: Nuages.Config, sCfg: ScissProcs.Config)
+                                 (implicit tx: T, universe: Universe[T]): Unit = {
+    ScissProcs[T](nuages, nCfg, sCfg)
   }
 
-  def run(nuagesH: stm.Source[S#Tx, Nuages[S]])(implicit cursor: stm.Cursor[S]): Unit = {
+  def run(nuagesH: Source[T, Nuages[T]])(implicit cursor: Cursor[T]): Unit = {
     Wolkenpumpe.init()
 
     val nCfg                = Nuages    .Config()
@@ -101,7 +102,7 @@ class WolkenpumpeMain[S <: Sys[S]] {
 
     cursor.step { implicit tx =>
       val n = nuagesH()
-      implicit val universe: Universe[S] = Universe.dummy
+      implicit val universe: Universe[T] = Universe.dummy
       _aural = universe.auralSystem
       registerProcesses(n, nCfg, sCfg)
       _view = NuagesView(n, nCfg)

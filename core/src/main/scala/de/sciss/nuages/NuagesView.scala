@@ -14,20 +14,20 @@
 package de.sciss.nuages
 
 import de.sciss.lucre.swing.View
-import de.sciss.lucre.synth.Sys
+import de.sciss.lucre.synth.Txn
 import de.sciss.nuages.impl.{NuagesViewImpl => Impl}
 import de.sciss.synth.proc.Universe
 
 import scala.swing.Component
 
 object NuagesView {
-  def apply[S <: Sys[S]](nuages: Nuages[S], nuagesConfig: Nuages.Config)
-                        (implicit tx: S#Tx, universe: Universe[S]): NuagesView[S] =
-    Impl[S](nuages, nuagesConfig)
+  def apply[T <: Txn[T]](nuages: Nuages[T], nuagesConfig: Nuages.Config)
+                        (implicit tx: T, universe: Universe[T]): NuagesView[T] =
+    Impl[T](nuages, nuagesConfig)
 }
-trait NuagesView[S <: Sys[S]] extends View.Cursor[S] {
+trait NuagesView[T <: Txn[T]] extends View.Cursor[T] {
 
-  def panel: NuagesPanel[S]
+  def panel: NuagesPanel[T]
 
   def controlPanel: ControlPanel
 

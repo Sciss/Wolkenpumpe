@@ -17,31 +17,31 @@ package impl
 import java.awt.Point
 import java.awt.geom.Point2D
 
-import de.sciss.lucre.stm.{Folder, Obj}
+import de.sciss.lucre.{Folder, Obj}
 import de.sciss.lucre.swing.ListView
 import de.sciss.lucre.swing.LucreSwing.requireEDT
-import de.sciss.lucre.synth.Sys
+import de.sciss.lucre.synth.Txn
 import de.sciss.synth.proc.Proc
 import javax.swing.event.{AncestorEvent, AncestorListener}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.swing.{Component, Swing}
 
-trait PanelImplDialogs[S <: Sys[S]] {
-  _: NuagesPanel[S] =>
+trait PanelImplDialogs[T <: Txn[T]] {
+  _: NuagesPanel[T] =>
 
-  private[this] var fltPred: NuagesOutput   [S] = _
-  private[this] var fltSucc: NuagesAttribute[S] = _
+  private[this] var fltPred: NuagesOutput   [T] = _
+  private[this] var fltSucc: NuagesAttribute[T] = _
   private[this] var overlay = Option.empty[Component]
 
-  protected def listGen  : ListView[S, Obj[S], Unit]
-  protected def listFlt1 : ListView[S, Obj[S], Unit]
-  protected def listCol1 : ListView[S, Obj[S], Unit]
-  protected def listFlt2 : ListView[S, Obj[S], Unit]
-  protected def listCol2 : ListView[S, Obj[S], Unit]
-  protected def listMacro: ListView[S, Obj[S], Unit]
+  protected def listGen  : ListView[T, Obj[T], Unit]
+  protected def listFlt1 : ListView[T, Obj[T], Unit]
+  protected def listCol1 : ListView[T, Obj[T], Unit]
+  protected def listFlt2 : ListView[T, Obj[T], Unit]
+  protected def listCol2 : ListView[T, Obj[T], Unit]
+  protected def listMacro: ListView[T, Obj[T], Unit]
 
-  protected def insertMacro(macroF: Folder[S], pt: Point2D)(implicit tx: S#Tx): Unit
+  protected def insertMacro(macroF: Folder[T], pt: Point2D)(implicit tx: T): Unit
 
   private[this] lazy val createFilterInsertDialog: OverlayPanel = {
     val p = new OverlayPanel()
@@ -56,9 +56,9 @@ trait PanelImplDialogs[S <: Sys[S]] {
             // val nuages = nuagesH()
             listFlt1.list.foreach { fltList =>
               fltList.get(fltIdx).foreach {
-                case flt: Proc[S] =>
+                case flt: Proc[T] =>
                   fltPred.parent.obj match {
-                    case pred: Proc[S] =>
+                    case pred: Proc[T] =>
                       for {
                         predScan <- pred.outputs.get(fltPred.key)
                         // succScan <- succ.attr   .get(fltSucc.key)
@@ -108,14 +108,14 @@ trait PanelImplDialogs[S <: Sys[S]] {
     }
   }
 
-  private def createFilterOnlyFromDialog(p: OverlayPanel)(objFun: S#Tx => Option[Obj[S]]): Unit = {
+  private def createFilterOnlyFromDialog(p: OverlayPanel)(objFun: T => Option[Obj[T]]): Unit = {
     p.close()
     val displayPt = dialogPoint(p)
     cursor.step { implicit tx =>
       objFun(tx).foreach {
-        case flt: Proc[S] =>
+        case flt: Proc[T] =>
           fltPred.parent.obj match {
-            case pred: Proc[S] =>
+            case pred: Proc[T] =>
               for {
                 predScan <- pred.outputs.get(fltPred.key)
               } {
@@ -161,11 +161,11 @@ trait PanelImplDialogs[S <: Sys[S]] {
             listFlt2.list.foreach { fltList =>
               listCol2.list.foreach { colList =>
                 fltList.get(fltIdx).foreach {
-                  case flt: Proc[S] =>
+                  case flt: Proc[T] =>
                     colList.get(colIdx).foreach {
-                      case col: Proc[S] =>
+                      case col: Proc[T] =>
                         fltPred.parent.obj match {
-                          case pred: Proc[S] =>
+                          case pred: Proc[T] =>
                             for {
                               predScan <- pred.outputs.get(fltPred.key)
                             } {
@@ -204,7 +204,7 @@ trait PanelImplDialogs[S <: Sys[S]] {
           cursor.step { implicit tx =>
             listMacro.list.foreach { macroList =>
               macroList.get(macIdx).foreach {
-                case macroFObj: Folder[S] =>
+                case macroFObj: Folder[T] =>
                   insertMacro(macroFObj, displayPt)
                 case _ =>
               }
@@ -257,7 +257,7 @@ trait PanelImplDialogs[S <: Sys[S]] {
     showOverlayPanel(createGenDialog, Some(pt))
   }
 
-  def showInsertFilterDialog(pred: NuagesOutput[S], succ: NuagesAttribute[S], pt: Point): Boolean = {
+  def showInsertFilterDialog(pred: NuagesOutput[T], succ: NuagesAttribute[T], pt: Point): Boolean = {
     requireEDT()
     fltPred = pred
     fltSucc = succ
@@ -269,7 +269,7 @@ trait PanelImplDialogs[S <: Sys[S]] {
     showOverlayPanel(createInsertMacroDialog)
   }
 
-  def showAppendFilterDialog(pred: NuagesOutput[S], pt: Point): Boolean = {
+  def showAppendFilterDialog(pred: NuagesOutput[T], pt: Point): Boolean = {
     requireEDT()
     fltPred = pred
     showOverlayPanel(createFilterAppendDialog, Some(pt))

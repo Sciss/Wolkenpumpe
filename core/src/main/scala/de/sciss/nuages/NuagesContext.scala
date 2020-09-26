@@ -13,29 +13,29 @@
 
 package de.sciss.nuages
 
-import de.sciss.lucre.stm.{Disposable, Sys}
+import de.sciss.lucre.{Disposable, Ident, Txn}
 import de.sciss.nuages.impl.{NuagesContextImpl => Impl}
 
 object NuagesContext {
-  def apply[S <: Sys[S]](implicit tx: S#Tx): NuagesContext[S] = Impl[S]
+  def apply[T <: Txn[T]](implicit tx: T): NuagesContext[T] = Impl[T]
 
-  sealed trait AuxUpdate[S <: Sys[S], +A] {
-    def id: S#Id
+  sealed trait AuxUpdate[T <: Txn[T], +A] {
+    def id: Ident[T]
   }
-  final case class AuxAdded  [S <: Sys[S], A](id: S#Id, value: A) extends AuxUpdate[S, A]
-  final case class AuxRemoved[S <: Sys[S]   ](id: S#Id          ) extends AuxUpdate[S, Nothing]
+  final case class AuxAdded  [T <: Txn[T], A](id: Ident[T], value: A) extends AuxUpdate[T, A]
+  final case class AuxRemoved[T <: Txn[T]   ](id: Ident[T]          ) extends AuxUpdate[T, Nothing]
 }
-trait NuagesContext[S <: Sys[S]] {
+trait NuagesContext[T <: Txn[T]] {
   import NuagesContext.AuxUpdate
 
-  def putAux[A](id: S#Id, value: A)(implicit tx: S#Tx): Unit
+  def putAux[A](id: Ident[T], value: A)(implicit tx: T): Unit
 
-  def getAux[A](id: S#Id)(implicit tx: S#Tx): Option[A]
+  def getAux[A](id: Ident[T])(implicit tx: T): Option[A]
 
   /** Waits for the auxiliary object to appear. If the object
     * appears the function is applied, otherwise nothing happens.
     */
-  def observeAux[A](id: S#Id)(fun: S#Tx => AuxUpdate[S, A] => Unit)(implicit tx: S#Tx): Disposable[S#Tx]
+  def observeAux[A](id: Ident[T])(fun: T => AuxUpdate[T, A] => Unit)(implicit tx: T): Disposable[T]
 
-  def removeAux(id: S#Id)(implicit tx: S#Tx): Unit
+  def removeAux(id: Ident[T])(implicit tx: T): Unit
 }

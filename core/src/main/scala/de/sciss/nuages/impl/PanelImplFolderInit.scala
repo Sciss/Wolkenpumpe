@@ -16,50 +16,49 @@ package impl
 
 import java.awt.geom.Point2D
 
-import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{Disposable, Folder, Obj, TxnLike}
-import de.sciss.lucre.synth.Sys
+import de.sciss.lucre.synth.Txn
+import de.sciss.lucre.{Disposable, Folder, IdentMap, Obj, Txn => LTxn}
 import de.sciss.span.Span
 import de.sciss.synth.proc.{AuralObj, Transport}
 
 import scala.concurrent.stm.Ref
 
-trait PanelImplFolderInit[S <: Sys[S]] {
-  import TxnLike.peer
+trait PanelImplFolderInit[T <: Txn[T]] {
+  import LTxn.peer
 
   // ---- abstract ----
 
-  protected var observers: List[Disposable[S#Tx]]
+  protected var observers: List[Disposable[T]]
 
-  protected def auralObserver: Ref[Option[Disposable[S#Tx]]]
+  protected def auralObserver: Ref[Option[Disposable[T]]]
 
-  protected def removeLocationHint(obj: Obj[S])(implicit tx: S#Tx): Option[Point2D]
+  protected def removeLocationHint(obj: Obj[T])(implicit tx: T): Option[Point2D]
 
-  protected def transport: Transport[S]
+  protected def transport: Transport[T]
 
-  protected def nodeMap: stm.IdentifierMap[S#Id, S#Tx, NuagesObj[S]]
+  protected def nodeMap: IdentMap[T, NuagesObj[T]]
 
-  //  protected def auralObjAdded(vp: NuagesObj[S], aural: AuralObj[S])(implicit tx: S#Tx): Unit
+  //  protected def auralObjAdded(vp: NuagesObj[T], aural: AuralObj[T])(implicit tx: T): Unit
   //
-  //  protected def auralObjRemoved(aural: AuralObj[S])(implicit tx: S#Tx): Unit
+  //  protected def auralObjRemoved(aural: AuralObj[T])(implicit tx: T): Unit
 
-  protected def disposeAuralObserver()(implicit tx: S#Tx): Unit
+  protected def disposeAuralObserver()(implicit tx: T): Unit
 
-  protected def disposeObj(obj: Obj[S])(implicit tx: S#Tx): Unit
+  protected def disposeObj(obj: Obj[T])(implicit tx: T): Unit
 
-  protected def main: NuagesPanel[S]
+  protected def main: NuagesPanel[T]
 
   // ---- impl ----
 
   final def isTimeline = false
 
-  protected final val auralReprRef = Ref(Option.empty[AuralObj.Folder[S]])
+  protected final val auralReprRef = Ref(Option.empty[AuralObj.Folder[T]])
 
-  protected final def disposeTransport()(implicit tx: S#Tx): Unit = ()
+  protected final def disposeTransport()(implicit tx: T): Unit = ()
 
-  final protected def initObservers(folder: Folder[S])(implicit tx: S#Tx): Unit = {
+  final protected def initObservers(folder: Folder[T])(implicit tx: T): Unit = {
     observers ::= transport.react { implicit tx => {
-      case Transport.ViewAdded(_, auralFolder: AuralObj.Folder[S]) =>
+      case Transport.ViewAdded(_, auralFolder: AuralObj.Folder[T]) =>
         val obs = auralFolder.contents.react { implicit tx => {
           case AuralObj.Container.ViewAdded  (_, id, view) =>
             nodeMap.get(id).foreach { vp =>
@@ -74,7 +73,7 @@ trait PanelImplFolderInit[S <: Sys[S]] {
         auralReprRef () = Some(auralFolder)
         auralObserver() = Some(obs        )
 
-      case Transport.ViewRemoved(_, _: AuralObj.Timeline[S]) =>
+      case Transport.ViewRemoved(_, _: AuralObj.Timeline[T]) =>
         disposeAuralObserver()
 
       case _ =>
@@ -91,11 +90,11 @@ trait PanelImplFolderInit[S <: Sys[S]] {
     folder.iterator.foreach(addNode)
   }
 
-  private def addNode(obj: Obj[S])(implicit tx: S#Tx): Unit = {
+  private def addNode(obj: Obj[T])(implicit tx: T): Unit = {
     val config  = main.config
     val locO    = removeLocationHint(obj)
-    implicit val context: NuagesContext[S] = main.context
-    val vp      = NuagesObj[S](main, locOption = locO, id = obj.id, obj = obj,
+    implicit val context: NuagesContext[T] = main.context
+    val vp      = NuagesObj[T](main, locOption = locO, id = obj.id, obj = obj,
       spanValue = Span.All, spanOption = None,
       hasMeter = config.meters, hasSolo = config.soloChannels.isDefined)
 
@@ -106,7 +105,7 @@ trait PanelImplFolderInit[S <: Sys[S]] {
     }
   }
 
-  private def removeNode(obj: Obj[S])(implicit tx: S#Tx): Unit = {
+  private def removeNode(obj: Obj[T])(implicit tx: T): Unit = {
     val id   = obj.id
     nodeMap.get(id).foreach { vp =>
       vp.dispose()

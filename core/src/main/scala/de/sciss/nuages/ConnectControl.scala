@@ -17,7 +17,7 @@ import java.awt.event.MouseEvent
 import java.awt.geom.{Line2D, Point2D}
 import java.awt.{Color, Graphics2D}
 
-import de.sciss.lucre.synth.Sys
+import de.sciss.lucre.synth.Txn
 import prefuse.Display
 import prefuse.controls.ControlAdapter
 import prefuse.util.display.PaintListener
@@ -25,13 +25,13 @@ import prefuse.visual.{NodeItem, VisualItem}
 
 /** A control that draws a rubber band for connecting two nodes. */
 object ConnectControl {
-  private final case class DragSource[S <: Sys[S]](vi: VisualItem, outputView: NuagesOutput        [S])
-  private final case class DragTarget[S <: Sys[S]](vi: VisualItem, inputView: NuagesAttribute.Input[S])
+  private final case class DragSource[T <: Txn[T]](vi: VisualItem, outputView: NuagesOutput        [T])
+  private final case class DragTarget[T <: Txn[T]](vi: VisualItem, inputView: NuagesAttribute.Input[T])
 
-  private final class Drag[S <: Sys[S]](val source: DragSource[S], val targetLoc: Point2D,
-                                        var target: Option[DragTarget[S]])
+  private final class Drag[T <: Txn[T]](val source: DragSource[T], val targetLoc: Point2D,
+                                        var target: Option[DragTarget[T]])
 }
-class ConnectControl[S <: Sys[S]](main: NuagesPanel[S])
+class ConnectControl[T <: Txn[T]](main: NuagesPanel[T])
   extends ControlAdapter with PaintListener {
   control =>
 
@@ -39,7 +39,7 @@ class ConnectControl[S <: Sys[S]](main: NuagesPanel[S])
   import NuagesPanel._
   import main.{visualization => vis}
 
-  private var drag: Option[Drag[S]] = None
+  private var drag: Option[Drag[T]] = None
 
   def prePaint(d: Display, g: Graphics2D): Unit = ()
 
@@ -60,10 +60,10 @@ class ConnectControl[S <: Sys[S]](main: NuagesPanel[S])
     if (!e.isShiftDown) return
     vi match {
       case ni: NodeItem =>
-        val data = ni.get(COL_NUAGES).asInstanceOf[NuagesData[S]]
+        val data = ni.get(COL_NUAGES).asInstanceOf[NuagesData[T]]
         if (data == null) return
         data match {
-          case vBus: NuagesOutput[S] =>
+          case vBus: NuagesOutput[T] =>
             val d         = getDisplay(e)
             val displayPt = d.getAbsoluteCoordinate(e.getPoint, null)
             val dr        = new Drag(DragSource(vi, vBus), displayPt, None)
@@ -99,7 +99,7 @@ class ConnectControl[S <: Sys[S]](main: NuagesPanel[S])
     val tgt       = vi match {
       case _: NodeItem =>
         vi.get(COL_NUAGES) match {
-          case vCtl: NuagesAttribute.Input[S] if vCtl.attribute.parent != dr.source.outputView.parent =>
+          case vCtl: NuagesAttribute.Input[T] if vCtl.attribute.parent != dr.source.outputView.parent =>
             Some(DragTarget(vi, vCtl))
           case _ => None
         }

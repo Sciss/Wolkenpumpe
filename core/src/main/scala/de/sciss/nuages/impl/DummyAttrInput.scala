@@ -14,26 +14,25 @@
 package de.sciss.nuages
 package impl
 
-import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{Obj, Sys}
+import de.sciss.lucre.{Obj, Source, Txn}
 import de.sciss.nuages.NuagesAttribute.Input
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-class DummyAttrInput[S <: Sys[S]](val attribute: NuagesAttribute[S], objH: stm.Source[S#Tx, Obj[S]])
-  extends NuagesAttrInputBase[S] {
+class DummyAttrInput[T <: Txn[T]](val attribute: NuagesAttribute[T], objH: Source[T, Obj[T]])
+  extends NuagesAttrInputBase[T] {
 
   def numChannels: Int = 1
 
-  def numChildren(implicit tx: S#Tx): Int = 1
+  def numChildren(implicit tx: T): Int = 1
 
   def value: Vec[Double] = Vector(0.0)
 
-  def tryConsume(newOffset: Long, newValue: Obj[S])(implicit tx: S#Tx): Boolean = false
+  def tryConsume(newOffset: Long, newValue: Obj[T])(implicit tx: T): Boolean = false
 
-  def dispose()(implicit tx: S#Tx): Unit = ()
+  def dispose()(implicit tx: T): Unit = ()
 
-  def collect[A](pf: PartialFunction[Input[S], A])(implicit tx: S#Tx): Iterator[A] = Iterator.empty
+  def collect[A](pf: PartialFunction[Input[T], A])(implicit tx: T): Iterator[A] = Iterator.empty
 
-  def input(implicit tx: S#Tx): Obj[S] = objH()
+  def input(implicit tx: T): Obj[T] = objH()
 }

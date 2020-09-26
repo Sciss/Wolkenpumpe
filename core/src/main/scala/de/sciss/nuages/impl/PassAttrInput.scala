@@ -14,8 +14,8 @@
 package de.sciss.nuages
 package impl
 
-import de.sciss.lucre.stm.Sys
-import de.sciss.lucre.synth.{Sys => SSys}
+import de.sciss.lucre.Txn
+import de.sciss.lucre.synth
 import de.sciss.nuages.NuagesAttribute.{Input, Parent}
 import prefuse.data.{Node => PNode}
 
@@ -23,39 +23,39 @@ import prefuse.data.{Node => PNode}
   * In practise, it means that the Prefuse node is re-used, and state such
   * as `drag` and `fixed` are copied.
   */
-trait PassAttrInput[S <: Sys[S]] extends NuagesAttribute.Input[S] with NuagesData[S] {
-  type Repr[~ <: Sys[~]]
+trait PassAttrInput[T <: Txn[T]] extends NuagesAttribute.Input[T] with NuagesData[T] {
+  type Repr[~ <: Txn[~]]
 
   def dragOption: Option[NumericAdjustment]
 
   def pNode: PNode
 
-  def passFrom(that: PassAttrInput[S])(implicit tx: S#Tx): Unit
-  def passedTo(that: PassAttrInput[S])(implicit tx: S#Tx): Unit
+  def passFrom(that: PassAttrInput[T])(implicit tx: T): Unit
+  def passedTo(that: PassAttrInput[T])(implicit tx: T): Unit
 
-  def init(obj: Repr[S], parent: Parent[S])(implicit tx: S#Tx): Unit
+  def init(obj: Repr[T], parent: Parent[T])(implicit tx: T): Unit
 }
 
 trait PassAttrInputFactory extends NuagesAttribute.Factory { self =>
   /** Refines the return type to ensure we have a `PassAttrInput` */
-  final def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: Parent[S], frameOffset: Long, value: Repr[S])
-                              (implicit tx: S#Tx, context: NuagesContext[S]): Input[S] = {
-    val view = mkNoInit[S](attr)
+  final def apply[T <: synth.Txn[T]](attr: NuagesAttribute[T], parent: Parent[T], frameOffset: Long, value: Repr[T])
+                              (implicit tx: T, context: NuagesContext[T]): Input[T] = {
+    val view = mkNoInit[T](attr)
     view.init(value, parent)
     view
   }
 
-  protected type View[S <: Sys[S]] = PassAttrInput[S] { type Repr[~ <: Sys[~]] = self.Repr[~] }
+  protected type View[T <: Txn[T]] = PassAttrInput[T] { type Repr[~ <: Txn[~]] = self.Repr[~] }
 
-  protected def mkNoInit[S <: SSys[S]](attr: NuagesAttribute[S])
-                                     (implicit tx: S#Tx, context: NuagesContext[S]): View[S]
+  protected def mkNoInit[T <: synth.Txn[T]](attr: NuagesAttribute[T])
+                                     (implicit tx: T, context: NuagesContext[T]): View[T]
 
-  final def tryConsume[S <: SSys[S]](oldInput: Input[S], newOffset: Long, newValue: Repr[S])
-                                   (implicit tx: S#Tx, context: NuagesContext[S]): Option[Input[S]] = {
+  final def tryConsume[T <: synth.Txn[T]](oldInput: Input[T], newOffset: Long, newValue: Repr[T])
+                                   (implicit tx: T, context: NuagesContext[T]): Option[Input[T]] = {
     oldInput match {
-      case oldView: PassAttrInput[S] =>
+      case oldView: PassAttrInput[T] =>
         val parent  = oldInput.inputParent
-        val newView = mkNoInit[S](oldInput.attribute)
+        val newView = mkNoInit[T](oldInput.attribute)
         newView.passFrom(oldView)
         newView.init(newValue, parent)
         Some(newView)

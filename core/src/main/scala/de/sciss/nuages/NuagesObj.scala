@@ -15,18 +15,16 @@ package de.sciss.nuages
 
 import java.awt.geom.Point2D
 
-import de.sciss.lucre.expr.SpanLikeObj
-import de.sciss.lucre.stm.{Obj, Sys, TxnLike}
-import de.sciss.lucre.synth.{Sys => SSys}
+import de.sciss.lucre.{Ident, Obj, SpanLikeObj, Txn, TxnLike, synth}
 import de.sciss.span.SpanLike
 import de.sciss.synth.proc.AuralObj
 import prefuse.visual.AggregateItem
 
 object NuagesObj {
-  def apply[S <: SSys[S]](main: NuagesPanel[S], locOption: Option[Point2D],
-                          id: S#Id, obj: Obj[S], spanValue: SpanLike, spanOption: Option[SpanLikeObj[S]],
+  def apply[T <: synth.Txn[T]](main: NuagesPanel[T], locOption: Option[Point2D],
+                          id: Ident[T], obj: Obj[T], spanValue: SpanLike, spanOption: Option[SpanLikeObj[T]],
                           hasMeter: Boolean, hasSolo: Boolean)
-                         (implicit tx: S#Tx, context: NuagesContext[S]): NuagesObj[S] =
+                         (implicit tx: T, context: NuagesContext[T]): NuagesObj[T] =
     impl.NuagesObjImpl(main, locOption = locOption, id = id, obj = obj,
       spanValue = spanValue, spanOption = spanOption,
       hasMeter = hasMeter, hasSolo = hasSolo)
@@ -36,10 +34,10 @@ object NuagesObj {
   *
   * @see [[Obj]]
   */
-trait NuagesObj[S <: Sys[S]]
-  extends NuagesNode[S] {
+trait NuagesObj[T <: Txn[T]]
+  extends NuagesNode[T] {
 
-  def main: NuagesPanel[S]
+  def main: NuagesPanel[T]
 
   /** Frame with respect to the object's parent at which the object begins to exist. */
   def frameOffset: Long
@@ -58,21 +56,21 @@ trait NuagesObj[S <: Sys[S]]
 
   // ---- transactional methods ----
 
-  def obj       (implicit tx: S#Tx): Obj[S]
-  def spanOption(implicit tx: S#Tx): Option[SpanLikeObj[S]]
+  def obj       (implicit tx: T): Obj[T]
+  def spanOption(implicit tx: T): Option[SpanLikeObj[T]]
 
   def isCollector(implicit tx: TxnLike): Boolean
 
   def hasOutput(key: String)(implicit tx: TxnLike): Boolean
-  def getOutput(key: String)(implicit tx: TxnLike): Option[NuagesOutput[S]]
+  def getOutput(key: String)(implicit tx: TxnLike): Option[NuagesOutput[T]]
 
-  def setSolo(onOff: Boolean)(implicit tx: S#Tx): Unit
+  def setSolo(onOff: Boolean)(implicit tx: T): Unit
 
-  def auralObjAdded  (aural: AuralObj[S])(implicit tx: S#Tx): Unit
-  def auralObjRemoved(aural: AuralObj[S])(implicit tx: S#Tx): Unit
+  def auralObjAdded  (aural: AuralObj[T])(implicit tx: T): Unit
+  def auralObjRemoved(aural: AuralObj[T])(implicit tx: T): Unit
 
-  def outputs   (implicit tx: S#Tx): Map[String, NuagesOutput   [S]] = throw new NotImplementedError()
-  def attributes(implicit tx: S#Tx): Map[String, NuagesAttribute[S]] = throw new NotImplementedError()
+  def outputs   (implicit tx: T): Map[String, NuagesOutput   [T]] = throw new NotImplementedError()
+  def attributes(implicit tx: T): Map[String, NuagesAttribute[T]] = throw new NotImplementedError()
 
-  def removeSelf()(implicit tx: S#Tx): Unit = throw new NotImplementedError()
+  def removeSelf()(implicit tx: T): Unit = throw new NotImplementedError()
 }

@@ -20,10 +20,8 @@ import java.awt.{Color, Point}
 
 import javax.swing.KeyStroke
 import javax.swing.event.{AncestorEvent, AncestorListener, DocumentEvent, DocumentListener}
-import de.sciss.lucre.expr.StringObj
-import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{Disposable, Folder, IdentifierMap, Obj}
-import de.sciss.lucre.synth.Sys
+import de.sciss.lucre.{Disposable, Folder, IdentMap, Obj, Source, StringObj}
+import de.sciss.lucre.synth.Txn
 import de.sciss.nuages.NuagesPanel._
 import de.sciss.swingplus.ListView
 import de.sciss.synth.proc.{ObjKeys, Proc}
@@ -46,7 +44,7 @@ import scala.swing.{Orientation, ScrollPane, TextField}
   *   (thus making all other keyboard control such as parameter adjustments possible)
   */
 object KeyControl {
-  def apply[S <: Sys[S]](main: NuagesPanel[S])(implicit tx: S#Tx): Control with Disposable[S#Tx] = {
+  def apply[T <: Txn[T]](main: NuagesPanel[T])(implicit tx: T): Control with Disposable[T] = {
     val res = new Impl(main)
     res.init()
     res
@@ -76,25 +74,25 @@ object KeyControl {
 
   val ControlFlavor: DataFlavor = internalFlavor[ControlDrag]
 
-  private trait Category[S <: Sys[S]] extends Disposable[S#Tx] {
-    def get(ks  : KeyStroke): Option[stm.Source[S#Tx, Obj[S]]]
-    def get(name: String   ): Option[stm.Source[S#Tx, Obj[S]]]
+  private trait Category[T <: Txn[T]] extends Disposable[T] {
+    def get(ks  : KeyStroke): Option[Source[T, Obj[T]]]
+    def get(name: String   ): Option[Source[T, Obj[T]]]
 
     def names: Iterator[String]
   }
 
-  private abstract class CategoryImpl[S <: Sys[S]] extends Category[S] {
-    protected def observer: Disposable[S#Tx]
-    protected def idMap: IdentifierMap[S#Id, S#Tx, KeyStroke]
+  private abstract class CategoryImpl[T <: Txn[T]] extends Category[T] {
+    protected def observer: Disposable[T]
+    protected def idMap: IdentMap[T, KeyStroke]
 
-    private val keyMap  = TMap.empty[KeyStroke, stm.Source[S#Tx, Obj[S]]]
-    private val nameMap = TMap.empty[String   , stm.Source[S#Tx, Obj[S]]]
+    private val keyMap  = TMap.empty[KeyStroke, Source[T, Obj[T]]]
+    private val nameMap = TMap.empty[String   , Source[T, Obj[T]]]
 
-    final def dispose()(implicit tx: S#Tx): Unit = observer.dispose()
+    final def dispose()(implicit tx: T): Unit = observer.dispose()
 
     def names: Iterator[String] = nameMap.single.keysIterator
 
-    protected final def elemAdded(elem: Obj[S])(implicit tx: S#Tx): Unit = {
+    protected final def elemAdded(elem: Obj[T])(implicit tx: T): Unit = {
       implicit val itx: InTxn = tx.peer
       val attr    = elem.attr
       val source  = tx.newHandle(elem)  // eagerly because we expect `name` to be present
@@ -108,7 +106,7 @@ object KeyControl {
       }
     }
 
-    protected final def elemRemoved(elem: Obj[S])(implicit tx: S#Tx): Unit = {
+    protected final def elemRemoved(elem: Obj[T])(implicit tx: T): Unit = {
       implicit val itx: InTxn = tx.peer
       idMap.get(elem.id).foreach { ks =>
         idMap.remove(elem.id)
@@ -119,16 +117,16 @@ object KeyControl {
       }
     }
 
-    final def get(ks  : KeyStroke): Option[stm.Source[S#Tx, Obj[S]]] = keyMap .single.get(ks  )
-    final def get(name: String   ): Option[stm.Source[S#Tx, Obj[S]]] = nameMap.single.get(name)
+    final def get(ks  : KeyStroke): Option[Source[T, Obj[T]]] = keyMap .single.get(ks  )
+    final def get(name: String   ): Option[Source[T, Obj[T]]] = nameMap.single.get(name)
   }
 
-  private final class Impl[S <: Sys[S]](main: NuagesPanel[S])
-    extends ControlAdapter with Disposable[S#Tx] /* with ClipboardOwner */ {
+  private final class Impl[T <: Txn[T]](main: NuagesPanel[T])
+    extends ControlAdapter with Disposable[T] /* with ClipboardOwner */ {
 
-    private[this] var filters   : Category[S] = _
-    private[this] var generators: Category[S] = _
-    private[this] var collectors: Category[S] = _
+    private[this] var filters   : Category[T] = _
+    private[this] var generators: Category[T] = _
+    private[this] var collectors: Category[T] = _
 
     private[this] val lastPt = new Point
     private[this] val p2d    = new Point2D.Float // throw-away
@@ -145,19 +143,19 @@ object KeyControl {
     override def mouseDragged(e: MouseEvent): Unit = lastPt.setLocation(e.getX, e.getY)
     override def mouseMoved  (e: MouseEvent): Unit = lastPt.setLocation(e.getX, e.getY)
 
-    private def mkEmptyCategory(): Category[S] = new Category[S] {
-      def dispose()(implicit tx: S#Tx): Unit = ()
+    private def mkEmptyCategory(): Category[T] = new Category[T] {
+      def dispose()(implicit tx: T): Unit = ()
 
-      def get(ks  : KeyStroke): Option[stm.Source[S#Tx, Obj[S]]] = None
-      def get(name: String   ): Option[stm.Source[S#Tx, Obj[S]]] = None
+      def get(ks  : KeyStroke): Option[Source[T, Obj[T]]] = None
+      def get(name: String   ): Option[Source[T, Obj[T]]] = None
 
       def names: Iterator[String] = Iterator.empty
     }
 
-    private def mkCategory(f: Folder[S])(implicit tx: S#Tx): Category[S] = new CategoryImpl[S] {
-      protected val idMap: IdentifierMap[S#Id, S#Tx, KeyStroke] = tx.newInMemoryIdMap[KeyStroke]
+    private def mkCategory(f: Folder[T])(implicit tx: T): Category[T] = new CategoryImpl[T] {
+      protected val idMap: IdentMap[T, KeyStroke] = tx.newIdentMap[KeyStroke]
 
-      protected val observer: Disposable[S#Tx] = f.changed.react { implicit tx =>upd =>
+      protected val observer: Disposable[T] = f.changed.react { implicit tx =>upd =>
         upd.changes.foreach {
           case Folder.Added  (_, elem) => elemAdded  (elem)
           case Folder.Removed(_, elem) => elemRemoved(elem)
@@ -169,14 +167,14 @@ object KeyControl {
       f.iterator.foreach(elemAdded)
     }
 
-    def init()(implicit tx: S#Tx): Unit = {
+    def init()(implicit tx: T): Unit = {
       val n       = main.nuages
       filters     = n.filters   .fold(mkEmptyCategory())(mkCategory)
       generators  = n.generators.fold(mkEmptyCategory())(mkCategory)
       collectors  = n.collectors.fold(mkEmptyCategory())(mkCategory)
     }
 
-    def dispose()(implicit tx: S#Tx): Unit = {
+    def dispose()(implicit tx: T): Unit = {
       filters   .dispose()
       generators.dispose()
     }
@@ -208,18 +206,18 @@ object KeyControl {
       // println(s"itemKeyPressed '${e.getKeyChar}'")
       val handled: Boolean = vi match {
         case ei: EdgeItem =>
-          def perform[A](fun: (NuagesOutput[S], NuagesAttribute.Input[S], Point2D) => A): Option[A] = {
+          def perform[A](fun: (NuagesOutput[T], NuagesAttribute.Input[T], Point2D) => A): Option[A] = {
             val nSrc  = ei.getSourceItem
             val nTgt  = ei.getTargetItem
             val vis   = main.visualization
             val _ve   = vis.getVisualItem(NuagesPanel.GROUP_GRAPH, ei)
             (vis.getRenderer(nSrc), vis.getRenderer(nTgt)) match {
               case (_: NuagesShapeRenderer[_], _: NuagesShapeRenderer[_]) =>
-                val srcData = nSrc.get(COL_NUAGES).asInstanceOf[NuagesData[S]]
-                val tgtData = nTgt.get(COL_NUAGES).asInstanceOf[NuagesData[S]]
+                val srcData = nSrc.get(COL_NUAGES).asInstanceOf[NuagesData[T]]
+                val tgtData = nTgt.get(COL_NUAGES).asInstanceOf[NuagesData[T]]
                 if (srcData == null || tgtData == null) None else
                   (srcData, tgtData) match {
-                    case (vOut: NuagesOutput[S], vIn: NuagesAttribute.Input[S]) =>
+                    case (vOut: NuagesOutput[T], vIn: NuagesAttribute.Input[T]) =>
                       val r = _ve.getBounds
                       p2d.setLocation(r.getCenterX, r.getCenterY)
                       // main.display.getTransform.transform(p2d, p2d)
@@ -262,11 +260,11 @@ object KeyControl {
 
         case ni: NodeItem =>
           ni.get(COL_NUAGES) match {
-            case d: NuagesData[S] =>
+            case d: NuagesData[T] =>
               val e1 = Pressed(code = Key(e.getKeyCode), modifiers = e.getModifiers)
               val _handled = d.itemKeyPressed(vi, e1)
               _handled || (d match {
-                case vOut: NuagesOutput[S] if vOut.name == Proc.mainOut =>
+                case vOut: NuagesOutput[T] if vOut.name == Proc.mainOut =>
                   def perform[A](fun: Point2D => A): A = {
                     val vis   = main.visualization
                     val _ve   = vis.getVisualItem(NuagesPanel.GROUP_GRAPH, ni)
@@ -335,7 +333,7 @@ object KeyControl {
         var stop  = false
         while (it.hasNext && !stop) {
           val ni = it.next().asInstanceOf[NodeItem]
-          import de.sciss.lucre.stm.TxnLike.wrap
+          import de.sciss.lucre.Txn.wrap
           val ok = ni.get(NuagesPanel.COL_NUAGES) match {
             case vo: NuagesObj[_] => vo.isCollector
             case _ => false
@@ -370,7 +368,7 @@ object KeyControl {
       display.animateZoomAbs(p2d, v / scale, 500 /* 200 */)
     }
 
-    private def showCategoryInput(c: Category[S])(complete: S#Tx => (Obj[S], Point2D) => Unit): Unit = {
+    private def showCategoryInput(c: Category[T])(complete: T => (Obj[T], Point2D) => Unit): Unit = {
       val lpx = lastPt.x
       val lpy = lastPt.y
       val p: OverlayPanel = new OverlayPanel(Orientation.Horizontal) { panel =>
@@ -441,7 +439,7 @@ object KeyControl {
       vi match {
         case ni: NodeItem =>
           ni.get(COL_NUAGES) match {
-            case  d: NuagesData[S] =>
+            case  d: NuagesData[T] =>
               val e1 = Pressed(code = Key(e.getKeyCode), modifiers = e.getModifiers)
               d.itemKeyReleased(vi, e1)
             case _ =>
@@ -454,7 +452,7 @@ object KeyControl {
       vi match {
         case ni: NodeItem =>
           ni.get(COL_NUAGES) match {
-            case d: NuagesData[S] =>
+            case d: NuagesData[T] =>
               // check
               val thisChar    = e.getKeyChar
               val thisTyped   = System.currentTimeMillis()

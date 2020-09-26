@@ -13,8 +13,8 @@
 
 package de.sciss.nuages
 
-import de.sciss.lucre.stm.{Disposable, Obj, Sys}
-import de.sciss.lucre.synth.{Synth, Sys => SSys}
+import de.sciss.lucre.synth.{Synth}
+import de.sciss.lucre.{Disposable, Obj, Txn, synth}
 import de.sciss.nuages.impl.{NuagesAttributeImpl => Impl}
 import prefuse.data.{Node => PNode}
 
@@ -25,12 +25,12 @@ object NuagesAttribute {
   /** Creates a new attribute view for a given `parent` object and an `attribute` key.
     * This then set's the attribute view's input to an `Input` instance created from `value`.react
     */
-  def apply[S <: SSys[S]](key: String, value: Obj[S], parent: NuagesObj[S])
-                        (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute[S] =
+  def apply[T <: synth.Txn[T]](key: String, value: Obj[T], parent: NuagesObj[T])
+                        (implicit tx: T, context: NuagesContext[T]): NuagesAttribute[T] =
     Impl(key = key, _value = value, parent = parent)
 
-  def mkInput[S <: SSys[S]](attr: NuagesAttribute[S], parent: Parent[S], frameOffset: Long, value: Obj[S])
-                           (implicit tx: S#Tx, context: NuagesContext[S]): Input[S] =
+  def mkInput[T <: synth.Txn[T]](attr: NuagesAttribute[T], parent: Parent[T], frameOffset: Long, value: Obj[T])
+                           (implicit tx: T, context: NuagesContext[T]): Input[T] =
     Impl.mkInput(attr, parent, frameOffset = frameOffset, value = value)
 
   // ---- Factory ----
@@ -41,39 +41,39 @@ object NuagesAttribute {
   trait Factory {
     def typeId: Int
 
-    type Repr[~ <: Sys[~]] <: Obj[~]
+    type Repr[~ <: Txn[~]] <: Obj[~]
 
     /** @param  frameOffset accumulated absolute offset or `Long.MaxValue` if undefined.
       */
-    def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: Parent[S], frameOffset: Long, value: Repr[S])
-                           (implicit tx: S#Tx, context: NuagesContext[S]): Input[S]
+    def apply[T <: synth.Txn[T]](attr: NuagesAttribute[T], parent: Parent[T], frameOffset: Long, value: Repr[T])
+                           (implicit tx: T, context: NuagesContext[T]): Input[T]
 
     /** Tries to transition an old view to a new view.
       * If successful (`Some`), the old view will have been disposed of if necessary!
       */
-    def tryConsume[S <: SSys[S]](oldInput: Input[S], newOffset: Long, newValue: Repr[S])
-                                (implicit tx: S#Tx, context: NuagesContext[S]): Option[Input[S]]
+    def tryConsume[T <: synth.Txn[T]](oldInput: Input[T], newOffset: Long, newValue: Repr[T])
+                                (implicit tx: T, context: NuagesContext[T]): Option[Input[T]]
   }
 
   def addFactory(f: Factory): Unit = Impl.addFactory(f)
 
   def factories: Iterable[Factory] = Impl.factories
 
-  def getFactory[S <: Sys[S]](value: Obj[S]): Option[Factory] = Impl.getFactory(value)
+  def getFactory[T <: Txn[T]](value: Obj[T]): Option[Factory] = Impl.getFactory(value)
 
   // ----
 
-  trait Mapping[S <: Sys[S]] {
+  trait Mapping[T <: Txn[T]] {
     /** The metering synth that via `SendTrig` updates the control's current value. */
     def synth: Ref[Option[Synth]]
 
-    var source: Option[NuagesOutput[S]]
+    var source: Option[NuagesOutput[T]]
   }
 
   /** Representation of an input that is plugged into an attribute. */
-  trait Input[S <: Sys[S]] extends Disposable[S#Tx] {
+  trait Input[T <: Txn[T]] extends Disposable[T] {
     /** The attribute's view. */
-    def attribute: NuagesAttribute[S]
+    def attribute: NuagesAttribute[T]
 
     // ---- transactional ----
 
@@ -83,15 +83,15 @@ object NuagesAttribute {
       * Returning `false` means the object cannot be consumed,
       * for example because it is of a different type.
       */
-    def tryConsume(newOffset: Long, newValue: Obj[S])(implicit tx: S#Tx): Boolean
+    def tryConsume(newOffset: Long, newValue: Obj[T])(implicit tx: T): Boolean
 
-    def inputParent(implicit tx: S#Tx): Parent[S]
-    def inputParent_=(p: Parent[S])(implicit tx: S#Tx): Unit
+    def inputParent(implicit tx: T): Parent[T]
+    def inputParent_=(p: Parent[T])(implicit tx: T): Unit
 
     /** The model object of this view. */
-    def input(implicit tx: S#Tx): Obj[S]
+    def input(implicit tx: T): Obj[T]
 
-    def numChildren(implicit tx: S#Tx): Int
+    def numChildren(implicit tx: T): Int
 
     /** Runs a deep collection for particular input. This
       * will perform a nested search for collection views
@@ -100,7 +100,7 @@ object NuagesAttribute {
       * @param  pf  the matcher function to apply to the leaves of the traversal
       * @return an iterator over all elements that were successfully matched
       */
-    def collect[A](pf: PartialFunction[Input[S], A])(implicit tx: S#Tx): Iterator[A]
+    def collect[A](pf: PartialFunction[Input[T], A])(implicit tx: T): Iterator[A]
   }
 
   /** An attribute or attribute input that provides
@@ -118,7 +118,7 @@ object NuagesAttribute {
     * active by being a child within a grapheme, the parent will
     * point to an instance of `NuagesGraphemeAttrInput`.
     */
-  trait Parent[S <: Sys[S]] {
+  trait Parent[T <: Txn[T]] {
     /** Updates a child, possibly moving it into a grapheme if
       * the underlying nuages surface is a timeline.
       * If there are future events, they should be removed by this action.
@@ -127,7 +127,7 @@ object NuagesAttribute {
       * @param  now     new value to insert or replace
       * @param  dt      delay with respect to current position (zero for no delay)
       */
-    def updateChild(before: Obj[S], now: Obj[S], dt: Long, clearRight: Boolean)(implicit tx: S#Tx): Unit
+    def updateChild(before: Obj[T], now: Obj[T], dt: Long, clearRight: Boolean)(implicit tx: T): Unit
 
 //    /** Updates with a given time offset `dt` in sample frames
 //      * (may be negative)
@@ -135,26 +135,26 @@ object NuagesAttribute {
 //      * @param  before  a purely referential parameter used
 //      *                 for copying param-spec to the `now` value
 //      */
-//    def updateChildDelay(before: Obj[S], now: Obj[S], dt: Long)(implicit tx: S#Tx): Unit
+//    def updateChildDelay(before: Obj[T], now: Obj[T], dt: Long)(implicit tx: T): Unit
 
     /** Removes a child, possibly moving it into a timeline if
       * the underlying nuages surface is a timeline.
       */
-    def removeChild(child: Obj[S])(implicit tx: S#Tx): Unit
+    def removeChild(child: Obj[T])(implicit tx: T): Unit
 
     /** Adds a child, possibly moving it into a timeline if
       * the underlying nuages surface is a timeline.
       */
-    def addChild(child: Obj[S])(implicit tx: S#Tx): Unit
+    def addChild(child: Obj[T])(implicit tx: T): Unit
 
-    def numChildren(implicit tx: S#Tx): Int
+    def numChildren(implicit tx: T): Int
   }
 }
 
-trait NuagesAttribute[S <: Sys[S]]
-  extends NuagesAttribute.Input[S]
-    with NuagesAttribute.Parent[S]
-    with NuagesParam[S] {
+trait NuagesAttribute[T <: Txn[T]]
+  extends NuagesAttribute.Input[T]
+    with NuagesAttribute.Parent[T]
+    with NuagesParam[T] {
 
   /** Connects a node with the attribute view.
     *
@@ -182,7 +182,7 @@ trait NuagesAttribute[S <: Sys[S]]
     *         `None` if this was not possible and the caller should act
     *         accordingly (dispose the old view, create a fresh new view).
     */
-  def tryReplace(newValue: Obj[S])(implicit tx: S#Tx, context: NuagesContext[S]): Option[NuagesAttribute[S]]
+  def tryReplace(newValue: Obj[T])(implicit tx: T, context: NuagesContext[T]): Option[NuagesAttribute[T]]
 
   /** The current shown value on the UI, when patched to an input, or `null` if unknown.
     * In order to obtain the numeric value in all cases, use `inputView` and see if it is
@@ -190,5 +190,5 @@ trait NuagesAttribute[S <: Sys[S]]
     */
   def numericValue: Vec[Double]
 
-  def inputView: NuagesAttribute.Input[S]
+  def inputView: NuagesAttribute.Input[T]
 }

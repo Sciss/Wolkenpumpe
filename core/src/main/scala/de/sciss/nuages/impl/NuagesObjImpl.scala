@@ -20,15 +20,13 @@ import java.awt.{Color, Graphics2D}
 
 import de.sciss.dsp.FastLog
 import de.sciss.intensitypalette.IntensityPalette
-import de.sciss.lucre.expr.{DoubleVector, SpanLikeObj}
-import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{Disposable, Obj, TxnLike}
+import de.sciss.lucre.{Disposable, DoubleVector, Ident, Obj, Source, SpanLikeObj, TxnLike, Txn => LTxn}
 import de.sciss.lucre.swing.LucreSwing.{deferTx, requireEDT}
-import de.sciss.lucre.synth.Sys
+import de.sciss.lucre.synth.Txn
 import de.sciss.nuages.Nuages.Surface
 import de.sciss.span.{Span, SpanLike}
 import de.sciss.synth.proc.Implicits._
-import de.sciss.synth.proc.{AuralObj, ObjKeys, Output, Proc}
+import de.sciss.synth.proc.{AuralObj, ObjKeys, Proc}
 import prefuse.util.ColorLib
 import prefuse.visual.{AggregateItem, VisualItem}
 
@@ -40,9 +38,9 @@ object NuagesObjImpl {
 
   private val colrPeak = Array.tabulate(91)(ang => new Color(IntensityPalette.apply(ang / 90f)))
 
-  def apply[S <: Sys[S]](main: NuagesPanel[S], locOption: Option[Point2D], id: S#Id, obj: Obj[S],
-                         spanValue: SpanLike, spanOption: Option[SpanLikeObj[S]], hasMeter: Boolean, hasSolo: Boolean)
-                        (implicit tx: S#Tx, context: NuagesContext[S]): NuagesObj[S] = {
+  def apply[T <: Txn[T]](main: NuagesPanel[T], locOption: Option[Point2D], id: Ident[T], obj: Obj[T],
+                         spanValue: SpanLike, spanOption: Option[SpanLikeObj[T]], hasMeter: Boolean, hasSolo: Boolean)
+                        (implicit tx: T, context: NuagesContext[T]): NuagesObj[T] = {
     val frameOffset = spanValue match {
       case hs: Span.HasStart  => hs.start
       case _                  => Long.MaxValue
@@ -58,29 +56,29 @@ object NuagesObjImpl {
   private def isAttrShown(key: String): Boolean =
     !ignoredKeys.contains(key) && !key.endsWith(ParamSpec.DashKey) && !key.startsWith("$")
 }
-final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
+final class NuagesObjImpl[T <: Txn[T]] private(val main: NuagesPanel[T],
                                                var name: String,
                                                val frameOffset: Long,
-                                               hasMeter: Boolean, hasSolo: Boolean)(implicit context: NuagesContext[S])
-  extends NuagesNodeRootImpl[S] with NuagesObj[S] {
+                                               hasMeter: Boolean, hasSolo: Boolean)(implicit context: NuagesContext[T])
+  extends NuagesNodeRootImpl[T] with NuagesObj[T] {
   vProc =>
 
   import NuagesDataImpl._
   import NuagesObjImpl._
-  import TxnLike.peer
+  import LTxn.peer
 
   protected def nodeSize = 1f
 
-  private[this] var observers = List.empty[Disposable[S#Tx]]
+  private[this] var observers = List.empty[Disposable[T]]
 
   private[this] var _aggr: AggregateItem = _
 
-  private[this] val _outputs = TMap.empty[String, NuagesOutput   [S]]
-  private[this] val _attrs   = TMap.empty[String, NuagesAttribute[S]]
+  private[this] val _outputs = TMap.empty[String, NuagesOutput   [T]]
+  private[this] val _attrs   = TMap.empty[String, NuagesAttribute[T]]
 
-  private[this] var idH         : stm.Source[S#Tx, S#Id]                    = _
-  private[this] var objH        : stm.Source[S#Tx, Obj[S]]                  = _
-  private[this] var spanOptionH : Option[stm.Source[S#Tx, SpanLikeObj[S]]]  = _
+  private[this] var idH         : Source[T, Ident[T]]                    = _
+  private[this] var objH        : Source[T, Obj[T]]                  = _
+  private[this] var spanOptionH : Option[Source[T, SpanLikeObj[T]]]  = _
 
 
   private[this] val playArea = new Area()
@@ -94,30 +92,30 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
 
   private[this] var _soloed     = false
 
-  private[this] val auralRef    = Ref(Option.empty[AuralObj.Proc[S]])
+  private[this] val auralRef    = Ref(Option.empty[AuralObj.Proc[T]])
 
   override def toString = s"NuagesObj($name)@${hashCode.toHexString}"
 
-  def parent: NuagesObj[S] = this
+  def parent: NuagesObj[T] = this
 
   def aggregate: AggregateItem = _aggr
 
-  override def outputs   (implicit tx: S#Tx): Map[String, NuagesOutput   [S]] = _outputs .snapshot
-  override def attributes(implicit tx: S#Tx): Map[String, NuagesAttribute[S]] = _attrs   .snapshot
+  override def outputs   (implicit tx: T): Map[String, NuagesOutput   [T]] = _outputs .snapshot
+  override def attributes(implicit tx: T): Map[String, NuagesAttribute[T]] = _attrs   .snapshot
 
-  def id        (implicit tx: S#Tx): S#Id                   = idH()
-  def obj       (implicit tx: S#Tx): Obj[S]                 = objH()
-  def spanOption(implicit tx: S#Tx): Option[SpanLikeObj[S]] = spanOptionH.map(_.apply())
+  def id        (implicit tx: T): Ident[T]                   = idH()
+  def obj       (implicit tx: T): Obj[T]                 = objH()
+  def spanOption(implicit tx: T): Option[SpanLikeObj[T]] = spanOptionH.map(_.apply())
 
-  def init(id: S#Id, obj: Obj[S], spanOption: Option[SpanLikeObj[S]], locOption: Option[Point2D])
-          (implicit tx: S#Tx): this.type = {
+  def init(id: Ident[T], obj: Obj[T], spanOption: Option[SpanLikeObj[T]], locOption: Option[Point2D])
+          (implicit tx: T): this.type = {
     idH         = tx.newHandle(id)
     objH        = tx.newHandle(obj)
     spanOptionH = spanOption.map(tx.newHandle(_))
     main.registerNode(id, this) // nodeMap.put(id, this)
     main.deferVisTx(initGUI(locOption))
     obj match {
-      case proc: Proc[S] => initProc(proc)
+      case proc: Proc[T] => initProc(proc)
       case _ =>
     }
     this
@@ -127,9 +125,9 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
     _outputs.isEmpty && name.startsWith("O-") // attrs.contains("in") && attrs.size == 1
 
   def hasOutput(key: String)(implicit tx: TxnLike): Boolean                 = _outputs.contains(key)
-  def getOutput(key: String)(implicit tx: TxnLike): Option[NuagesOutput[S]] = _outputs.get(key)
+  def getOutput(key: String)(implicit tx: TxnLike): Option[NuagesOutput[T]] = _outputs.get(key)
 
-  def setSolo(onOff: Boolean)(implicit tx: S#Tx): Unit = {
+  def setSolo(onOff: Boolean)(implicit tx: T): Unit = {
     for {
       outputView <- _outputs.get(Proc.mainOut)
     } {
@@ -140,7 +138,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
     }
   }
 
-  private def initProc(proc: Proc[S])(implicit tx: S#Tx): Unit = {
+  private def initProc(proc: Proc[T])(implicit tx: T): Unit = {
     proc.outputs.iterator.foreach(outputAdded)
 
     observers ::= proc.changed.react { implicit tx => upd =>
@@ -162,7 +160,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
     }
   }
 
-  private def attrAdded(key: String, value: Obj[S])(implicit tx: S#Tx): Unit =
+  private def attrAdded(key: String, value: Obj[T])(implicit tx: T): Unit =
     if (isAttrShown(key)) {
       val view = NuagesAttribute(key = key, value = value, parent = parent)
       val res  = _attrs.put(key, view)
@@ -170,13 +168,13 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
       assert(res.isEmpty)
     }
 
-  private def attrRemoved(key: String)(implicit tx: S#Tx): Unit =
+  private def attrRemoved(key: String)(implicit tx: T): Unit =
     if (isAttrShown(key)) {
       val view = _attrs.remove(key).getOrElse(throw new IllegalStateException(s"No view for attribute $key"))
       view.dispose()
     }
 
-  private def attrReplaced(key: String, before: Obj[S], now: Obj[S])(implicit tx: S#Tx): Unit =
+  private def attrReplaced(key: String, before: Obj[T], now: Obj[T])(implicit tx: T): Unit =
     if (isAttrShown(key)) {
       val oldView = _attrs.get(key).getOrElse(throw new IllegalStateException(s"No view for attribute $key"))
       if (oldView.tryConsume(newOffset = frameOffset, newValue = now)) return
@@ -189,13 +187,13 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
       }
     }
 
-  private def outputAdded(output: Output[S])(implicit tx: S#Tx): Unit = {
+  private def outputAdded(output: Proc.Output[T])(implicit tx: T): Unit = {
     val view = NuagesOutput(this, output, meter = hasMeter && output.key == Proc.mainOut)
     _outputs.put(output.key, view)
     auralRef().foreach(view.auralObjAdded)
   }
 
-  private def outputRemoved(output: Output[S])(implicit tx: S#Tx): Unit = {
+  private def outputRemoved(output: Proc.Output[T])(implicit tx: T): Unit = {
     val view = _outputs.remove(output.key)
       .getOrElse(throw new IllegalStateException(s"View for output ${output.key} not found"))
     view.dispose()
@@ -213,13 +211,13 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
     }
   }
 
-//  def meterSynth(implicit tx: S#Tx): Option[Synth] = _meterSynth()
-//  def meterSynth_=(value: Option[Synth])(implicit tx: S#Tx): Unit = {
+//  def meterSynth(implicit tx: T): Option[Synth] = _meterSynth()
+//  def meterSynth_=(value: Option[Synth])(implicit tx: T): Unit = {
 //    val old = _meterSynth.swap(value)
 //    old.foreach(_.dispose())
 //  }
 
-  def dispose()(implicit tx: S#Tx): Unit = {
+  def dispose()(implicit tx: T): Unit = {
     observers.foreach(_.dispose())
 //    meterSynth = None
     _attrs .foreach(_._2.dispose())
@@ -268,8 +266,8 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
     lastUpdate  = time
   }
 
-  def auralObjAdded  (aural: AuralObj[S])(implicit tx: S#Tx): Unit = aural match {
-    case ap: AuralObj.Proc[S] =>
+  def auralObjAdded  (aural: AuralObj[T])(implicit tx: T): Unit = aural match {
+    case ap: AuralObj.Proc[T] =>
       _outputs.foreach(_._2.auralObjAdded  (ap))
       _attrs  .foreach(_._2.auralObjAdded  (ap))
       auralRef() = Some(ap)
@@ -277,15 +275,15 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
     case _ =>
   }
 
-  def auralObjRemoved(aural: AuralObj[S])(implicit tx: S#Tx): Unit = aural match {
-    case ap: AuralObj.Proc[S] =>
+  def auralObjRemoved(aural: AuralObj[T])(implicit tx: T): Unit = aural match {
+    case ap: AuralObj.Proc[T] =>
       _outputs.foreach(_._2.auralObjRemoved(ap))
       _attrs  .foreach(_._2.auralObjRemoved(ap))
       auralRef() = None
     case _ =>
   }
 
-  override def removeSelf()(implicit tx: S#Tx): Unit = {
+  override def removeSelf()(implicit tx: T): Unit = {
     // ---- connect former input sources to former output sinks ----
     // - in the previous version we limit ourselves to
     //  `Proc.mainIn` and `Proc.mainOut`.
@@ -296,7 +294,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
       outputView <- _outputs.get(Proc.mainOut)
       inputAttr  <- _attrs  .get(Proc.mainIn )
       sourceView <- inputAttr.collect {
-        case out: NuagesOutput.Input[S] => out
+        case out: NuagesOutput.Input[T] => out
       }
       sinkView   <- outputView.mappings
     } {
@@ -338,12 +336,12 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
             val now = inAttr match {
               case num: NuagesAttribute.Numeric =>
                 requireEDT()
-                DoubleVector.newVar[S](num.numericValue)
+                DoubleVector.newVar[T](num.numericValue)
 
               case _ =>
                 println(s"Warning: no numeric attribute input for $inAttr")
                 val numCh = 2   // XXX TODO
-                DoubleVector.newVar[S](Vector.fill(numCh)(0.0))
+                DoubleVector.newVar[T](Vector.fill(numCh)(0.0))
             }
             outAttrIn.inputParent.updateChild(output, now, dt = 0L, clearRight = true)
           }
@@ -368,7 +366,7 @@ final class NuagesObjImpl[S <: Sys[S]] private(val main: NuagesPanel[S],
           oldSpan match {
             case SpanLikeObj.Var(vr) => vr() = newSpanVal
             case _ =>
-              val newSpan = SpanLikeObj.newVar[S](newSpanVal)
+              val newSpan = SpanLikeObj.newVar[T](newSpanVal)
               val ok = tl.remove(oldSpan, _obj)
               require(ok)
               tl.add(newSpan, _obj)

@@ -13,12 +13,10 @@
 
 package de.sciss.nuages
 
-import de.sciss.lucre.event.Targets
-import de.sciss.lucre.expr.Expr
-import de.sciss.lucre.expr.impl.ExprTypeImpl
-import de.sciss.lucre.stm
-import de.sciss.lucre.stm.Sys
-import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer, Writable}
+import de.sciss.lucre.Event.Targets
+import de.sciss.lucre.{Expr, Ident, Txn, Var => LVar, Obj => LObj}
+import de.sciss.lucre.impl.ExprTypeImpl
+import de.sciss.serial.{ConstFormat, DataInput, DataOutput, Writable}
 import de.sciss.synth
 
 object ParamSpec {
@@ -33,45 +31,45 @@ object ParamSpec {
 
   def init(): Unit = Obj.init()
 
-  //  def apply[S <: Sys[S]](lo: Expr[S, Double], hi: Expr[S, Double], warp: Expr[S, Warp],
-//                         step: Expr[S, Double], unit: Expr[S, String])(implicit tx: S#Tx): Obj[S]
+  //  def apply[T <: Txn[T]](lo: Expr[T, Double], hi: Expr[T, Double], warp: Expr[T, Warp],
+//                         step: Expr[T, Double], unit: Expr[T, String])(implicit tx: T): Obj[T]
 
   object Obj extends ExprTypeImpl[ParamSpec, Obj] {
     import ParamSpec.{Obj => Repr}
 
     def typeId: Int = ParamSpec.typeId
 
-    implicit def valueSerializer: ImmutableSerializer[ParamSpec] = ParamSpec.serializer
+    implicit def valueFormat: ConstFormat[ParamSpec] = ParamSpec.format
 
     def tryParse(value: Any): Option[ParamSpec] = value match {
       case x: ParamSpec => Some(x)
       case _            => None
     }
 
-    protected def mkConst[S <: Sys[S]](id: S#Id, value: A)(implicit tx: S#Tx): Const[S] =
-      new _Const[S](id, value)
+    protected def mkConst[T <: Txn[T]](id: Ident[T], value: A)(implicit tx: T): Const[T] =
+      new _Const[T](id, value)
 
-    protected def mkVar[S <: Sys[S]](targets: Targets[S], vr: S#Var[_Ex[S]], connect: Boolean)
-                                    (implicit tx: S#Tx): Var[S] = {
-      val res = new _Var[S](targets, vr)
+    protected def mkVar[T <: Txn[T]](targets: Targets[T], vr: LVar[T, E[T]], connect: Boolean)
+                                    (implicit tx: T): Var[T] = {
+      val res = new _Var[T](targets, vr)
       if (connect) res.connect()
       res
     }
 
-    private[this] final class _Const[S <: Sys[S]](val id: S#Id, val constValue: A)
-      extends ConstImpl[S] with Repr[S]
+    private[this] final class _Const[T <: Txn[T]](val id: Ident[T], val constValue: A)
+      extends ConstImpl[T] with Repr[T]
 
-    private[this] final class _Var[S <: Sys[S]](val targets: Targets[S], val ref: S#Var[_Ex[S]])
-      extends VarImpl[S] with Repr[S]
+    private[this] final class _Var[T <: Txn[T]](val targets: Targets[T], val ref: LVar[T, E[T]])
+      extends VarImpl[T] with Repr[T]
   }
-  trait Obj[S <: Sys[S]] extends Expr[S, ParamSpec] {
-//    def lo  (implicit tx: S#Tx): Expr[S, Double]
-//    def hi  (implicit tx: S#Tx): Expr[S, Double]
-//    def warp(implicit tx: S#Tx): Expr[S, Warp  ]
-//    def unit(implicit tx: S#Tx): Expr[S, String]
+  trait Obj[T <: Txn[T]] extends Expr[T, ParamSpec] {
+//    def lo  (implicit tx: T): Expr[T, Double]
+//    def hi  (implicit tx: T): Expr[T, Double]
+//    def warp(implicit tx: T): Expr[T, Warp  ]
+//    def unit(implicit tx: T): Expr[T, String]
   }
 
-  implicit object serializer extends ImmutableSerializer[ParamSpec] {
+  implicit object format extends ConstFormat[ParamSpec] {
     def write(v: ParamSpec, out: DataOutput): Unit = {
       import v._
       out.writeInt(ParamSpec.COOKIE)
@@ -84,7 +82,7 @@ object ParamSpec {
     def read(in: DataInput): ParamSpec = {
       val cookie = in.readInt()
       if (cookie != COOKIE) sys.error(s"Unexpected cookie (found $cookie, expected $COOKIE)")
-  
+
       val lo    = in.readDouble()
       val hi    = in.readDouble()
       val warp  = Warp.read(in)
@@ -93,10 +91,10 @@ object ParamSpec {
     }
   }
 
-  def read(in: DataInput): ParamSpec = serializer.read(in)
+  def read(in: DataInput): ParamSpec = format.read(in)
 
   /** A no-op now! */
-  def copyAttr[S <: Sys[S]](source: stm.Obj[S], target: stm.Obj[S])(implicit tx: S#Tx): Unit = {
+  def copyAttr[T <: Txn[T]](source: LObj[T], target: LObj[T])(implicit tx: T): Unit = {
 //    val a = source.attr
 //    val b = target.attr
 //
@@ -140,5 +138,5 @@ final case class ParamSpec(lo: Double = 0.0, hi: Double = 1.0, warp: Warp = Line
   /** Maps a graph element from spec spaced to normalized (0 ... 1) space. */
   def inverseMap(value: GE): GE = warp.inverseMap(this, value)
 
-  def write(out: DataOutput): Unit = ParamSpec.serializer.write(this, out)
+  def write(out: DataOutput): Unit = ParamSpec.format.write(this, out)
 }

@@ -13,13 +13,13 @@
 
 package de.sciss.nuages
 
-import de.sciss.lucre.synth.Sys
+import de.sciss.lucre.synth.Txn
 import prefuse.visual.VisualItem
 import java.awt._
 import geom._
 import prefuse.render.AbstractShapeRenderer
 
-class NuagesShapeRenderer[S <: Sys[S]](size: Int)
+class NuagesShapeRenderer[T <: Txn[T]](size: Int)
   extends AbstractShapeRenderer {
 
   import NuagesPanel._
@@ -41,7 +41,7 @@ class NuagesShapeRenderer[S <: Sys[S]](size: Int)
   }
 
   override def render(g: Graphics2D, vi: VisualItem): Unit = {
-    val data = vi.get(COL_NUAGES).asInstanceOf[NuagesData[S]]
+    val data = vi.get(COL_NUAGES).asInstanceOf[NuagesData[T]]
     if (data == null) return
     data.update(getShape(vi))
     data.render(g, vi)

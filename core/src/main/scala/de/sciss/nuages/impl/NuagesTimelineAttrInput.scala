@@ -14,10 +14,7 @@
 package de.sciss.nuages
 package impl
 
-import de.sciss.lucre.expr.SpanLikeObj
-import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{IdentifierMap, Obj, Sys, TxnLike}
-import de.sciss.lucre.synth.{Sys => SSys}
+import de.sciss.lucre.{IdentMap, Obj, Source, SpanLikeObj, Txn, synth}
 import de.sciss.nuages.NuagesAttribute.{Input, Parent}
 import de.sciss.span.{Span, SpanLike}
 import de.sciss.synth.proc.Timeline.Timed
@@ -29,16 +26,16 @@ import scala.concurrent.stm.TSet
 object NuagesTimelineAttrInput extends NuagesAttribute.Factory {
   def typeId: Int = Timeline.typeId
 
-  type Repr[S <: Sys[S]] = Timeline[S]
+  type Repr[T <: Txn[T]] = Timeline[T]
 
-  def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: Parent[S], frameOffset: Long, value: Timeline[S])
-                         (implicit tx: S#Tx, context: NuagesContext[S]): Input[S] = {
-    val map = tx.newInMemoryIdMap[Input[S]]
+  def apply[T <: synth.Txn[T]](attr: NuagesAttribute[T], parent: Parent[T], frameOffset: Long, value: Timeline[T])
+                         (implicit tx: T, context: NuagesContext[T]): Input[T] = {
+    val map = tx.newIdentMap[Input[T]]
     new NuagesTimelineAttrInput(attr, frameOffset = frameOffset, map = map).init(value, parent)
   }
 
-  def tryConsume[S <: SSys[S]](oldInput: Input[S], newOffset0: Long, newValue: Timeline[S])
-                              (implicit tx: S#Tx, context: NuagesContext[S]): Option[Input[S]] = {
+  def tryConsume[T <: synth.Txn[T]](oldInput: Input[T], newOffset0: Long, newValue: Timeline[T])
+                              (implicit tx: T, context: NuagesContext[T]): Option[Input[T]] = {
     val attr          = oldInput.attribute
     val parent        = attr.parent
     val main          = parent.main
@@ -51,7 +48,7 @@ object NuagesTimelineAttrInput extends NuagesAttribute.Factory {
       case (_ /* span */, Vec(entry)) :: Nil =>
         val head = entry.value
         if (oldInput.tryConsume(newOffset = ???!, newValue = head)) {
-          val map = tx.newInMemoryIdMap[Input[S]]
+          val map = tx.newIdentMap[Input[T]]
           val res = new NuagesTimelineAttrInput(attr, frameOffset = _frameOffset, map = map)
             .consume(entry, oldInput, newValue, attr.inputParent)
           Some(res)
@@ -61,27 +58,27 @@ object NuagesTimelineAttrInput extends NuagesAttribute.Factory {
     }
   }
 }
-final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesAttribute[S],
+final class NuagesTimelineAttrInput[T <: synth.Txn[T]] private(val attribute: NuagesAttribute[T],
                                                           protected val frameOffset: Long,
-                                                          map: IdentifierMap[S#Id, S#Tx, Input[S]])
-                                                         (implicit context: NuagesContext[S])
-  extends NuagesAttrInputBase[S] with NuagesTimelineBase[S] with Parent[S] {
+                                                          map: IdentMap[T, Input[T]])
+                                                         (implicit context: NuagesContext[T])
+  extends NuagesAttrInputBase[T] with NuagesTimelineBase[T] with Parent[T] {
 
-  import TxnLike.peer
+  import Txn.peer
 
   override def toString = s"$attribute tl[$frameOffset / ${TimeRef.framesToSecs(frameOffset)}]"
 
-  private[this] val viewSet = TSet.empty[Input[S]]
+  private[this] val viewSet = TSet.empty[Input[T]]
 
-  protected var timelineH: stm.Source[S#Tx, Timeline[S]] = _
+  protected var timelineH: Source[T, Timeline[T]] = _
 
-  protected def transport: Transport[S] = attribute.parent.main.transport
+  protected def transport: Transport[T] = attribute.parent.main.transport
 
-  def tryConsume(newOffset: Long, to: Obj[S])(implicit tx: S#Tx): Boolean = false
+  def tryConsume(newOffset: Long, to: Obj[T])(implicit tx: T): Boolean = false
 
-  def input(implicit tx: S#Tx): Obj[S] = timelineH()
+  def input(implicit tx: T): Obj[T] = timelineH()
 
-  private def init(tl: Timeline[S], parent: Parent[S])(implicit tx: S#Tx): this.type = {
+  private def init(tl: Timeline[T], parent: Parent[T])(implicit tx: T): this.type = {
     log(s"$attribute timeline init")
     timelineH   = tx.newHandle(tl)
     inputParent = parent
@@ -91,10 +88,10 @@ final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesA
     this
   }
 
-  def numChildren(implicit tx: S#Tx): Int = collect { case x => x.numChildren } .sum
+  def numChildren(implicit tx: T): Int = collect { case x => x.numChildren } .sum
 
-  private def consume(timed: Timed[S], childView: Input[S], tl: Timeline[S], parent: Parent[S])
-                     (implicit tx: S#Tx): this.type = {
+  private def consume(timed: Timed[T], childView: Input[T], tl: Timeline[T], parent: Parent[T])
+                     (implicit tx: T): this.type = {
     log(s"$attribute timeline consume")
     timelineH             = tx.newHandle(tl)
     inputParent           = parent
@@ -106,21 +103,21 @@ final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesA
     this
   }
 
-  def collect[A](pf: PartialFunction[Input[S], A])(implicit tx: S#Tx): Iterator[A] =
+  def collect[A](pf: PartialFunction[Input[T], A])(implicit tx: T): Iterator[A] =
     viewSet.iterator.flatMap(_.collect(pf))
 
-  def updateChild(before: Obj[S], now: Obj[S], dt: Long, clearRight: Boolean)(implicit tx: S#Tx): Unit = {
+  def updateChild(before: Obj[T], now: Obj[T], dt: Long, clearRight: Boolean)(implicit tx: T): Unit = {
     if (dt != 0L) ???!
     removeChild(before)
     addChild(now)
   }
 
-  def addChild(child: Obj[S])(implicit tx: S#Tx): Unit = {
+  def addChild(child: Obj[T])(implicit tx: T): Unit = {
     val tl = timelineH()
 
-    def mkSpan(): SpanLikeObj.Var[S] = {
+    def mkSpan(): SpanLikeObj.Var[T] = {
       val start = currentOffset()
-      SpanLikeObj.newVar[S](Span.from(start))
+      SpanLikeObj.newVar[T](Span.from(start))
     }
 
     if (isTimeline) {
@@ -135,7 +132,7 @@ final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesA
     }
   }
 
-  def removeChild(child: Obj[S])(implicit tx: S#Tx): Unit = {
+  def removeChild(child: Obj[T])(implicit tx: T): Unit = {
     val tl = timelineH()
     if (isTimeline) {
       val stop = currentOffset()
@@ -149,7 +146,7 @@ final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesA
           case SpanLikeObj.Var(vr) => vr() = newSpanVal
           case _ =>
             tl.modifiableOption.foreach { tlM =>
-              val newSpan = SpanLikeObj.newVar[S](newSpanVal)
+              val newSpan = SpanLikeObj.newVar[T](newSpanVal)
               tlM.remove(oldSpan, timed.value)
               tlM.add   (newSpan, timed.value)
             }
@@ -161,7 +158,7 @@ final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesA
     }
   }
 
-  protected def addNode(span: SpanLike, timed: Timed[S])(implicit tx: S#Tx): Unit = {
+  protected def addNode(span: SpanLike, timed: Timed[T])(implicit tx: T): Unit = {
     log(s"$attribute timeline addNode $timed")
     val childOffset = if (frameOffset == Long.MaxValue) Long.MaxValue else span match {
       case hs: Span.HasStart  => frameOffset + hs.start
@@ -172,7 +169,7 @@ final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesA
     map.put(timed.id, childView)
   }
 
-  protected def removeNode(span: SpanLike, timed: Timed[S])(implicit tx: S#Tx): Unit = {
+  protected def removeNode(span: SpanLike, timed: Timed[T])(implicit tx: T): Unit = {
     log(s"$attribute timeline removeNode $timed")
     val childView = map.getOrElse(timed.id, throw new IllegalStateException(s"View for $timed not found"))
     val found = viewSet.remove(childView)
@@ -180,7 +177,7 @@ final class NuagesTimelineAttrInput[S <: SSys[S]] private(val attribute: NuagesA
     childView.dispose()
   }
 
-  def dispose()(implicit tx: S#Tx): Unit = {
+  def dispose()(implicit tx: T): Unit = {
     log(s"$attribute timeline dispose")
     disposeTransport()
     map.dispose()

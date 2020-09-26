@@ -18,7 +18,7 @@ import java.awt.event.MouseEvent
 import java.awt.geom.Point2D
 import javax.swing.SwingUtilities
 
-import de.sciss.lucre.synth.Sys
+import de.sciss.lucre.synth.Txn
 import prefuse.controls.ControlAdapter
 import prefuse.visual.{AggregateItem, EdgeItem, NodeItem, VisualItem}
 import prefuse.{Display, Visualization}
@@ -43,10 +43,10 @@ object DragAndMouseDelegateControl {
     vi.setFixed(state1)
   }
 
-  def getVisualData[S <: Sys[S]](vis: Visualization, vi: VisualItem): Option[NuagesData[S]] =
+  def getVisualData[T <: Txn[T]](vis: Visualization, vi: VisualItem): Option[NuagesData[T]] =
     vis.getRenderer(vi) match {
       case _: NuagesShapeRenderer[_] =>
-        val data = vi.get(COL_NUAGES).asInstanceOf[NuagesData[S]]
+        val data = vi.get(COL_NUAGES).asInstanceOf[NuagesData[T]]
         Option(data)
 
       case _ => None
@@ -56,7 +56,7 @@ object DragAndMouseDelegateControl {
     var started = false
   }
 }
-class DragAndMouseDelegateControl[S <: Sys[S]](vis: Visualization) extends ControlAdapter {
+class DragAndMouseDelegateControl[T <: Txn[T]](vis: Visualization) extends ControlAdapter {
 
   import DragAndMouseDelegateControl._
   import NuagesPanel._
@@ -67,7 +67,7 @@ class DragAndMouseDelegateControl[S <: Sys[S]](vis: Visualization) extends Contr
   override def itemEntered(vi: VisualItem, e: MouseEvent): Unit = {
     vis.getRenderer(vi) match {
       case pr: NuagesShapeRenderer[_] =>
-        val data = vi.get(COL_NUAGES).asInstanceOf[NuagesData[S]]
+        val data = vi.get(COL_NUAGES).asInstanceOf[NuagesData[T]]
         if (data != null) {
           val d = getDisplay(e)
           val displayPt = d.getAbsoluteCoordinate(e.getPoint, null)
@@ -97,7 +97,7 @@ class DragAndMouseDelegateControl[S <: Sys[S]](vis: Visualization) extends Contr
   override def itemExited(vi: VisualItem, e: MouseEvent): Unit = {
     vis.getRenderer(vi) match {
       case pr: NuagesShapeRenderer[_] =>
-        val data = vi.get(COL_NUAGES).asInstanceOf[NuagesData[S]]
+        val data = vi.get(COL_NUAGES).asInstanceOf[NuagesData[T]]
         if (data != null) {
           val d = getDisplay(e)
           val displayPt = d.getAbsoluteCoordinate(e.getPoint, null)
@@ -127,7 +127,7 @@ class DragAndMouseDelegateControl[S <: Sys[S]](vis: Visualization) extends Contr
     val displayPt = d.getAbsoluteCoordinate(e.getPoint, null)
     vis.getRenderer(vi) match {
       case pr: NuagesShapeRenderer[_] =>
-        val data = vi.get(COL_NUAGES).asInstanceOf[NuagesData[S]]
+        val data = vi.get(COL_NUAGES).asInstanceOf[NuagesData[T]]
         if (data != null) {
           data.update(pr.getShape(vi))
           if (data.itemPressed(vi, e, displayPt)) return // consumed
@@ -150,7 +150,7 @@ class DragAndMouseDelegateControl[S <: Sys[S]](vis: Visualization) extends Contr
   override def itemReleased(vi: VisualItem, e: MouseEvent): Unit = {
     vis.getRenderer(vi) match {
       case pr: NuagesShapeRenderer[_] =>
-        val data = vi.get(COL_NUAGES).asInstanceOf[NuagesData[S]]
+        val data = vi.get(COL_NUAGES).asInstanceOf[NuagesData[T]]
         if (data != null) {
           val d = getDisplay(e)
           val displayPt = d.getAbsoluteCoordinate(e.getPoint, null)
@@ -172,7 +172,7 @@ class DragAndMouseDelegateControl[S <: Sys[S]](vis: Visualization) extends Contr
     val newPt = d.getAbsoluteCoordinate(e.getPoint, null)
     vis.getRenderer(vi) match {
       case pr: NuagesShapeRenderer[_] =>
-        val data = vi.get(COL_NUAGES).asInstanceOf[NuagesData[S]]
+        val data = vi.get(COL_NUAGES).asInstanceOf[NuagesData[T]]
         if (data != null) {
           data.update(pr.getShape(vi))
           data.itemDragged(vi, e, newPt)

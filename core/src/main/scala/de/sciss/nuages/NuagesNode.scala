@@ -13,7 +13,7 @@
 
 package de.sciss.nuages
 
-import de.sciss.lucre.stm.Sys
+import de.sciss.lucre.Txn
 import prefuse.data.{Node => PNode}
 
 /** The common super type of all Prefuse objects
@@ -24,7 +24,7 @@ import prefuse.data.{Node => PNode}
   * @see [[NuagesObj]]
   * @see [[NuagesParam]]
   */
-trait NuagesNode[S <: Sys[S]] extends NuagesData[S] {
+trait NuagesNode[T <: Txn[T]] extends NuagesData[T] {
   // ---- methods to be called on the EDT ----
 
   /** The corresponding Prefuse node. */

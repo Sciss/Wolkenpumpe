@@ -14,27 +14,26 @@
 package de.sciss.nuages
 package impl
 
-import de.sciss.lucre.expr.{BooleanObj, Type}
-import de.sciss.lucre.stm.Sys
-import de.sciss.lucre.synth.{Sys => SSys}
+import de.sciss.lucre.Txn
+import de.sciss.lucre.{BooleanObj, Expr, synth}
 
 object NuagesBooleanAttrInput extends PassAttrInputFactory {
   def typeId: Int = BooleanObj.typeId
 
-  type Repr[~ <: Sys[~]] = BooleanObj[~]
+  type Repr[~ <: Txn[~]] = BooleanObj[~]
 
-  protected def mkNoInit[S <: SSys[S]](attr: NuagesAttribute[S])
-                                     (implicit tx: S#Tx, context: NuagesContext[S]): View[S] = {
-    new NuagesBooleanAttrInput[S](attr)
+  protected def mkNoInit[T <: synth.Txn[T]](attr: NuagesAttribute[T])
+                                     (implicit tx: T, context: NuagesContext[T]): View[T] = {
+    new NuagesBooleanAttrInput[T](attr)
   }
 }
-final class NuagesBooleanAttrInput[S <: SSys[S]] private (val attribute: NuagesAttribute[S])
-  extends NuagesScalarAttrInput[S] {
+final class NuagesBooleanAttrInput[T <: synth.Txn[T]] private (val attribute: NuagesAttribute[T])
+  extends NuagesScalarAttrInput[T] {
 
   type A                  = Boolean
-  type Repr[~ <: Sys[~]]  = BooleanObj[~]
+  type Repr[~ <: Txn[~]]  = BooleanObj[~]
 
-  val tpe: Type.Expr[A, Repr] = BooleanObj
+  val tpe: Expr.Type[A, Repr] = BooleanObj
 
   protected def toDouble  (in: Boolean): Double   = if (in) 1.0 else 0.0
   protected def fromDouble(in: Double ): Boolean  = in == 0.0

@@ -16,15 +16,13 @@ package impl
 
 import java.awt.Graphics2D
 
-import de.sciss.lucre.expr.{BooleanObj, DoubleObj, DoubleVector, IntObj, LongObj, SpanLikeObj}
-import de.sciss.lucre.stm.{Disposable, Folder, Obj, Sys, TxnLike}
 import de.sciss.lucre.swing.LucreSwing.requireEDT
-import de.sciss.lucre.synth.{Sys => SSys}
+import de.sciss.lucre.{BooleanObj, Disposable, DoubleObj, DoubleVector, Folder, IntObj, LongObj, Obj, SpanLikeObj, Txn, synth}
 import de.sciss.nuages.NuagesAttribute.{Factory, Input, Parent}
 import de.sciss.nuages.NuagesPanel.GROUP_GRAPH
 import de.sciss.span.Span
-import de.sciss.synth.proc.AuralObj.Proc
-import de.sciss.synth.proc.{AuralAttribute, AuralObj, EnvSegment, Grapheme, Output, Runner, TimeRef, Timeline}
+import de.sciss.synth.proc.AuralObj.{Proc => AProc}
+import de.sciss.synth.proc.{AuralAttribute, AuralObj, EnvSegment, Grapheme, Proc, Runner, TimeRef, Timeline}
 import prefuse.data.{Edge => PEdge, Node => PNode}
 import prefuse.visual.VisualItem
 
@@ -43,27 +41,27 @@ object NuagesAttributeImpl {
 
   def factories: Iterable[Factory] = map.values
 
-  def apply[S <: SSys[S]](key: String, _value: Obj[S], parent: NuagesObj[S])
-                         (implicit tx: S#Tx, context: NuagesContext[S]): NuagesAttribute[S] = {
+  def apply[T <: synth.Txn[T]](key: String, _value: Obj[T], parent: NuagesObj[T])
+                         (implicit tx: T, context: NuagesContext[T]): NuagesAttribute[T] = {
     val spec          = getSpec(parent, key)
 //    val spec          = getSpec(_value)
     val _frameOffset  = parent.frameOffset
-    val res: Impl[S] = new Impl[S](parent = parent, key = key, spec = spec) { self =>
-      val inputView: Input[S] =
+    val res: Impl[T] = new Impl[T](parent = parent, key = key, spec = spec) { self =>
+      val inputView: Input[T] =
         mkInput(attr = self, parent = self, frameOffset = _frameOffset, value = _value)
     }
     res
   }
 
-  def mkInput[S <: SSys[S]](attr: NuagesAttribute[S], parent: Parent[S], frameOffset: Long, value: Obj[S])
-                           (implicit tx: S#Tx, context: NuagesContext[S]): Input[S] = {
+  def mkInput[T <: synth.Txn[T]](attr: NuagesAttribute[T], parent: Parent[T], frameOffset: Long, value: Obj[T])
+                           (implicit tx: T, context: NuagesContext[T]): Input[T] = {
     val opt = getFactory(value)
-    opt.fold[Input[S]](new DummyAttrInput(attr, tx.newHandle(value))) { factory =>
-      factory[S](parent = parent, frameOffset = frameOffset, value = value.asInstanceOf[factory.Repr[S]], attr = attr)
+    opt.fold[Input[T]](new DummyAttrInput(attr, tx.newHandle(value))) { factory =>
+      factory[T](parent = parent, frameOffset = frameOffset, value = value.asInstanceOf[factory.Repr[T]], attr = attr)
     }
   }
 
-  def getFactory[S <: Sys[S]](value: Obj[S]): Option[Factory] = {
+  def getFactory[T <: Txn[T]](value: Obj[T]): Option[Factory] = {
     val tid = value.tpe.typeId
     val opt = map.get(tid)
     opt
@@ -76,7 +74,7 @@ object NuagesAttributeImpl {
 //  FadeSpec.Obj.typeId -> FadeSpecAttribute,
     DoubleVector.typeId -> NuagesDoubleVectorAttrInput,
     Grapheme    .typeId -> NuagesGraphemeAttrInput,
-    Output      .typeId -> NuagesOutputAttrInput,
+    Proc.Output .typeId -> NuagesOutputAttrInput,
     Folder      .typeId -> NuagesFolderAttrInput,
     Timeline    .typeId -> NuagesTimelineAttrInput,
     EnvSegment  .typeId -> NuagesEnvSegmentAttrInput
@@ -86,10 +84,10 @@ object NuagesAttributeImpl {
   
   private val defaultSpec = ParamSpec()
 
-  def getSpec[S <: Sys[S]](parent: NuagesObj[S], key: String)(implicit tx: S#Tx): ParamSpec =
+  def getSpec[T <: Txn[T]](parent: NuagesObj[T], key: String)(implicit tx: T): ParamSpec =
     parent.obj.attr.$[ParamSpec.Obj](ParamSpec.composeKey(key)).map(_.value).getOrElse(defaultSpec)
 
-//  def getSpec[S <: Sys[S]](value: Obj[S])(implicit tx: S#Tx): ParamSpec =
+//  def getSpec[T <: Txn[T]](value: Obj[T])(implicit tx: T): ParamSpec =
 //    value.attr.$[ParamSpec.Obj](ParamSpec.Key).map(_.value).getOrElse(defaultSpec)
 
   // updated on EDT
@@ -104,14 +102,14 @@ object NuagesAttributeImpl {
     def isSummary   = true
   }
 
-  private abstract class Impl[S <: SSys[S]](val parent: NuagesObj[S], val key: String, val spec: ParamSpec)
-    extends RenderAttrDoubleVec[S] with NuagesParamImpl[S] with NuagesAttribute[S] { self =>
+  private abstract class Impl[T <: synth.Txn[T]](val parent: NuagesObj[T], val key: String, val spec: ParamSpec)
+    extends RenderAttrDoubleVec[T] with NuagesParamImpl[T] with NuagesAttribute[T] { self =>
 
-    import TxnLike.peer
+    import Txn.peer
 
     // ---- abstract ----
 
-    def inputView: NuagesAttribute.Input[S]
+    def inputView: NuagesAttribute.Input[T]
 
     // ---- impl ----
 
@@ -123,10 +121,10 @@ object NuagesAttributeImpl {
     private[this] var _boundNodes   = Map.empty[PNode, PEdge]
 
     // txn
-    private[this] val auralObjObs   = Ref(Disposable.empty[S#Tx])
-    private[this] val auralAttrObs  = Ref(Disposable.empty[S#Tx])
-    private[this] val auralTgtObs   = Ref(Disposable.empty[S#Tx])
-    private[this] val valueSynthRef = Ref(Disposable.empty[S#Tx])
+    private[this] val auralObjObs   = Ref(Disposable.empty[T])
+    private[this] val auralAttrObs  = Ref(Disposable.empty[T])
+    private[this] val auralTgtObs   = Ref(Disposable.empty[T])
+    private[this] val valueSynthRef = Ref(Disposable.empty[T])
 
     @volatile
     protected var valueA: A = _
@@ -140,21 +138,21 @@ object NuagesAttributeImpl {
 
     // loop
 
-    final def attribute: NuagesAttribute[S] = this
+    final def attribute: NuagesAttribute[T] = this
 
-    final def inputParent                (implicit tx: S#Tx): Parent[S] = this
-    final def inputParent_=(p: Parent[S])(implicit tx: S#Tx): Unit      = throw new UnsupportedOperationException
+    final def inputParent                (implicit tx: T): Parent[T] = this
+    final def inputParent_=(p: Parent[T])(implicit tx: T): Unit      = throw new UnsupportedOperationException
 
     // proxy
 
-    final def numChildren(implicit tx: S#Tx): Int = inputView.numChildren
+    final def numChildren(implicit tx: T): Int = inputView.numChildren
 
-    final def tryConsume(newOffset: Long, to: Obj[S])(implicit tx: S#Tx): Boolean =
+    final def tryConsume(newOffset: Long, to: Obj[T])(implicit tx: T): Boolean =
       inputView.tryConsume(newOffset = newOffset, newValue = to)
 
-    final def collect[B](pf: PartialFunction[Input[S], B])(implicit tx: S#Tx): Iterator[B] = inputView.collect(pf)
+    final def collect[B](pf: PartialFunction[Input[T], B])(implicit tx: T): Iterator[B] = inputView.collect(pf)
 
-    def input(implicit tx: S#Tx): Obj[S] = inputView.input
+    def input(implicit tx: T): Obj[T] = inputView.input
 
     // other
 
@@ -162,7 +160,7 @@ object NuagesAttributeImpl {
 
     private def nodeSize = if (isControl) 1f else 0.333333f
 
-    private def currentOffset()(implicit tx: S#Tx): Long = {
+    private def currentOffset()(implicit tx: T): Long = {
       val fr = parent.frameOffset
       if (fr == Long.MaxValue) throw new UnsupportedOperationException(s"$this.currentOffset()")
       main.transport.position - fr
@@ -175,15 +173,15 @@ object NuagesAttributeImpl {
       this._boundNodes  = boundNodes
     }
 
-    final def tryReplace(newValue: Obj[S])
-                        (implicit tx: S#Tx, context: NuagesContext[S]): Option[NuagesAttribute[S]] = {
+    final def tryReplace(newValue: Obj[T])
+                        (implicit tx: T, context: NuagesContext[T]): Option[NuagesAttribute[T]] = {
       val opt = getFactory(newValue)
       opt.flatMap { factory =>
         factory.tryConsume(oldInput = inputView, newOffset = parent.frameOffset,
-                           newValue = newValue.asInstanceOf[factory.Repr[S]])
+                           newValue = newValue.asInstanceOf[factory.Repr[T]])
           .map { newInput =>
-            val res: Impl[S] = new Impl[S](parent = parent, key = key, spec = spec) {
-              val inputView: Input[S] = newInput
+            val res: Impl[T] = new Impl[T](parent = parent, key = key, spec = spec) {
+              val inputView: Input[T] = newInput
             }
             main.deferVisTx {
               res.initReplace(self._state, freeNodes = self._freeNodes, boundNodes = self._boundNodes)
@@ -193,28 +191,28 @@ object NuagesAttributeImpl {
       }
     }
 
-    final def updateChild(before: Obj[S], now: Obj[S], dt: Long, clearRight: Boolean)(implicit tx: S#Tx): Unit =
+    final def updateChild(before: Obj[T], now: Obj[T], dt: Long, clearRight: Boolean)(implicit tx: T): Unit =
       inputView match {
-        case inP: Parent[S] =>
+        case inP: Parent[T] =>
           inP.updateChild(before = before, now = now, dt = dt, clearRight = clearRight)
 
         case _ =>
           updateChildHere(before = before, now = now, dt = dt)
       }
 
-    private def updateChildHere(before: Obj[S], now: Obj[S], dt: Long)(implicit tx: S#Tx): Unit = {
+    private def updateChildHere(before: Obj[T], now: Obj[T], dt: Long)(implicit tx: T): Unit = {
       val objAttr = parent.obj.attr
       val value   = if (main.isTimeline) {
-        val gr      = Grapheme[S]()
+        val gr      = Grapheme[T]()
         val start   = currentOffset() + dt
 
         log(s"$this updateChild($before, $now - $start / ${TimeRef.framesToSecs(start)})")
 
         if (start != 0L) {
-          val timeBefore = LongObj.newVar[S](0L) // XXX TODO ?
+          val timeBefore = LongObj.newVar[T](0L) // XXX TODO ?
           gr.add(timeBefore, before)
         }
-        val timeNow = LongObj.newVar[S](start)
+        val timeNow = LongObj.newVar[T](start)
         ParamSpec.copyAttr(source = before, target = gr)
         gr.add(timeNow, now)
         gr
@@ -228,19 +226,19 @@ object NuagesAttributeImpl {
       objAttr.put(key, value)
     }
 
-    def addChild(child: Obj[S])(implicit tx: S#Tx): Unit =
+    def addChild(child: Obj[T])(implicit tx: T): Unit =
       inputView match {
-        case inP: Parent[S] => inP.addChild(child)
+        case inP: Parent[T] => inP.addChild(child)
         case _ =>
           val objAttr = parent.obj.attr
 
-          def mkSpan(): SpanLikeObj.Var[S] = {
+          def mkSpan(): SpanLikeObj.Var[T] = {
             val start = currentOffset()
-            SpanLikeObj.newVar[S](Span.from(start))
+            SpanLikeObj.newVar[T](Span.from(start))
           }
 
-          def mkTimeline(): (Timeline.Modifiable[S], SpanLikeObj.Var[S]) = {
-            val tl    = Timeline[S]()
+          def mkTimeline(): (Timeline.Modifiable[T], SpanLikeObj.Var[T]) = {
+            val tl    = Timeline[T]()
             val span  = mkSpan()
             (tl, span)
           }
@@ -257,7 +255,7 @@ object NuagesAttributeImpl {
             }
 
           } {
-//            case f: Folder[S] =>
+//            case f: Folder[T] =>
 //              if (main.isTimeline) {
 //                val (tl, span) = mkTimeline()
 //                f.iterator.foreach { elem =>
@@ -271,7 +269,7 @@ object NuagesAttributeImpl {
 //                f.addLast(child)
 //              }
 //
-//            case tl: Timeline.Modifiable[S] if main.isTimeline =>
+//            case tl: Timeline.Modifiable[T] if main.isTimeline =>
 //              val span = mkSpan()
 //              tl.add(span, child)
 //
@@ -293,7 +291,7 @@ object NuagesAttributeImpl {
                 // (finding a timeline in a folder when we dissolve
                 // a folder, so we might end up with nested timeline objects)
 
-                val f = Folder[S]()
+                val f = Folder[T]()
                 f.addLast(other)
                 f.addLast(child)
                 ParamSpec.copyAttr(source = other, target = f)
@@ -302,15 +300,15 @@ object NuagesAttributeImpl {
           }
       }
 
-    def removeChild(child: Obj[S])(implicit tx: S#Tx): Unit =
+    def removeChild(child: Obj[T])(implicit tx: T): Unit =
       inputView match {
-        case inP: Parent[S] =>
+        case inP: Parent[T] =>
           inP.removeChild(child)
         case _ =>
           val objAttr = parent.obj.attr
           if (main.isTimeline) {
-            val tl          = Timeline[S]()
-            val span        = SpanLikeObj.newVar[S](Span.until(currentOffset()))
+            val tl          = Timeline[T]()
+            val span        = SpanLikeObj.newVar[T](Span.until(currentOffset()))
             ParamSpec.copyAttr(source = child, target = tl)
             tl.add(span, child)
             objAttr.put(key, tl)
@@ -464,18 +462,18 @@ object NuagesAttributeImpl {
 
     protected def valueColor: Color = colrMapped
 
-    def dispose()(implicit tx: S#Tx): Unit = {
+    def dispose()(implicit tx: T): Unit = {
       auralObjRemoved()
       inputView.dispose()
     }
 
-    private def setAuralScalarValue(v: Vec[Double])(implicit tx: S#Tx): Unit = {
+    private def setAuralScalarValue(v: Vec[Double])(implicit tx: T): Unit = {
       disposeValueSynth()
 //      println(s"setAuralScalarValue $key")
       valueA = v
     }
 
-    private def setAuralValue(v: AuralAttribute.Value)(implicit tx: S#Tx): Unit = {
+    private def setAuralValue(v: AuralAttribute.Value)(implicit tx: T): Unit = {
       v match {
         case AuralAttribute.ScalarValue (f )  => setAuralScalarValue(Vector(f.toDouble))
         case AuralAttribute.ScalarVector(xs)  => setAuralScalarValue(xs.map(_.toDouble))
@@ -488,22 +486,22 @@ object NuagesAttributeImpl {
       }
     }
 
-    private def checkAuralTarget(aa: AuralAttribute[S])(implicit tx: S#Tx): Unit =
+    private def checkAuralTarget(aa: AuralAttribute[T])(implicit tx: T): Unit =
       aa.targetOption.foreach { tgt =>
         tgt.valueOption.foreach(setAuralValue)
         val obs = tgt.react { implicit tx => setAuralValue }
         auralTgtObs.swap(obs).dispose()
       }
 
-    private def disposeValueSynth()(implicit tx: S#Tx): Unit =
+    private def disposeValueSynth()(implicit tx: T): Unit =
       valueSynthRef.swap(Disposable.empty).dispose()
 
-    private def auralTgtRemoved()(implicit tx: S#Tx): Unit = {
+    private def auralTgtRemoved()(implicit tx: T): Unit = {
       disposeValueSynth()
       auralTgtObs.swap(Disposable.empty).dispose()
     }
 
-    private def auralAttrAdded(aa: AuralAttribute[S])(implicit tx: S#Tx): Unit = {
+    private def auralAttrAdded(aa: AuralAttribute[T])(implicit tx: T): Unit = {
       checkAuralTarget(aa)
       val obs = aa.react { implicit tx => {
         case Runner.Running => checkAuralTarget(aa)
@@ -513,12 +511,12 @@ object NuagesAttributeImpl {
       auralAttrObs.swap(obs).dispose()
     }
 
-    private def auralAttrRemoved()(implicit tx: S#Tx): Unit = {
+    private def auralAttrRemoved()(implicit tx: T): Unit = {
       auralTgtRemoved()
       auralAttrObs.swap(Disposable.empty).dispose()
     }
 
-    def auralObjAdded(aural: Proc[S])(implicit tx: S#Tx): Unit = if (isControl) {
+    def auralObjAdded(aural: AProc[T])(implicit tx: T): Unit = if (isControl) {
       aural.getAttr(key).foreach(auralAttrAdded)
       val obs = aural.ports.react { implicit tx => {
         case AuralObj.Proc.AttrAdded  (_, aa) if aa.key == key => auralAttrAdded(aa)
@@ -528,11 +526,11 @@ object NuagesAttributeImpl {
       auralObjObs.swap(obs).dispose()
     }
 
-    private def auralObjRemoved()(implicit tx: S#Tx): Unit = if (isControl) {
+    private def auralObjRemoved()(implicit tx: T): Unit = if (isControl) {
       auralAttrRemoved()
       auralObjObs.swap(Disposable.empty).dispose()
     }
 
-    def auralObjRemoved(aural: Proc[S])(implicit tx: S#Tx): Unit = auralObjRemoved()
+    def auralObjRemoved(aural: AProc[T])(implicit tx: T): Unit = auralObjRemoved()
   }
 }

@@ -15,22 +15,22 @@ package de.sciss.nuages
 package impl
 
 import de.sciss.lucre.swing.LucreSwing.deferTx
-import de.sciss.lucre.synth.Sys
+import de.sciss.lucre.synth.Txn
 import de.sciss.swingplus.CloseOperation
 import de.sciss.swingplus.Implicits._
 
 import scala.swing.Frame
 
 object FrameImpl {
-  def apply[S <: Sys[S]](view: NuagesView[S], undecorated: Boolean)
-                        (implicit tx: S#Tx): NuagesFrame[S] = {
+  def apply[T <: Txn[T]](view: NuagesView[T], undecorated: Boolean)
+                        (implicit tx: T): NuagesFrame[T] = {
 //    val transport = view.panel.transport
 //    if (view.panel.config.autoStart) transport.play()
-    new Impl[S](view, undecorated = undecorated).init()
+    new Impl[T](view, undecorated = undecorated).init()
   }
 
-  private final class Impl[S <: Sys[S]](val view: NuagesView[S], undecorated: Boolean)
-    extends NuagesFrame[S] { impl =>
+  private final class Impl[T <: Txn[T]](val view: NuagesView[T], undecorated: Boolean)
+    extends NuagesFrame[T] { impl =>
 
     private var _frame: Frame = _
     def frame: Frame = {
@@ -43,7 +43,7 @@ object FrameImpl {
       _frame = value
     }
 
-    def init()(implicit tx: S#Tx): this.type = {
+    def init()(implicit tx: T): this.type = {
       deferTx(guiInit())
       this
     }
@@ -65,7 +65,7 @@ object FrameImpl {
       if (panel.config.fullScreenKey) view.installFullScreenKey(frame)
     }
 
-    def dispose()(implicit tx: S#Tx): Unit = {
+    def dispose()(implicit tx: T): Unit = {
       view.dispose()
       deferTx(_frame.dispose())
     }

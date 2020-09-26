@@ -14,10 +14,8 @@
 package de.sciss.nuages
 package impl
 
-import de.sciss.lucre.expr.{DoubleObj, DoubleVector, Type}
-import de.sciss.lucre.stm.Sys
-import de.sciss.lucre.stm.TxnLike.peer
-import de.sciss.lucre.synth.{Sys => SSys}
+import de.sciss.lucre.{DoubleObj, DoubleVector, Expr, Txn, synth}
+import de.sciss.lucre.Txn.peer
 import de.sciss.synth.Curve
 import de.sciss.synth.proc.EnvSegment
 
@@ -27,26 +25,26 @@ import scala.swing.Color
 object NuagesEnvSegmentAttrInput extends PassAttrInputFactory {
   def typeId: Int = EnvSegment.typeId
 
-  type Repr[~ <: Sys[~]] = EnvSegment.Obj[~]
+  type Repr[~ <: Txn[~]] = EnvSegment.Obj[~]
 
-  protected def mkNoInit[S <: SSys[S]](attr: NuagesAttribute[S])
-                                     (implicit tx: S#Tx, context: NuagesContext[S]): View[S] =
-    new NuagesEnvSegmentAttrInput[S](attr)
+  protected def mkNoInit[T <: synth.Txn[T]](attr: NuagesAttribute[T])
+                                     (implicit tx: T, context: NuagesContext[T]): View[T] =
+    new NuagesEnvSegmentAttrInput[T](attr)
 }
-final class NuagesEnvSegmentAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S])
-  extends RenderNumericAttr[S] with NuagesAttrInputImpl[S] {
+final class NuagesEnvSegmentAttrInput[T <: synth.Txn[T]](val attribute: NuagesAttribute[T])
+  extends RenderNumericAttr[T] with NuagesAttrInputImpl[T] {
 
   override def toString = s"EnvSegment($attribute)"
 
   type A                  = Vec[Double]
   type B                  = EnvSegment
-  type Repr [~ <: Sys[~]] = EnvSegment.Obj[~]
+  type Repr [~ <: Txn[~]] = EnvSegment.Obj[~]
 
-  val tpe: Type.Expr[B, Repr] = EnvSegment.Obj
+  val tpe: Expr.Type[B, Repr] = EnvSegment.Obj
 
   protected def valueColor: Color = NuagesDataImpl.colrMapped
 
-  protected def updateValueAndRefresh(v: EnvSegment)(implicit tx: S#Tx): Unit = {
+  protected def updateValueAndRefresh(v: EnvSegment)(implicit tx: T): Unit = {
     main.deferVisTx {
       _numChannels = v.numChannels
       damageReport(pNode)
@@ -58,7 +56,7 @@ final class NuagesEnvSegmentAttrInput[S <: SSys[S]](val attribute: NuagesAttribu
   @volatile
   private[this] var _numChannels: Int = _
 
-  override def passFrom(that: PassAttrInput[S])(implicit tx: S#Tx): Unit = {
+  override def passFrom(that: PassAttrInput[T])(implicit tx: T): Unit = {
     main.deferVisTx {
       dragOption = that.dragOption
     }
@@ -79,7 +77,7 @@ final class NuagesEnvSegmentAttrInput[S <: SSys[S]](val attribute: NuagesAttribu
     attribute.numericValue
   }
 
-//  override protected def updateValueAndRefresh(v: A)(implicit tx: S#Tx): Unit =
+//  override protected def updateValueAndRefresh(v: A)(implicit tx: T): Unit =
 //    main.deferVisTx {
 //      valueA        = v
 //      valueSetTime  = System.currentTimeMillis()
@@ -88,12 +86,12 @@ final class NuagesEnvSegmentAttrInput[S <: SSys[S]](val attribute: NuagesAttribu
 
   def numChannels: Int = _numChannels
 
-  override def init(obj: EnvSegment.Obj[S], parent: NuagesAttribute.Parent[S])(implicit tx: S#Tx): Unit = {
+  override def init(obj: EnvSegment.Obj[T], parent: NuagesAttribute.Parent[T])(implicit tx: T): Unit = {
     _numChannels = obj.value.numChannels
     super.init(obj, parent)
   }
 
-  protected def setControlTxn(v: Vec[Double], durFrames: Long)(implicit tx: S#Tx): Unit = {
+  protected def setControlTxn(v: Vec[Double], durFrames: Long)(implicit tx: T): Unit = {
     val before = objH()._1()
 
     val nowVar = if (v.size == 1) DoubleObj.newVar(v.head) else DoubleVector.newVar(v)
@@ -101,9 +99,9 @@ final class NuagesEnvSegmentAttrInput[S <: SSys[S]](val attribute: NuagesAttribu
       inputParent.updateChild(before = before, now = nowVar, dt = 0L, clearRight = true)
     else {
       val seg = if (v.size == 1) {
-        EnvSegment.Obj.newVar[S](EnvSegment.Single(v.head, Curve.lin))
+        EnvSegment.Obj.newVar[T](EnvSegment.Single(v.head, Curve.lin))
       } else {
-        EnvSegment.Obj.newVar[S](EnvSegment.Multi(v, Curve.lin))
+        EnvSegment.Obj.newVar[T](EnvSegment.Multi(v, Curve.lin))
       }
       inputParent.updateChild(before = before, now = nowVar, dt = durFrames, clearRight = true )
       inputParent.updateChild(before = before, now = seg   , dt = 0L       , clearRight = false)

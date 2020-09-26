@@ -16,52 +16,51 @@ package impl
 
 import java.awt.geom.Point2D
 
-import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{Disposable, Obj, TxnLike}
-import de.sciss.lucre.synth.Sys
+import de.sciss.lucre.synth.Txn
+import de.sciss.lucre.{Disposable, IdentMap, Obj, Source, Txn => LTxn}
 import de.sciss.span.SpanLike
 import de.sciss.synth.proc.Timeline.Timed
 import de.sciss.synth.proc.{AuralObj, Timeline, Transport}
 
 import scala.concurrent.stm.Ref
 
-trait PanelImplTimelineInit[S <: Sys[S]] extends NuagesTimelineBase[S] {
-  import TxnLike.peer
+trait PanelImplTimelineInit[T <: Txn[T]] extends NuagesTimelineBase[T] {
+  import LTxn.peer
 
   // ---- abstract ----
 
-  protected var observers: List[Disposable[S#Tx]]
+  protected var observers: List[Disposable[T]]
 
-  protected def auralObserver: Ref[Option[Disposable[S#Tx]]]
+  protected def auralObserver: Ref[Option[Disposable[T]]]
 
-  protected def removeLocationHint(obj: Obj[S])(implicit tx: S#Tx): Option[Point2D]
+  protected def removeLocationHint(obj: Obj[T])(implicit tx: T): Option[Point2D]
 
-  protected def nodeMap: stm.IdentifierMap[S#Id, S#Tx, NuagesObj[S]]
+  protected def nodeMap: IdentMap[T, NuagesObj[T]]
 
-  //  protected def auralObjAdded(vp: NuagesObj[S], aural: AuralObj[S])(implicit tx: S#Tx): Unit
+  //  protected def auralObjAdded(vp: NuagesObj[T], aural: AuralObj[T])(implicit tx: T): Unit
   //
-  //  protected def auralObjRemoved(aural: AuralObj[S])(implicit tx: S#Tx): Unit
+  //  protected def auralObjRemoved(aural: AuralObj[T])(implicit tx: T): Unit
 
-  protected def disposeAuralObserver()(implicit tx: S#Tx): Unit
+  protected def disposeAuralObserver()(implicit tx: T): Unit
 
-  protected def disposeObj(obj: Obj[S])(implicit tx: S#Tx): Unit
+  protected def disposeObj(obj: Obj[T])(implicit tx: T): Unit
 
-  protected def main: NuagesPanel[S]
+  protected def main: NuagesPanel[T]
 
   // ---- impl ----
 
   final def isTimeline = true
 
-  protected final val auralReprRef = Ref(Option.empty[AuralObj.Timeline[S]])
+  protected final val auralReprRef = Ref(Option.empty[AuralObj.Timeline[T]])
 
-  protected final var timelineH: stm.Source[S#Tx, Timeline[S]] = _
+  protected final var timelineH: Source[T, Timeline[T]] = _
 
-  protected final def initObservers(timeline: Timeline[S])(implicit tx: S#Tx): Unit = {
+  protected final def initObservers(timeline: Timeline[T])(implicit tx: T): Unit = {
     timelineH = tx.newHandle(timeline)
 
     val t = transport
     observers ::= t.react { implicit tx => {
-      case Transport.ViewAdded(_, auralTimeline: AuralObj.Timeline[S]) =>
+      case Transport.ViewAdded(_, auralTimeline: AuralObj.Timeline[T]) =>
         val obs = auralTimeline.contents.react { implicit tx => {
           case AuralObj.Container.ViewAdded  (_, id, view) =>
             nodeMap.get(id).foreach { vp =>
@@ -76,7 +75,7 @@ trait PanelImplTimelineInit[S <: Sys[S]] extends NuagesTimelineBase[S] {
         auralReprRef () = Some(auralTimeline)
         auralObserver() = Some(obs          )
 
-      case Transport.ViewRemoved(_, _: AuralObj.Timeline[S]) =>
+      case Transport.ViewRemoved(_, _: AuralObj.Timeline[T]) =>
         disposeAuralObserver()
 
       case _ =>
@@ -90,13 +89,13 @@ trait PanelImplTimelineInit[S <: Sys[S]] extends NuagesTimelineBase[S] {
 
   protected final def frameOffset: Long = 0L
 
-  protected final def addNode(span: SpanLike, timed: Timed[S])(implicit tx: S#Tx): Unit = {
+  protected final def addNode(span: SpanLike, timed: Timed[T])(implicit tx: T): Unit = {
     log(s"nuages timeline addNode $timed")
     val obj     = timed.value
     val config  = main.config
     val locO    = removeLocationHint(obj)
-    implicit val context: NuagesContext[S] = main.context
-    val vp      = NuagesObj[S](main, locOption = locO, id = timed.id, obj = obj,
+    implicit val context: NuagesContext[T] = main.context
+    val vp      = NuagesObj[T](main, locOption = locO, id = timed.id, obj = obj,
       spanValue = span, spanOption = Some(timed.span),
       hasMeter = config.meters, hasSolo = config.soloChannels.isDefined)
 
@@ -108,7 +107,7 @@ trait PanelImplTimelineInit[S <: Sys[S]] extends NuagesTimelineBase[S] {
     }
   }
 
-  protected final def removeNode(span: SpanLike, timed: Timed[S])(implicit tx: S#Tx): Unit = {
+  protected final def removeNode(span: SpanLike, timed: Timed[T])(implicit tx: T): Unit = {
     log(s"nuages timeline removeNode $timed")
     val id  = timed.id
     val obj = timed.value

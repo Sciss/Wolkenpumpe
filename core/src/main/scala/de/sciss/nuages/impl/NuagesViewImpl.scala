@@ -18,11 +18,11 @@ import java.awt.event.{ActionEvent, InputEvent, KeyEvent}
 import java.awt.{Color, Toolkit}
 
 import de.sciss.audiowidgets.{RotaryKnob, TimelineModel}
-import de.sciss.lucre.stm
+import de.sciss.lucre.Cursor
 import de.sciss.lucre.swing.LucreSwing.{defer, deferTx, requireEDT}
 import de.sciss.lucre.swing.View
 import de.sciss.lucre.swing.impl.ComponentHolder
-import de.sciss.lucre.synth.{Server, Synth, Sys, Txn}
+import de.sciss.lucre.synth.{RT, Server, Synth, Txn}
 import de.sciss.osc
 import de.sciss.span.Span
 import de.sciss.synth.UGenSource.Vec
@@ -36,9 +36,9 @@ import scala.swing.Swing._
 import scala.swing.{BorderPanel, BoxPanel, Component, GridBagPanel, Orientation}
 
 object NuagesViewImpl {
-  def apply[S <: Sys[S]](nuages: Nuages[S], nuagesConfig: Nuages.Config)
-                        (implicit tx: S#Tx, universe: Universe[S]): NuagesView[S] = {
-    implicit val context: NuagesContext[S] = NuagesContext[S]
+  def apply[T <: Txn[T]](nuages: Nuages[T], nuagesConfig: Nuages.Config)
+                        (implicit tx: T, universe: Universe[T]): NuagesView[T] = {
+    implicit val context: NuagesContext[T] = NuagesContext[T]
     val panel       = NuagesPanel(nuages, nuagesConfig)
     val visSpan     = Span(0L, TimeRef.SampleRate.toLong)  // not used
     val virtualSpan = Span(0L, (60.0 * 60.0 * TimeRef.SampleRate).toLong)  // not used
@@ -52,13 +52,13 @@ object NuagesViewImpl {
     } else {
       None
     }
-    val res         = new Impl[S](panel, trnspView).init()
+    val res         = new Impl[T](panel, trnspView).init()
     res
   }
 
-  private final class Impl[S <: Sys[S]](val panel: NuagesPanel[S], transportView: Option[View[S]])
-                                       (implicit val cursor: stm.Cursor[S])
-    extends NuagesView[S] with ComponentHolder[Component] with AuralSystem.Client { impl =>
+  private final class Impl[T <: Txn[T]](val panel: NuagesPanel[T], transportView: Option[View[T]])
+                                       (implicit val cursor: Cursor[T])
+    extends NuagesView[T] with ComponentHolder[Component] with AuralSystem.Client { impl =>
 
     type C = Component
 
@@ -68,7 +68,7 @@ object NuagesViewImpl {
     private[this] var _controlPanel : ControlPanel        = _
     private[this] var _serverPanel  : JServerStatusPanel  = _
 
-    def init()(implicit tx: S#Tx): this.type = {
+    def init()(implicit tx: T): this.type = {
       deferTx(guiInit())
       val aural = panel.universe.auralSystem
       aural.serverOption.foreach(auralStarted)
@@ -79,12 +79,12 @@ object NuagesViewImpl {
 
     def controlPanel: ControlPanel = _controlPanel
 
-    def auralStarted(s: Server)(implicit tx: Txn): Unit = {
+    def auralStarted(s: Server)(implicit tx: RT): Unit = {
       deferTx(_serverPanel.server = Some(s.peer))
       installMainSynth(s)
     }
 
-    def auralStopped()(implicit tx: Txn): Unit = deferTx {
+    def auralStopped()(implicit tx: RT): Unit = deferTx {
       _serverPanel.server = None
     }
 
@@ -168,7 +168,7 @@ object NuagesViewImpl {
       gridCon.weightx   = 1.0
       gridCon.gridwidth = 0
 
-      def mkFader(ctrlSpecT: (ParamSpec, Double), weighty: Double)(fun: (Double, S#Tx) => Unit): Unit = {
+      def mkFader(ctrlSpecT: (ParamSpec, Double), weighty: Double)(fun: (Double, T) => Unit): Unit = {
         val (ctrlSpec, ctrlInit) = ctrlSpecT
         val slidSpec = ParamSpec(0, 0x10000)
         val slidInit = slidSpec.map(ctrlSpec.inverseMap(ctrlInit)).toInt
@@ -207,7 +207,7 @@ object NuagesViewImpl {
 
 //    private def showMenu(parent: Component): Unit = {
 //      val selectedObjects = panel.selection.collect {
-//        case v: NuagesObj[S] => v
+//        case v: NuagesObj[T] => v
 //      }
 //      val pop = new PopupMenu {
 //        contents += new MenuItem(new Action("Save Macro...") {
@@ -237,7 +237,7 @@ object NuagesViewImpl {
 //      pop.show(parent, 0, 0)
 //    }
 
-    def dispose()(implicit tx: S#Tx): Unit = {
+    def dispose()(implicit tx: T): Unit = {
       val aural = panel.universe.auralSystem
       aural.removeClient(this)
       val synth = panel.mainSynth
@@ -246,7 +246,7 @@ object NuagesViewImpl {
       synth.foreach(_.dispose())
     }
 
-    private def installMainSynth(server: Server)(implicit tx: Txn): Unit = {
+    private def installMainSynth(server: Server)(implicit tx: RT): Unit = {
       if (!nConfig.mainSynth) return // user already installed their own synth
 
       val dfPostM = SynthGraph {

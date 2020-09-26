@@ -14,9 +14,7 @@
 package de.sciss.nuages
 
 import de.sciss.file._
-import de.sciss.lucre.artifact.ArtifactLocation
-import de.sciss.lucre.stm
-import de.sciss.lucre.stm.Obj
+import de.sciss.lucre.{ArtifactLocation, Obj, Txn}
 import de.sciss.synth
 import de.sciss.synth.{GE, proc}
 
@@ -56,14 +54,14 @@ object Util {
 
   def defaultRecDir: File = File.tempDir
 
-  def findRecDir[S <: stm.Sys[S]](obj: Obj[S])(implicit tx: S#Tx): File =
+  def findRecDir[T <: Txn[T]](obj: Obj[T])(implicit tx: T): File =
     obj.attr.$[ArtifactLocation](attrRecDir).fold(defaultRecDir)(_.value)
 
-  def getRecLocation[S <: stm.Sys[S]](n: Nuages[S], recDir: => File)(implicit tx: S#Tx): ArtifactLocation[S] = {
+  def getRecLocation[T <: Txn[T]](n: Nuages[T], recDir: => File)(implicit tx: T): ArtifactLocation[T] = {
     val attr = n.attr
     attr.$[ArtifactLocation](Nuages.attrRecLoc).getOrElse {
       if (!recDir.exists()) tx.afterCommit(recDir.mkdirs())
-      val newLoc = ArtifactLocation.newVar[S](recDir)
+      val newLoc = ArtifactLocation.newVar[T](recDir)
       // newLoc.name = RecName
       // root.modifiableOption.foreach(_.addLast(newLoc))
       attr.put(Nuages.attrRecLoc, newLoc)
@@ -73,16 +71,16 @@ object Util {
 
   def wrapExtendChannels(n: Int, sig: GE): GE = Vector.tabulate(n)(sig.out)
 
-  def mkLoop[S <: stm.Sys[S]](n: Nuages[S], name: String, numBufChannels: Int, genNumChannels: Int)
-                             (implicit tx: S#Tx): proc.Proc[S] = {
+  def mkLoop[T <: Txn[T]](n: Nuages[T], name: String, numBufChannels: Int, genNumChannels: Int)
+                             (implicit tx: T): proc.Proc[T] = {
     import synth._
     import ugen._
 
-    val dsl = DSL[S]
+    val dsl = DSL[T]
     import dsl._
 //    val f       = art.value
 //    val spec    = AudioFile.readSpec(f)
-    implicit val nuages: Nuages[S] = n
+    implicit val nuages: Nuages[T] = n
 
     def default(in: Double): ControlValues =
       if (genNumChannels <= 0)
@@ -126,7 +124,7 @@ object Util {
       LocalOut.kr(Impulse.kr(1.0 / duration.max(0.1)))
       sig
     }
-//    val gr    = AudioCue.Obj[S](art, spec, 0L, 1.0)
+//    val gr    = AudioCue.Obj[T](art, spec, 0L, 1.0)
 //    procObj.attr.put("file", gr) // Obj(AudioGraphemeElem(gr)))
     procObj
   }

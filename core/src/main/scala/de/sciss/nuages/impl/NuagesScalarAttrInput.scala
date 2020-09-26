@@ -16,13 +16,13 @@ package impl
 
 import java.awt.Graphics2D
 
-import de.sciss.lucre.synth.Sys
+import de.sciss.lucre.synth.Txn
 import de.sciss.synth.Curve
 import de.sciss.synth.proc.EnvSegment
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-trait NuagesScalarAttrInput[S <: Sys[S]] extends NuagesAttrInputExprImpl[S] {
+trait NuagesScalarAttrInput[T <: Txn[T]] extends NuagesAttrInputExprImpl[T] {
   // ---- abstract ----
 
   protected def toDouble  (in: A     ): Double
@@ -32,14 +32,14 @@ trait NuagesScalarAttrInput[S <: Sys[S]] extends NuagesAttrInputExprImpl[S] {
 
   final def numericValue: Vec[Double] = Vector(toDouble(valueA))
 
-  protected final def mkConst(v: Vec[Double])(implicit tx: S#Tx): Repr[S] = {
+  protected final def mkConst(v: Vec[Double])(implicit tx: T): Repr[T] = {
     require(v.size == 1)
     tpe.newConst(fromDouble(v(0)))
   }
 
-  protected final def mkEnvSeg(start: Repr[S], curve: Curve)(implicit tx: S#Tx): EnvSegment.Obj[S] = {
+  protected final def mkEnvSeg(start: Repr[T], curve: Curve)(implicit tx: T): EnvSegment.Obj[T] = {
     val lvl = toDouble(start.value)
-    EnvSegment.Obj.newVar[S](EnvSegment.Single(lvl, curve))
+    EnvSegment.Obj.newVar[T](EnvSegment.Single(lvl, curve))
   }
 
   final def numChannels = 1

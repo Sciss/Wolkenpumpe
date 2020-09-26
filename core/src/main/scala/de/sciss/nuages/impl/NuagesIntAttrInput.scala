@@ -14,28 +14,26 @@
 package de.sciss.nuages
 package impl
 
-import de.sciss.lucre.expr.{IntObj, Type}
-import de.sciss.lucre.stm.Sys
-import de.sciss.lucre.synth.{Sys => SSys}
+import de.sciss.lucre.{Expr, IntObj, Txn, synth}
 
 object NuagesIntAttrInput extends PassAttrInputFactory {
   def typeId: Int = IntObj.typeId
 
-  type Repr[~ <: Sys[~]] = IntObj[~]
+  type Repr[~ <: Txn[~]] = IntObj[~]
 
-  protected def mkNoInit[S <: SSys[S]](attr: NuagesAttribute[S])
-                                     (implicit tx: S#Tx, context: NuagesContext[S]): View[S] =
-    new NuagesIntAttrInput[S](attr)
+  protected def mkNoInit[T <: synth.Txn[T]](attr: NuagesAttribute[T])
+                                     (implicit tx: T, context: NuagesContext[T]): View[T] =
+    new NuagesIntAttrInput[T](attr)
 }
-final class NuagesIntAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S])
-  extends NuagesScalarAttrInput[S] {
+final class NuagesIntAttrInput[T <: synth.Txn[T]](val attribute: NuagesAttribute[T])
+  extends NuagesScalarAttrInput[T] {
 
   override def toString = s"Int($attribute)"
 
   type A                  = Int
-  type Repr[~ <: Sys[~]]  = IntObj[~]
+  type Repr[~ <: Txn[~]]  = IntObj[~]
 
-  val tpe: Type.Expr[A, Repr] = IntObj
+  val tpe: Expr.Type[A, Repr] = IntObj
 
   protected def toDouble  (in: Int   ): Double = in.toDouble
   protected def fromDouble(in: Double): Int    = in.toInt

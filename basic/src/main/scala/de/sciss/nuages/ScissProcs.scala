@@ -14,9 +14,9 @@
 package de.sciss.nuages
 
 import de.sciss.file._
-import de.sciss.lucre.artifact.{Artifact => _Artifact, ArtifactLocation => _ArtifactLocation}
-import de.sciss.lucre.stm
-import de.sciss.lucre.synth.Sys
+import de.sciss.lucre.{Artifact => _Artifact, ArtifactLocation => _ArtifactLocation}
+import de.sciss.lucre.synth.Txn
+import de.sciss.lucre.{Txn => LTxn}
 import de.sciss.synth
 import de.sciss.synth.io.AudioFile
 import de.sciss.synth.proc
@@ -71,8 +71,8 @@ object ScissProcs {
       highPass = highPass, recDir = recDir, plugins = plugins)
   }
 
-  def actionRecPrepare[S <: stm.Sys[S]](implicit tx: S#Tx): proc.Action[S] = {
-    val a = proc.Action[S]()
+  def actionRecPrepare[T <: LTxn[T]](implicit tx: T): proc.Action[T] = {
+    val a = proc.Action[T]()
     import de.sciss.lucre.expr.ExImport._
     import de.sciss.lucre.expr.graph._
     a.setGraph {
@@ -110,8 +110,8 @@ object ScissProcs {
     a
   }
 
-  def actionRecDispose[S <: stm.Sys[S]](implicit tx: S#Tx): proc.Action[S] = {
-    val a = proc.Action[S]()
+  def actionRecDispose[T <: LTxn[T]](implicit tx: T): proc.Action[T] = {
+    val a = proc.Action[T]()
     import de.sciss.lucre.expr.ExImport._
     import de.sciss.lucre.expr.graph._
     import de.sciss.synth.proc.ExImport._
@@ -172,28 +172,28 @@ object ScissProcs {
 //  private final val attrPrepareRec  = "prepare-rec"
 //  private final val attrDisposeRec  = "dispose-rec"
 
-  def apply[S <: Sys[S]](nuages: Nuages[S], nConfig: Nuages.Config, sConfig: ScissProcs.Config)
-                        (implicit tx: S#Tx): Unit = {
-    val mapActions = mkActions[S]()
-    applyWithActions[S](nuages, nConfig, sConfig, mapActions)
+  def apply[T <: Txn[T]](nuages: Nuages[T], nConfig: Nuages.Config, sConfig: ScissProcs.Config)
+                        (implicit tx: T): Unit = {
+    val mapActions = mkActions[T]()
+    applyWithActions[T](nuages, nConfig, sConfig, mapActions)
   }
 
   final val keyActionRecPrepare = "rec-prepare"
   final val keyActionRecDispose = "rec-dispose"
 
-  def mkActions[S <: Sys[S]]()(implicit tx: S#Tx): Map[String, proc.Action[S]] = {
-    val recPrepare = actionRecPrepare[S]
-    val recDispose = actionRecDispose[S]
+  def mkActions[T <: Txn[T]]()(implicit tx: T): Map[String, proc.Action[T]] = {
+    val recPrepare = actionRecPrepare[T]
+    val recDispose = actionRecDispose[T]
     Map(keyActionRecPrepare -> recPrepare, keyActionRecDispose -> recDispose)
   }
 
-  def applyWithActions[S <: Sys[S]](nuages: Nuages[S], nConfig: Nuages.Config, sConfig: ScissProcs.Config,
-                                    actions: Map[String, proc.Action[S]])
-                                   (implicit tx: S#Tx): Unit = {
+  def applyWithActions[T <: Txn[T]](nuages: Nuages[T], nConfig: Nuages.Config, sConfig: ScissProcs.Config,
+                                    actions: Map[String, proc.Action[T]])
+                                   (implicit tx: T): Unit = {
     import synth._
     import ugen._
 
-    val dsl = DSL[S]
+    val dsl = DSL[T]
     import dsl._
     import sConfig.genNumChannels
 
@@ -203,15 +203,15 @@ object ScissProcs {
       Util.wrapExtendChannels(genNumChannels, in)
     }
 
-    implicit val _nuages: Nuages[S] = nuages
+    implicit val _nuages: Nuages[T] = nuages
 
-    def filterF   (name: String)(fun: GE => GE): proc.Proc[S] =
+    def filterF   (name: String)(fun: GE => GE): proc.Proc[T] =
       filter      (name, if (DSL.useScanFixed) genNumChannels else -1)(fun)
 
-    def sinkF     (name: String)(fun: GE => Unit): proc.Proc[S] =
+    def sinkF     (name: String)(fun: GE => Unit): proc.Proc[T] =
       sink        (name, if (DSL.useScanFixed) genNumChannels else -1)(fun)
 
-    def collectorF(name: String)(fun: GE => Unit): proc.Proc[S] =
+    def collectorF(name: String)(fun: GE => Unit): proc.Proc[T] =
       collector   (name, if (DSL.useScanFixed) genNumChannels else -1)(fun)
 
     def mkSpread(arg: GE)(gen: GE => GE): GE = {
@@ -229,7 +229,7 @@ object ScissProcs {
     // -------------- GENERATORS --------------
 
     sConfig.audioFilesFolder.foreach { folder =>
-      val loc = _ArtifactLocation.newConst[S](folder)
+      val loc = _ArtifactLocation.newConst[T](folder)
 
       // N.B. do not use ellipsis character (…) because synth-def names are ASCII-7
       def abbreviate(s: String) = if (s.length < 16) s else s"${s.take(7)}...${s.takeRight(7)}"
@@ -251,7 +251,7 @@ object ScissProcs {
 
         val art   = _Artifact(loc, f) // loc.add(f)
         val spec  = AudioFile.readSpec(f)
-        val gr    = proc.AudioCue.Obj[S](art, spec, 0L, 1.0)
+        val gr    = proc.AudioCue.Obj[T](art, spec, 0L, 1.0)
         procObj.attr.put("file", gr)
       })
     }
@@ -1011,7 +1011,7 @@ object ScissProcs {
     val sinkPrepObj = actions(keyActionRecPrepare)
     val sinkDispObj = actions(keyActionRecDispose)
 //    val genChansObj = IntObj.newConst[S](genNumChannels)
-    val recDirObj   = _ArtifactLocation.newConst[S](sConfig.recDir)
+    val recDirObj   = _ArtifactLocation.newConst[T](sConfig.recDir)
 
     // XXX TODO
     // we currently have to ex representation for nuages, perhaps

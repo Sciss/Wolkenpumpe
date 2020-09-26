@@ -1,7 +1,7 @@
 package de.sciss.nuages
 
-import de.sciss.lucre.stm.store.BerkeleyDB
-import de.sciss.lucre.stm.{Folder, Obj}
+import de.sciss.lucre.store.BerkeleyDB
+import de.sciss.lucre.{Folder, Obj}
 import de.sciss.nuages.Nuages.Surface
 import de.sciss.span.Span
 import de.sciss.synth.proc.Implicits._
@@ -18,6 +18,7 @@ import org.scalatest.matchers.should.Matchers
  */
 class NuagesSerializationSpec extends FixtureAnyFlatSpec with Matchers {
   type S = Durable
+  type T = Durable.Txn
   type FixtureParam = Durable
 
   Wolkenpumpe.init()
@@ -34,9 +35,9 @@ class NuagesSerializationSpec extends FixtureAnyFlatSpec with Matchers {
 
   "Nuages" should "serialize and deserialize" in { system =>
     val nH = system.step { implicit tx =>
-      val n = Nuages.timeline[S]
+      val n = Nuages.timeline[T]
       val Surface.Timeline(t) = n.surface
-      val p = Proc[S]()
+      val p = Proc[T]()
       p.name = "Schoko"
       assert(p.name === "Schoko")
       t.modifiableOption.get.add(Span(0L, 10000L), p)
@@ -49,7 +50,7 @@ class NuagesSerializationSpec extends FixtureAnyFlatSpec with Matchers {
       val Surface.Timeline(t) = n.surface
       val objects = t.intersect(0L).toList.flatMap(_._2.map(_.value))
       assert(objects.map(_.name) === List("Schoko"))
-      tx.newHandle(n: Obj[S])
+      tx.newHandle(n: Obj[T])
     }
 
     system.step { implicit tx =>
@@ -59,7 +60,7 @@ class NuagesSerializationSpec extends FixtureAnyFlatSpec with Matchers {
 
     val fH = system.step { implicit tx =>
       val n = nH()
-      val f = Folder[S]()
+      val f = Folder[T]()
       f.addLast(n)
       tx.newHandle(f)
     }
@@ -67,8 +68,8 @@ class NuagesSerializationSpec extends FixtureAnyFlatSpec with Matchers {
     system.step { implicit tx =>
       val f = fH()
       val o = f.last    // this was revealing a de-serialization bug in Timeline
-      assert(o.isInstanceOf[Nuages[S]])
-      val n = o.asInstanceOf[Nuages[S]]
+      assert(o.isInstanceOf[Nuages[T]])
+      val n = o.asInstanceOf[Nuages[T]]
       val Surface.Timeline(t) = n.surface
       val objects = t.intersect(0L).toList.flatMap(_._2.map(_.value))
       assert(objects.map(_.name) === List("Schoko"))

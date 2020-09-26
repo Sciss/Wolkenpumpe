@@ -14,28 +14,27 @@
 package de.sciss.nuages
 package impl
 
-import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{Disposable, Sys, TxnLike}
+import de.sciss.lucre.{Disposable, Source, Txn}
 import de.sciss.span.{Span, SpanLike}
 import de.sciss.synth.proc.Timeline
 import de.sciss.synth.proc.Timeline.Timed
 
-trait NuagesTimelineBase[S <: Sys[S]] extends NuagesScheduledBase[S] {
+trait NuagesTimelineBase[T <: Txn[T]] extends NuagesScheduledBase[T] {
 
-  import TxnLike.peer
+  import Txn.peer
 
   // ---- abstract ----
 
-  protected def timelineH: stm.Source[S#Tx, Timeline[S]]
+  protected def timelineH: Source[T, Timeline[T]]
 
-  protected def addNode   (span: SpanLike, timed: Timed[S])(implicit tx: S#Tx): Unit
-  protected def removeNode(span: SpanLike, timed: Timed[S])(implicit tx: S#Tx): Unit
+  protected def addNode   (span: SpanLike, timed: Timed[T])(implicit tx: T): Unit
+  protected def removeNode(span: SpanLike, timed: Timed[T])(implicit tx: T): Unit
 
   // ---- impl ----
 
-  private[this] var observer: Disposable[S#Tx] = _
+  private[this] var observer: Disposable[T] = _
 
-  override protected def disposeTransport()(implicit tx: S#Tx): Unit = {
+  override protected def disposeTransport()(implicit tx: T): Unit = {
     super.disposeTransport()
     observer.dispose()
   }
@@ -43,7 +42,7 @@ trait NuagesTimelineBase[S <: Sys[S]] extends NuagesScheduledBase[S] {
   /** Calls `initTimelineObserver` followed by creating live views.
     * This must be called after `initPosition` and before `initTransport`.
     */
-  final protected def initTimeline(tl: Timeline[S])(implicit tx: S#Tx): Unit = {
+  final protected def initTimeline(tl: Timeline[T])(implicit tx: T): Unit = {
     initTimelineObserver(tl)
     val offset0 = currentOffset()
     tl.intersect(offset0).foreach { case (span, elems) =>
@@ -51,7 +50,7 @@ trait NuagesTimelineBase[S <: Sys[S]] extends NuagesScheduledBase[S] {
     }
   }
 
-  final protected def initTimelineObserver(tl: Timeline[S])(implicit tx: S#Tx): Unit = {
+  final protected def initTimelineObserver(tl: Timeline[T])(implicit tx: T): Unit = {
     observer = tl.changed.react { implicit tx => upd =>
       if (!isDisposed) upd.changes.foreach {
         case Timeline.Added  (span, timed) => addRemoveNode(span, timed, add = true )
@@ -81,7 +80,7 @@ trait NuagesTimelineBase[S <: Sys[S]] extends NuagesScheduledBase[S] {
     }
   }
 
-  private def addRemoveNode(span: SpanLike, timed: Timed[S], add: Boolean)(implicit tx: S#Tx): Unit = {
+  private def addRemoveNode(span: SpanLike, timed: Timed[T], add: Boolean)(implicit tx: T): Unit = {
     val t    = transport
     val time = currentOffset()
     if (span.contains(time)) {
@@ -95,7 +94,7 @@ trait NuagesTimelineBase[S <: Sys[S]] extends NuagesScheduledBase[S] {
     }
   }
 
-  protected final def seek(before: Long, now: Long)(implicit tx: S#Tx): Unit = {
+  protected final def seek(before: Long, now: Long)(implicit tx: T): Unit = {
     val timeline = timelineH()
     // there are two possibilities:
     // - use timeline.rangeSearch to determine
@@ -133,10 +132,10 @@ trait NuagesTimelineBase[S <: Sys[S]] extends NuagesScheduledBase[S] {
     }
   }
 
-  protected final def eventAfter(offset: Long)(implicit tx: S#Tx): Long =
+  protected final def eventAfter(offset: Long)(implicit tx: T): Long =
     timelineH().eventAfter(offset).getOrElse(Long.MaxValue)
 
-  protected final def processEvent(offset: Long)(implicit tx: S#Tx): Unit = {
+  protected final def processEvent(offset: Long)(implicit tx: T): Unit = {
     val timeline          = timelineH()
     val (startIt, stopIt) = timeline.eventsAt(offset)
 

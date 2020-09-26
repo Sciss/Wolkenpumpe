@@ -14,20 +14,20 @@
 package de.sciss.nuages
 package impl
 
-import de.sciss.lucre.synth.Sys
+import de.sciss.lucre.synth.Txn
 import prefuse.data.{Node => PNode}
 import prefuse.visual.VisualItem
 
-trait NuagesNodeImpl[S <: Sys[S]] extends NuagesDataImpl[S] with NuagesNode[S] {
-  protected final def atomic[A](fun: S#Tx => A): A = main.universe.cursor.step(fun)
+trait NuagesNodeImpl[T <: Txn[T]] extends NuagesDataImpl[T] with NuagesNode[T] {
+  protected final def atomic[A](fun: T => A): A = main.universe.cursor.step(fun)
 }
 
-trait NuagesNodeRootImpl[S <: Sys[S]] extends NuagesNodeImpl[S] {
+trait NuagesNodeRootImpl[T <: Txn[T]] extends NuagesNodeImpl[T] {
   private[this] var _pNode: PNode = _
 
   // ---- abstract ----
 
-  def parent: NuagesObj[S]
+  def parent: NuagesObj[T]
 
   protected def nodeSize: Float
 

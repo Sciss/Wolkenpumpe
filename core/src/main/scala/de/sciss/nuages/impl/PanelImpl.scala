@@ -16,13 +16,12 @@ package impl
 
 import java.awt.Color
 
-import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{Disposable, Folder, Obj, TxnLike}
+import de.sciss.lucre.{Cursor, Disposable, Folder, IdentMap, ListObj, Obj, Source, TxnLike, Txn => LTxn}
 import de.sciss.lucre.swing.ListView
 import de.sciss.lucre.swing.LucreSwing.{defer, deferTx, requireEDT}
-import de.sciss.lucre.synth.Sys
+import de.sciss.lucre.synth.Txn
 import de.sciss.nuages.Nuages.Surface
-import de.sciss.serial.Serializer
+import de.sciss.serial.TFormat
 import de.sciss.synth.proc
 import de.sciss.synth.proc.{AuralObj, Timeline, Transport, Universe}
 import prefuse.controls.Control
@@ -35,8 +34,8 @@ import scala.util.control.NonFatal
 object PanelImpl {
   var DEBUG = false
 
-  def apply[S <: Sys[S]](nuages: Nuages[S], config: Nuages.Config)
-                        (implicit tx: S#Tx, universe: Universe[S], context: NuagesContext[S]): NuagesPanel[S] = {
+  def apply[T <: Txn[T]](nuages: Nuages[T], config: Nuages.Config)
+                        (implicit tx: T, universe: Universe[T], context: NuagesContext[T]): NuagesPanel[T] = {
     val nuagesH       = tx.newHandle(nuages)
 
     val listGen       = mkListView(nuages.generators)
@@ -46,22 +45,22 @@ object PanelImpl {
     val listCol2      = mkListView(nuages.collectors)
     val listMacro     = mkListView(nuages.macros    )
 
-    val nodeMap       = tx.newInMemoryIdMap[NuagesObj[S]]
-    // val scanMap       = tx.newInMemoryIdMap[NuagesOutput[S]] // ScanInfo [S]]
-    val missingScans  = tx.newInMemoryIdMap[List[NuagesAttribute[S]]]
-    val transport     = Transport[S](universe)
+    val nodeMap       = tx.newIdentMap[NuagesObj[T]]
+    // val scanMap       = tx.newIdentMap[NuagesOutput[T]] // ScanInfo [T]]
+    val missingScans  = tx.newIdentMap[List[NuagesAttribute[T]]]
+    val transport     = Transport[T](universe)
     val surface       = nuages.surface
     // transport.addObject(surface.peer)
 
     surface match {
       case Surface.Timeline(tl) =>
-        new PanelImplTimeline[S](nuagesH, nodeMap, /* scanMap, */ missingScans, config, transport,
+        new PanelImplTimeline[T](nuagesH, nodeMap, /* scanMap, */ missingScans, config, transport,
           listGen = listGen, listFlt1 = listFlt1, listCol1 = listCol1, listFlt2 = listFlt2, listCol2 = listCol2,
           listMacro = listMacro)
           .init(tl)
 
       case Surface.Folder(f) =>
-        new PanelImplFolder[S](nuagesH, nodeMap, /* scanMap, */ missingScans, config, transport,
+        new PanelImplFolder[T](nuagesH, nodeMap, /* scanMap, */ missingScans, config, transport,
           listGen = listGen, listFlt1 = listFlt1, listCol1 = listCol1, listFlt2 = listFlt2, listCol2 = listCol2,
           listMacro = listMacro)
           .init(f)
@@ -77,15 +76,15 @@ object PanelImpl {
   final val ACTION_COLOR  = "color"
   final val LAYOUT_TIME   = 50
 
-  def mkListView[S <: Sys[S]](folderOpt: Option[Folder[S]])
-                             (implicit tx: S#Tx): ListView[S, Obj[S], Unit] = {
+  def mkListView[T <: Txn[T]](folderOpt: Option[Folder[T]])
+                             (implicit tx: T): ListView[T, Obj[T], Unit] = {
     import proc.Implicits._
-    val h = ListView.Handler[S, Obj[S], Unit /* Obj.Update[S] */] { implicit tx => obj => obj.name } (_ => (_, _) => None)
-    implicit val ser: Serializer[S#Tx, S#Acc, stm.List[S, Obj[S]]] =
-      stm.List.serializer[S, Obj[S] /* , Unit */ /* Obj.Update[S] */]
+    val h = ListView.Handler[T, Obj[T], Unit /* Obj.Update[T] */] { implicit tx => obj => obj.name } (_ => (_, _) => None)
+    implicit val fmt: TFormat[T, ListObj[T, Obj[T]]] =
+      ListObj.format[T, Obj[T] /* , Unit */ /* Obj.Update[T] */]
 
-    // val res = ListView[S, Obj[S], Unit /* Obj.Update[S] */, String](folder, h)
-    val res = ListView.empty[S, Obj[S], Unit /* Obj.Update[S] */, String](h)
+    // val res = ListView[T, Obj[T], Unit /* Obj.Update[T] */, String](folder, h)
+    val res = ListView.empty[T, Obj[T], Unit /* Obj.Update[T] */, String](h)
     deferTx {
       val c = res.view
       c.background = Color.black
@@ -97,89 +96,89 @@ object PanelImpl {
   }
 }
 
-final class PanelImplTimeline[S <: Sys[S]](protected val nuagesH: stm.Source[S#Tx, Nuages[S]],
-                                           protected val nodeMap: stm.IdentifierMap[S#Id, S#Tx, NuagesObj[S]],
-//     protected val scanMap: stm.IdentifierMap[S#Id, S#Tx, NuagesOutput[S]],
-     protected val missingScans: stm.IdentifierMap[S#Id, S#Tx, List[NuagesAttribute[S]]],
+final class PanelImplTimeline[T <: Txn[T]](protected val nuagesH: Source[T, Nuages[T]],
+                                           protected val nodeMap: IdentMap[T, NuagesObj[T]],
+//     protected val scanMap: stm.IdentMap[Ident[T], T, NuagesOutput[T]],
+     protected val missingScans: IdentMap[T, List[NuagesAttribute[T]]],
      val config   : Nuages.Config,
-     val transport: Transport[S],
-     protected val listGen  : ListView[S, Obj[S], Unit /* Obj.Update[S] */],
-     protected val listFlt1 : ListView[S, Obj[S], Unit /* Obj.Update[S] */],
-     protected val listCol1 : ListView[S, Obj[S], Unit /* Obj.Update[S] */],
-     protected val listFlt2 : ListView[S, Obj[S], Unit /* Obj.Update[S] */],
-     protected val listCol2 : ListView[S, Obj[S], Unit /* Obj.Update[S] */],
-     protected val listMacro: ListView[S, Obj[S], Unit /* Obj.Update[S] */])
-    (implicit val universe: Universe[S],
-     val context: NuagesContext[S])
-  extends PanelImpl[S, Timeline[S], AuralObj.Timeline[S]]
-  with PanelImplTimelineInit[S]
+     val transport: Transport[T],
+     protected val listGen  : ListView[T, Obj[T], Unit /* Obj.Update[T] */],
+     protected val listFlt1 : ListView[T, Obj[T], Unit /* Obj.Update[T] */],
+     protected val listCol1 : ListView[T, Obj[T], Unit /* Obj.Update[T] */],
+     protected val listFlt2 : ListView[T, Obj[T], Unit /* Obj.Update[T] */],
+     protected val listCol2 : ListView[T, Obj[T], Unit /* Obj.Update[T] */],
+     protected val listMacro: ListView[T, Obj[T], Unit /* Obj.Update[T] */])
+    (implicit val universe: Universe[T],
+     val context: NuagesContext[T])
+  extends PanelImpl[T, Timeline[T], AuralObj.Timeline[T]]
+  with PanelImplTimelineInit[T]
 
-final class PanelImplFolder[S <: Sys[S]](protected val nuagesH: stm.Source[S#Tx, Nuages[S]],
-                                         protected val nodeMap: stm.IdentifierMap[S#Id, S#Tx, NuagesObj[S]],
-//     protected val scanMap: stm.IdentifierMap[S#Id, S#Tx, NuagesOutput[S]],
-     protected val missingScans: stm.IdentifierMap[S#Id, S#Tx, List[NuagesAttribute[S]]],
+final class PanelImplFolder[T <: Txn[T]](protected val nuagesH: Source[T, Nuages[T]],
+                                         protected val nodeMap: IdentMap[T, NuagesObj[T]],
+//     protected val scanMap: stm.IdentMap[Ident[T], T, NuagesOutput[T]],
+     protected val missingScans: IdentMap[T, List[NuagesAttribute[T]]],
      val config   : Nuages.Config,
-     val transport: Transport[S],
-     protected val listGen  : ListView[S, Obj[S], Unit /* Obj.Update[S] */],
-     protected val listFlt1 : ListView[S, Obj[S], Unit /* Obj.Update[S] */],
-     protected val listCol1 : ListView[S, Obj[S], Unit /* Obj.Update[S] */],
-     protected val listFlt2 : ListView[S, Obj[S], Unit /* Obj.Update[S] */],
-     protected val listCol2 : ListView[S, Obj[S], Unit /* Obj.Update[S] */],
-     protected val listMacro: ListView[S, Obj[S], Unit /* Obj.Update[S] */])
-    (implicit val universe: Universe[S],
-     val context: NuagesContext[S])
-  extends PanelImpl[S, Folder[S], AuralObj.Folder[S]]
-  with PanelImplFolderInit[S]
+     val transport: Transport[T],
+     protected val listGen  : ListView[T, Obj[T], Unit /* Obj.Update[T] */],
+     protected val listFlt1 : ListView[T, Obj[T], Unit /* Obj.Update[T] */],
+     protected val listCol1 : ListView[T, Obj[T], Unit /* Obj.Update[T] */],
+     protected val listFlt2 : ListView[T, Obj[T], Unit /* Obj.Update[T] */],
+     protected val listCol2 : ListView[T, Obj[T], Unit /* Obj.Update[T] */],
+     protected val listMacro: ListView[T, Obj[T], Unit /* Obj.Update[T] */])
+    (implicit val universe: Universe[T],
+     val context: NuagesContext[T])
+  extends PanelImpl[T, Folder[T], AuralObj.Folder[T]]
+  with PanelImplFolderInit[T]
 
 // nodeMap: uses timed-id as key
-trait PanelImpl[S <: Sys[S], Repr <: Obj[S], AuralRepr <: AuralObj[S]]
-  extends NuagesPanel[S]
+trait PanelImpl[T <: Txn[T], Repr <: Obj[T], AuralRepr <: AuralObj[T]]
+  extends NuagesPanel[T]
   // here comes your cake!
-  with PanelImplDialogs[S]
-  with PanelImplTxnFuns[S]
-  with PanelImplReact  [S]
-  with PanelImplMixer  [S]
-  with PanelImplGuiInit[S]
-  // with PanelImplGuiFuns[S]
+  with PanelImplDialogs[T]
+  with PanelImplTxnFuns[T]
+  with PanelImplReact  [T]
+  with PanelImplMixer  [T]
+  with PanelImplGuiInit[T]
+  // with PanelImplGuiFuns[T]
   {
   panel =>
 
   import NuagesPanel.{COL_NUAGES, GROUP_SELECTION}
   import PanelImpl._
-  import TxnLike.peer
+  import LTxn.peer
 
   // ---- abstract ----
 
-  protected def nuagesH: stm.Source[S#Tx, Nuages[S]]
+  protected def nuagesH: Source[T, Nuages[T]]
 
   protected def auralReprRef: Ref[Option[AuralRepr]]
 
-  protected def disposeTransport()(implicit tx: S#Tx): Unit
+  protected def disposeTransport()(implicit tx: T): Unit
 
-  protected def initObservers(repr: Repr)(implicit tx: S#Tx): Unit
+  protected def initObservers(repr: Repr)(implicit tx: T): Unit
 
   // ---- impl ----
 
-  protected final def main: NuagesPanel[S] = this
+  protected final def main: NuagesPanel[T] = this
 
-  final def cursor: stm.Cursor[S] = universe.cursor
+  final def cursor: Cursor[T] = universe.cursor
 
-  protected final var observers: List[Disposable[S#Tx]] = Nil
-  protected final val auralObserver                     = Ref(Option.empty[Disposable[S#Tx]])
+  protected final var observers: List[Disposable[T]] = Nil
+  protected final val auralObserver                     = Ref(Option.empty[Disposable[T]])
 
-  final def nuages(implicit tx: S#Tx): Nuages[S] = nuagesH()
+  final def nuages(implicit tx: T): Nuages[T] = nuagesH()
 
-  private[this] var  _keyControl: Control with Disposable[S#Tx] = _
-  protected final def keyControl: Control with Disposable[S#Tx] = _keyControl
+  private[this] var  _keyControl: Control with Disposable[T] = _
+  protected final def keyControl: Control with Disposable[T] = _keyControl
 
-  final def init(repr: Repr)(implicit tx: S#Tx): this.type = {
+  final def init(repr: Repr)(implicit tx: T): this.type = {
     _keyControl = KeyControl(main)
     deferTx(guiInit())
     initObservers(repr)
     this
   }
 
-  final def dispose()(implicit tx: S#Tx): Unit = {
+  final def dispose()(implicit tx: T): Unit = {
     disposeTransport()
     disposeNodes()
     deferTx(stopAnimation())
@@ -190,19 +189,19 @@ trait PanelImpl[S <: Sys[S], Repr <: Obj[S], AuralRepr <: AuralObj[S]]
     keyControl.dispose()
   }
 
-  protected final def disposeAuralObserver()(implicit tx: S#Tx): Unit = {
+  protected final def disposeAuralObserver()(implicit tx: T): Unit = {
     auralReprRef() = None
     auralObserver.swap(None).foreach(_.dispose())
   }
 
-  final def selection: Set[NuagesNode[S]] = {
+  final def selection: Set[NuagesNode[T]] = {
     requireEDT()
     val selectedItems = visualization.getGroup(GROUP_SELECTION)
     import scala.collection.JavaConverters._
     selectedItems.tuples().asScala.flatMap {
       case ni: NodeItem =>
         ni.get(COL_NUAGES) match {
-          case vn: NuagesNode[S] => Some(vn)
+          case vn: NuagesNode[T] => Some(vn)
           case _ => None
         }
       case _ => None
@@ -240,18 +239,18 @@ trait PanelImpl[S <: Sys[S], Repr <: Obj[S], AuralRepr <: AuralObj[S]]
   @inline private def startAnimation(): Unit =
     visualization.run(ACTION_COLOR)
 
-  final def saveMacro(name: String, sel: Set[NuagesObj[S]]): Unit =
+  final def saveMacro(name: String, sel: Set[NuagesObj[T]]): Unit =
     cursor.step { implicit tx =>
      val copies = Nuages.copyGraph(sel.iterator.map(_.obj).toIndexedSeq)
 
-      val macroF = Folder[S]()
+      val macroF = Folder[T]()
       copies.foreach(macroF.addLast)
       val nuagesF = panel.nuages.folder
       import proc.Implicits._
       val parent = nuagesF.iterator.collect {
-        case parentObj: Folder[S] if parentObj.name == Nuages.NameMacros => parentObj
+        case parentObj: Folder[T] if parentObj.name == Nuages.NameMacros => parentObj
       } .toList.headOption.getOrElse {
-        val res = Folder[S]()
+        val res = Folder[T]()
         res.name = Nuages.NameMacros
         nuagesF.addLast(res)
         res

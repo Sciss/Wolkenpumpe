@@ -19,7 +19,7 @@ import java.awt.geom.{AffineTransform, Arc2D, Ellipse2D, GeneralPath, Line2D, Po
 import java.awt.{BasicStroke, Color, Font, Graphics2D, Shape}
 import java.math.{MathContext, RoundingMode}
 
-import de.sciss.lucre.synth.Sys
+import de.sciss.lucre.synth.Txn
 import prefuse.util.ColorLib
 import prefuse.visual.VisualItem
 
@@ -63,12 +63,12 @@ object NuagesDataImpl {
     gLine.setLine(x0, y0, x0 - (cos * diam * 0.2), y0 + (sin * diam * 0.2))
   }
 }
-trait NuagesDataImpl[S <: Sys[S]] extends NuagesData[S] {
+trait NuagesDataImpl[T <: Txn[T]] extends NuagesData[T] {
   import NuagesDataImpl._
 
   // ---- abstract ----
 
-  protected def main: NuagesPanel[S]
+  protected def main: NuagesPanel[T]
 
   def name: String
 
@@ -98,7 +98,7 @@ trait NuagesDataImpl[S <: Sys[S]] extends NuagesData[S] {
   protected final def outerShape: Shape = _outerE
   final def outline             : Shape = _outline
   
-  def copyFrom(that: NuagesData[S]): Unit = {
+  def copyFrom(that: NuagesData[T]): Unit = {
     require(Txn.findCurrent.isEmpty)
     update(that.outline)
     fixed = that.fixed

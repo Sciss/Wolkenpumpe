@@ -19,7 +19,7 @@ import java.awt.{Color, Graphics2D, RenderingHints}
 import javax.swing.{BoundedRangeModel, DefaultBoundedRangeModel, JPanel}
 
 import de.sciss.lucre.swing.impl.ComponentHolder
-import de.sciss.lucre.synth.Sys
+import de.sciss.lucre.synth.Txn
 import de.sciss.numbers
 import prefuse.action.{ActionList, RepaintAction}
 import prefuse.action.assignment.ColorAction
@@ -37,8 +37,8 @@ import prefuse.{Constants, Display, Visualization}
 
 import scala.swing.Component
 
-trait PanelImplGuiInit[S <: Sys[S]] extends ComponentHolder[Component] {
-  _: NuagesPanel[S] =>
+trait PanelImplGuiInit[T <: Txn[T]] extends ComponentHolder[Component] {
+  _: NuagesPanel[T] =>
 
   import PanelImpl.{GROUP_NODES, GROUP_EDGES, AGGR_PROC, ACTION_COLOR, ACTION_LAYOUT, LAYOUT_TIME}
   import NuagesPanel.{GROUP_GRAPH, GROUP_SELECTION, COL_NUAGES}
@@ -48,7 +48,7 @@ trait PanelImplGuiInit[S <: Sys[S]] extends ComponentHolder[Component] {
   // ---- abstract ----
 
   protected def keyControl: Control
-  protected def main: NuagesPanel[S]
+  protected def main: NuagesPanel[T]
 
   // ---- impl ----
 

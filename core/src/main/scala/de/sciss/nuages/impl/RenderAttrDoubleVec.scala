@@ -16,12 +16,12 @@ package impl
 
 import java.awt.geom.{Area, Arc2D}
 
-import de.sciss.lucre.synth.Sys
+import de.sciss.lucre.synth.Txn
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.swing.Graphics2D
 
-trait RenderNumericAttr[S <: Sys[S]] extends RenderAttrValue[S] with NuagesAttribute.Numeric {
+trait RenderNumericAttr[T <: Txn[T]] extends RenderAttrValue[T] with NuagesAttribute.Numeric {
 
   private[this] var allValuesEqual = false
 
@@ -90,7 +90,7 @@ trait RenderNumericAttr[S <: Sys[S]] extends RenderAttrValue[S] with NuagesAttri
   }
 }
 
-trait RenderAttrDoubleVec[S <: Sys[S]] extends RenderNumericAttr[S] {
+trait RenderAttrDoubleVec[T <: Txn[T]] extends RenderNumericAttr[T] {
   type A = Vec[Double]
 
   final def numericValue: Vec[Double] = valueA

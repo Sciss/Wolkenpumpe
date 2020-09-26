@@ -16,8 +16,8 @@ package de.sciss.nuages
 import java.awt.event.{KeyEvent, MouseEvent}
 import java.awt.geom.{Point2D, Rectangle2D}
 
-import de.sciss.lucre.expr.DoubleVector
-import de.sciss.lucre.synth.Sys
+import de.sciss.lucre.DoubleVector
+import de.sciss.lucre.synth.Txn
 import prefuse.Display
 import prefuse.controls.ControlAdapter
 import prefuse.util.GraphicsLib
@@ -34,7 +34,7 @@ import prefuse.visual.{EdgeItem, VisualItem}
   * - double-click on edge   : show filter    dialog
   * - alt-click on edge: delete edge
   */
-class ClickControl[S <: Sys[S]](main: NuagesPanel[S]) extends ControlAdapter {
+class ClickControl[T <: Txn[T]](main: NuagesPanel[T]) extends ControlAdapter {
 
   import NuagesPanel._
 
@@ -110,11 +110,11 @@ class ClickControl[S <: Sys[S]](main: NuagesPanel[S]) extends ControlAdapter {
         val vis  = main.visualization
         (vis.getRenderer(nSrc), vis.getRenderer(nTgt)) match {
           case (_: NuagesShapeRenderer[_], _: NuagesShapeRenderer[_]) =>
-            val srcData = nSrc.get(COL_NUAGES).asInstanceOf[NuagesData[S]]
-            val tgtData = nTgt.get(COL_NUAGES).asInstanceOf[NuagesData[S]]
+            val srcData = nSrc.get(COL_NUAGES).asInstanceOf[NuagesData[T]]
+            val tgtData = nTgt.get(COL_NUAGES).asInstanceOf[NuagesData[T]]
             if (srcData != null && tgtData != null)
               (srcData, tgtData) match {
-                case (vOut: NuagesOutput[S], vIn: NuagesAttribute[S]) =>
+                case (vOut: NuagesOutput[T], vIn: NuagesAttribute[T]) =>
                   main.showInsertFilterDialog(vOut, vIn, e.getPoint)
                 case _ =>
               }
@@ -129,7 +129,7 @@ class ClickControl[S <: Sys[S]](main: NuagesPanel[S]) extends ControlAdapter {
     val nSrc = ei.getSourceItem
     val nTgt = ei.getTargetItem
     (nSrc.get(COL_NUAGES), nTgt.get(COL_NUAGES)) match {
-      case (srcData: NuagesOutput[S], tgtData: NuagesAttribute.Input[S]) =>
+      case (srcData: NuagesOutput[T], tgtData: NuagesAttribute.Input[T]) =>
         main.cursor.step { implicit tx =>
           // val inputParent = tgtData.inputParent
           val before      = srcData.output
@@ -152,7 +152,7 @@ class ClickControl[S <: Sys[S]](main: NuagesPanel[S]) extends ControlAdapter {
 //              if (numCh == 1) DoubleObj.newVar(0.0) else DoubleVector.newVar(Vector.fill(numCh)(0.0))
 //            }
               val numCh = 2   // XXX TODO
-              val now   = DoubleVector.newVar[S](Vector.fill(numCh)(0.0))
+              val now   = DoubleVector.newVar[T](Vector.fill(numCh)(0.0))
               inputParent.updateChild(before, now, dt = 0L, clearRight = true)
             }
           }

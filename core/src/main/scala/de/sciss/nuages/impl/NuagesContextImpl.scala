@@ -14,34 +14,33 @@
 package de.sciss.nuages
 package impl
 
-import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{Disposable, IdentifierMap, Sys}
-import de.sciss.nuages.NuagesContext.{AuxRemoved, AuxAdded, AuxUpdate}
+import de.sciss.lucre.{Disposable, Ident, IdentMap, Source, Txn}
+import de.sciss.nuages.NuagesContext.{AuxAdded, AuxRemoved, AuxUpdate}
 
 // XXX TODO --- DRY with AuralContextImpl
 object NuagesContextImpl {
-  def apply[S <: Sys[S]](implicit tx: S#Tx): NuagesContext[S] = {
-    val auxMap  = tx.newInMemoryIdMap[Any]
-    val obsMap  = tx.newInMemoryIdMap[List[AuxObserver[S]]]
-    val res     = new Impl[S](auxMap, obsMap)
+  def apply[T <: Txn[T]](implicit tx: T): NuagesContext[T] = {
+    val auxMap  = tx.newIdentMap[Any]
+    val obsMap  = tx.newIdentMap[List[AuxObserver[T]]]
+    val res     = new Impl[T](auxMap, obsMap)
     res
   }
 
-  private trait AuxObserver[S <: Sys[S]]
-    extends Disposable[S#Tx] {
+  private trait AuxObserver[T <: Txn[T]]
+    extends Disposable[T] {
 
-    def fun: S#Tx => AuxUpdate[S, Any] => Unit
+    def fun: T => AuxUpdate[T, Any] => Unit
   }
 
-  private final class Impl[S <: Sys[S]](auxMap      : IdentifierMap[S#Id, S#Tx, Any],
-                                        auxObservers: IdentifierMap[S#Id, S#Tx, List[AuxObserver[S]]])
-    extends NuagesContext[S] {
+  private final class Impl[T <: Txn[T]](auxMap      : IdentMap[T, Any],
+                                        auxObservers: IdentMap[T, List[AuxObserver[T]]])
+    extends NuagesContext[T] {
 
-    private final class AuxObserverImpl(idH: stm.Source[S#Tx, S#Id],
-                                        val fun: S#Tx => AuxUpdate[S, Any] => Unit)
-      extends AuxObserver[S] {
+    private final class AuxObserverImpl(idH: Source[T, Ident[T]],
+                                        val fun: T => AuxUpdate[T, Any] => Unit)
+      extends AuxObserver[T] {
 
-      def dispose()(implicit tx: S#Tx): Unit = {
+      def dispose()(implicit tx: T): Unit = {
         val id    = idH()
         val list0 = auxObservers.getOrElse(id, Nil)
         val list1 = list0.filterNot(_ == this)
@@ -49,15 +48,15 @@ object NuagesContextImpl {
       }
     }
 
-    def observeAux[A](id: S#Id)(fun: S#Tx => AuxUpdate[S, A] => Unit)(implicit tx: S#Tx): Disposable[S#Tx] = {
+    def observeAux[A](id: Ident[T])(fun: T => AuxUpdate[T, A] => Unit)(implicit tx: T): Disposable[T] = {
       val list0 = auxObservers.getOrElse(id, Nil)
-      val obs = new AuxObserverImpl(tx.newHandle(id), fun.asInstanceOf[S#Tx => AuxUpdate[S, Any] => Unit])
+      val obs = new AuxObserverImpl(tx.newHandle(id), fun.asInstanceOf[T => AuxUpdate[T, Any] => Unit])
       val list1 = obs :: list0
       auxObservers.put(id, list1)
       obs
     }
 
-    def putAux[A](id: S#Id, value: A)(implicit tx: S#Tx): Unit = {
+    def putAux[A](id: Ident[T], value: A)(implicit tx: T): Unit = {
       auxMap.put(id, value)
       val list = auxObservers.getOrElse(id, Nil)
       if (list.nonEmpty) {
@@ -68,9 +67,9 @@ object NuagesContextImpl {
       }
     }
 
-    def getAux[A](id: S#Id)(implicit tx: S#Tx): Option[A] = auxMap.get(id).asInstanceOf[Option[A]]
+    def getAux[A](id: Ident[T])(implicit tx: T): Option[A] = auxMap.get(id).asInstanceOf[Option[A]]
 
-    def removeAux(id: S#Id)(implicit tx: S#Tx): Unit = {
+    def removeAux(id: Ident[T])(implicit tx: T): Unit = {
       auxMap.remove(id)
       val list = auxObservers.getOrElse(id, Nil)
       if (list.nonEmpty) {

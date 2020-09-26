@@ -15,7 +15,7 @@ package de.sciss.nuages
 package impl
 
 import de.sciss.lucre.swing.LucreSwing.defer
-import de.sciss.lucre.synth.{AudioBus, Synth, Sys, Txn, Node => SNode}
+import de.sciss.lucre.synth.{AudioBus, RT, Synth, Txn, Node => SNode}
 import de.sciss.nuages.impl.PanelImpl.LAYOUT_TIME
 import de.sciss.osc
 import de.sciss.synth.{SynthGraph, addToTail, message}
@@ -23,12 +23,12 @@ import de.sciss.synth.{SynthGraph, addToTail, message}
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm.{InTxn, Ref}
 
-trait PanelImplMixer[S <: Sys[S]] {
-  _: NuagesPanel[S] =>
+trait PanelImplMixer[T <: Txn[T]] {
+  _: NuagesPanel[T] =>
 
   // ---- abstract ----
 
-  protected def main: NuagesPanel[S]
+  protected def main: NuagesPanel[T]
 
   // ---- impl ----
 
@@ -38,11 +38,11 @@ trait PanelImplMixer[S <: Sys[S]] {
   private[this] var peakMeterGraphMap   = Map.empty[Int, SynthGraph]
   private[this] var valueMeterGraphMap  = Map.empty[Int, SynthGraph]
   private[this] val soloVolume          = Ref(NuagesPanel.soloAmpSpec._2)  // 0.5
-  private[this] val soloObj             = Ref(Option.empty[NuagesObj[S]])
+  private[this] val soloObj             = Ref(Option.empty[NuagesObj[T]])
   private[this] val _soloSynth          = Ref(Option.empty[Synth])
   private[this] val _mainSynth          = Ref(Option.empty[Synth])
 
-  final def mkPeakMeter(bus: AudioBus, node: SNode)(fun: Double => Unit)(implicit tx: S#Tx): Synth = {
+  final def mkPeakMeter(bus: AudioBus, node: SNode)(fun: Double => Unit)(implicit tx: T): Synth = {
     val numCh  = bus.numChannels
     val graph  = peakMeterGraphMap.getOrElse(numCh, {
       val res = SynthGraph {
@@ -74,7 +74,7 @@ trait PanelImplMixer[S <: Sys[S]] {
     syn
   }
 
-  final def mkSoloSynth(bus: AudioBus, node: SNode)(implicit tx: S#Tx): Synth = {
+  final def mkSoloSynth(bus: AudioBus, node: SNode)(implicit tx: T): Synth = {
     val sg = SynthGraph {
       import de.sciss.synth.Ops.stringToControl
       import de.sciss.synth._
@@ -107,7 +107,7 @@ trait PanelImplMixer[S <: Sys[S]] {
     soloSynth
   }
 
-  final def mkValueMeter(bus: AudioBus, node: SNode)(fun: Vec[Double] => Unit)(implicit tx: S#Tx): Synth = {
+  final def mkValueMeter(bus: AudioBus, node: SNode)(fun: Vec[Double] => Unit)(implicit tx: T): Synth = {
     // return mkPeakMeter(bus, node)(d => fun(Vector(d)))
 
     val numCh = bus.numChannels
@@ -150,7 +150,7 @@ trait PanelImplMixer[S <: Sys[S]] {
     syn
   }
 
-  protected def mkMonitor(bus: AudioBus, node: SNode)(fun: Vec[Double] => Unit)(implicit tx: S#Tx): Synth = {
+  protected def mkMonitor(bus: AudioBus, node: SNode)(fun: Vec[Double] => Unit)(implicit tx: T): Synth = {
     val numCh  = bus.numChannels
     val graph  = monitorGraphMap.getOrElse(numCh, {
       val res = SynthGraph {
@@ -185,24 +185,24 @@ trait PanelImplMixer[S <: Sys[S]] {
     syn
   }
 
-  protected def disposeSoloSynth()(implicit tx: S#Tx): Unit = {
+  protected def disposeSoloSynth()(implicit tx: T): Unit = {
     _soloSynth.swap(None)(tx.peer).foreach(_.dispose())
   }
 
-  def setSolo(vp: NuagesObj[S], onOff: Boolean)(implicit tx: S#Tx): Unit = {
+  def setSolo(vp: NuagesObj[T], onOff: Boolean)(implicit tx: T): Unit = {
     val oldObj = soloObj.swap(Some(vp))(tx.peer)
     oldObj.foreach(_.setSolo(onOff = false))
     vp.setSolo(onOff = onOff)
   }
 
-  def mainSynth(implicit tx: Txn): Option[Synth] = _mainSynth.get(tx.peer)
-  def mainSynth_=(value: Option[Synth])(implicit tx: Txn): Unit =
+  def mainSynth(implicit tx: RT): Option[Synth] = _mainSynth.get(tx.peer)
+  def mainSynth_=(value: Option[Synth])(implicit tx: RT): Unit =
     _mainSynth.set(value)(tx.peer)
 
-  def setMainVolume(v: Double)(implicit tx: S#Tx): Unit =
+  def setMainVolume(v: Double)(implicit tx: T): Unit =
     _mainSynth.get(tx.peer).foreach(_.set("amp" -> v))
 
-  def setSoloVolume(v: Double)(implicit tx: S#Tx): Unit = {
+  def setSoloVolume(v: Double)(implicit tx: T): Unit = {
     implicit val itx: InTxn = tx.peer
     val oldV = soloVolume.swap(v)
     if (v == oldV) return

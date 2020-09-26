@@ -13,10 +13,9 @@
 
 package de.sciss.nuages
 
-import de.sciss.lucre.stm.{Disposable, Folder, NoSys, Obj, Sys}
-import de.sciss.lucre.{stm, event => evt}
+import de.sciss.lucre.{AnyTxn, Disposable, Obj, Publisher, Txn, Folder => LFolder}
 import de.sciss.nuages.impl.{NuagesImpl => Impl}
-import de.sciss.serial.{DataInput, DataOutput, Serializer, Writable}
+import de.sciss.serial.{DataInput, DataOutput, TFormat, Writable, WritableFormat}
 import de.sciss.synth.proc
 
 import scala.annotation.switch
@@ -26,27 +25,27 @@ import scala.language.implicitConversions
 object Nuages extends Obj.Type {
   final val typeId = 0x1000A
 
-  def folder  [S <: Sys[S]](implicit tx: S#Tx): Nuages[S] = Impl.folder  [S]
-  def timeline[S <: Sys[S]](implicit tx: S#Tx): Nuages[S] = Impl.timeline[S]
+  def folder  [T <: Txn[T]](implicit tx: T): Nuages[T] = Impl.folder  [T]
+  def timeline[T <: Txn[T]](implicit tx: T): Nuages[T] = Impl.timeline[T]
 
-  def apply[S <: Sys[S]](surface: Surface[S])(implicit tx: S#Tx): Nuages[S] = Impl[S](surface)
+  def apply[T <: Txn[T]](surface: Surface[T])(implicit tx: T): Nuages[T] = Impl[T](surface)
 
-  implicit def serializer[S <: Sys[S]]: Serializer[S#Tx, S#Acc, Nuages[S]] = Impl.serializer[S]
+  implicit def format[T <: Txn[T]]: TFormat[T, Nuages[T]] = Impl.format[T]
 
-  def read[S <: Sys[S]](in: DataInput, access: S#Acc)(implicit tx: S#Tx): Nuages[S] = Impl.read(in, access)
+  def read[T <: Txn[T]](in: DataInput)(implicit tx: T): Nuages[T] = Impl.read(in)
 
   /** Looks for all of `CategoryNames` and creates top-level folders of that name, if they do not exist yet. */
-  def mkCategoryFolders[S <: Sys[S]](n: Nuages[S])(implicit tx: S#Tx): Unit = Impl.mkCategoryFolders(n)
+  def mkCategoryFolders[T <: Txn[T]](n: Nuages[T])(implicit tx: T): Unit = Impl.mkCategoryFolders(n)
 
   /** Find current instance, provided during particular
     * actions such as prepare (see `attrPrepare`) and dispose (see `attrDispose`).
     */
-  def find[S <: Sys[S]]()(implicit tx: S#Tx): Option[Nuages[S]] = Impl.find()
+  def find[T <: Txn[T]]()(implicit tx: T): Option[Nuages[T]] = Impl.find()
 
   // ---- config ----
 
-  override def readIdentifiedObj[S <: Sys[S]](in: DataInput, access: S#Acc)(implicit tx: S#Tx): Obj[S] =
-    Impl.readIdentifiedObj(in, access)
+  override def readIdentifiedObj[T <: Txn[T]](in: DataInput)(implicit tx: T): Obj[T] =
+    Impl.readIdentifiedObj(in)
 
   sealed trait ConfigLike {
     def mainChannels  : Option[Vec[Int]]
@@ -229,39 +228,38 @@ object Nuages extends Obj.Type {
 
   // ---- event ----
 
-  trait Update[S <: Sys[S]]
+  trait Update[T <: Txn[T]]
 
   // ---- functions ----
 
-  def copyGraph[S <: Sys[S]](xs: Vec[Obj[S]])(implicit tx: S#Tx): Vec[Obj[S]] = Impl.copyGraph(xs)
+  def copyGraph[T <: Txn[T]](xs: Vec[Obj[T]])(implicit tx: T): Vec[Obj[T]] = Impl.copyGraph(xs)
 
   // ---- surface ----
 
   object Surface {
-    case class Timeline[S <: Sys[S]](peer: proc.Timeline.Modifiable[S]) extends Surface[S] { def isTimeline = true  }
-    case class Folder  [S <: Sys[S]](peer: stm.Folder              [S]) extends Surface[S] { def isTimeline = false }
+    case class Timeline[T <: Txn[T]](peer: proc.Timeline.Modifiable[T]) extends Surface[T] { def isTimeline = true  }
+    case class Folder  [T <: Txn[T]](peer: LFolder                 [T]) extends Surface[T] { def isTimeline = false }
 
-    implicit def serializer[S <: Sys[S]]: Serializer[S#Tx, S#Acc, Surface[S]] = anySer.asInstanceOf[Ser[S]]
+    implicit def format[T <: Txn[T]]: TFormat[T, Surface[T]] = anyFmt.asInstanceOf[Fmt[T]]
 
-    def read[S <: Sys[S]](in: DataInput, access: S#Acc)(implicit tx: S#Tx): Surface[S] =
+    def read[T <: Txn[T]](in: DataInput)(implicit tx: T): Surface[T] =
       (in.readByte(): @switch) match {
-        case 0      => Surface.Folder  (stm.Folder.read(in, access))
-        case 1      => Surface.Timeline(proc.Timeline.Modifiable.read(in, access))
+        case 0      => Surface.Folder  (LFolder.read(in))
+        case 1      => Surface.Timeline(proc.Timeline.Modifiable.read(in))
         case other  => sys.error(s"Unexpected cookie $other")
       }
 
-    private[this] val anySer = new Ser[NoSys]
+    private[this] val anyFmt = new Fmt[AnyTxn]
 
-    private[this] final class Ser[S <: Sys[S]] extends Serializer[S#Tx, S#Acc, Surface[S]] {
-      def read(in: DataInput, access: S#Acc)(implicit tx: S#Tx): Surface[S] = Surface.read(in, access)
-      def write(v: Surface[S], out: DataOutput): Unit = v.write(out)
+    private[this] final class Fmt[T <: Txn[T]] extends WritableFormat[T, Surface[T]] {
+      def readT(in: DataInput)(implicit tx: T): Surface[T] = Surface.read(in)
     }
   }
-  sealed trait Surface[S <: Sys[S]] extends Disposable[S#Tx] with Writable {
-    def peer: Obj[S]
+  sealed trait Surface[T <: Txn[T]] extends Disposable[T] with Writable {
+    def peer: Obj[T]
     def isTimeline: Boolean
 
-    final def dispose()(implicit tx: S#Tx): Unit = peer.dispose()
+    final def dispose()(implicit tx: T): Unit = peer.dispose()
 
     final def write(out: DataOutput): Unit = {
       out.writeByte(if (isTimeline) 1 else 0)
@@ -269,13 +267,13 @@ object Nuages extends Obj.Type {
     }
   }
 }
-trait Nuages[S <: Sys[S]] extends Obj[S] with evt.Publisher[S, Nuages.Update[S]] {
-  def folder(implicit tx: S#Tx): Folder[S]
+trait Nuages[T <: Txn[T]] extends Obj[T] with Publisher[T, Nuages.Update[T]] {
+  def folder(implicit tx: T): LFolder[T]
 
-  def generators(implicit tx: S#Tx): Option[Folder[S]]
-  def filters   (implicit tx: S#Tx): Option[Folder[S]]
-  def collectors(implicit tx: S#Tx): Option[Folder[S]]
-  def macros    (implicit tx: S#Tx): Option[Folder[S]]
+  def generators(implicit tx: T): Option[LFolder[T]]
+  def filters   (implicit tx: T): Option[LFolder[T]]
+  def collectors(implicit tx: T): Option[LFolder[T]]
+  def macros    (implicit tx: T): Option[LFolder[T]]
 
-  def surface: Nuages.Surface[S]
+  def surface: Nuages.Surface[T]
 }

@@ -14,50 +14,49 @@
 package de.sciss.nuages
 package impl
 
-import de.sciss.lucre.stm
-import de.sciss.lucre.stm.TxnLike
-import de.sciss.lucre.synth.{AudioBus, Node, Synth, Sys}
+import de.sciss.lucre.{Ident, IdentMap, TxnLike, Txn => LTxn}
+import de.sciss.lucre.synth.{AudioBus, Node, Synth, Txn}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm.TSet
 
-trait PanelImplReact[S <: Sys[S]] {
-  _: NuagesPanel[S] =>
+trait PanelImplReact[T <: Txn[T]] {
+  _: NuagesPanel[T] =>
 
-  import TxnLike.peer
+  import LTxn.peer
 
   // ---- abstract ----
 
   def deferVisTx(thunk: => Unit)(implicit tx: TxnLike): Unit
 
-  protected def main: NuagesPanel[S]
+  protected def main: NuagesPanel[T]
 
-  protected def nodeMap: stm.IdentifierMap[S#Id, S#Tx, NuagesObj[S]]
+  protected def nodeMap: IdentMap[T, NuagesObj[T]]
 
-  protected def mkMonitor(bus: AudioBus, node: Node)(fun: Vec[Double] => Unit)(implicit tx: S#Tx): Synth
+  protected def mkMonitor(bus: AudioBus, node: Node)(fun: Vec[Double] => Unit)(implicit tx: T): Synth
 
   // ---- impl ----
 
-  private[this] val _nodeSet = TSet.empty[NuagesObj[S]]
+  private[this] val _nodeSet = TSet.empty[NuagesObj[T]]
 
   /** Disposes all registered nodes. Disposes `nodeMap`. */
-  protected final def disposeNodes()(implicit tx: S#Tx): Unit = {
+  protected final def disposeNodes()(implicit tx: T): Unit = {
     _nodeSet.foreach(_.dispose())
     _nodeSet.clear()
     nodeMap.dispose()
   }
 
-  final override def getNode(id: S#Id)(implicit tx: S#Tx): Option[NuagesObj[S]] = nodeMap.get(id)
+  final override def getNode(id: Ident[T])(implicit tx: T): Option[NuagesObj[T]] = nodeMap.get(id)
 
-  final override def nodes(implicit tx: S#Tx): Set[NuagesObj[S]] = _nodeSet.snapshot
+  final override def nodes(implicit tx: T): Set[NuagesObj[T]] = _nodeSet.snapshot
 
-  final override def registerNode(id: S#Id, view: NuagesObj[S])(implicit tx: S#Tx): Unit = {
+  final override def registerNode(id: Ident[T], view: NuagesObj[T])(implicit tx: T): Unit = {
     val ok = _nodeSet.add(view)
     if (!ok) throw new IllegalArgumentException(s"View $view was already registered")
     nodeMap.put(id, view)
   }
 
-  final override def unregisterNode(id: S#Id, view: NuagesObj[S])(implicit tx: S#Tx): Unit = {
+  final override def unregisterNode(id: Ident[T], view: NuagesObj[T])(implicit tx: T): Unit = {
     val ok = _nodeSet.remove(view)
     if (!ok) throw new IllegalArgumentException(s"View $view was not registered")
     nodeMap.remove(id)

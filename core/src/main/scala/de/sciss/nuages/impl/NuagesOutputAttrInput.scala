@@ -14,65 +14,63 @@
 package de.sciss.nuages
 package impl
 
-import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{TxnLike, Obj, Disposable, Sys}
-import de.sciss.lucre.synth.{Sys => SSys}
-import de.sciss.nuages.NuagesAttribute.{Parent, Input}
-import de.sciss.synth.proc.Output
+import de.sciss.lucre.{Disposable, Obj, Source, Txn, synth}
+import de.sciss.nuages.NuagesAttribute.{Input, Parent}
+import de.sciss.synth.proc.Proc
 import prefuse.data.{Node => PNode}
 
 import scala.concurrent.stm.Ref
 
 object NuagesOutputAttrInput extends NuagesAttribute.Factory {
-  def typeId: Int = Output.typeId
+  def typeId: Int = Proc.Output.typeId
 
-  type Repr[~ <: Sys[~]] = Output[~]
+  type Repr[~ <: Txn[~]] = Proc.Output[~]
 
-  def apply[S <: SSys[S]](attr: NuagesAttribute[S], parent: Parent[S], frameOffset: Long, obj: Output[S])
-                         (implicit tx: S#Tx, context: NuagesContext[S]): Input[S] =
-    new NuagesOutputAttrInput[S](attr, tx.newHandle(obj)).init(obj, parent)
+  def apply[T <: synth.Txn[T]](attr: NuagesAttribute[T], parent: Parent[T], frameOffset: Long, obj: Proc.Output[T])
+                         (implicit tx: T, context: NuagesContext[T]): Input[T] =
+    new NuagesOutputAttrInput[T](attr, tx.newHandle(obj)).init(obj, parent)
 
-  def tryConsume[S <: SSys[S]](oldInput: Input[S], newOffset: Long, newValue: Output[S])
-                              (implicit tx: S#Tx, context: NuagesContext[S]): Option[Input[S]] = None
+  def tryConsume[T <: synth.Txn[T]](oldInput: Input[T], newOffset: Long, newValue: Proc.Output[T])
+                              (implicit tx: T, context: NuagesContext[T]): Option[Input[T]] = None
 }
-final class NuagesOutputAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S],
-                                               objH: stm.Source[S#Tx, Output[S]])
-                                               (implicit context: NuagesContext[S])
-  extends NuagesAttrSingleInput[S] with NuagesOutput.Input[S] {
+final class NuagesOutputAttrInput[T <: synth.Txn[T]](val attribute: NuagesAttribute[T],
+                                               objH: Source[T, Proc.Output[T]])
+                                               (implicit context: NuagesContext[T])
+  extends NuagesAttrSingleInput[T] with NuagesOutput.Input[T] {
 
-  import TxnLike.peer
+  import Txn.peer
 
-  private def deferVisTx(body: => Unit)(implicit tx: S#Tx): Unit =
+  private def deferVisTx(body: => Unit)(implicit tx: T): Unit =
     attribute.parent.main.deferVisTx(body)
 
-  private[this] var _observer: Disposable[S#Tx] = _
+  private[this] var _observer: Disposable[T] = _
   private[this] var _pNode          = Option.empty[PNode]
-  private[this] val outputViewRef   = Ref(Option.empty[NuagesOutput[S]])
+  private[this] val outputViewRef   = Ref(Option.empty[NuagesOutput[T]])
 
   override def toString = s"NuagesOutput.Input($attribute)@${hashCode.toHexString}"
 
-  def output(implicit tx: S#Tx): Output[S] = objH()
+  def output(implicit tx: T): Proc.Output[T] = objH()
 
-  def tryConsume(newOffset: Long, to: Obj[S])(implicit tx: S#Tx): Boolean = false
+  def tryConsume(newOffset: Long, to: Obj[T])(implicit tx: T): Boolean = false
 
-  def input(implicit tx: S#Tx): Obj[S] = output   // yeah, it sounds odd...
+  def input(implicit tx: T): Obj[T] = output   // yeah, it sounds odd...
 
-  def dispose()(implicit tx: S#Tx): Unit = {
+  def dispose()(implicit tx: T): Unit = {
     _observer.dispose()
     unsetView()
   }
 
-  private def init(obj: Output[S], parent: Parent[S])(implicit tx: S#Tx): this.type = {
+  private def init(obj: Proc.Output[T], parent: Parent[T])(implicit tx: T): this.type = {
     inputParent = parent
-    _observer   = context.observeAux[NuagesOutput[S]](obj.id) { implicit tx => {
+    _observer   = context.observeAux[NuagesOutput[T]](obj.id) { implicit tx => {
       case NuagesContext.AuxAdded  (_, view) => setView(view)
       case NuagesContext.AuxRemoved(_      ) => unsetView()
     }}
-    context.getAux[NuagesOutput[S]](obj.id).foreach(setView)
+    context.getAux[NuagesOutput[T]](obj.id).foreach(setView)
     this
   }
 
-  private def setView(view: NuagesOutput[S])(implicit tx: S#Tx): Unit = {
+  private def setView(view: NuagesOutput[T])(implicit tx: T): Unit = {
     val old = outputViewRef.swap(Some(view))
     require(old.isEmpty)
     view.addMapping(this)
@@ -84,7 +82,7 @@ final class NuagesOutputAttrInput[S <: SSys[S]](val attribute: NuagesAttribute[S
     }
   }
 
-  private def unsetView()(implicit tx: S#Tx): Unit = {
+  private def unsetView()(implicit tx: T): Unit = {
     outputViewRef.swap(None).foreach(_.removeMapping(this))
     deferVisTx {
       _pNode.foreach { n =>

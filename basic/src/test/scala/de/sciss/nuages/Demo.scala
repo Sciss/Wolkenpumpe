@@ -1,9 +1,9 @@
 package de.sciss.nuages
 
 import de.sciss.file._
-import de.sciss.lucre.stm
-import de.sciss.lucre.stm.store.BerkeleyDB
-import de.sciss.lucre.synth.{InMemory, Sys}
+import de.sciss.lucre.{Cursor, Source}
+import de.sciss.lucre.store.BerkeleyDB
+import de.sciss.lucre.synth.{InMemory, Txn}
 import de.sciss.submin.Submin
 import de.sciss.synth.Server
 import de.sciss.synth.proc.Durable
@@ -32,8 +32,8 @@ object Demo {
     run(p.config)
   }
 
-  def mkTestProcs[S <: Sys[S]]()(implicit tx: S#Tx, nuages: Nuages[S]): Unit = {
-    val dsl = DSL[S]
+  def mkTestProcs[T <: Txn[T]]()(implicit tx: T, nuages: Nuages[T]): Unit = {
+    val dsl = DSL[T]
     import de.sciss.synth._
     import de.sciss.synth.ugen._
     import dsl._
@@ -95,7 +95,7 @@ object Demo {
 
   val DEBUG = true
 
-  private class DemoNuages[S <: Sys[S]](config: Config) extends WolkenpumpeMain[S] {
+  private class DemoNuages[T <: Txn[T]](config: Config) extends WolkenpumpeMain[T] {
     /** Subclasses may want to override this. */
     override protected def configure(sCfg: ScissProcs.ConfigBuilder, nCfg: Nuages.ConfigBuilder,
                                      aCfg: Server.ConfigBuilder): Unit = {
@@ -123,9 +123,9 @@ object Demo {
     }
   }
 
-  private def mkNuages[S <: Sys[S]](config: Config, nuagesH: stm.Source[S#Tx, Nuages[S]])
-                                   (implicit cursor: stm.Cursor[S]): Unit = {
-    val w = new DemoNuages[S](config)
+  private def mkNuages[T <: Txn[T]](config: Config, nuagesH: Source[T, Nuages[T]])
+                                   (implicit cursor: Cursor[T]): Unit = {
+    val w = new DemoNuages[T](config)
     w.run(nuagesH)
     if (config.dumpOSC) cursor.step { implicit tx =>
       w.auralSystem.whenStarted(_.peer.dumpOSC(filter = m =>
@@ -142,6 +142,7 @@ object Demo {
     config.durable match {
       case Some(f) =>
         type S = Durable
+        type T = Durable.Txn
         val factory = if (f.path == "<TMP>") {
           BerkeleyDB.tmp()
         } else {
@@ -149,16 +150,17 @@ object Demo {
         }
         implicit val system: S = Durable(factory)
         val nuagesH = system.root { implicit tx =>
-          if (config.timeline) Nuages.timeline[S] else Nuages.folder[S]
+          if (config.timeline) Nuages.timeline[T] else Nuages.folder[T]
         }
         mkNuages(config, nuagesH)
 
     case None =>
       type S = InMemory
+      type T = InMemory.Txn
       implicit val system: S = InMemory()
 
       val nuagesH = system.step { implicit tx =>
-        val nuages = if (config.timeline) Nuages.timeline[S] else Nuages.folder[S]
+        val nuages = if (config.timeline) Nuages.timeline[T] else Nuages.folder[T]
         tx.newHandle(nuages)
       }
       mkNuages(config, nuagesH)

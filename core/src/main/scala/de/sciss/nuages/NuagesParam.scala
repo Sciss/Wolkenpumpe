@@ -13,20 +13,20 @@
 
 package de.sciss.nuages
 
-import de.sciss.lucre.stm.Sys
+import de.sciss.lucre.Txn
 import de.sciss.synth.proc.AuralObj
 
 /** A common super-trait for both input views (`NuagesAttribute`)
   * and output views (`NuagesOutput`).
   */
-trait NuagesParam[S <: Sys[S]] extends NuagesData[S] {
+trait NuagesParam[T <: Txn[T]] extends NuagesData[T] {
   // ---- methods to be called on the EDT ----
 
-  def parent: NuagesObj[S]
+  def parent: NuagesObj[T]
 
   /** The scan or attribute key in `parent` to point to this component. */
   def key: String
 
-  def auralObjAdded  (aural: AuralObj.Proc[S])(implicit tx: S#Tx): Unit
-  def auralObjRemoved(aural: AuralObj.Proc[S])(implicit tx: S#Tx): Unit
+  def auralObjAdded  (aural: AuralObj.Proc[T])(implicit tx: T): Unit
+  def auralObjRemoved(aural: AuralObj.Proc[T])(implicit tx: T): Unit
 }
