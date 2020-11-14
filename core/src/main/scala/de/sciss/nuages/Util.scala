@@ -54,14 +54,19 @@ object Util {
 
   def defaultRecDir: File = File.tempDir
 
-  def findRecDir[T <: Txn[T]](obj: Obj[T])(implicit tx: T): File =
-    obj.attr.$[ArtifactLocation](attrRecDir).fold(defaultRecDir)(_.value)
+  def findRecDir[T <: Txn[T]](obj: Obj[T])(implicit tx: T): File = {
+    val locOpt = obj.attr.$[ArtifactLocation](attrRecDir)
+    locOpt.flatMap { loc =>
+      val v = loc.value
+      if (v.getScheme == "file") Some(new File(v)) else None
+    }.getOrElse(defaultRecDir)
+  }
 
   def getRecLocation[T <: Txn[T]](n: Nuages[T], recDir: => File)(implicit tx: T): ArtifactLocation[T] = {
     val attr = n.attr
     attr.$[ArtifactLocation](Nuages.attrRecLoc).getOrElse {
       if (!recDir.exists()) tx.afterCommit(recDir.mkdirs())
-      val newLoc = ArtifactLocation.newVar[T](recDir)
+      val newLoc = ArtifactLocation.newVar[T](recDir.toURI)
       // newLoc.name = RecName
       // root.modifiableOption.foreach(_.addLast(newLoc))
       attr.put(Nuages.attrRecLoc, newLoc)

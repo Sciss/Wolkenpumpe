@@ -8,7 +8,7 @@
 
 Wolkenpumpe is a live improvisation interface based on ScalaCollider / SoundProcesses / Prefuse. It is (C)opyright
 2008&ndash;2020 by Hanns Holger Rutz. All rights reserved. Wolkenpumpe is released under
-the [GNU Affero General Public License](https://git.iem.at/sciss/Wolkenpumpe/raw/main/LICENSE)
+the [GNU Affero General Public License](https://git.iem.at/sciss/Wolkenpumpe/raw/main/LICENSE) v3+
 and comes with absolutely no warranties. To contact the author, send an email to `contact at sciss.de`.
 
 This is Wolkenpumpe 6th generation. Generation 5 was based on the old non-tracing Sound Processes version.
@@ -22,13 +22,13 @@ Note that you can use this interface through [Mellite](https://git.iem.at/sciss/
 
 ## building
 
-Builds with sbt against Scala 2.13, 2.12 (last version to support Scala 2.11 was 2.34.0).
+Builds with sbt against Scala 2.13, 2.12. The last version to support Scala 2.11 was 2.34.0.
 
 ## linking
 
     "de.sciss" %% "wolkenpumpe" % v
 
-The current version `v` is `"3.0.0`.
+The current version `v` is `"3.1.0`.
 
 ## contributing
 

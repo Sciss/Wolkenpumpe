@@ -1,7 +1,7 @@
 lazy val baseName        = "Wolkenpumpe"
 lazy val baseNameL       = baseName.toLowerCase
-lazy val projectVersion  = "3.0.0"
-lazy val mimaVersion     = "3.0.0"
+lazy val projectVersion  = "3.1.0-SNAPSHOT"
+lazy val mimaVersion     = "3.1.0"
 
 lazy val commonSettings = Seq(
   version              := projectVersion,
@@ -24,17 +24,17 @@ lazy val deps = new {
   val main = new {
     val fileUtil            = "1.1.5"
     val intensity           = "1.0.2"
-    val lucreSwing          = "2.0.0"
+    val lucreSwing          = "2.3.0-SNAPSHOT"
     val prefuse             = "1.0.1"
-    val scalaCollider       = "2.0.0"
-    val scalaColliderSwing  = "2.0.0"
-    val scissDSP            = "2.0.0"
-    val soundProcesses      = "4.0.0"
-    val swingPlus           = "0.4.2"
+    val scalaCollider       = "2.3.0"
+    val scalaColliderSwing  = "2.2.0"
+    val scissDSP            = "2.1.0"
+    val soundProcesses      = "4.3.0-SNAPSHOT"
+    val swingPlus           = "0.5.0"
   }
   val test = new {
-    val lucre               = "4.0.0"
-    val scalaTest           = "3.2.2"
+    val lucre               = "4.2.0-SNAPSHOT"
+    val scalaTest           = "3.2.3"
     val scallop             = "3.5.1"
     val submin              = "0.3.4"
   }

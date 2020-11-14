@@ -253,7 +253,7 @@ final class NuagesObjImpl[T <: Txn[T]] private(val main: NuagesPanel[T],
 
   def meterUpdate(newPeak0: Double): Unit = {
     val time = System.currentTimeMillis()
-    val newPeak = fastLog.calc(math.min(10.0f, newPeak0.toFloat)) * logPeakCorr
+    val newPeak = fastLog.calc(math.min(10.0f, newPeak0.toFloat)).toFloat * logPeakCorr
     if (newPeak >= peak) {
       peak = newPeak
     } else {

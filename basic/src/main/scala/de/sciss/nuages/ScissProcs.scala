@@ -18,7 +18,7 @@ import de.sciss.lucre.{Artifact => _Artifact, ArtifactLocation => _ArtifactLocat
 import de.sciss.lucre.synth.Txn
 import de.sciss.lucre.{Txn => LTxn}
 import de.sciss.synth
-import de.sciss.synth.io.AudioFile
+import de.sciss.audiofile.AudioFile
 import de.sciss.synth.proc
 import de.sciss.synth.proc.MacroImplicits.ActionMacroOps
 
@@ -73,7 +73,7 @@ object ScissProcs {
 
   def actionRecPrepare[T <: LTxn[T]](implicit tx: T): proc.Action[T] = {
     val a = proc.Action[T]()
-    import de.sciss.lucre.expr.ExImport._
+    import de.sciss.synth.proc.ExImport._
     import de.sciss.lucre.expr.graph._
     a.setGraph {
       val ts      = TimeStamp()
@@ -112,7 +112,6 @@ object ScissProcs {
 
   def actionRecDispose[T <: LTxn[T]](implicit tx: T): proc.Action[T] = {
     val a = proc.Action[T]()
-    import de.sciss.lucre.expr.ExImport._
     import de.sciss.lucre.expr.graph._
     import de.sciss.synth.proc.ExImport._
     a.setGraph {
@@ -229,7 +228,7 @@ object ScissProcs {
     // -------------- GENERATORS --------------
 
     sConfig.audioFilesFolder.foreach { folder =>
-      val loc = _ArtifactLocation.newConst[T](folder)
+      val loc = _ArtifactLocation.newConst[T](folder.toURI)
 
       // N.B. do not use ellipsis character (…) because synth-def names are ASCII-7
       def abbreviate(s: String) = if (s.length < 16) s else s"${s.take(7)}...${s.takeRight(7)}"
@@ -249,7 +248,7 @@ object ScissProcs {
           sig
         }
 
-        val art   = _Artifact(loc, f) // loc.add(f)
+        val art   = _Artifact(loc, f.toURI) // loc.add(f)
         val spec  = AudioFile.readSpec(f)
         val gr    = proc.AudioCue.Obj[T](art, spec, 0L, 1.0)
         procObj.attr.put("file", gr)
@@ -1011,7 +1010,7 @@ object ScissProcs {
     val sinkPrepObj = actions(keyActionRecPrepare)
     val sinkDispObj = actions(keyActionRecDispose)
 //    val genChansObj = IntObj.newConst[S](genNumChannels)
-    val recDirObj   = _ArtifactLocation.newConst[T](sConfig.recDir)
+    val recDirObj   = _ArtifactLocation.newConst[T](sConfig.recDir.toURI)
 
     // XXX TODO
     // we currently have to ex representation for nuages, perhaps
