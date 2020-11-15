@@ -16,7 +16,7 @@ package impl
 
 import de.sciss.lucre.{Disposable, Folder, Obj, Source, Txn, synth}
 import de.sciss.nuages.NuagesAttribute.{Input, Parent}
-import de.sciss.synth.proc.TimeRef
+import de.sciss.proc.TimeRef
 
 import scala.concurrent.stm.Ref
 

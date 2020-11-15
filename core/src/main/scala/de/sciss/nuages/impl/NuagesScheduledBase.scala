@@ -15,7 +15,7 @@ package de.sciss.nuages
 package impl
 
 import de.sciss.lucre.{Disposable, Txn}
-import de.sciss.synth.proc.{TimeRef, Transport}
+import de.sciss.proc.{TimeRef, Transport}
 
 import scala.concurrent.stm.Ref
 

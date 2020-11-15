@@ -19,7 +19,7 @@ import java.awt.geom.Point2D
 import de.sciss.lucre.synth.Txn
 import de.sciss.lucre.{Disposable, Folder, IdentMap, Obj, Txn => LTxn}
 import de.sciss.span.Span
-import de.sciss.synth.proc.{AuralObj, Transport}
+import de.sciss.proc.{AuralObj, Transport}
 
 import scala.concurrent.stm.Ref
 

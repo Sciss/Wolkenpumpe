@@ -26,8 +26,8 @@ import de.sciss.lucre.synth.{RT, Server, Synth, Txn}
 import de.sciss.osc
 import de.sciss.span.Span
 import de.sciss.synth.UGenSource.Vec
-import de.sciss.synth.proc.gui.TransportView
-import de.sciss.synth.proc.{AuralSystem, TimeRef, Universe}
+import de.sciss.proc.gui.TransportView
+import de.sciss.proc.{AuralSystem, TimeRef, Universe}
 import de.sciss.synth.swing.j.JServerStatusPanel
 import de.sciss.synth.{SynthGraph, addAfter, message}
 import javax.swing.{AbstractAction, JComponent, KeyStroke, SwingUtilities}

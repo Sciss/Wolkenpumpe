@@ -25,8 +25,8 @@ import de.sciss.lucre.swing.LucreSwing.{deferTx, requireEDT}
 import de.sciss.lucre.synth.Txn
 import de.sciss.nuages.Nuages.Surface
 import de.sciss.span.{Span, SpanLike}
-import de.sciss.synth.proc.Implicits._
-import de.sciss.synth.proc.{AuralObj, ObjKeys, Proc}
+import de.sciss.proc.Implicits._
+import de.sciss.proc.{AuralObj, ObjKeys, Proc}
 import prefuse.util.ColorLib
 import prefuse.visual.{AggregateItem, VisualItem}
 

@@ -25,7 +25,7 @@ import de.sciss.nuages.impl.NuagesDataImpl.colrManual
 import de.sciss.numbers
 import de.sciss.serial.TFormat
 import de.sciss.synth.Curve
-import de.sciss.synth.proc.{EnvSegment, TimeRef}
+import de.sciss.proc.{EnvSegment, TimeRef}
 import prefuse.data.{Node => PNode}
 import prefuse.visual.VisualItem
 

@@ -21,8 +21,8 @@ import de.sciss.lucre.{BooleanObj, Disposable, DoubleObj, DoubleVector, Folder, 
 import de.sciss.nuages.NuagesAttribute.{Factory, Input, Parent}
 import de.sciss.nuages.NuagesPanel.GROUP_GRAPH
 import de.sciss.span.Span
-import de.sciss.synth.proc.AuralObj.{Proc => AProc}
-import de.sciss.synth.proc.{AuralAttribute, AuralObj, EnvSegment, Grapheme, Proc, Runner, TimeRef, Timeline}
+import de.sciss.proc.AuralObj.{Proc => AProc}
+import de.sciss.proc.{AuralAttribute, AuralObj, EnvSegment, Grapheme, Proc, Runner, TimeRef, Timeline}
 import prefuse.data.{Edge => PEdge, Node => PNode}
 import prefuse.visual.VisualItem
 

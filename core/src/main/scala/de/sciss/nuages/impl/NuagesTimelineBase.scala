@@ -16,8 +16,8 @@ package impl
 
 import de.sciss.lucre.{Disposable, Source, Txn}
 import de.sciss.span.{Span, SpanLike}
-import de.sciss.synth.proc.Timeline
-import de.sciss.synth.proc.Timeline.Timed
+import de.sciss.proc.Timeline
+import de.sciss.proc.Timeline.Timed
 
 trait NuagesTimelineBase[T <: Txn[T]] extends NuagesScheduledBase[T] {
 

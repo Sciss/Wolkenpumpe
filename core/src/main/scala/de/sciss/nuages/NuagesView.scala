@@ -16,7 +16,7 @@ package de.sciss.nuages
 import de.sciss.lucre.swing.View
 import de.sciss.lucre.synth.Txn
 import de.sciss.nuages.impl.{NuagesViewImpl => Impl}
-import de.sciss.synth.proc.Universe
+import de.sciss.proc.Universe
 
 import scala.swing.Component
 

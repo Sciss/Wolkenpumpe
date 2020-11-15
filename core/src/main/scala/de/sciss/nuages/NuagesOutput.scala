@@ -16,7 +16,7 @@ package de.sciss.nuages
 import de.sciss.lucre.synth.{AudioBus, Synth}
 import de.sciss.lucre.{Txn, synth}
 import de.sciss.nuages.NuagesAttribute.Input
-import de.sciss.synth.proc.Proc
+import de.sciss.proc.Proc
 
 object NuagesOutput {
   def apply[T <: synth.Txn[T]](parent: NuagesObj[T], output: Proc.Output[T], meter: Boolean)

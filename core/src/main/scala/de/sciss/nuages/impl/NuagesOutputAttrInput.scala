@@ -16,7 +16,7 @@ package impl
 
 import de.sciss.lucre.{Disposable, Obj, Source, Txn, synth}
 import de.sciss.nuages.NuagesAttribute.{Input, Parent}
-import de.sciss.synth.proc.Proc
+import de.sciss.proc.Proc
 import prefuse.data.{Node => PNode}
 
 import scala.concurrent.stm.Ref

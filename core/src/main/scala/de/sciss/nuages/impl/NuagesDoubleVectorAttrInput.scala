@@ -16,7 +16,7 @@ package impl
 
 import de.sciss.lucre.{DoubleVector, Expr, Txn, synth}
 import de.sciss.synth.Curve
-import de.sciss.synth.proc.EnvSegment
+import de.sciss.proc.EnvSegment
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 

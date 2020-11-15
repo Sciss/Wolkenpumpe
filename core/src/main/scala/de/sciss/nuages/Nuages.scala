@@ -16,7 +16,7 @@ package de.sciss.nuages
 import de.sciss.lucre.{AnyTxn, Disposable, Obj, Publisher, Txn, Folder => LFolder}
 import de.sciss.nuages.impl.{NuagesImpl => Impl}
 import de.sciss.serial.{DataInput, DataOutput, TFormat, Writable, WritableFormat}
-import de.sciss.synth.proc
+import de.sciss.proc
 
 import scala.annotation.switch
 import scala.collection.immutable.{IndexedSeq => Vec}

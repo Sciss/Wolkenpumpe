@@ -15,7 +15,7 @@ package de.sciss.nuages
 
 import java.awt.{Color, Font}
 
-import de.sciss.synth.proc.SoundProcesses
+import de.sciss.proc.SoundProcesses
 
 import scala.swing.Component
 

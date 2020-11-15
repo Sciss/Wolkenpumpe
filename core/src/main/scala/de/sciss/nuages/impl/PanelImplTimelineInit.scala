@@ -19,8 +19,8 @@ import java.awt.geom.Point2D
 import de.sciss.lucre.synth.Txn
 import de.sciss.lucre.{Disposable, IdentMap, Obj, Source, Txn => LTxn}
 import de.sciss.span.SpanLike
-import de.sciss.synth.proc.Timeline.Timed
-import de.sciss.synth.proc.{AuralObj, Timeline, Transport}
+import de.sciss.proc.Timeline.Timed
+import de.sciss.proc.{AuralObj, Timeline, Transport}
 
 import scala.concurrent.stm.Ref
 

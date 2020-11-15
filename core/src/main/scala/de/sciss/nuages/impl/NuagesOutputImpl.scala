@@ -24,7 +24,7 @@ import de.sciss.lucre.{Disposable, Source, Txn => LTxn}
 import de.sciss.nuages.NuagesAttribute.Input
 import de.sciss.nuages.NuagesOutput.Meter
 import de.sciss.nuages.impl.NuagesOutputImpl.MeterImpl
-import de.sciss.synth.proc.{AuralObj, AuralOutput, Proc}
+import de.sciss.proc.{AuralObj, AuralOutput, Proc}
 import prefuse.visual.VisualItem
 
 import scala.concurrent.stm.{Ref, TSet}

@@ -21,7 +21,7 @@ import de.sciss.lucre.synth.Txn
 import de.sciss.lucre.{Folder, Obj, Source, SpanLikeObj}
 import de.sciss.nuages.Nuages.Surface
 import de.sciss.span.Span
-import de.sciss.synth.proc.{Proc, Runner, Timeline}
+import de.sciss.proc.{Proc, Runner, Timeline}
 
 import scala.concurrent.stm.TxnLocal
 

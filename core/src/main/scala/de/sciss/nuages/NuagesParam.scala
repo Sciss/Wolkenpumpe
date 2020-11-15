@@ -14,7 +14,7 @@
 package de.sciss.nuages
 
 import de.sciss.lucre.Txn
-import de.sciss.synth.proc.AuralObj
+import de.sciss.proc.AuralObj
 
 /** A common super-trait for both input views (`NuagesAttribute`)
   * and output views (`NuagesOutput`).

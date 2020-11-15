@@ -17,8 +17,8 @@ package impl
 import de.sciss.lucre.{IdentMap, Obj, Source, SpanLikeObj, Txn, synth}
 import de.sciss.nuages.NuagesAttribute.{Input, Parent}
 import de.sciss.span.{Span, SpanLike}
-import de.sciss.synth.proc.Timeline.Timed
-import de.sciss.synth.proc.{TimeRef, Timeline, Transport}
+import de.sciss.proc.Timeline.Timed
+import de.sciss.proc.{TimeRef, Timeline, Transport}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm.TSet

@@ -22,8 +22,8 @@ import de.sciss.lucre.swing.LucreSwing.{defer, deferTx, requireEDT}
 import de.sciss.lucre.synth.Txn
 import de.sciss.nuages.Nuages.Surface
 import de.sciss.serial.TFormat
-import de.sciss.synth.proc
-import de.sciss.synth.proc.{AuralObj, Timeline, Transport, Universe}
+import de.sciss.proc
+import de.sciss.proc.{AuralObj, Timeline, Transport, Universe}
 import prefuse.controls.Control
 import prefuse.visual.NodeItem
 

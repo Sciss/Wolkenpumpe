@@ -17,7 +17,7 @@ import de.sciss.file._
 import de.sciss.lucre.{Cursor, Source}
 import de.sciss.lucre.synth.{InMemory, Txn}
 import de.sciss.osc
-import de.sciss.synth.proc.{AuralSystem, Universe}
+import de.sciss.proc.{AuralSystem, Universe}
 import de.sciss.synth.{Server => SServer}
 
 object WolkenpumpeMain {

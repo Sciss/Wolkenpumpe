@@ -4,8 +4,8 @@ import de.sciss.lucre.store.BerkeleyDB
 import de.sciss.lucre.{Folder, Obj}
 import de.sciss.nuages.Nuages.Surface
 import de.sciss.span.Span
-import de.sciss.synth.proc.Implicits._
-import de.sciss.synth.proc.{Durable, Proc}
+import de.sciss.proc.Implicits._
+import de.sciss.proc.{Durable, Proc}
 import org.scalatest.Outcome
 import org.scalatest.flatspec.FixtureAnyFlatSpec
 import org.scalatest.matchers.should.Matchers

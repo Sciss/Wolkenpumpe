@@ -6,7 +6,7 @@ import de.sciss.lucre.store.BerkeleyDB
 import de.sciss.lucre.synth.{InMemory, Txn}
 import de.sciss.submin.Submin
 import de.sciss.synth.Server
-import de.sciss.synth.proc.Durable
+import de.sciss.proc.Durable
 import org.rogach.scallop.{ScallopConf, ScallopOption => Opt}
 
 object Demo {

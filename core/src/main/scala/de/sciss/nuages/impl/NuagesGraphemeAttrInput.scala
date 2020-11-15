@@ -18,7 +18,7 @@ import de.sciss.equal.Implicits._
 import de.sciss.lucre.{Disposable, LongObj, Obj, Source, Txn, synth}
 import de.sciss.nuages.NuagesAttribute.{Input, Parent}
 import de.sciss.span.Span
-import de.sciss.synth.proc.{Grapheme, TimeRef, Transport}
+import de.sciss.proc.{Grapheme, TimeRef, Transport}
 
 import scala.annotation.tailrec
 import scala.collection.immutable.{IndexedSeq => Vec}

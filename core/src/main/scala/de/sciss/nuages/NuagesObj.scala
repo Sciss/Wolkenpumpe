@@ -17,7 +17,7 @@ import java.awt.geom.Point2D
 
 import de.sciss.lucre.{Ident, Obj, SpanLikeObj, Txn, TxnLike, synth}
 import de.sciss.span.SpanLike
-import de.sciss.synth.proc.AuralObj
+import de.sciss.proc.AuralObj
 import prefuse.visual.AggregateItem
 
 object NuagesObj {

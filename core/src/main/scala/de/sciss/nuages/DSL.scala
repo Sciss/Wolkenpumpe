@@ -13,12 +13,12 @@
 
 package de.sciss.nuages
 
-import de.sciss.lucre.{DoubleObj, DoubleVector, StringObj}
-import de.sciss.lucre.{Folder, Obj, Txn => LTxn}
+import de.sciss.lucre.{DoubleObj, DoubleVector, Folder, Obj, StringObj, Txn => LTxn}
+import de.sciss.proc
+import de.sciss.proc.Proc
 import de.sciss.synth.proc.graph.{Param, ScanIn, ScanInFix, ScanOut}
-import de.sciss.synth.proc.Proc
 import de.sciss.synth.ugen.ControlValues
-import de.sciss.synth.{GE, Rate, SynthGraph, audio, control, proc, scalar}
+import de.sciss.synth.{GE, Rate, SynthGraph, audio, control, scalar}
 
 import scala.concurrent.stm.{InTxn, TxnLocal}
 

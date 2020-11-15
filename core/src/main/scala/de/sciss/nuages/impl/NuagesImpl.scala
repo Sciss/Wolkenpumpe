@@ -19,8 +19,8 @@ import de.sciss.lucre.impl.{ObjFormat, SingleEventNode}
 import de.sciss.lucre.{AnyTxn, Copy, Elem, Folder, Obj, Pull, Txn}
 import de.sciss.nuages.Nuages.Surface
 import de.sciss.serial.{DataInput, DataOutput, TFormat}
-import de.sciss.synth.proc.Implicits._
-import de.sciss.synth.proc.{Proc, Timeline}
+import de.sciss.proc.Implicits._
+import de.sciss.proc.{Proc, Timeline}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm.TxnLocal

@@ -24,7 +24,7 @@ import de.sciss.lucre.{Disposable, Folder, IdentMap, Obj, Source, StringObj}
 import de.sciss.lucre.synth.Txn
 import de.sciss.nuages.NuagesPanel._
 import de.sciss.swingplus.ListView
-import de.sciss.synth.proc.{ObjKeys, Proc}
+import de.sciss.proc.{ObjKeys, Proc}
 import prefuse.controls.{Control, ControlAdapter}
 import prefuse.visual.{EdgeItem, NodeItem, VisualItem}
 

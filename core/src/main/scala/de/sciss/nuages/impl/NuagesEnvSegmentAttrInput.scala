@@ -17,7 +17,7 @@ package impl
 import de.sciss.lucre.{DoubleObj, DoubleVector, Expr, Txn, synth}
 import de.sciss.lucre.Txn.peer
 import de.sciss.synth.Curve
-import de.sciss.synth.proc.EnvSegment
+import de.sciss.proc.EnvSegment
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.swing.Color

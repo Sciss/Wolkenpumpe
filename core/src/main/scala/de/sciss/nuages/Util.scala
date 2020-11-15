@@ -15,8 +15,8 @@ package de.sciss.nuages
 
 import de.sciss.file._
 import de.sciss.lucre.{ArtifactLocation, Obj, Txn}
-import de.sciss.synth
-import de.sciss.synth.{GE, proc}
+import de.sciss.{proc, synth}
+import de.sciss.synth.GE
 
 object Util {
   /** Binary search on an indexed collection.
@@ -101,7 +101,7 @@ object Util {
       val pSpeed      = pAudio  ("speed", ParamSpec(0.125, 2.3511, ExpWarp), default(1.0))
       val pStart      = pControl("start", ParamSpec(0, 1), default(0.0))
       val pDur        = pControl("dur"  , ParamSpec(0, 1), default(1.0))
-      val bufId       = proc.graph.Buffer("file")
+      val bufId       = synth.proc.graph.Buffer("file")
       val loopFrames  = BufFrames.kr(bufId)
 
       val trig1       = LocalIn.kr(Pad(0, pSpeed)) // Pad.LocalIn.kr(pSpeed)

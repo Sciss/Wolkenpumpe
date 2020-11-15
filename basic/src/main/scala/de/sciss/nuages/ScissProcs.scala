@@ -19,8 +19,10 @@ import de.sciss.lucre.synth.Txn
 import de.sciss.lucre.{Txn => LTxn}
 import de.sciss.synth
 import de.sciss.audiofile.AudioFile
-import de.sciss.synth.proc
-import de.sciss.synth.proc.MacroImplicits.ActionMacroOps
+import de.sciss.numbers.Implicits._
+import de.sciss.proc
+import de.sciss.proc.MacroImplicits.ActionMacroOps
+import de.sciss.synth.{Curve, GE, doNothing}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.language.implicitConversions
@@ -73,7 +75,7 @@ object ScissProcs {
 
   def actionRecPrepare[T <: LTxn[T]](implicit tx: T): proc.Action[T] = {
     val a = proc.Action[T]()
-    import de.sciss.synth.proc.ExImport._
+    import de.sciss.proc.ExImport._
     import de.sciss.lucre.expr.graph._
     a.setGraph {
       val ts      = TimeStamp()
@@ -113,7 +115,7 @@ object ScissProcs {
   def actionRecDispose[T <: LTxn[T]](implicit tx: T): proc.Action[T] = {
     val a = proc.Action[T]()
     import de.sciss.lucre.expr.graph._
-    import de.sciss.synth.proc.ExImport._
+    import de.sciss.proc.ExImport._
     a.setGraph {
       val artNew  = Artifact("value:$file")
       val specOpt = AudioFileSpec.Read(artNew)
@@ -189,8 +191,8 @@ object ScissProcs {
   def applyWithActions[T <: Txn[T]](nuages: Nuages[T], nConfig: Nuages.Config, sConfig: ScissProcs.Config,
                                     actions: Map[String, proc.Action[T]])
                                    (implicit tx: T): Unit = {
-    import synth._
-    import ugen._
+    import synth.ugen._
+    import synth.inf
 
     val dsl = DSL[T]
     import dsl._
@@ -240,7 +242,7 @@ object ScissProcs {
         val procObj = generator(name) {
           val p1    = pAudio("speed", ParamSpec(0.1f, 10f, ExpWarp), default(1.0))
           val speed = Mix.mono(p1) / NumChannels(p1)  // mean
-          val disk  = proc.graph.VDiskIn.ar("file", speed = speed, loop = 1)
+          val disk  = synth.proc.graph.VDiskIn.ar("file", speed = speed, loop = 1)
           //          val b     = bufCue(path)
           //          val disk  = VDiskIn.ar(b.numChannels, b.id, p1.ar * BufRateScale.ir(b.id), loop = 1)
           // HPF.ar( disk, 30 )
@@ -1003,7 +1005,7 @@ object ScissProcs {
 
     // -------------- SINKS --------------
     val sinkRec = sinkF("rec") { in =>
-      val disk = proc.graph.DiskOut.ar(Util.attrRecArtifact, in)
+      val disk = synth.proc.graph.DiskOut.ar(Util.attrRecArtifact, in)
       disk.poll(0, "disk")
     }
 
@@ -1034,7 +1036,7 @@ object ScissProcs {
     val sumRec = generator("rec-sum") {
       val numCh = mainChansOption.map(_.size).getOrElse(1)
       val in    = InFeedback.ar(0, numCh)   // XXX TODO --- should find correct indices!
-      proc.graph.DiskOut.ar(Util.attrRecArtifact, in)
+      synth.proc.graph.DiskOut.ar(Util.attrRecArtifact, in)
       DC.ar(0)
     }
     val sumRecA = sumRec.attr

@@ -19,7 +19,7 @@ import de.sciss.lucre.swing.View
 import de.sciss.lucre.synth.{AudioBus, RT, Synth, Node => SNode}
 import de.sciss.lucre.{Ident, Obj, Txn, TxnLike, synth}
 import de.sciss.nuages.impl.{PanelImpl => Impl}
-import de.sciss.synth.proc.{Proc, Transport, Universe}
+import de.sciss.proc.{Proc, Transport, Universe}
 import javax.swing.BoundedRangeModel
 import prefuse.data.Graph
 import prefuse.visual.{AggregateTable, VisualGraph}

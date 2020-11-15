@@ -16,8 +16,8 @@ package proc
 package graph
 
 import de.sciss.nuages.ParamSpec
+import de.sciss.proc.{UGenGraphBuilder => UGB}
 import de.sciss.synth.UGenSource.Vec
-import de.sciss.synth.proc.{UGenGraphBuilder => UGB}
 import de.sciss.synth.ugen.ControlValues
 
 object Param {
@@ -38,7 +38,7 @@ final case class Param(rate: Rate, key: String, default: Option[Vec[Float]], fix
   extends GE.Lazy {
 
   protected def makeUGens: UGenInLike = {
-    val b     = UGenGraphBuilder.get
+    val b     = UGB.get
     val sig   = Attribute(rate, key, default, fixed = fixed)
     val clip  = sig.max(0).min(1)   // some crazy bugs in Clip
     val spec  = b.requestInput(UGB.Input.Attribute(ParamSpec.composeKey(key))).peer match {

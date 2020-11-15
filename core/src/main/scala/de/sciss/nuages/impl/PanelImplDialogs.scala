@@ -21,7 +21,7 @@ import de.sciss.lucre.{Folder, Obj}
 import de.sciss.lucre.swing.ListView
 import de.sciss.lucre.swing.LucreSwing.requireEDT
 import de.sciss.lucre.synth.Txn
-import de.sciss.synth.proc.Proc
+import de.sciss.proc.Proc
 import javax.swing.event.{AncestorEvent, AncestorListener}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
