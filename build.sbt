@@ -26,9 +26,9 @@ lazy val deps = new {
     val intensity           = "1.0.2"
     val lucreSwing          = "2.3.0-SNAPSHOT"
     val prefuse             = "1.0.1"
-    val scalaCollider       = "2.3.0"
-    val scalaColliderSwing  = "2.2.0"
-    val scissDSP            = "2.1.0"
+    val scalaCollider       = "2.4.0"
+    val scalaColliderSwing  = "2.3.0"
+    val scissDSP            = "2.2.0"
     val soundProcesses      = "4.3.0-SNAPSHOT"
     val swingPlus           = "0.5.0"
   }
