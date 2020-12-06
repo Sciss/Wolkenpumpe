@@ -1,7 +1,7 @@
 # Wolkenpumpe
 
 [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/Sciss/Mellite?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-[![Build Status](https://travis-ci.org/Sciss/Wolkenpumpe.svg?branch=main)](https://travis-ci.org/Sciss/Wolkenpumpe)
+[![Build Status](https://github.com/Sciss/Wolkenpumpe/workflows/Scala%20CI/badge.svg?branch=main)](https://github.com/Sciss/Wolkenpumpe/actions?query=workflow%3A%22Scala+CI%22)
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/de.sciss/wolkenpumpe_2.13/badge.svg)](https://maven-badges.herokuapp.com/maven-central/de.sciss/wolkenpumpe_2.13)
 
 ## statement
@@ -22,13 +22,13 @@ Note that you can use this interface through [Mellite](https://git.iem.at/sciss/
 
 ## building
 
-Builds with sbt against Scala 2.13, 2.12. The last version to support Scala 2.11 was 2.34.0.
+Builds with sbt against Scala 2.13, 2.12, Dotty. The last version to support Scala 2.11 was 2.34.0.
 
 ## linking
 
     "de.sciss" %% "wolkenpumpe" % v
 
-The current version `v` is `"3.2.0`.
+The current version `v` is `"3.3.0`.
 
 ## contributing
 

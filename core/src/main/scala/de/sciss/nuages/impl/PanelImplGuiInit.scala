@@ -38,7 +38,7 @@ import prefuse.{Constants, Display, Visualization}
 import scala.swing.Component
 
 trait PanelImplGuiInit[T <: Txn[T]] extends ComponentHolder[Component] {
-  _: NuagesPanel[T] =>
+  self: NuagesPanel[T] =>
 
   import PanelImpl.{GROUP_NODES, GROUP_EDGES, AGGR_PROC, ACTION_COLOR, ACTION_LAYOUT, LAYOUT_TIME}
   import NuagesPanel.{GROUP_GRAPH, GROUP_SELECTION, COL_NUAGES}

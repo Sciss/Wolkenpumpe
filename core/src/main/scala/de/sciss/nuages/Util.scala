@@ -74,7 +74,10 @@ object Util {
     }
   }
 
-  def wrapExtendChannels(n: Int, sig: GE): GE = Vector.tabulate(n)(sig.out)
+  def wrapExtendChannels(n: Int, sig: GE): GE = {
+    import synth.geOps
+    Vector.tabulate(n)(sig.out)
+  }
 
   def mkLoop[T <: Txn[T]](n: Nuages[T], name: String, numBufChannels: Int, genNumChannels: Int)
                              (implicit tx: T): proc.Proc[T] = {

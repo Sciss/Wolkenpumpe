@@ -94,7 +94,7 @@ final class NuagesEnvSegmentAttrInput[T <: synth.Txn[T]](val attribute: NuagesAt
   protected def setControlTxn(v: Vec[Double], durFrames: Long)(implicit tx: T): Unit = {
     val before = objH()._1()
 
-    val nowVar = if (v.size == 1) DoubleObj.newVar(v.head) else DoubleVector.newVar(v)
+    val nowVar = if (v.size == 1) DoubleObj.newVar[T](v.head) else DoubleVector.newVar[T](v)
     if (durFrames == 0L)
       inputParent.updateChild(before = before, now = nowVar, dt = 0L, clearRight = true)
     else {

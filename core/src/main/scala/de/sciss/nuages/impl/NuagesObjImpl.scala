@@ -360,7 +360,7 @@ final class NuagesObjImpl[T <: Txn[T]] private(val main: NuagesPanel[T],
           .getOrElse(throw new IllegalStateException(s"Using a timeline nuages but no span!?"))
         val pos         = main.transport.position
         val stop        = pos // `- parent.frameOffset` (not, because parent = this)
-      val oldSpanVal  = oldSpan.value
+        val oldSpanVal  = oldSpan.value
         val newSpanVal  = oldSpanVal.intersect(Span.until(stop))
         if (newSpanVal.nonEmpty) {
           oldSpan match {

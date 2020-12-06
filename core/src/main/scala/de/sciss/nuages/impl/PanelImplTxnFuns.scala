@@ -26,7 +26,7 @@ import de.sciss.proc.{Proc, Runner, Timeline}
 import scala.concurrent.stm.TxnLocal
 
 trait PanelImplTxnFuns[T <: Txn[T]] {
-  _: NuagesPanel[T] =>
+  self: NuagesPanel[T] =>
 
   protected def nuagesH: Source[T, Nuages[T]]
 

@@ -28,7 +28,7 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.swing.{Component, Swing}
 
 trait PanelImplDialogs[T <: Txn[T]] {
-  _: NuagesPanel[T] =>
+  self: NuagesPanel[T] =>
 
   private[this] var fltPred: NuagesOutput   [T] = _
   private[this] var fltSucc: NuagesAttribute[T] = _

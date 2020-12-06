@@ -43,7 +43,7 @@ object AttrInputKeyControl {
   }
 }
 trait AttrInputKeyControl[T <: Txn[T]] extends ClipboardOwner {
-  _: NuagesAttribute.Input[T] with NuagesAttribute.Numeric with NuagesData[T] =>
+  self: NuagesAttribute.Input[T] with NuagesAttribute.Numeric with NuagesData[T] =>
 
   import AttrInputKeyControl._
 

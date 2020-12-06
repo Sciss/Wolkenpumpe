@@ -1,16 +1,20 @@
 lazy val baseName        = "Wolkenpumpe"
 lazy val baseNameL       = baseName.toLowerCase
-lazy val projectVersion  = "3.2.0"
-lazy val mimaVersion     = "3.2.0"
+lazy val projectVersion  = "3.3.0-SNAPSHOT"
+lazy val mimaVersion     = "3.3.0"
+
+// sonatype plugin requires that these are in global
+ThisBuild / version      := projectVersion
+ThisBuild / organization := "de.sciss"
 
 lazy val commonSettings = Seq(
-  version              := projectVersion,
-  organization         := "de.sciss",
+//  version              := projectVersion,
+//  organization         := "de.sciss",
   homepage             := Some(url(s"https://git.iem.at/sciss/$baseName")),
   description          := "A Prefuse based visual interface for SoundProcesses, a sound synthesis framework",
   licenses             := Seq("AGPL v3+" -> url( "http://www.gnu.org/licenses/agpl-3.0.txt")),
   scalaVersion         := "2.13.4",
-  crossScalaVersions   := Seq("2.13.4", "2.12.12"),
+  crossScalaVersions   := Seq("3.0.0-M2", "2.13.4", "2.12.12"),
   // resolvers            += "Oracle Repository" at "http://download.oracle.com/maven",  // required for sleepycat
   scalacOptions       ++= Seq(
     "-deprecation", "-unchecked", "-feature", "-encoding", "utf8", "-Xlint:-stars-align,_", "-Xsource:2.13"
@@ -24,16 +28,16 @@ lazy val deps = new {
   val main = new {
     val fileUtil            = "1.1.5"
     val intensity           = "1.0.2"
-    val lucreSwing          = "2.4.1"
+    val lucreSwing          = "2.5.0-SNAPSHOT"
     val prefuse             = "1.0.1"
-    val scalaCollider       = "2.4.0"
-    val scalaColliderSwing  = "2.4.0"
-    val scissDSP            = "2.2.0"
-    val soundProcesses      = "4.4.0"
+    val scalaCollider       = "2.4.1"
+    val scalaColliderSwing  = "2.4.1"
+    val scissDSP            = "2.2.1"
+    val soundProcesses      = "4.5.0-SNAPSHOT"
     val swingPlus           = "0.5.0"
   }
   val test = new {
-    val lucre               = "4.2.0"
+    val lucre               = "4.3.0-SNAPSHOT"
     val scalaTest           = "3.2.3"
     val scallop             = "3.5.1"
     val submin              = "0.3.4"
@@ -85,43 +89,30 @@ lazy val basic = project.withId(s"$baseNameL-basic").in(file("basic"))
   .settings(
     name := s"$baseName-Basic",
     libraryDependencies ++= Seq(
-      "de.sciss"          %% "lucre-bdb" % deps.test.lucre  % Test,
-      "de.sciss"          %  "submin"    % deps.test.submin % Test
+      "de.sciss"    %% "lucre-bdb" % deps.test.lucre   % Test,
+      "de.sciss"    %  "submin"    % deps.test.submin  % Test,
+      "org.rogach"  %% "scallop"   % deps.test.scallop % Test,
     ),
-    libraryDependencies += {
-      // if (scalaVersion.value == "2.13.0-RC2") {
-      //   "com.github.scopt" % "scopt_2.13.0-RC1" % deps.test.scopt % Test
-      // } else {
-        "org.rogach" %% "scallop" % deps.test.scallop % Test
-      // }
-    },
-    mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-basic" % mimaVersion)
+    mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-basic" % mimaVersion),
   )
 
 // ---- publishing ----
 
 lazy val publishSettings = Seq(
   publishMavenStyle := true,
-  publishTo := {
-    Some(if (isSnapshot.value)
-      "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
-    else
-      "Sonatype Releases"  at "https://oss.sonatype.org/service/local/staging/deploy/maven2"
-    )
-  },
   publishArtifact in Test := false,
   pomIncludeRepository := { _ => false },
-  pomExtra := { val n = baseName
-<scm>
-  <url>git@git.iem.at:sciss/{n}.git</url>
-  <connection>scm:git:git@git.iem.at:sciss/{n}.git</connection>
-</scm>
-<developers>
-   <developer>
-      <id>sciss</id>
-      <name>Hanns Holger Rutz</name>
-      <url>http://www.sciss.de</url>
-   </developer>
-</developers>
-}
+  developers := List(
+    Developer(
+      id    = "sciss",
+      name  = "Hanns Holger Rutz",
+      email = "contact@sciss.de",
+      url   = url("https://www.sciss.de")
+    )
+  ),
+  scmInfo := {
+    val h = "git.iem.at"
+    val a = s"sciss/$baseName"
+    Some(ScmInfo(url(s"https://$h/$a"), s"scm:git@$h:$a.git"))
+  },
 )

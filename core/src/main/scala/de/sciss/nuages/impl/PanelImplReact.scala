@@ -21,7 +21,7 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm.TSet
 
 trait PanelImplReact[T <: Txn[T]] {
-  _: NuagesPanel[T] =>
+  self: NuagesPanel[T] =>
 
   import LTxn.peer
 

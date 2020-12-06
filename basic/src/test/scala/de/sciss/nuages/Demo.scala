@@ -16,6 +16,8 @@ object Demo {
 
   def main(args: Array[String]): Unit = {
     object p extends ScallopConf(args) {
+      import org.rogach.scallop._
+      
       printedName = "Demo"
 
       val durable : Opt[File]     = opt(descr = "Durable database")
@@ -63,7 +65,7 @@ object Demo {
     filter("Achil") { in =>
       val speed         = Lag.ar(pAudio("speed", ParamSpec(0.125, 2.3511, ExponentialWarp), 0.5), 0.1)
       val numFrames     = 44100 // sampleRate.toInt
-    val numChannels   = 2     // in.numChannels // numOutputs
+      val numChannels   = 2     // in.numChannels // numOutputs
       //println( "numChannels = " + numChannels )
 
       // val buf           = bufEmpty(numFrames, numChannels)

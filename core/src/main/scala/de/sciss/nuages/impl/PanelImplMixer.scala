@@ -24,7 +24,7 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm.{InTxn, Ref}
 
 trait PanelImplMixer[T <: Txn[T]] {
-  _: NuagesPanel[T] =>
+  self: NuagesPanel[T] =>
 
   // ---- abstract ----
 
