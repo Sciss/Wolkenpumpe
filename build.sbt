@@ -21,7 +21,10 @@ lazy val commonSettings = Seq(
   ),
   scalacOptions in (Compile, compile) ++= (if (scala.util.Properties.isJavaAtLeast("9")) Seq("-release", "8") else Nil), // JDK >8 breaks API; skip scala-doc
   scalacOptions        += "-Yrangepos",  // this is needed to extract source code
-  updateOptions        := updateOptions.value.withLatestSnapshots(false)
+  updateOptions        := updateOptions.value.withLatestSnapshots(false),
+  sources in (Compile, doc) := {
+    if (isDotty.value) Nil else (sources in (Compile, doc)).value // dottydoc is pretty much broken
+  },
 ) ++ publishSettings
 
 lazy val deps = new {
