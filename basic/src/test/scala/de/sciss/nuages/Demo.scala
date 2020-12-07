@@ -17,7 +17,7 @@ object Demo {
   def main(args: Array[String]): Unit = {
     object p extends ScallopConf(args) {
       import org.rogach.scallop._
-      
+
       printedName = "Demo"
 
       val durable : Opt[File]     = opt(descr = "Durable database")
