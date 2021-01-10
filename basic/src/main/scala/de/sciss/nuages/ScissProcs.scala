@@ -2,7 +2,7 @@
  *  ScissProcs.scala
  *  (Wolkenpumpe)
  *
- *  Copyright (c) 2008-2020 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2008-2021 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU General Public License v2+
  *
@@ -13,15 +13,11 @@
 
 package de.sciss.nuages
 
-import de.sciss.file._
-import de.sciss.lucre.{Artifact => _Artifact, ArtifactLocation => _ArtifactLocation}
-import de.sciss.lucre.synth.Txn
-import de.sciss.lucre.{Txn => LTxn}
-import de.sciss.synth
 import de.sciss.audiofile.AudioFile
-import de.sciss.numbers.Implicits._
-import de.sciss.proc
-import de.sciss.synth.{Curve, GE, SynthGraph, doNothing}
+import de.sciss.file._
+import de.sciss.lucre.synth.Txn
+import de.sciss.lucre.{Artifact => _Artifact, ArtifactLocation => _ArtifactLocation, Txn => LTxn}
+import de.sciss.{proc, synth}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.language.implicitConversions
@@ -74,8 +70,8 @@ object ScissProcs {
 
   def actionRecPrepare[T <: LTxn[T]](implicit tx: T): proc.Action[T] = {
     val a = proc.Action[T]()
-    import de.sciss.proc.ExImport._
     import de.sciss.lucre.expr.graph._
+    import de.sciss.proc.ExImport._
     a.graph() = proc.Action.Graph {    // .setGraph -- no macros in Dotty
       val ts      = TimeStamp()
       // N.B.: We currently cannot wait in the dispose action
@@ -190,8 +186,8 @@ object ScissProcs {
   def applyWithActions[T <: Txn[T]](nuages: Nuages[T], nConfig: Nuages.Config, sConfig: ScissProcs.Config,
                                     actions: Map[String, proc.Action[T]])
                                    (implicit tx: T): Unit = {
-    import synth.{proc => _, _}
     import synth.ugen._
+    import synth.{proc => _, _}
 
     val dsl = DSL[T]
     import dsl._

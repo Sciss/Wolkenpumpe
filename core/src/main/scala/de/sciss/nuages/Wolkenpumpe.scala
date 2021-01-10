@@ -2,7 +2,7 @@
  *  Wolkenpumpe.scala
  *  (Wolkenpumpe)
  *
- *  Copyright (c) 2008-2020 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2008-2021 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU Affero General Public License v3+
  *
@@ -14,8 +14,9 @@
 package de.sciss.nuages
 
 import java.awt.{Color, Font}
-
 import de.sciss.proc.SoundProcesses
+import de.sciss.synth.UGenSource
+import de.sciss.synth.proc.graph.Param
 
 import scala.swing.Component
 
@@ -64,5 +65,7 @@ object Wolkenpumpe {
     ParamSpec     .init()
     Warp          .init()
     Nuages        .init()
+
+    UGenSource.addProductReaderSq(Param :: Nil)
   }
 }

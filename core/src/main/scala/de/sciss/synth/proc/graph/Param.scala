@@ -2,7 +2,7 @@
  *  Param.scala
  *  (Wolkenpumpe)
  *
- *  Copyright (c) 2008-2020 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2008-2021 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU Affero General Public License v3+
  *
@@ -17,10 +17,10 @@ package graph
 
 import de.sciss.nuages.ParamSpec
 import de.sciss.proc.{UGenGraphBuilder => UGB}
-import de.sciss.synth.UGenSource.Vec
+import de.sciss.synth.UGenSource.{ProductReader, RefMapIn, Vec}
 import de.sciss.synth.ugen.ControlValues
 
-object Param {
+object Param extends ProductReader[Param] {
   def ar(key: String): Param = Param(audio, key = key, default = None, fixed = -1)
   def kr(key: String): Param = Param(audio, key = key, default = None, fixed = -1)
 
@@ -31,6 +31,15 @@ object Param {
     val sz = default.seq.size
     val fixed = if (sz > 1) sz else -1    // XXX TODO -- is this always good?
     Param(rate, key = key, default = Some(default.seq), fixed = fixed)
+  }
+
+  override def read(in: RefMapIn, prefix: String, arity: Int): Param = {
+    require (arity == 4)
+    val _rate     = in.readRate()
+    val _key      = in.readString()
+    val _default  = in.readOption(in.readFloatVec())
+    val _fixed    = in.readInt()
+    new Param(_rate, _key, _default, _fixed)
   }
 }
 

@@ -2,7 +2,7 @@
  *  NuagesViewImpl.scala
  *  (Wolkenpumpe)
  *
- *  Copyright (c) 2008-2020 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2008-2021 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU Affero General Public License v3+
  *
@@ -109,6 +109,7 @@ object NuagesViewImpl {
         InputEvent.SHIFT_MASK), treeName)
       aMap.put(treeName, new AbstractAction(treeName) {
         def actionPerformed(e: ActionEvent): Unit = {
+          import de.sciss.synth.Ops._
           _serverPanel.server.foreach(_.dumpTree(controls = true))
         }
       })
