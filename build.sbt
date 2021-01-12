@@ -31,7 +31,7 @@ lazy val deps = new {
   val main = new {
     val fileUtil            = "1.1.5"
     val intensity           = "1.0.2"
-    val lucreSwing          = "2.5.0"
+    val lucreSwing          = "2.6.0-SNAPSHOT"
     val prefuse             = "1.0.1"
     val scalaCollider       = "2.6.0-SNAPSHOT"
     val scalaColliderSwing  = "2.6.0-SNAPSHOT"
@@ -40,7 +40,7 @@ lazy val deps = new {
     val swingPlus           = "0.5.0"
   }
   val test = new {
-    val lucre               = "4.3.0"
+    val lucre               = "4.4.0-SNAPSHOT"
     val scalaTest           = "3.2.3"
     val scallop             = "4.0.1"
     val submin              = "0.3.4"
