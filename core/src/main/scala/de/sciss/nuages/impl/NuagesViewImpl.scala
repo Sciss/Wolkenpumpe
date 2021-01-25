@@ -14,24 +14,24 @@
 package de.sciss.nuages
 package impl
 
-import java.awt.event.{ActionEvent, InputEvent, KeyEvent}
-import java.awt.{Color, Toolkit}
-
 import de.sciss.audiowidgets.{RotaryKnob, TimelineModel}
-import de.sciss.lucre.Cursor
 import de.sciss.lucre.swing.LucreSwing.{defer, deferTx, requireEDT}
 import de.sciss.lucre.swing.View
 import de.sciss.lucre.swing.impl.ComponentHolder
 import de.sciss.lucre.synth.{RT, Server, Synth, Txn}
+import de.sciss.lucre.{Cursor, Disposable}
 import de.sciss.osc
+import de.sciss.proc.AuralSystem.{Running, Stopped}
+import de.sciss.proc.gui.TransportView
+import de.sciss.proc.{TimeRef, Universe}
 import de.sciss.span.Span
 import de.sciss.synth.UGenSource.Vec
-import de.sciss.proc.gui.TransportView
-import de.sciss.proc.{AuralSystem, TimeRef, Universe}
 import de.sciss.synth.swing.j.JServerStatusPanel
 import de.sciss.synth.{SynthGraph, addAfter, message}
-import javax.swing.{AbstractAction, JComponent, KeyStroke, SwingUtilities}
 
+import java.awt.event.{ActionEvent, InputEvent, KeyEvent}
+import java.awt.{Color, Toolkit}
+import javax.swing.{AbstractAction, JComponent, KeyStroke, SwingUtilities}
 import scala.swing.Swing._
 import scala.swing.{BorderPanel, BoxPanel, Component, GridBagPanel, Orientation}
 
@@ -58,7 +58,7 @@ object NuagesViewImpl {
 
   private final class Impl[T <: Txn[T]](val panel: NuagesPanel[T], transportView: Option[View[T]])
                                        (implicit val cursor: Cursor[T])
-    extends NuagesView[T] with ComponentHolder[Component] with AuralSystem.Client { impl =>
+    extends NuagesView[T] with ComponentHolder[Component] { impl =>
 
     type C = Component
 
@@ -67,26 +67,27 @@ object NuagesViewImpl {
     private[this] var _southBox     : BoxPanel            = _
     private[this] var _controlPanel : ControlPanel        = _
     private[this] var _serverPanel  : JServerStatusPanel  = _
+    private[this] var _obsAural     : Disposable[RT]      = _
 
     def init()(implicit tx: T): this.type = {
       deferTx(guiInit())
       val aural = panel.universe.auralSystem
-      aural.serverOption.foreach(auralStarted)
-      aural.addClient(this)
+      _obsAural = aural.reactNow { implicit tx => {
+        case Running(s: Server) =>
+          deferTx { _serverPanel.server = Some(s.peer) }
+          installMainSynth(s)
+
+        case Stopped =>
+          deferTx { _serverPanel.server = None }
+
+        case _ =>
+      }}
       this
     }
 
 
     def controlPanel: ControlPanel = _controlPanel
 
-    def auralStarted(s: Server)(implicit tx: RT): Unit = {
-      deferTx(_serverPanel.server = Some(s.peer))
-      installMainSynth(s)
-    }
-
-    def auralStopped()(implicit tx: RT): Unit = deferTx {
-      _serverPanel.server = None
-    }
 
     override def installFullScreenKey(frame: scala.swing.RootPanel): Unit = {
       val display = panel.display
@@ -240,7 +241,7 @@ object NuagesViewImpl {
 
     def dispose()(implicit tx: T): Unit = {
       val aural = panel.universe.auralSystem
-      aural.removeClient(this)
+      _obsAural.dispose()
       val synth = panel.mainSynth
       panel.mainSynth = None
       panel.dispose()
