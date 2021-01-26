@@ -14,11 +14,11 @@
 package de.sciss.nuages
 package impl
 
-import java.awt.{Shape, Graphics2D}
-import java.awt.geom.{Arc2D, GeneralPath, Area}
-
+import java.awt.{Graphics2D, Shape}
+import java.awt.geom.{Arc2D, Area, GeneralPath}
 import de.sciss.lucre.synth.Txn
 import de.sciss.nuages.impl.NuagesDataImpl._
+import de.sciss.proc.{ParamSpec, Warp}
 import prefuse.data.{Node => PNode}
 import prefuse.util.ColorLib
 import prefuse.visual.VisualItem
@@ -58,7 +58,7 @@ trait RenderAttrValue[T <: Txn[T]] extends NuagesDataImpl[T] {
     _vis.damageReport(visItem, visItem.getBounds)
   }
 
-  private[this] val spikes: Shape = if (spec.warp == IntWarp) {
+  private[this] val spikes: Shape = if (spec.warp == Warp.Int) {
     val loInt = spec.map(0.0).toInt
     val hiInt = spec.map(1.0).toInt
     val sz    = hiInt - loInt
@@ -113,7 +113,7 @@ trait RenderAttrValue[T <: Txn[T]] extends NuagesDataImpl[T] {
 
   final protected def valueText1(v: Double): String = {
     val m = spec.map(v)
-    if (spec.warp == IntWarp) m.toInt.toString
+    if (spec.warp == Warp.Int) m.toInt.toString
     else {
       if (m == Double.PositiveInfinity) "Inf"
       else if (m == Double.NegativeInfinity) "-Inf"

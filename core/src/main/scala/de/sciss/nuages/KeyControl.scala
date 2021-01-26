@@ -17,14 +17,13 @@ import java.awt.datatransfer.{DataFlavor, Transferable, UnsupportedFlavorExcepti
 import java.awt.event.{KeyEvent, MouseEvent}
 import java.awt.geom.Point2D
 import java.awt.{Color, Point}
-
 import javax.swing.KeyStroke
 import javax.swing.event.{AncestorEvent, AncestorListener, DocumentEvent, DocumentListener}
 import de.sciss.lucre.{Disposable, Folder, IdentMap, Obj, Source, StringObj}
 import de.sciss.lucre.synth.Txn
 import de.sciss.nuages.NuagesPanel._
 import de.sciss.swingplus.ListView
-import de.sciss.proc.{ObjKeys, Proc}
+import de.sciss.proc.{ObjKeys, ParamSpec, Proc}
 import prefuse.controls.{Control, ControlAdapter}
 import prefuse.visual.{EdgeItem, NodeItem, VisualItem}
 

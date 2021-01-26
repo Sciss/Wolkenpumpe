@@ -14,12 +14,12 @@
 package de.sciss.nuages
 
 import java.awt.geom.Point2D
-
 import de.sciss.lucre.swing.View
 import de.sciss.lucre.synth.{AudioBus, RT, Synth, Node => SNode}
 import de.sciss.lucre.{Ident, Obj, Txn, TxnLike, synth}
 import de.sciss.nuages.impl.{PanelImpl => Impl}
-import de.sciss.proc.{Proc, Transport, Universe}
+import de.sciss.proc.{ParamSpec, Proc, Transport, Universe, Warp}
+
 import javax.swing.BoundedRangeModel
 import prefuse.data.Graph
 import prefuse.visual.{AggregateTable, VisualGraph}
@@ -37,8 +37,8 @@ object NuagesPanel {
 
   final val GLIDE_KEY = "key"
 
-  final val mainAmpSpec : (ParamSpec, Double) = ParamSpec(0.01, 10.0, ExponentialWarp) -> 1.0
-  final val soloAmpSpec : (ParamSpec, Double) = ParamSpec(0.10, 10.0, ExponentialWarp) -> 0.5
+  final val mainAmpSpec : (ParamSpec, Double) = ParamSpec(0.01, 10.0, Warp.Exp) -> 1.0
+  final val soloAmpSpec : (ParamSpec, Double) = ParamSpec(0.10, 10.0, Warp.Exp) -> 0.5
 
   def apply[T <: synth.Txn[T]](nuages: Nuages[T], config: Nuages.Config)
                         (implicit tx: T, universe: Universe[T], context: NuagesContext[T]): NuagesPanel[T] =

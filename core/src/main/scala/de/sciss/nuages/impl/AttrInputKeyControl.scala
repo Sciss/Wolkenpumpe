@@ -19,12 +19,13 @@ import java.awt.geom.Point2D
 import java.awt.{Color, Point, Toolkit}
 import java.text.NumberFormat
 import java.util.Locale
-
 import de.sciss.desktop.KeyStrokes
 import de.sciss.equal.Implicits._
 import de.sciss.lucre.Txn
 import de.sciss.nuages.KeyControl.ControlDrag
 import de.sciss.numbers
+import de.sciss.proc.Warp
+
 import javax.swing.event.{AncestorEvent, AncestorListener}
 import prefuse.visual.VisualItem
 
@@ -120,7 +121,7 @@ trait AttrInputKeyControl[T <: Txn[T]] extends ClipboardOwner {
       case '['  =>
         val s  = attribute.spec
         val vs = numericValue
-        val vNew = if (s.warp === IntWarp) {
+        val vNew = if (s.warp === Warp.Int) {
           vs.map(v => s.inverseMap(s.map(v) - 1))
         } else vs.map(_ - 0.005)
         vNew.map(math.max(0.0, _))
@@ -128,7 +129,7 @@ trait AttrInputKeyControl[T <: Txn[T]] extends ClipboardOwner {
       case ']'  =>
         val s  = attribute.spec
         val vs = numericValue
-        val vNew = if (s.warp === IntWarp) {
+        val vNew = if (s.warp === Warp.Int) {
           vs.map(v => s.inverseMap(s.map(v) + 1))
         } else vs.map(_ + 0.005)
         vNew.map(math.min(1.0, _))

@@ -23,7 +23,7 @@ import de.sciss.lucre.{Cursor, Disposable}
 import de.sciss.osc
 import de.sciss.proc.AuralSystem.{Running, Stopped}
 import de.sciss.proc.gui.TransportView
-import de.sciss.proc.{TimeRef, Universe}
+import de.sciss.proc.{ParamSpec, TimeRef, Universe}
 import de.sciss.span.Span
 import de.sciss.synth.UGenSource.Vec
 import de.sciss.synth.swing.j.JServerStatusPanel

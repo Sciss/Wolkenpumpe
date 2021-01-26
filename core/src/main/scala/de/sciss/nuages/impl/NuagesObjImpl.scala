@@ -17,7 +17,6 @@ package impl
 import java.awt.event.MouseEvent
 import java.awt.geom.{Arc2D, Area, Point2D}
 import java.awt.{Color, Graphics2D}
-
 import de.sciss.dsp.FastLog
 import de.sciss.intensitypalette.IntensityPalette
 import de.sciss.lucre.{Disposable, DoubleVector, Ident, Obj, Source, SpanLikeObj, TxnLike, Txn => LTxn}
@@ -26,7 +25,7 @@ import de.sciss.lucre.synth.Txn
 import de.sciss.nuages.Nuages.Surface
 import de.sciss.span.{Span, SpanLike}
 import de.sciss.proc.Implicits._
-import de.sciss.proc.{AuralObj, ObjKeys, Proc}
+import de.sciss.proc.{AuralObj, ObjKeys, ParamSpec, Proc}
 import prefuse.util.ColorLib
 import prefuse.visual.{AggregateItem, VisualItem}
 

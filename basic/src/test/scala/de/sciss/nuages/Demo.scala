@@ -6,7 +6,7 @@ import de.sciss.lucre.store.BerkeleyDB
 import de.sciss.lucre.synth.{InMemory, Txn}
 import de.sciss.submin.Submin
 import de.sciss.synth.Server
-import de.sciss.proc.Durable
+import de.sciss.proc.{Durable, ParamSpec, Warp}
 import org.rogach.scallop.{ScallopConf, ScallopOption => Opt}
 
 object Demo {
@@ -27,8 +27,8 @@ object Demo {
       val recDir  : Opt[File]     = opt(name = "rec-dir", descr = "Snippet audio recordings directory")
 
       verify()
-      val config = Config(durable = durable.toOption, timeline = timeline(), dumpOSC = dumpOSC(), log = log(),
-        recDir = recDir.toOption)
+      val config: Config = Config(durable = durable.toOption, timeline = timeline(), dumpOSC = dumpOSC(),
+        log = log(), recDir = recDir.toOption)
     }
 
     run(p.config)
@@ -63,7 +63,7 @@ object Demo {
     }
 
     filter("Achil") { in =>
-      val speed         = Lag.ar(pAudio("speed", ParamSpec(0.125, 2.3511, ExponentialWarp), 0.5), 0.1)
+      val speed         = Lag.ar(pAudio("speed", ParamSpec(0.125, 2.3511, Warp.Exp), 0.5), 0.1)
       val numFrames     = 44100 // sampleRate.toInt
       val numChannels   = 2     // in.numChannels // numOutputs
       //println( "numChannels = " + numChannels )
@@ -89,7 +89,7 @@ object Demo {
     }
 
     collector("Out") { in =>
-      val amp = pAudio("amp", ParamSpec(-inf, 20, DbFaderWarp), Double.NegativeInfinity).dbAmp
+      val amp = pAudio("amp", ParamSpec(-inf, 20, Warp.DbFader), Double.NegativeInfinity).dbAmp
       val sig = in * amp
       Out.ar(0, sig)
     }

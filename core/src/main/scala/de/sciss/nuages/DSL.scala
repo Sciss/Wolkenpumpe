@@ -15,7 +15,7 @@ package de.sciss.nuages
 
 import de.sciss.lucre.{DoubleObj, DoubleVector, Folder, Obj, StringObj, Txn => LTxn}
 import de.sciss.proc
-import de.sciss.proc.Proc
+import de.sciss.proc.{ParamSpec, Proc}
 import de.sciss.synth.proc.graph.{Param, ScanIn, ScanInFix, ScanOut}
 import de.sciss.synth.ugen.ControlValues
 import de.sciss.synth.{GE, Rate, SynthGraph, audio, control, scalar}

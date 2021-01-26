@@ -15,6 +15,7 @@ package de.sciss.nuages
 
 import de.sciss.file._
 import de.sciss.lucre.{ArtifactLocation, Obj, Txn}
+import de.sciss.proc.{ParamSpec, Warp}
 import de.sciss.{proc, synth}
 import de.sciss.synth.GE
 
@@ -101,7 +102,7 @@ object Util {
     }
 
     val procObj = generator(name) {
-      val pSpeed      = pAudio  ("speed", ParamSpec(0.125, 2.3511, ExpWarp), default(1.0))
+      val pSpeed      = pAudio  ("speed", ParamSpec(0.125, 2.3511, Warp.Exp), default(1.0))
       val pStart      = pControl("start", ParamSpec(0, 1), default(0.0))
       val pDur        = pControl("dur"  , ParamSpec(0, 1), default(1.0))
       val bufId       = synth.proc.graph.Buffer("file")

@@ -13,16 +13,15 @@
 
 package de.sciss
 
+import de.sciss.proc.{ParamSpec, Warp}
+
 import java.text.SimpleDateFormat
 import java.util.{Date, Locale}
-
 import scala.annotation.elidable
 import scala.annotation.elidable.CONFIG
 
 package object nuages {
-  def ExpWarp: ExponentialWarp.type   = ExponentialWarp
-  def LinWarp: LinearWarp     .type   = LinearWarp
-  val TrigSpec: ParamSpec             = ParamSpec(0, 1, IntWarp)
+  val TrigSpec: ParamSpec  = ParamSpec(0, 1, Warp.Int)
 
   private lazy val logHeader = new SimpleDateFormat("[d MMM yyyy, HH:mm''ss.SSS] 'Nuages' ", Locale.US)
 

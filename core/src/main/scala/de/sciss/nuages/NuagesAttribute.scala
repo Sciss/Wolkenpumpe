@@ -13,9 +13,10 @@
 
 package de.sciss.nuages
 
-import de.sciss.lucre.synth.{Synth}
+import de.sciss.lucre.synth.Synth
 import de.sciss.lucre.{Disposable, Obj, Txn, synth}
 import de.sciss.nuages.impl.{NuagesAttributeImpl => Impl}
+import de.sciss.proc.ParamSpec
 import prefuse.data.{Node => PNode}
 
 import scala.collection.immutable.{IndexedSeq => Vec}

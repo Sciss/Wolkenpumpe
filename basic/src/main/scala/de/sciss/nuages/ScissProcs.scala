@@ -17,6 +17,7 @@ import de.sciss.audiofile.AudioFile
 import de.sciss.file._
 import de.sciss.lucre.synth.Txn
 import de.sciss.lucre.{Artifact => _Artifact, ArtifactLocation => _ArtifactLocation, Txn => LTxn}
+import de.sciss.proc.{ParamSpec, Warp}
 import de.sciss.{proc, synth}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -235,7 +236,7 @@ object ScissProcs {
         val name = s"t-${abbreviate(f.base)}"
 
         val procObj = generator(name) {
-          val p1    = pAudio("speed", ParamSpec(0.1f, 10f, ExpWarp), default(1.0))
+          val p1    = pAudio("speed", ParamSpec(0.1f, 10f, Warp.Exp), default(1.0))
           val speed = Mix.mono(p1) / NumChannels(p1)  // mean
           val disk  = synth.proc.graph.VDiskIn.ar("file", speed = speed, loop = 1)
           //          val b     = bufCue(path)
@@ -256,9 +257,9 @@ object ScissProcs {
       val numChannels = mainChans.size
 
       generator("(test)") {
-        val pAmp  = pControl("amp" , ParamSpec(0.01,  1.0, ExpWarp),  default(1.0))
-        val pSig  = pControl("sig" , /* ParamSpec(0, 2, IntWarp) */ TrigSpec, default(0.0))
-        val pFreq = pControl("freq", ParamSpec(0.1 , 10  , ExpWarp),  default(1.0))
+        val pAmp  = pControl("amp" , ParamSpec(0.01,  1.0, Warp.Exp),  default(1.0))
+        val pSig  = pControl("sig" , /* ParamSpec(0, 2, Warp.Int) */ TrigSpec, default(0.0))
+        val pFreq = pControl("freq", ParamSpec(0.1 , 10  , Warp.Exp),  default(1.0))
 
         val idx       = Stepper.kr(Impulse.kr(pFreq), lo = 0, hi = numChannels)
         val sig0: GE  = Seq(WhiteNoise.ar(1), SinOsc.ar(441))
@@ -276,7 +277,7 @@ object ScissProcs {
 
     nConfig.micInputs.foreach { cfg =>
       if (cfg.name != NamedBusConfig.Ignore) generator(cfg.name) {
-        val pBoost    = pAudio("gain", ParamSpec(0.1, 10, ExpWarp), default(0.1))
+        val pBoost    = pAudio("gain", ParamSpec(0.1, 10, Warp.Exp), default(0.1))
         val pFeed0    = pAudio("feed", ParamSpec(0, 1), default(0.0))
 
         val pFeed     = Mix.mono(pFeed0) / NumChannels(pFeed0)
@@ -321,7 +322,7 @@ object ScissProcs {
 
     nConfig.lineInputs.foreach { cfg =>
       if (cfg.name != NamedBusConfig.Ignore) generator(cfg.name) {
-        val pBoost = pAudio("gain", ParamSpec(0.1, 10, ExpWarp), default(1.0))
+        val pBoost = pAudio("gain", ParamSpec(0.1, 10, Warp.Exp), default(1.0))
 
         val boost   = pBoost
 //        val sig     = In.ar(NumOutputBuses.ir + cfg.offset, cfg.numChannels) * boost
@@ -344,8 +345,8 @@ object ScissProcs {
 
     generator("~dust") {
       shortcut = "D"
-      val pFreq   = pAudio("freq" , ParamSpec(0.01, 1000, ExpWarp), default(1.0 ))
-      val pDecay  = pAudio("decay", ParamSpec(0.01,   10, ExpWarp), default(0.01))
+      val pFreq   = pAudio("freq" , ParamSpec(0.01, 1000, Warp.Exp), default(1.0 ))
+      val pDecay  = pAudio("decay", ParamSpec(0.01,   10, Warp.Exp), default(0.01))
 
       val freq = pFreq
       // val freq  = ForceChan(freq0)
@@ -353,7 +354,7 @@ object ScissProcs {
     }
 
     generator("~gray") {
-      val pAmp  = pAudio("amp", ParamSpec(0.01, 1, ExpWarp), default(0.1))
+      val pAmp  = pAudio("amp", ParamSpec(0.01, 1, Warp.Exp), default(0.1))
       val amp   = pAmp
       val out   = GrayNoise.ar(amp)
       // out.poll(1, "gray")
@@ -362,8 +363,8 @@ object ScissProcs {
 
     generator("~sin") {
       shortcut = "S"
-      val freq  = pAudio("freq", ParamSpec(0.1 , 10000, ExpWarp), default(15.0))
-      val pAmp  = pAudio("amp" , ParamSpec(0.01,     1, ExpWarp), default( 0.1))
+      val freq  = pAudio("freq", ParamSpec(0.1 , 10000, Warp.Exp), default(15.0))
+      val pAmp  = pAudio("amp" , ParamSpec(0.01,     1, Warp.Exp), default( 0.1))
       val out   = SinOsc.ar(freq) * pAmp
       // out.poll(1, "sin")
       out
@@ -371,9 +372,9 @@ object ScissProcs {
 
     generator("~pulse") {
       shortcut = "P"
-      val freq  = pAudio("freq" , ParamSpec(0.1 , 10000, ExpWarp), default(15.0))
+      val freq  = pAudio("freq" , ParamSpec(0.1 , 10000, Warp.Exp), default(15.0))
       val width = pAudio("width", ParamSpec(0.0 ,     1.0),        default( 0.5))
-      val pAmp  = pAudio("amp"  , ParamSpec(0.01,     1, ExpWarp), default( 0.1))
+      val pAmp  = pAudio("amp"  , ParamSpec(0.01,     1, Warp.Exp), default( 0.1))
 
       val sig   = Pulse.ar(freq, width)
       sig * pAmp
@@ -385,24 +386,24 @@ object ScissProcs {
     }
 
     generator("a~noise0") {
-      val freq  = pAudio("freq", ParamSpec(0.01, 1000.0, ExpWarp, unit = "Hz"), default(1.0f))
+      val freq  = pAudio("freq", ParamSpec(0.01, 1000.0, Warp.Exp, unit = "Hz"), default(1.0f))
       val lo    = pAudio("lo"  , ParamSpec(0.0, 1.0), default(0.0f))
       val hi    = pAudio("hi"  , ParamSpec(0.0, 1.0), default(1.0f))
-      //      val pow   = pAudio("pow" , ParamSpec(0.125, 8, ExpWarp), default(1.0))
+      //      val pow   = pAudio("pow" , ParamSpec(0.125, 8, Warp.Exp), default(1.0))
       mkSpread(freq)(LFDNoise0.ar).linLin(-1, 1, lo, hi) // .pow(pow)
     }
 
     generator("a~noise1") {
-      val freq  = pAudio("freq", ParamSpec(0.01, 1000.0, ExpWarp, unit = "Hz"), default(1.0f))
+      val freq  = pAudio("freq", ParamSpec(0.01, 1000.0, Warp.Exp, unit = "Hz"), default(1.0f))
       val lo    = pAudio("lo"  , ParamSpec(0.0, 1.0), default(0.0f))
       val hi    = pAudio("hi"  , ParamSpec(0.0, 1.0), default(1.0f))
-      //      val pow   = pAudio("pow" , ParamSpec(0.125, 8, ExpWarp), default(1.0))
+      //      val pow   = pAudio("pow" , ParamSpec(0.125, 8, Warp.Exp), default(1.0))
       mkSpread(freq)(LFDNoise1.ar).linLin(-1, 1, lo, hi) // .pow(pow)
     }
 
     generator("a~brown") {
-      val up      = pAudio("up"  , ParamSpec(0.1, 10000.0, ExpWarp), default(1.0f))
-      val down    = pAudio("down", ParamSpec(0.1, 10000.0, ExpWarp), default(1.0f))
+      val up      = pAudio("up"  , ParamSpec(0.1, 10000.0, Warp.Exp), default(1.0f))
+      val down    = pAudio("down", ParamSpec(0.1, 10000.0, Warp.Exp), default(1.0f))
       val n       = mkSpread(default(1f).seq)(BrownNoise.ar)
       val range   = n.linLin(-1, 1, 0, 1)
       Slew.ar(range, up = up, down = down)
@@ -450,8 +451,8 @@ object ScissProcs {
     }
 
     filterF("delay") { in =>
-      val pTime       = pAudio("time", ParamSpec(0.03, 30.0, ExpWarp), default(10.0))
-      val pFeed       = pAudio("feed", ParamSpec(0.001, 1.0, ExpWarp), default(0.001))
+      val pTime       = pAudio("time", ParamSpec(0.03, 30.0, Warp.Exp), default(10.0))
+      val pFeed       = pAudio("feed", ParamSpec(0.001, 1.0, Warp.Exp), default(0.001))
       val pMix        = mkMix()
 
       val numFrames   = SampleRate.ir * 30
@@ -470,7 +471,7 @@ object ScissProcs {
     }
 
     filterF("mantissa") { in =>
-      val pBits = pAudio("bits", ParamSpec(2, 14, IntWarp), default(14.0))
+      val pBits = pAudio("bits", ParamSpec(2, 14, Warp.Int), default(14.0))
       val pMix  = mkMix()
 
       val flt = MantissaMask.ar(in, pBits)
@@ -479,7 +480,7 @@ object ScissProcs {
 
     filterF("achil") { in =>
       shortcut = "A"
-      val pSpeed      = pAudio("speed", ParamSpec(0.125, 2.3511, ExpWarp), default(0.5))
+      val pSpeed      = pAudio("speed", ParamSpec(0.125, 2.3511, Warp.Exp), default(0.5))
       val pMix        = mkMix()
 
       // proc.graph.Buffer.apply()
@@ -541,8 +542,8 @@ object ScissProcs {
 
     filterF("reso") { in =>
       shortcut = "R"
-      val pFreq   = pAudio("freq", ParamSpec(30  , 13000, ExpWarp), default(400.0)) // beware of the upper frequency
-      val pq      = pAudio("q"   , ParamSpec( 0.5,    50, ExpWarp), default(  1.0))
+      val pFreq   = pAudio("freq", ParamSpec(30  , 13000, Warp.Exp), default(400.0)) // beware of the upper frequency
+      val pq      = pAudio("q"   , ParamSpec( 0.5,    50, Warp.Exp), default(  1.0))
       val pMix    = mkMix()
 
       val freq   = pFreq
@@ -555,8 +556,8 @@ object ScissProcs {
 
     filterF("notch") { in =>
       shortcut = "N"
-      val pFreq   = pAudio("freq", ParamSpec(30, 16000, ExpWarp), default(400.0))
-      val pq      = pAudio("q", ParamSpec(1, 50, ExpWarp), default(1.0)) // beware of the lower q
+      val pFreq   = pAudio("freq", ParamSpec(30, 16000, Warp.Exp), default(400.0))
+      val pq      = pAudio("q", ParamSpec(1, 50, Warp.Exp), default(1.0)) // beware of the lower q
       val pMix    = mkMix()
 
       val freq    = pFreq
@@ -587,7 +588,7 @@ object ScissProcs {
     }
 
     filterF("frgmnt") { in =>
-      val pSpeed      = pAudio  ("speed", ParamSpec(0.125, 2.3511, ExpWarp), default(1.0))
+      val pSpeed      = pAudio  ("speed", ParamSpec(0.125, 2.3511, Warp.Exp), default(1.0))
       val pGrain      = pControl("grain", ParamSpec(0, 1), default(0.5))
       val pFeed       = pAudio  ("fb"   , ParamSpec(0, 1), default(0.0))
       val pMix        = mkMix()
@@ -662,7 +663,7 @@ object ScissProcs {
       shortcut = "M" // does not work: "ASTERISK"
       val pMix  = mkMix()
       val in2   = /*pAudioIn("in_m")*/ pAudio("mod", ParamSpec(0 /* -1 */, 1), default(0.0))
-      val pLag  = pAudio("lag", ParamSpec(0.001, 0.1, ExpWarp), default(0.001))
+      val pLag  = pAudio("lag", ParamSpec(0.001, 0.1, Warp.Exp), default(0.001))
       val flt   = in * Lag.ar(in2, pLag - 0.001)
       mix(in, flt, pMix)
     }
@@ -698,7 +699,7 @@ object ScissProcs {
     filterF("~skew") { in =>
       val pLo     = pAudio("lo" , ParamSpec(0, 1), default(0.0))
       val pHi     = pAudio("hi" , ParamSpec(0, 1), default(1.0))
-      val pPow    = pAudio("pow", ParamSpec(0.125, 8, ExpWarp), default(1.0))
+      val pPow    = pAudio("pow", ParamSpec(0.125, 8, Warp.Exp), default(1.0))
       val pRound  = pAudio("rnd", ParamSpec(0, 1), default(0.0))
 
       val pMix    = mkMix()
@@ -724,7 +725,7 @@ object ScissProcs {
     }
 
     filterF("m-above") { in =>
-      val pThresh = pAudio("thresh", ParamSpec(1.0e-3, 1.0e-0, ExpWarp), default(1.0e-2))
+      val pThresh = pAudio("thresh", ParamSpec(1.0e-3, 1.0e-0, Warp.Exp), default(1.0e-2))
       val pMix    = mkMix()
 
       val thresh  = A2K.kr(pThresh)
@@ -746,7 +747,7 @@ object ScissProcs {
     }
 
     filterF("m-below") { in =>
-      val pThresh     = pAudio("thresh", ParamSpec(1.0e-1, 10.0, ExpWarp), default(1.0))
+      val pThresh     = pAudio("thresh", ParamSpec(1.0e-1, 10.0, Warp.Exp), default(1.0))
       val pMix        = mkMix()
 
       val thresh      = A2K.kr(pThresh)
@@ -768,9 +769,9 @@ object ScissProcs {
     }
 
     filterF("pitch") { in =>
-      val pTrans  = pAudio("shift", ParamSpec(0.125, 4, ExpWarp), default(1.0 ))
-      val pTime   = pAudio("time" , ParamSpec(0.01,  1, ExpWarp), default(0.01))
-      val pPitch  = pAudio("pitch", ParamSpec(0.01,  1, ExpWarp), default(0.01))
+      val pTrans  = pAudio("shift", ParamSpec(0.125, 4, Warp.Exp), default(1.0 ))
+      val pTime   = pAudio("time" , ParamSpec(0.01,  1, Warp.Exp), default(0.01))
+      val pPitch  = pAudio("pitch", ParamSpec(0.01,  1, Warp.Exp), default(0.01))
       val pMix    = mkMix()
 
       val grainSize     = 0.5f
@@ -784,8 +785,8 @@ object ScissProcs {
     }
 
     filterF("pow") { in =>
-      val exp   = pAudio("amt"  , ParamSpec(0.5, 2.0, ExpWarp), default(1.0))
-      val decay0= pAudio("decay", ParamSpec(0.5, 1.0, ExpWarp), default(1.0))
+      val exp   = pAudio("amt"  , ParamSpec(0.5, 2.0, Warp.Exp), default(1.0))
+      val decay0= pAudio("decay", ParamSpec(0.5, 1.0, Warp.Exp), default(1.0))
       val decay = Lag.ar(decay0) // Lag.kr(A2K.kr(decay0), 1) // Lag.ar(decay0)
       val peak0 = PeakFollower.ar(in, decay)
       CheckBadValues.ar(peak0, id = 777)
@@ -837,8 +838,8 @@ object ScissProcs {
 
     filterF("zero") { in =>
       val pWidth  = pAudio("width", ParamSpec(0, 1), default(0.5))
-      val pDiv    = pAudio("div"  , ParamSpec(1, 12, IntWarp), default(1.0))
-      val pLag    = pAudio("lag"  , ParamSpec(0.001, 0.1, ExpWarp), default(0.01))
+      val pDiv    = pAudio("div"  , ParamSpec(1, 12, Warp.Int), default(1.0))
+      val pLag    = pAudio("lag"  , ParamSpec(0.001, 0.1, Warp.Exp), default(0.01))
       val pMix    = mkMix()
 
       val lagTime = pLag
@@ -939,10 +940,10 @@ object ScissProcs {
     filterF("env-perc") { in =>
       shortcut = "E"
 
-      val attack  = pAudio("atk"   , ParamSpec(0.001,  1.0, ExpWarp), default(0.01))
-      val release = pAudio("rls"   , ParamSpec(0.001, 10.0, ExpWarp), default(0.01))
+      val attack  = pAudio("atk"   , ParamSpec(0.001,  1.0, Warp.Exp), default(0.01))
+      val release = pAudio("rls"   , ParamSpec(0.001, 10.0, Warp.Exp), default(0.01))
       val curveP  = pAudio("curve" , ParamSpec(-4, 4), default(0.0))
-      val level   = pAudio("amp"   , ParamSpec(0.01,  1.0, ExpWarp),  default(1.0))
+      val level   = pAudio("amp"   , ParamSpec(0.01,  1.0, Warp.Exp),  default(1.0))
       val thresh  = pAudio("thresh", ParamSpec(0, 1), default(0.5))
       val pMix    = mkMix()
 
@@ -958,7 +959,7 @@ object ScissProcs {
 
     filterF("z-onsets") { in =>
       val pThresh0    = pControl("thresh", ParamSpec(0, 1), default(0.5))
-      val pAmp        = pAudio("amp"  , ParamSpec(0.01,     1, ExpWarp), default( 0.1))
+      val pAmp        = pAudio("amp"  , ParamSpec(0.01,     1, Warp.Exp), default( 0.1))
       val pMix        = mkMix()
       val pThresh     = Mix.mono(pThresh0) / NumChannels(pThresh0)
       val buf         = LocalBuf(numFrames = 1024, numChannels = 1)
@@ -1044,7 +1045,7 @@ object ScissProcs {
 
     generator("a~pulse") {
       shortcut = "shift P"
-      val pFreq   = pAudio("freq"   , ParamSpec(0.1 , 10000, ExpWarp), default(15.0))
+      val pFreq   = pAudio("freq"   , ParamSpec(0.1 , 10000, Warp.Exp), default(15.0))
       val pW      = pAudio("width"  , ParamSpec(0.0 ,     1.0),        default(0.5))
       val pLo     = pAudio("lo"     , ParamSpec(0.0 , 1), default(0.0))
       val pHi     = pAudio("hi"     , ParamSpec(0.0 , 1), default(1.0))
@@ -1058,7 +1059,7 @@ object ScissProcs {
 
     generator("a~sin") {
       shortcut = "shift S"
-      val pFreq   = pAudio("freq"   , ParamSpec(0.1 , 10000, ExpWarp), default(15.0))
+      val pFreq   = pAudio("freq"   , ParamSpec(0.1 , 10000, Warp.Exp), default(15.0))
       val pLo     = pAudio("lo"     , ParamSpec(0.0 , 1), default(0.0))
       val pHi     = pAudio("hi"     , ParamSpec(0.0 , 1), default(1.0))
 
@@ -1069,8 +1070,8 @@ object ScissProcs {
     }
 
     generator("a~dust") {
-      val pFreq   = pAudio("freq" , ParamSpec(0.01, 1000.0, ExpWarp), default(0.1))
-      val pDecay  = pAudio("decay", ParamSpec(0.001 , 10.0, ExpWarp), default(0.1))
+      val pFreq   = pAudio("freq" , ParamSpec(0.01, 1000.0, Warp.Exp), default(0.1))
+      val pDecay  = pAudio("decay", ParamSpec(0.001 , 10.0, Warp.Exp), default(0.1))
       val pLo     = pAudio("lo"   , ParamSpec(0.0   , 1.0          ), default(0.0))
       val pHi     = pAudio("hi"   , ParamSpec(0.0   , 1.0          ), default(1.0))
 
@@ -1111,7 +1112,7 @@ object ScissProcs {
       shortcut = "K"
       val pLo     = pAudio("lo" , ParamSpec(0, 1), default(0.0))
       val pHi     = pAudio("hi" , ParamSpec(0, 1), default(1.0))
-      val pPow    = pAudio("pow", ParamSpec(0.125, 8, ExpWarp), default(1.0))
+      val pPow    = pAudio("pow", ParamSpec(0.125, 8, Warp.Exp), default(1.0))
       val pRound  = pAudio("rnd", ParamSpec(0, 1), default(0.0))
 
       val pMix    = mkMix()
@@ -1123,7 +1124,7 @@ object ScissProcs {
     filterF("a~step8") { in =>
       val vals    = Vector.tabulate(8)(i => pAudio(s"v${i+1}", ParamSpec(0, 1), default(0.0)))
       val trig    = in - 0.001 // pAudio("trig", ParamSpec(0.0, 1.0), default(0.0))
-      val hi      = pAudio("hi", ParamSpec(1, 8, IntWarp), default(1.0))
+      val hi      = pAudio("hi", ParamSpec(1, 8, Warp.Int), default(1.0))
       val pMix    = mkMix()
       val index   = Stepper.ar(trig, lo = 0, hi = hi - 1)
       val sig     = Select.ar(index, vals)
@@ -1132,10 +1133,10 @@ object ScissProcs {
 
     filterF("a~dup") { in =>
       shortcut = "U"
-      val pThresh = pAudio("thresh", ParamSpec(0.01, 1, ExpWarp), default(0.1))
-      val pMul    = pAudio("mul"   , ParamSpec(1  , 16, IntWarp), default(1.0))
-      val pDiv    = pAudio("div"   , ParamSpec(1  , 16, IntWarp), default(1.0))
-      val pAmp    = pAudio("amp"   , ParamSpec(0.01, 1, ExpWarp), default(0.1))
+      val pThresh = pAudio("thresh", ParamSpec(0.01, 1, Warp.Exp), default(0.1))
+      val pMul    = pAudio("mul"   , ParamSpec(1  , 16, Warp.Int), default(1.0))
+      val pDiv    = pAudio("div"   , ParamSpec(1  , 16, Warp.Int), default(1.0))
+      val pAmp    = pAudio("amp"   , ParamSpec(0.01, 1, Warp.Exp), default(0.1))
       val pMix    = mkMix()
       val tr      = in > pThresh
       val tim     = Timer.ar(tr)
@@ -1148,10 +1149,10 @@ object ScissProcs {
 
     filterF("a~div") { in =>
       shortcut = "V"
-      val pThresh = pAudio("thresh", ParamSpec(0.01, 1, ExpWarp), default(0.1))
-      val pMul    = pAudio("mul"   , ParamSpec(1  , 16, IntWarp), default(1.0))
-      val pDiv    = pAudio("div"   , ParamSpec(1  , 16, IntWarp), default(1.0))
-      val pAmp    = pAudio("amp"   , ParamSpec(0.01, 1, ExpWarp), default(0.1))
+      val pThresh = pAudio("thresh", ParamSpec(0.01, 1, Warp.Exp), default(0.1))
+      val pMul    = pAudio("mul"   , ParamSpec(1  , 16, Warp.Int), default(1.0))
+      val pDiv    = pAudio("div"   , ParamSpec(1  , 16, Warp.Int), default(1.0))
+      val pAmp    = pAudio("amp"   , ParamSpec(0.01, 1, Warp.Exp), default(0.1))
       val pMix    = mkMix()
       val inTrig  = in > pThresh // (in - pThresh).max(0.0)
       val pulse   = PulseDivider.ar(inTrig, pDiv)
@@ -1168,9 +1169,9 @@ object ScissProcs {
     }
 
     filterF("a~gate") { in =>
-      val pThresh = pAudio("thresh", ParamSpec(0.01, 1  , ExpWarp), default(0.1))
+      val pThresh = pAudio("thresh", ParamSpec(0.01, 1  , Warp.Exp), default(0.1))
       val pGate   = pAudio("gate"  , ParamSpec(0.0 , 1.0         ), default(0.0)) > pThresh
-      val pLeak   = pAudio("leak"  , ParamSpec(0   , 1  , IntWarp), default(0.0)) > pThresh
+      val pLeak   = pAudio("leak"  , ParamSpec(0   , 1  , Warp.Int), default(0.0)) > pThresh
       val pMix    = mkMix()
       val sig0    = Gate.ar(in, pGate)
       val leak    = LeakDC.ar(sig0)
@@ -1190,11 +1191,11 @@ object ScissProcs {
     }
 
     filterF("a~trig") { in =>
-      val pThresh = pAudio("thresh", ParamSpec(0.01, 1, ExpWarp), default(0.1))
+      val pThresh = pAudio("thresh", ParamSpec(0.01, 1, Warp.Exp), default(0.1))
       val pLo     = pAudio("lo"    , ParamSpec(0.0, 1.0), default(0.0))
       val pHi     = pAudio("hi"    , ParamSpec(0.0, 1.0), default(1.0))
       val inTrig  = in // pAudio("trig"  , ParamSpec(0.0, 1.0), default(0.0))
-      val pDur    = pAudio("dur"   , ParamSpec(0.001, 1.0, ExpWarp), default(0.01))
+      val pDur    = pAudio("dur"   , ParamSpec(0.001, 1.0, Warp.Exp), default(0.01))
       val pMix    = mkMix()
 
       val sig     = Trig1.ar(inTrig - pThresh, pDur).linLin(0, 1, pLo, pHi)
@@ -1204,7 +1205,7 @@ object ScissProcs {
     filterF("a~step") { in =>
       val pLo     = pAudio("lo"   , ParamSpec(0.0,  1.0       ), default(0.0))
       val pHi     = pAudio("hi"   , ParamSpec(0.0,  1.0       ), default(1.0))
-      val pDiv    = pAudio("div"  , ParamSpec(1  , 16, IntWarp), default(1))
+      val pDiv    = pAudio("div"  , ParamSpec(1  , 16, Warp.Int), default(1))
       val inTrig  = in - 0.001 // pAudio("trig" , ParamSpec(0.0,  1.0       ), default(0.0))
       val reset   = pAudio("reset", ParamSpec(0.0,  1.0       ), default(0.0))
       val pMix    = mkMix()
@@ -1217,8 +1218,8 @@ object ScissProcs {
         val lowest  = 30.0
         val maxZero = 32
         val maxDur  = 1.0 / lowest * maxZero
-        val pch     = pAudio("shift", ParamSpec(2, 16     , IntWarp), default(2f))
-        val zero    = pAudio("zero" , ParamSpec(1, maxZero /*, IntWarp */), default(1)) // too many points, don't use Int
+        val pch     = pAudio("shift", ParamSpec(2, 16     , Warp.Int), default(2f))
+        val zero    = pAudio("zero" , ParamSpec(1, maxZero /*, Warp.Int */), default(1)) // too many points, don't use Int
         val fade    = mkMix() // mkMix4()
         val wet     = Squiz.ar(in, pitchRatio = pch, zeroCrossings = zero, maxDur = maxDur)
         mix(in, wet, fade)
@@ -1231,8 +1232,8 @@ object ScissProcs {
         val inR     = if (genNumChannels <= 0) in out 1 else {
           ChannelRangeProxy(in, from = 1, until = genNumChannels, step = 2)
         }
-        val time    = pAudio("time"  , ParamSpec(0.1, 60.0, ExpWarp), default(2f))
-        val size    = pAudio("size"  , ParamSpec(0.5,  5.0, ExpWarp), default(1f))
+        val time    = pAudio("time"  , ParamSpec(0.1, 60.0, Warp.Exp), default(2f))
+        val size    = pAudio("size"  , ParamSpec(0.5,  5.0, Warp.Exp), default(1f))
         val diff    = pAudio("diff"  , ParamSpec(0,  1), default(0.707f))
         val damp    = pAudio("damp"  , ParamSpec(0,  1), default(0.1f))
         val tail    = 1.0f // pAudio("tail" , ParamSpec(-12, 12), default(0f)).dbamp
@@ -1284,7 +1285,7 @@ object ScissProcs {
         }
 
         def mkAmp(): GE = {
-          val db0 = pAudio("amp", ParamSpec(-inf, 20, DbFaderWarp), default(-inf))
+          val db0 = pAudio("amp", ParamSpec(-inf, 20, Warp.DbFader), default(-inf))
           val db  = db0 - 10 * (db0 < -764)  // BUG IN SUPERCOLLIDER
           val res = db.dbAmp
           CheckBadValues.ar(res, id = 666)
@@ -1332,7 +1333,7 @@ object ScissProcs {
 
         def mkOutRnd(in: GE): GE = {
           val pAmp        = mkAmp()
-          val pFreq       = pControl("freq", ParamSpec(0.01, 10, ExpWarp), default(0.1))
+          val pFreq       = pControl("freq", ParamSpec(0.01, 10, Warp.Exp), default(0.1))
           val pPow        = pControl("pow" , ParamSpec(1, 10), default(2.0))
           val pLag        = pControl("lag" , ParamSpec(0.1, 10), default(1.0))
 

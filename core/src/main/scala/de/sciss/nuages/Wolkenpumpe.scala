@@ -13,11 +13,9 @@
 
 package de.sciss.nuages
 
-import java.awt.{Color, Font}
 import de.sciss.proc.SoundProcesses
-import de.sciss.synth.UGenSource
-import de.sciss.synth.proc.graph.Param
 
+import java.awt.{Color, Font}
 import scala.swing.Component
 
 object Wolkenpumpe {
@@ -62,10 +60,10 @@ object Wolkenpumpe {
 
   def init(): Unit = {
     SoundProcesses.init()
-    ParamSpec     .init()
-    Warp          .init()
+//    ParamSpec     .init()
+//    Warp          .init()
     Nuages        .init()
 
-    UGenSource.addProductReaderSq(Param :: Nil)
+//    UGenSource.addProductReaderSq(Param :: Nil)
   }
 }

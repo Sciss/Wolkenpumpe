@@ -15,14 +15,13 @@ package de.sciss.nuages
 package impl
 
 import java.awt.Graphics2D
-
 import de.sciss.lucre.swing.LucreSwing.requireEDT
 import de.sciss.lucre.{BooleanObj, Disposable, DoubleObj, DoubleVector, Folder, IntObj, LongObj, Obj, SpanLikeObj, Txn, synth}
 import de.sciss.nuages.NuagesAttribute.{Factory, Input, Parent}
 import de.sciss.nuages.NuagesPanel.GROUP_GRAPH
 import de.sciss.span.Span
 import de.sciss.proc.AuralObj.{Proc => AProc}
-import de.sciss.proc.{AuralAttribute, AuralObj, EnvSegment, Grapheme, Proc, Runner, TimeRef, Timeline}
+import de.sciss.proc.{AuralAttribute, AuralObj, EnvSegment, Grapheme, ParamSpec, Proc, Runner, TimeRef, Timeline}
 import prefuse.data.{Edge => PEdge, Node => PNode}
 import prefuse.visual.VisualItem
 
@@ -213,7 +212,7 @@ object NuagesAttributeImpl {
           gr.add(timeBefore, before)
         }
         val timeNow = LongObj.newVar[T](start)
-        ParamSpec.copyAttr(source = before, target = gr)
+        // ParamSpec.copyAttr(source = before, target = gr)
         gr.add(timeNow, now)
         gr
       } else {
@@ -280,7 +279,7 @@ object NuagesAttributeImpl {
                 val span2 = SpanLikeObj.newVar(span())  // we want the two spans to be independent
                 tl.add(span2, other)
                 tl.add(span , child)
-                ParamSpec.copyAttr(source = other, target = tl)
+                // ParamSpec.copyAttr(source = other, target = tl)
                 objAttr.put(key, tl)
 
               } else {
@@ -294,7 +293,7 @@ object NuagesAttributeImpl {
                 val f = Folder[T]()
                 f.addLast(other)
                 f.addLast(child)
-                ParamSpec.copyAttr(source = other, target = f)
+                // ParamSpec.copyAttr(source = other, target = f)
                 objAttr.put(key, f)
               }
           }
@@ -309,7 +308,7 @@ object NuagesAttributeImpl {
           if (main.isTimeline) {
             val tl          = Timeline[T]()
             val span        = SpanLikeObj.newVar[T](Span.until(currentOffset()))
-            ParamSpec.copyAttr(source = child, target = tl)
+            // ParamSpec.copyAttr(source = child, target = tl)
             tl.add(span, child)
             objAttr.put(key, tl)
           } else {

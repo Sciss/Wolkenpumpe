@@ -40,7 +40,7 @@ lazy val deps = new {
     val swingPlus           = "0.5.0"
   }
   val test = new {
-    val lucre               = "4.4.0"
+    val lucre               = "4.4.1-SNAPSHOT"
     val scalaTest           = "3.2.3"
     val scallop             = "4.0.1"
     val submin              = "0.3.4"

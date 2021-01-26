@@ -17,7 +17,6 @@ package impl
 import java.awt.Graphics2D
 import java.awt.event.MouseEvent
 import java.awt.geom.Point2D
-
 import de.sciss.lucre.Txn.peer
 import de.sciss.lucre.{Disposable, Expr, Obj, Source, Txn, synth}
 import de.sciss.nuages.NuagesAttribute.Parent
@@ -25,7 +24,7 @@ import de.sciss.nuages.impl.NuagesDataImpl.colrManual
 import de.sciss.numbers
 import de.sciss.serial.TFormat
 import de.sciss.synth.Curve
-import de.sciss.proc.{EnvSegment, TimeRef}
+import de.sciss.proc.{EnvSegment, ParamSpec, TimeRef, Warp}
 import prefuse.data.{Node => PNode}
 import prefuse.visual.VisualItem
 
@@ -166,7 +165,7 @@ trait NuagesAttrInputImpl[T <: synth.Txn[T]]
       val dy      = r.getCenterY - pt.getY
       val dx      = pt.getX - r.getCenterX
       val ang0    = math.max(0.0, math.min(1.0, (((-math.atan2(dy, dx) / math.Pi + 3.5) % 2.0) - 0.25) / 1.5))
-      val ang     = if (spec.warp == IntWarp) spec.inverseMap(spec.map(ang0)) else ang0
+      val ang     = if (spec.warp == Warp.Int) spec.inverseMap(spec.map(ang0)) else ang0
       val instant = !e.isShiftDown
       val vStart  = if (e.isAltDown) {
         val angV = Vector.fill(numChannels)(ang)
@@ -208,7 +207,7 @@ trait NuagesAttrInputImpl[T <: synth.Txn[T]]
       val vEff0 = dr.valueStart.map { vs =>
         math.max(0.0, math.min(1.0, vs + (ang - dr.angStart)))
       }
-      val vEff = if (spec.warp == IntWarp) vEff0.map { ve => spec.inverseMap(spec.map(ve)) } else vEff0
+      val vEff = if (spec.warp == Warp.Int) vEff0.map { ve => spec.inverseMap(spec.map(ve)) } else vEff0
       if (dr.instant) {
         setControl(vEff, dur = 0f)
       }
