@@ -14,8 +14,7 @@ lazy val commonSettings = Seq(
   description          := "A Prefuse based visual interface for SoundProcesses, a sound synthesis framework",
   licenses             := Seq("AGPL v3+" -> url( "http://www.gnu.org/licenses/agpl-3.0.txt")),
   scalaVersion         := "2.13.4",
-  crossScalaVersions   := Seq(/* "3.0.0-M2", */ "2.13.4", "2.12.12"),
-  // resolvers            += "Oracle Repository" at "http://download.oracle.com/maven",  // required for sleepycat
+  crossScalaVersions   := Seq("3.0.0-M3", "2.13.4", "2.12.12"),
   scalacOptions       ++= Seq(
     "-deprecation", "-unchecked", "-feature", "-encoding", "utf8", "-Xlint:-stars-align,_", "-Xsource:2.13"
   ),
@@ -31,18 +30,18 @@ lazy val deps = new {
   val main = new {
     val fileUtil            = "1.1.5"
     val intensity           = "1.0.2"
-    val lucreSwing          = "2.6.0"
+    val lucreSwing          = "2.6.1-SNAPSHOT"
     val prefuse             = "1.0.1"
-    val scalaCollider       = "2.6.0"
-    val scalaColliderSwing  = "2.6.0"
-    val scissDSP            = "2.2.1"
+    val scalaCollider       = "2.6.1"
+    val scalaColliderSwing  = "2.6.1"
+    val scissDSP            = "2.2.2"
     val soundProcesses      = "4.7.0-SNAPSHOT"
     val swingPlus           = "0.5.0"
   }
   val test = new {
     val lucre               = "4.4.1-SNAPSHOT"
     val scalaTest           = "3.2.3"
-    val scallop             = "4.0.1"
+    val scallop             = "4.0.2"
     val submin              = "0.3.4"
   }
 }
