@@ -18,6 +18,8 @@ based on SuperCollider. Generation 1 or 2 was based on Max/MSP.
 
 Note that you can use this interface through [Mellite](https://git.iem.at/sciss/Mellite/).
 
+[Some notes](https://www.researchcatalogue.net/view/426429/1114309) on the Research Catalogue.
+
 <img src="screenshot.png" alt="screenshot" width="520" height="449"/>
 
 ## building

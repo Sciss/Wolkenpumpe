@@ -1,6 +1,6 @@
 lazy val baseName        = "Wolkenpumpe"
 lazy val baseNameL       = baseName.toLowerCase
-lazy val projectVersion  = "3.4.0-SNAPSHOT"
+lazy val projectVersion  = "3.4.0"
 lazy val mimaVersion     = "3.4.0"
 
 // sonatype plugin requires that these are in global
@@ -35,7 +35,7 @@ lazy val deps = new {
     val scalaCollider       = "2.6.1"
     val scalaColliderSwing  = "2.6.1"
     val scissDSP            = "2.2.2"
-    val soundProcesses      = "4.7.0-SNAPSHOT"
+    val soundProcesses      = "4.7.0"
     val swingPlus           = "0.5.0"
   }
   val test = new {
