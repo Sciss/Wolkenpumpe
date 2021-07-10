@@ -1,47 +1,45 @@
 lazy val baseName        = "Wolkenpumpe"
 lazy val baseNameL       = baseName.toLowerCase
-lazy val projectVersion  = "3.4.0"
-lazy val mimaVersion     = "3.4.0"
+lazy val projectVersion  = "3.5.0"
+lazy val mimaVersion     = "3.5.0"
 
-// sonatype plugin requires that these are in global
-ThisBuild / version      := projectVersion
-ThisBuild / organization := "de.sciss"
+ThisBuild / version       := projectVersion
+ThisBuild / organization  := "de.sciss"
+ThisBuild / versionScheme := Some("pvp")
 
 lazy val commonSettings = Seq(
-//  version              := projectVersion,
-//  organization         := "de.sciss",
   homepage             := Some(url(s"https://git.iem.at/sciss/$baseName")),
   description          := "A Prefuse based visual interface for SoundProcesses, a sound synthesis framework",
   licenses             := Seq("AGPL v3+" -> url( "http://www.gnu.org/licenses/agpl-3.0.txt")),
-  scalaVersion         := "2.13.4",
-  crossScalaVersions   := Seq("3.0.0-M3", "2.13.4", "2.12.12"),
+  scalaVersion         := "2.13.6",
+  crossScalaVersions   := Seq("3.0.0", "2.13.6", "2.12.14"),
   scalacOptions       ++= Seq(
     "-deprecation", "-unchecked", "-feature", "-encoding", "utf8", "-Xlint:-stars-align,_", "-Xsource:2.13"
   ),
-  scalacOptions in (Compile, compile) ++= (if (scala.util.Properties.isJavaAtLeast("9")) Seq("-release", "8") else Nil), // JDK >8 breaks API; skip scala-doc
+  Compile / compile / scalacOptions ++= (if (scala.util.Properties.isJavaAtLeast("9")) Seq("-release", "8") else Nil), // JDK >8 breaks API; skip scala-doc
   scalacOptions        += "-Yrangepos",  // this is needed to extract source code
   updateOptions        := updateOptions.value.withLatestSnapshots(false),
-  sources in (Compile, doc) := {
-    if (isDotty.value) Nil else (sources in (Compile, doc)).value // dottydoc is pretty much broken
-  },
+//  Compile / doc / sources := {
+//    if (isDotty.value) Nil else (sources in (Compile, doc)).value // dottydoc is pretty much broken
+//  },
 ) ++ publishSettings
 
 lazy val deps = new {
   val main = new {
     val fileUtil            = "1.1.5"
     val intensity           = "1.0.2"
-    val lucreSwing          = "2.6.1"
+    val lucreSwing          = "2.6.3"
     val prefuse             = "1.0.1"
-    val scalaCollider       = "2.6.1"
-    val scalaColliderSwing  = "2.6.1"
+    val scalaCollider       = "2.6.4"
+    val scalaColliderSwing  = "2.6.4"
     val scissDSP            = "2.2.2"
-    val soundProcesses      = "4.7.0"
+    val soundProcesses      = "4.8.0"
     val swingPlus           = "0.5.0"
   }
   val test = new {
-    val lucre               = "4.4.1"
-    val scalaTest           = "3.2.3"
-    val scallop             = "4.0.2"
+    val lucre               = "4.4.5"
+    val scalaTest           = "3.2.9"
+    val scallop             = "4.0.3"
     val submin              = "0.3.4"
   }
 }
@@ -52,9 +50,9 @@ lazy val root = project.withId(baseNameL).in(file("."))
   .settings(commonSettings)
   .settings(
     name := baseName,
-    publishArtifact in(Compile, packageBin) := false, // there are no binaries
-    publishArtifact in(Compile, packageDoc) := false, // there are no javadocs
-    publishArtifact in(Compile, packageSrc) := false, // there are no sources
+    Compile / packageBin / publishArtifact := false, // there are no binaries
+    Compile / packageDoc / publishArtifact := false, // there are no javadocs
+    Compile / packageSrc / publishArtifact := false, // there are no sources
     autoScalaLibrary := false
   )
 
@@ -79,7 +77,7 @@ lazy val core = project.withId(s"$baseNameL-core").in(file("core"))
       "org.scalatest" %% "scalatest" % deps.test.scalaTest % Test
     },
     mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-core" % mimaVersion),
-    initialCommands in console :=
+    console / initialCommands :=
       """import de.sciss.nuages._
         |import de.sciss.numbers.Implicits._
         |""".stripMargin
@@ -102,7 +100,7 @@ lazy val basic = project.withId(s"$baseNameL-basic").in(file("basic"))
 
 lazy val publishSettings = Seq(
   publishMavenStyle := true,
-  publishArtifact in Test := false,
+  Test / publishArtifact := false,
   pomIncludeRepository := { _ => false },
   developers := List(
     Developer(
@@ -113,8 +111,8 @@ lazy val publishSettings = Seq(
     )
   ),
   scmInfo := {
-    val h = "git.iem.at"
-    val a = s"sciss/$baseName"
+    val h = "github.com"
+    val a = s"Sciss/$baseName"
     Some(ScmInfo(url(s"https://$h/$a"), s"scm:git@$h:$a.git"))
   },
 )

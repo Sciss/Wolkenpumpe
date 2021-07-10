@@ -108,6 +108,7 @@ final class NuagesTimelineAttrInput[T <: synth.Txn[T]] private(val attribute: Nu
 
   def updateChild(before: Obj[T], now: Obj[T], dt: Long, clearRight: Boolean)(implicit tx: T): Unit = {
     if (dt != 0L) ???!
+
     removeChild(before)
     addChild(now)
   }

@@ -195,10 +195,10 @@ trait NuagesAttrInputImpl[T <: synth.Txn[T]]
     if (dr!= null) {
 //      if (!dr.isInit) {
 //        dr.isInit = true
-        if (e.isShiftDown && dr.instant) {
-          dr.instant = false
-          initGlide()
-        }
+      if (e.isShiftDown && dr.instant) {
+        dr.instant = false
+        initGlide()
+      }
 //      }
 
       val dy = r.getCenterY - pt.getY

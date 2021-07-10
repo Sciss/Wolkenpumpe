@@ -234,6 +234,7 @@ final class NuagesGraphemeAttrInput[T <: synth.Txn[T]] private(val attribute: Nu
   def removeChild(child: Obj[T])(implicit tx: T): Unit = {
     val gr = graphemeH()
     ???!
+
     if (isTimeline) {
       val stop    = currentOffset()
       val entries = gr.intersect(stop).filter(_.value === child)
